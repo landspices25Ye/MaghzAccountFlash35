@@ -52,18 +52,21 @@ export async function getDbAdapter(): Promise<DbAdapter> {
 
 function createRealmAdapter(): DbAdapter {
   const realm = (window as any).electronRealm;
+  const fallback = mockAdapter;
   
   return {
     async ping() {
       return realm.ping();
     },
     
-    async query() {
-      return { success: false, error: 'Raw queries not supported in Realm' };
+    // Delegate raw SQL queries to mock adapter (supports products, contacts, employees, warehouses, etc.)
+    async query(sql, params) {
+      return fallback.query(sql, params);
     },
     
-    async transaction() {
-      return { success: false, error: 'Transactions not supported in Realm adapter' };
+    // Delegate transactions to mock adapter
+    async transaction(queries) {
+      return fallback.transaction(queries);
     },
     
     async getCompany() {
@@ -82,9 +85,8 @@ function createRealmAdapter(): DbAdapter {
       return realm.addAccount(data);
     },
     
-    async updateAccountBalance(_accountId, _delta) {
-      // Find account by id then update
-      return { success: true };
+    async updateAccountBalance(accountId, delta) {
+      return fallback.updateAccountBalance(accountId, delta);
     },
     
     async getTransactions(companyId) {
@@ -97,20 +99,21 @@ function createRealmAdapter(): DbAdapter {
       return realm.postTransaction(data);
     },
     
-    async getProducts() {
-      return { success: true, data: [] };
+    // Delegate to mock adapter for tables not supported by Realm
+    async getProducts(companyId) {
+      return fallback.getProducts(companyId);
     },
     
-    async createProduct(_data) {
-      return { success: true, id: crypto.randomUUID() };
+    async createProduct(data) {
+      return fallback.createProduct(data);
     },
     
-    async getContacts() {
-      return { success: true, data: [] };
+    async getContacts(companyId, type) {
+      return fallback.getContacts(companyId, type);
     },
     
-    async createContact(_data) {
-      return { success: true, id: crypto.randomUUID() };
+    async createContact(data) {
+      return fallback.createContact(data);
     },
   };
 }

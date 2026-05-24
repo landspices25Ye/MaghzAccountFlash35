@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { isElectron } from '@/core/database/adapters';
 import { AppLayout } from './layout';
 
 // Lazy load modules for better performance
@@ -74,6 +75,13 @@ const VatSettingsPage = React.lazy(() => import('@/modules/core/components/VatSe
 const BranchesPage = React.lazy(() => import('@/modules/core/components/BranchesPage'));
 const BackupPage = React.lazy(() => import('@/modules/core/components/BackupPage'));
 
+// New admin screens
+const DocumentSequencesPage = React.lazy(() => import('@/modules/settings/components/DocumentSequencesPage'));
+const ProductTypesPage = React.lazy(() => import('@/modules/settings/components/ProductTypesPage'));
+const ProductCategoriesPage = React.lazy(() => import('@/modules/settings/components/ProductCategoriesPage'));
+const DefaultAccountsPage = React.lazy(() => import('@/modules/settings/components/DefaultAccountsPage'));
+const UnitsPage = React.lazy(() => import('@/modules/settings/components/UnitsPage'));
+
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-full">
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
@@ -106,9 +114,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 import { useAuthStore } from '@/modules/auth/store';
 
+const Router = isElectron() ? HashRouter : BrowserRouter;
+
 export const AppRouter: React.FC = () => {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         {/* Public route */}
         <Route path="/login" element={withSuspense(LoginPage)} />
@@ -192,12 +202,17 @@ export const AppRouter: React.FC = () => {
                   <Route path="vat" element={withSuspense(VatSettingsPage)} />
                   <Route path="branches" element={withSuspense(BranchesPage)} />
                   <Route path="backup" element={withSuspense(BackupPage)} />
+                  <Route path="document-sequences" element={withSuspense(DocumentSequencesPage)} />
+                  <Route path="product-types" element={withSuspense(ProductTypesPage)} />
+                  <Route path="product-categories" element={withSuspense(ProductCategoriesPage)} />
+                  <Route path="default-accounts" element={withSuspense(DefaultAccountsPage)} />
+                  <Route path="units" element={withSuspense(UnitsPage)} />
                 </Route>
               </Routes>
             </AppLayout>
           </ProtectedRoute>
         } />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 };

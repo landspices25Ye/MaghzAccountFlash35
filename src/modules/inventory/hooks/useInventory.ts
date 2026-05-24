@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { inventoryApi } from '../api';
-import type { Product, Warehouse, Stock } from '../types';
+import type { Product, Warehouse, Stock, ProductCategory } from '../types';
 
 export function useProducts(companyId: string) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -84,4 +84,48 @@ export function useStock(companyId: string) {
   }, [companyId]);
 
   return { stock, isLoading };
+}
+
+export function useProductCategories(companyId: string) {
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    async function load() {
+      setIsLoading(true);
+      const result = await inventoryApi.getCategories(companyId);
+      if (result.success && result.data) {
+        setCategories(result.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, [companyId]);
+
+  const create = useCallback(async (data: Omit<ProductCategory, 'id'>) => {
+    const result = await inventoryApi.createProductCategory(data);
+    if (result.success && result.id) {
+      setCategories(prev => [...prev, { ...data, id: result.id! }]);
+    }
+    return result;
+  }, []);
+
+  const update = useCallback(async (id: string, data: Partial<ProductCategory>) => {
+    const result = await inventoryApi.updateProductCategory(id, data);
+    if (result.success) {
+      setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await inventoryApi.deleteProductCategory(id);
+    if (result.success) {
+      setCategories(prev => prev.filter(c => c.id !== id));
+    }
+    return result;
+  }, []);
+
+  return { categories, isLoading, create, update, remove };
 }

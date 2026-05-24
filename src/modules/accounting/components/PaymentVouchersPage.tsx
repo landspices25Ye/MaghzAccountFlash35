@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Banknote, Plus, CheckSquare, Truck, BookOpen } from 'lucide-react';
+import { Banknote, Plus, CheckSquare, Truck, BookOpen, Printer } from 'lucide-react';
+import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { SupplierSelect, BankSelect, AccountSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { postPaymentVoucher } from '@/core/utils/journalEntryGenerator';
 
@@ -32,6 +34,26 @@ export const PaymentVouchersPage: React.FC = () => {
   const [postingId, setPostingId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<Partial<PaymentVoucher>>({ paymentMethod: 'cash' });
+
+  const handlePrint = (voucher: PaymentVoucher) => {
+    printDocument({
+      type: 'payment-voucher',
+      docNumber: voucher.voucherNumber,
+      date: voucher.date,
+      partyName: voucher.supplier,
+      partyLabel: 'المستفيد',
+      lines: [{
+        description: voucher.notes || 'سند صرف',
+        total: voucher.amount,
+      }],
+      subtotal: voucher.amount,
+      vatAmount: 0,
+      totalAmount: voucher.amount,
+      notes: voucher.notes,
+      companyName: activeCompany?.name,
+      currency: activeCompany?.currency,
+    });
+  };
 
   const handlePost = async (voucher: PaymentVoucher) => {
     if (!activeCompany?.id) return;
@@ -138,20 +160,23 @@ export const PaymentVouchersPage: React.FC = () => {
                 {row.status === 'posted' ? 'مرحّل' : 'مسوّد'}
               </Badge>
             )},
-            { key: 'actions', header: 'إجراء', render: (row) => (
-              row.status === 'draft' ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<CheckSquare size={14} />}
-                  onClick={() => handlePost(row)}
-                  disabled={postingId === row.id}
-                >
-                  {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
-                </Button>
-              ) : (
-                <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
-              )
+            { key: 'actions', header: 'إجراء', render: (row: PaymentVoucher) => (
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" leftIcon={<Printer size={14} />} onClick={() => handlePrint(row)} title="طباعة" />
+                {row.status === 'draft' ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    leftIcon={<CheckSquare size={14} />}
+                    onClick={() => handlePost(row)}
+                    disabled={postingId === row.id}
+                  >
+                    {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
+                  </Button>
+                ) : (
+                  <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
+                )}
+              </div>
             )},
           ]}
           keyExtractor={(row) => row.id}
@@ -161,7 +186,10 @@ export const PaymentVouchersPage: React.FC = () => {
       {isOpen && (
         <Modal isOpen={isOpen} title="سند صرف جديد" onClose={() => setIsOpen(false)}>
           <div className="space-y-4">
-            <Input label="المستفيد / المورد" value={form.supplier || ''} onChange={e => setForm({ ...form, supplier: e.target.value })} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المستفيد / المورد</label>
+              <SupplierSelect companyId={activeCompany?.id || ''} value={form.supplier || ''} onChange={v => setForm({ ...form, supplier: v || '' })} />
+            </div>
             <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
             <div>
               <label className="block text-sm mb-1">طريقة الدفع</label>
@@ -172,7 +200,10 @@ export const PaymentVouchersPage: React.FC = () => {
               </select>
             </div>
             {form.paymentMethod === 'bank' && (
-              <Input label="الحساب البنكي" value={form.bankAccount || ''} onChange={e => setForm({ ...form, bankAccount: e.target.value })} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الحساب البنكي</label>
+                <BankSelect companyId={activeCompany?.id || ''} value={form.bankAccount || ''} onChange={v => setForm({ ...form, bankAccount: v || '' })} />
+              </div>
             )}
             {form.paymentMethod === 'check' && (
               <>
@@ -180,7 +211,10 @@ export const PaymentVouchersPage: React.FC = () => {
                 <Input label="تاريخ الشيك" type="date" value={form.checkDate || ''} onChange={e => setForm({ ...form, checkDate: e.target.value })} />
               </>
             )}
-            <Input label="حساب المصروف (إن وجد)" value={form.expenseAccount || ''} onChange={e => setForm({ ...form, expenseAccount: e.target.value })} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">حساب المصروف (إن وجد)</label>
+              <AccountSelect companyId={activeCompany?.id || ''} value={form.expenseAccount || ''} onChange={v => setForm({ ...form, expenseAccount: v || '' })} filterType="expense" placeholder="اختر حساب المصروف..." />
+            </div>
             <Input label="ملاحظات" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>

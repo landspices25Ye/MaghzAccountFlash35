@@ -53,6 +53,35 @@ async function findAccountByCode(companyId: string, code: string): Promise<strin
   return result.rows?.[0]?.id || null;
 }
 
+async function getDefaultAccountId(companyId: string, functionKey: string): Promise<string | null> {
+  const adapter = await getDbAdapter();
+  const result = await adapter.query(
+    `SELECT account_id FROM default_accounts WHERE company_id = $1 AND function_key = $2`,
+    [companyId, functionKey]
+  );
+  if (result.rows?.[0]?.account_id) return result.rows[0].account_id;
+  // Fallback to hardcoded codes
+  const fallbackMap: Record<string, string> = {
+    default_cash: ACC.CASH,
+    default_bank: ACC.BANK,
+    default_sales: ACC.SALES,
+    default_cogs: ACC.COGS,
+    default_inventory: ACC.INVENTORY,
+    default_debtors: ACC.TRADE_DEBTORS,
+    default_creditors: ACC.TRADE_CREDITORS,
+    default_vat_output: ACC.VAT_PAYABLE,
+    default_vat_input: ACC.VAT_PAYABLE,
+    default_salaries: ACC.SALARIES,
+    default_sales_returns: ACC.SALES_RETURNS,
+    default_purchase_returns: ACC.TRADE_CREDITORS,
+    default_discount_allowed: ACC.SALES,
+    default_discount_received: ACC.TRADE_CREDITORS,
+  };
+  const code = fallbackMap[functionKey];
+  if (code) return findAccountByCode(companyId, code);
+  return null;
+}
+
 async function createTransaction(companyId: string, entry: AutoJournalEntry) {
   const adapter = await getDbAdapter();
   return adapter.createTransaction({
@@ -76,12 +105,12 @@ export async function postSalesInvoice(
   companyId: string,
   invoice: { invoiceNumber: string; date: string; customerId: string; subtotal: number; vatAmount: number; totalAmount: number }
 ) {
-  const debtorsId = await findAccountByCode(companyId, ACC.TRADE_DEBTORS);
-  const salesId = await findAccountByCode(companyId, ACC.SALES);
-  const vatId = await findAccountByCode(companyId, ACC.VAT_PAYABLE);
+  const debtorsId = await getDefaultAccountId(companyId, 'default_debtors');
+  const salesId = await getDefaultAccountId(companyId, 'default_sales');
+  const vatId = await getDefaultAccountId(companyId, 'default_vat_output');
 
   if (!debtorsId || !salesId || !vatId) {
-    return { success: false, error: 'Required accounts not found in chart of accounts' };
+    return { success: false, error: 'Required accounts not found in chart of accounts. Please configure default accounts in Settings.' };
   }
 
   const entries: JournalEntryLine[] = [
@@ -109,12 +138,12 @@ export async function postPurchaseInvoice(
   companyId: string,
   invoice: { invoiceNumber: string; date: string; supplierId: string; subtotal: number; vatAmount: number; totalAmount: number }
 ) {
-  const inventoryId = await findAccountByCode(companyId, ACC.INVENTORY);
-  const creditorsId = await findAccountByCode(companyId, ACC.TRADE_CREDITORS);
-  const vatId = await findAccountByCode(companyId, ACC.VAT_PAYABLE);
+  const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
+  const creditorsId = await getDefaultAccountId(companyId, 'default_creditors');
+  const vatId = await getDefaultAccountId(companyId, 'default_vat_input');
 
   if (!inventoryId || !creditorsId || !vatId) {
-    return { success: false, error: 'Required accounts not found' };
+    return { success: false, error: 'Required accounts not found. Please configure default accounts in Settings.' };
   }
 
   const entries: JournalEntryLine[] = [
@@ -141,12 +170,12 @@ export async function postReceiptVoucher(
   companyId: string,
   voucher: { voucherNumber: string; date: string; customer: string; amount: number; paymentMethod: string }
 ) {
-  const cashId = await findAccountByCode(companyId, ACC.CASH);
-  const bankId = await findAccountByCode(companyId, ACC.BANK);
-  const debtorsId = await findAccountByCode(companyId, ACC.TRADE_DEBTORS);
+  const cashId = await getDefaultAccountId(companyId, 'default_cash');
+  const bankId = await getDefaultAccountId(companyId, 'default_bank');
+  const debtorsId = await getDefaultAccountId(companyId, 'default_debtors');
 
   if (!cashId || !debtorsId) {
-    return { success: false, error: 'Required accounts not found' };
+    return { success: false, error: 'Required accounts not found. Please configure default accounts in Settings.' };
   }
 
   const debitAccount = voucher.paymentMethod === 'bank' && bankId ? bankId : cashId;
@@ -174,9 +203,9 @@ export async function postPaymentVoucher(
   companyId: string,
   voucher: { voucherNumber: string; date: string; supplier: string; amount: number; paymentMethod: string; expenseAccount?: string }
 ) {
-  const cashId = await findAccountByCode(companyId, ACC.CASH);
-  const bankId = await findAccountByCode(companyId, ACC.BANK);
-  const creditorsId = await findAccountByCode(companyId, ACC.TRADE_CREDITORS);
+  const cashId = await getDefaultAccountId(companyId, 'default_cash');
+  const bankId = await getDefaultAccountId(companyId, 'default_bank');
+  const creditorsId = await getDefaultAccountId(companyId, 'default_creditors');
   const rentWarehouseId = await findAccountByCode(companyId, ACC.RENT_WAREHOUSE);
   const rentOfficeId = await findAccountByCode(companyId, ACC.RENT_OFFICE);
   const electricityId = await findAccountByCode(companyId, ACC.ELECTRICITY);
@@ -185,7 +214,7 @@ export async function postPaymentVoucher(
   const shippingId = await findAccountByCode(companyId, ACC.SHIPPING);
 
   if (!cashId || !creditorsId) {
-    return { success: false, error: 'Required accounts not found' };
+    return { success: false, error: 'Required accounts not found. Please configure default accounts in Settings.' };
   }
 
   const creditAccount = voucher.paymentMethod === 'bank' && bankId ? bankId : cashId;
@@ -225,12 +254,13 @@ export async function postSalesReturn(
   companyId: string,
   ret: { returnNumber: string; date: string; customer: string; amount: number }
 ) {
-  const salesReturnsId = await findAccountByCode(companyId, ACC.SALES_RETURNS);
-  const debtorsId = await findAccountByCode(companyId, ACC.TRADE_DEBTORS);
-  const inventoryId = await findAccountByCode(companyId, ACC.INVENTORY);
+  const salesReturnsId = await getDefaultAccountId(companyId, 'default_sales_returns');
+  const debtorsId = await getDefaultAccountId(companyId, 'default_debtors');
+  const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
+  const cogsId = await getDefaultAccountId(companyId, 'default_cogs');
 
   if (!salesReturnsId || !debtorsId || !inventoryId) {
-    return { success: false, error: 'Required accounts not found' };
+    return { success: false, error: 'Required accounts not found. Please configure default accounts in Settings.' };
   }
 
   const entries: JournalEntryLine[] = [
@@ -238,7 +268,7 @@ export async function postSalesReturn(
     { accountId: debtorsId, debit: 0, credit: ret.amount, memo: `تخفيض ذمة ${ret.customer}` },
     // Also return inventory (simplified: assume full return to inventory)
     { accountId: inventoryId, debit: Math.floor(ret.amount * 0.7), credit: 0, memo: `إعادة بضاعة للمخزون` },
-    { accountId: await findAccountByCode(companyId, ACC.COGS) || inventoryId, debit: 0, credit: Math.floor(ret.amount * 0.7), memo: `عكس تكلفة بضاعة مباعة` },
+    { accountId: cogsId || inventoryId, debit: 0, credit: Math.floor(ret.amount * 0.7), memo: `عكس تكلفة بضاعة مباعة` },
   ];
 
   return createTransaction(companyId, {
@@ -259,11 +289,11 @@ export async function postPurchaseReturn(
   companyId: string,
   ret: { returnNumber: string; date: string; supplier: string; amount: number }
 ) {
-  const creditorsId = await findAccountByCode(companyId, ACC.TRADE_CREDITORS);
-  const inventoryId = await findAccountByCode(companyId, ACC.INVENTORY);
+  const creditorsId = await getDefaultAccountId(companyId, 'default_creditors');
+  const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
 
   if (!creditorsId || !inventoryId) {
-    return { success: false, error: 'Required accounts not found' };
+    return { success: false, error: 'Required accounts not found. Please configure default accounts in Settings.' };
   }
 
   const entries: JournalEntryLine[] = [
@@ -289,12 +319,12 @@ export async function postInventoryTransaction(
   companyId: string,
   tx: { reference: string; date: string; type: 'in' | 'out' | 'adjustment' | 'transfer'; product: string; amount: number }
 ) {
-  const inventoryId = await findAccountByCode(companyId, ACC.INVENTORY);
-  const cogsId = await findAccountByCode(companyId, ACC.COGS);
-  const cashId = await findAccountByCode(companyId, ACC.CASH);
+  const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
+  const cogsId = await getDefaultAccountId(companyId, 'default_cogs');
+  const cashId = await getDefaultAccountId(companyId, 'default_cash');
 
   if (!inventoryId) {
-    return { success: false, error: 'Inventory account not found' };
+    return { success: false, error: 'Inventory account not found. Please configure default accounts in Settings.' };
   }
 
   let entries: JournalEntryLine[] = [];
@@ -337,11 +367,11 @@ export async function postStockAdjustment(
   companyId: string,
   adj: { id: string; date: string; product: string; difference: number; reason: string }
 ) {
-  const inventoryId = await findAccountByCode(companyId, ACC.INVENTORY);
-  const cogsId = await findAccountByCode(companyId, ACC.COGS);
+  const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
+  const cogsId = await getDefaultAccountId(companyId, 'default_cogs');
 
   if (!inventoryId) {
-    return { success: false, error: 'Inventory account not found' };
+    return { success: false, error: 'Inventory account not found. Please configure default accounts in Settings.' };
   }
 
   const entries: JournalEntryLine[] = [];

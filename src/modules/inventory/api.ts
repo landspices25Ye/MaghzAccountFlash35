@@ -87,4 +87,31 @@ export const inventoryApi = {
     }
     return { success: false, error: result.error };
   },
+
+  async createProductCategory(data: Omit<ProductCategory, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      'INSERT INTO product_categories (company_id, name, parent_id) VALUES ($1, $2, $3) RETURNING id',
+      [data.companyId, data.name, data.parentId || null]
+    );
+    if (result.success && result.rows?.[0]) {
+      return { success: true, id: result.rows[0].id };
+    }
+    return { success: false, error: result.error };
+  },
+
+  async updateProductCategory(id: string, data: Partial<ProductCategory>): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      'UPDATE product_categories SET name = $1, parent_id = $2 WHERE id = $3',
+      [data.name, data.parentId || null, id]
+    );
+    return result.success ? { success: true } : { success: false, error: result.error };
+  },
+
+  async deleteProductCategory(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query('DELETE FROM product_categories WHERE id = $1', [id]);
+    return result.success ? { success: true } : { success: false, error: result.error };
+  },
 };

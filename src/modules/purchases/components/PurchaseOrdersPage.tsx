@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClipboardList, Plus, CheckSquare, Trash2 } from 'lucide-react';
 import { Card, Button, Table, Modal, Input, Badge } from '@/core/ui/components';
+import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
 import { usePurchaseOrders } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import type { PurchaseOrder } from '../types';
@@ -98,7 +99,10 @@ export const PurchaseOrdersPage: React.FC = () => {
         <Modal isOpen={isOpen} title="أمر شراء جديد" onClose={() => setIsOpen(false)} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="المورد" value={header.supplier} onChange={e => setHeader({ ...header, supplier: e.target.value })} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المورد</label>
+                <SupplierSelect companyId={activeCompany?.id || ''} value={header.supplier} onChange={v => setHeader({ ...header, supplier: v || '' })} />
+              </div>
               <Input label="تاريخ التوقع" type="date" value={header.expectedDate} onChange={e => setHeader({ ...header, expectedDate: e.target.value })} />
             </div>
             <Input label="التاريخ" type="date" value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })} />
@@ -109,7 +113,9 @@ export const PurchaseOrdersPage: React.FC = () => {
               </div>
               {lines.map((line, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                  <div className="col-span-4"><Input placeholder="اسم المنتج" value={line.productName} onChange={e => updateLine(idx, 'productName', e.target.value)} /></div>
+                  <div className="col-span-4">
+                    <ProductSelect companyId={activeCompany?.id || ''} value={line.productName} onChange={v => updateLine(idx, 'productName', v || '')} size="sm" />
+                  </div>
                   <div className="col-span-2"><Input type="number" placeholder="الكمية" value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} /></div>
                   <div className="col-span-3"><Input type="number" placeholder="السعر" value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} /></div>
                   <div className="col-span-2 text-sm font-medium text-slate-700 dark:text-slate-200">{(line.quantity * line.unitPrice).toLocaleString('ar-SA')}</div>

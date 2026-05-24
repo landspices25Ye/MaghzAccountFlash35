@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Undo2, Plus, CheckSquare, FileText, BookOpen } from 'lucide-react';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { postPurchaseReturn } from '@/core/utils/journalEntryGenerator';
 
@@ -144,8 +145,14 @@ export const PurchaseReturnsPage: React.FC = () => {
         <Modal isOpen={isOpen} title="مردود مشتريات جديد" onClose={() => setIsOpen(false)}>
           <div className="space-y-4">
             <Input label="رقم فاتورة الشراء الأصلية" value={form.invoiceNumber || ''} onChange={e => setForm({ ...form, invoiceNumber: e.target.value })} />
-            <Input label="المورد" value={form.supplier || ''} onChange={e => setForm({ ...form, supplier: e.target.value })} />
-            <Input label="المنتج" value={form.product || ''} onChange={e => setForm({ ...form, product: e.target.value })} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المورد</label>
+              <SupplierSelect companyId={activeCompany?.id || ''} value={form.supplier || ''} onChange={v => setForm({ ...form, supplier: v || '' })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+              <ProductSelect companyId={activeCompany?.id || ''} value={form.product || ''} onChange={v => setForm({ ...form, product: (Array.isArray(v) ? v[0] : v) || '' })} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Input label="الكمية" type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
               <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Building2, Coins, Percent, MapPin, Database, ChevronLeft } from 'lucide-react';
+import { Building2, Coins, Percent, MapPin, Database, ChevronLeft, Hash, Layers, FolderTree, Settings, Scale } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const settingsMenu = [
@@ -8,6 +8,12 @@ const settingsMenu = [
   { id: 'currencies', label: 'العملات', icon: Coins, path: '/settings/currencies' },
   { id: 'vat', label: 'ضريبة القيمة المضافة', icon: Percent, path: '/settings/vat' },
   { id: 'branches', label: 'الفروع', icon: MapPin, path: '/settings/branches' },
+  { id: 'document-sequences', label: 'الترقيم المتسلسل', icon: Hash, path: '/settings/document-sequences' },
+  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: FolderTree, path: '/settings/product-categories' },
+  { id: 'product-types', label: 'أنواع المنتجات', icon: Layers, path: '/settings/product-types' },
+  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: FolderTree, path: '/settings/product-categories' },
+  { id: 'units', label: 'وحدات القياس', icon: Scale, path: '/settings/units' },
+  { id: 'default-accounts', label: 'الحسابات الافتراضية', icon: Settings, path: '/settings/default-accounts' },
   { id: 'backup', label: 'النسخ الاحتياطي', icon: Database, path: '/settings/backup' },
 ];
 

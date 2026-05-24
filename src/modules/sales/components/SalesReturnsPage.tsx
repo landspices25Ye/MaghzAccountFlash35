@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Undo2, Plus, CheckSquare, FileText, BookOpen } from 'lucide-react';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { postSalesReturn } from '@/core/utils/journalEntryGenerator';
 
@@ -145,8 +146,14 @@ export const SalesReturnsPage: React.FC = () => {
         <Modal isOpen={isOpen} title="مردود مبيعات جديد" onClose={() => setIsOpen(false)}>
           <div className="space-y-4">
             <Input label="رقم الفاتورة الأصلية" value={form.invoiceNumber || ''} onChange={e => setForm({ ...form, invoiceNumber: e.target.value })} />
-            <Input label="العميل" value={form.customer || ''} onChange={e => setForm({ ...form, customer: e.target.value })} />
-            <Input label="المنتج" value={form.product || ''} onChange={e => setForm({ ...form, product: e.target.value })} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العميل</label>
+              <CustomerSelect companyId={activeCompany?.id || ''} value={form.customer || ''} onChange={v => setForm({ ...form, customer: v || '' })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+              <ProductSelect companyId={activeCompany?.id || ''} value={form.product || ''} onChange={v => setForm({ ...form, product: (Array.isArray(v) ? v[0] : v) || '' })} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Input label="الكمية" type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
               <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />

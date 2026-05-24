@@ -19,13 +19,27 @@ function genId(): string {
   return crypto.randomUUID();
 }
 
+// Convert snake_case keys to camelCase for frontend compatibility
+function snakeToCamel(obj: any): any {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(snakeToCamel);
+  const result: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    result[camelKey] = snakeToCamel(val);
+  }
+  return result;
+}
+
 function seedIfEmpty(companyId: string) {
   const tablesToSeed = [
     'accounts', 'contacts', 'products', 'transactions',
     'sales_invoices', 'sales_invoice_lines', 'purchase_invoices', 'purchase_invoice_lines',
     'employees', 'attendance', 'payroll', 'leads', 'opportunities', 'tasks',
     'work_orders', 'boms', 'warehouses', 'stock', 'product_categories',
-    'users', 'roles', 'currencies', 'vat_settings', 'branches'
+    'users', 'roles', 'currencies', 'vat_settings', 'branches',
+    'document_sequences', 'product_types', 'units', 'cash_boxes', 'banks',
+    'cost_centers', 'payroll_components', 'default_accounts'
   ];
   const needsSeed = tablesToSeed.some(t => getTable(t).length === 0);
   if (needsSeed) {
@@ -62,76 +76,92 @@ function seedIfEmpty(companyId: string) {
       }
     }
     // Seed warehouses
-    getTable('warehouses').push(
-      { id: 'wh-1', company_id: companyId, name: 'المستودع الرئيسي - صنعاء', code: 'WH-SAN', branch_id: null, is_active: true },
-      { id: 'wh-2', company_id: companyId, name: 'مستودع عدن', code: 'WH-ADN', branch_id: null, is_active: true },
-      { id: 'wh-3', company_id: companyId, name: 'مستودع الحديدة', code: 'WH-HOD', branch_id: null, is_active: true },
-    );
+    if (getTable('warehouses').length === 0) {
+      getTable('warehouses').push(
+        { id: 'wh-1', company_id: companyId, name: 'المستودع الرئيسي - صنعاء', code: 'WH-SAN', branch_id: null, is_active: true },
+        { id: 'wh-2', company_id: companyId, name: 'مستودع عدن', code: 'WH-ADN', branch_id: null, is_active: true },
+        { id: 'wh-3', company_id: companyId, name: 'مستودع الحديدة', code: 'WH-HOD', branch_id: null, is_active: true },
+      );
+    }
     // Seed stock
-    const products = getTable('products');
-    for (const p of products) {
-      getTable('stock').push({
-        id: genId(),
-        company_id: companyId,
-        product_id: p.id,
-        warehouse_id: 'wh-1',
-        quantity: Math.floor(p.stock * 0.6),
-      });
-      getTable('stock').push({
-        id: genId(),
-        company_id: companyId,
-        product_id: p.id,
-        warehouse_id: 'wh-2',
-        quantity: Math.floor(p.stock * 0.3),
-      });
-      getTable('stock').push({
-        id: genId(),
-        company_id: companyId,
-        product_id: p.id,
-        warehouse_id: 'wh-3',
-        quantity: Math.floor(p.stock * 0.1),
-      });
+    if (getTable('stock').length === 0) {
+      const products = getTable('products');
+      for (const p of products) {
+        getTable('stock').push({
+          id: genId(),
+          company_id: companyId,
+          product_id: p.id,
+          warehouse_id: 'wh-1',
+          quantity: Math.floor(p.stock * 0.6),
+        });
+        getTable('stock').push({
+          id: genId(),
+          company_id: companyId,
+          product_id: p.id,
+          warehouse_id: 'wh-2',
+          quantity: Math.floor(p.stock * 0.3),
+        });
+        getTable('stock').push({
+          id: genId(),
+          company_id: companyId,
+          product_id: p.id,
+          warehouse_id: 'wh-3',
+          quantity: Math.floor(p.stock * 0.1),
+        });
+      }
     }
     // Seed product categories
-    getTable('product_categories').push(
-      { id: 'cat-1', company_id: companyId, name: 'أدوات منزلية' },
-      { id: 'cat-2', company_id: companyId, name: 'إلكترونيات' },
-      { id: 'cat-3', company_id: companyId, name: 'أدوات مطبخ' },
-      { id: 'cat-4', company_id: companyId, name: 'تكييف' },
-      { id: 'cat-5', company_id: companyId, name: 'عناية شخصية' },
-      { id: 'cat-6', company_id: companyId, name: 'تبريد' },
-    );
+    if (getTable('product_categories').length === 0) {
+      getTable('product_categories').push(
+        { id: 'cat-1', company_id: companyId, name: 'أدوات منزلية' },
+        { id: 'cat-2', company_id: companyId, name: 'إلكترونيات' },
+        { id: 'cat-3', company_id: companyId, name: 'أدوات مطبخ' },
+        { id: 'cat-4', company_id: companyId, name: 'تكييف' },
+        { id: 'cat-5', company_id: companyId, name: 'عناية شخصية' },
+        { id: 'cat-6', company_id: companyId, name: 'تبريد' },
+      );
+    }
     // Seed users
-    getTable('users').push(
-      { id: 'user-1', company_id: companyId, username: 'admin', email: 'admin@maghz.local', role: 'admin', password_hash: '', is_active: true, created_at: new Date().toISOString() },
-      { id: 'user-2', company_id: companyId, username: 'محاسب', email: 'accountant@maghz.local', role: 'accountant', password_hash: '', is_active: true, created_at: new Date().toISOString() },
-      { id: 'user-3', company_id: companyId, username: 'مبيعات', email: 'sales@maghz.local', role: 'sales_rep', password_hash: '', is_active: true, created_at: new Date().toISOString() },
-      { id: 'user-4', company_id: companyId, username: 'مدير', email: 'manager@maghz.local', role: 'manager', password_hash: '', is_active: true, created_at: new Date().toISOString() },
-    );
+    if (getTable('users').length === 0) {
+      getTable('users').push(
+        { id: 'user-1', company_id: companyId, username: 'admin', email: 'admin@maghz.local', role: 'admin', password_hash: '', is_active: true, created_at: new Date().toISOString() },
+        { id: 'user-2', company_id: companyId, username: 'محاسب', email: 'accountant@maghz.local', role: 'accountant', password_hash: '', is_active: true, created_at: new Date().toISOString() },
+        { id: 'user-3', company_id: companyId, username: 'مبيعات', email: 'sales@maghz.local', role: 'sales_rep', password_hash: '', is_active: true, created_at: new Date().toISOString() },
+        { id: 'user-4', company_id: companyId, username: 'مدير', email: 'manager@maghz.local', role: 'manager', password_hash: '', is_active: true, created_at: new Date().toISOString() },
+      );
+    }
     // Seed roles
-    getTable('roles').push(
-      { id: 'role-1', company_id: companyId, name: 'admin', permissions: ['*'] },
-      { id: 'role-2', company_id: companyId, name: 'accountant', permissions: ['accounting', 'reports'] },
-      { id: 'role-3', company_id: companyId, name: 'sales_rep', permissions: ['sales', 'crm'] },
-      { id: 'role-4', company_id: companyId, name: 'manager', permissions: ['sales', 'purchases', 'accounting', 'reports', 'hr'] },
-    );
+    if (getTable('roles').length === 0) {
+      getTable('roles').push(
+        { id: 'role-1', company_id: companyId, name: 'admin', permissions: ['*'] },
+        { id: 'role-2', company_id: companyId, name: 'accountant', permissions: ['accounting', 'reports'] },
+        { id: 'role-3', company_id: companyId, name: 'sales_rep', permissions: ['sales', 'crm'] },
+        { id: 'role-4', company_id: companyId, name: 'manager', permissions: ['sales', 'purchases', 'accounting', 'reports', 'hr'] },
+      );
+    }
     // Seed currencies
-    getTable('currencies').push(
-      { id: 'curr-1', company_id: companyId, code: 'YER', name: 'الريال اليمني', symbol: '﷼', rate: 1, is_base: true, is_active: true },
-      { id: 'curr-2', company_id: companyId, code: 'USD', name: 'الدولار الأمريكي', symbol: '$', rate: 1500, is_base: false, is_active: true },
-      { id: 'curr-3', company_id: companyId, code: 'SAR', name: 'الريال السعودي', symbol: 'ر.س', rate: 400, is_base: false, is_active: true },
-      { id: 'curr-4', company_id: companyId, code: 'AED', name: 'الدرهم الإماراتي', symbol: 'د.إ', rate: 408, is_base: false, is_active: true },
-    );
+    if (getTable('currencies').length === 0) {
+      getTable('currencies').push(
+        { id: 'curr-1', company_id: companyId, code: 'YER', name: 'الريال اليمني', symbol: '﷼', rate: 1, is_base: true, is_active: true },
+        { id: 'curr-2', company_id: companyId, code: 'USD', name: 'الدولار الأمريكي', symbol: '$', rate: 1500, is_base: false, is_active: true },
+        { id: 'curr-3', company_id: companyId, code: 'SAR', name: 'الريال السعودي', symbol: 'ر.س', rate: 400, is_base: false, is_active: true },
+        { id: 'curr-4', company_id: companyId, code: 'AED', name: 'الدرهم الإماراتي', symbol: 'د.إ', rate: 408, is_base: false, is_active: true },
+      );
+    }
     // Seed vat_settings
-    getTable('vat_settings').push(
-      { id: 'vat-1', company_id: companyId, name: 'ضريبة القيمة المضافة', rate: 5, is_active: true },
-    );
+    if (getTable('vat_settings').length === 0) {
+      getTable('vat_settings').push(
+        { id: 'vat-1', company_id: companyId, name: 'ضريبة القيمة المضافة', rate: 5, is_active: true },
+      );
+    }
     // Seed branches
-    getTable('branches').push(
-      { id: 'branch-1', company_id: companyId, name: 'الفرع الرئيسي - صنعاء', code: 'HQ', city: 'صنعاء', phone: '+96714444888', is_active: true },
-      { id: 'branch-2', company_id: companyId, name: 'فرع عدن', code: 'ADN', city: 'عدن', phone: '+9672333555', is_active: true },
-      { id: 'branch-3', company_id: companyId, name: 'فرع الحديدة', code: 'HOD', city: 'الحديدة', phone: '+9673222666', is_active: true },
-    );
+    if (getTable('branches').length === 0) {
+      getTable('branches').push(
+        { id: 'branch-1', company_id: companyId, name: 'الفرع الرئيسي - صنعاء', code: 'HQ', city: 'صنعاء', phone: '+96714444888', is_active: true },
+        { id: 'branch-2', company_id: companyId, name: 'فرع عدن', code: 'ADN', city: 'عدن', phone: '+9672333555', is_active: true },
+        { id: 'branch-3', company_id: companyId, name: 'فرع الحديدة', code: 'HOD', city: 'الحديدة', phone: '+9673222666', is_active: true },
+      );
+    }
     // Seed inventory transactions
     const seedTx = seedAllData(companyId);
     if (seedTx.inventory_transactions) getTable('inventory_transactions').push(...seedTx.inventory_transactions);
@@ -204,9 +234,22 @@ function applyWhere(rows: any[], params: any[], sql: string): any[] {
         if (row[col] === undefined) {
           // Try camelCase or other variations
           const camel = col.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-          if (row[camel] !== params[idx]) {
-            matches = false;
-            break;
+          if (row[camel] !== undefined) {
+            if (row[camel] !== params[idx]) {
+              matches = false;
+              break;
+            }
+          } else {
+            // Field doesn't exist in row - for boolean defaults like is_active, assume true
+            if (col === 'is_active' || col === 'isActive') {
+              if (true !== params[idx]) {
+                matches = false;
+                break;
+              }
+            } else {
+              matches = false;
+              break;
+            }
           }
         }
       } else {
@@ -356,9 +399,14 @@ export const mockAdapter: DbAdapter = {
   async query(sql, params = []) {
     const lower = sql.toLowerCase().trim();
     
+    // Ensure seed data is available for queries (first param is typically companyId)
+    if (lower.startsWith('select') && params[0] && typeof params[0] === 'string' && params[0].startsWith('comp-')) {
+      seedIfEmpty(params[0]);
+    }
+    
     try {
       if (lower.startsWith('select')) {
-        const rows = handleSelect(sql, params);
+        const rows = handleSelect(sql, params).map(snakeToCamel);
         return { success: true, rows };
       }
       
@@ -423,12 +471,12 @@ export const mockAdapter: DbAdapter = {
       seedIfEmpty(company.id);
       return { success: true, data: company };
     }
-    return { success: true, data: companies[0] };
+    return { success: true, data: snakeToCamel(companies[0]) };
   },
 
   async getAccounts(companyId) {
     seedIfEmpty(companyId);
-    const accounts = getTable('accounts').filter(a => a.company_id === companyId);
+    const accounts = getTable('accounts').filter(a => a.company_id === companyId).map(snakeToCamel);
     return { success: true, data: accounts };
   },
 
@@ -451,7 +499,7 @@ export const mockAdapter: DbAdapter = {
 
   async getTransactions(companyId) {
     seedIfEmpty(companyId);
-    const txs = getTable('transactions').filter(t => t.company_id === companyId);
+    const txs = getTable('transactions').filter(t => t.company_id === companyId).map(snakeToCamel);
     return { success: true, data: txs };
   },
 
@@ -483,7 +531,7 @@ export const mockAdapter: DbAdapter = {
 
   async getProducts(companyId) {
     seedIfEmpty(companyId);
-    const products = getTable('products').filter(p => p.company_id === companyId);
+    const products = getTable('products').filter(p => p.company_id === companyId).map(snakeToCamel);
     return { success: true, data: products };
   },
 
@@ -495,7 +543,7 @@ export const mockAdapter: DbAdapter = {
 
   async getContacts(companyId, type) {
     seedIfEmpty(companyId);
-    let contacts = getTable('contacts').filter(c => c.company_id === companyId);
+    let contacts = getTable('contacts').filter(c => c.company_id === companyId).map(snakeToCamel);
     if (type) contacts = contacts.filter(c => c.type === type);
     return { success: true, data: contacts };
   },

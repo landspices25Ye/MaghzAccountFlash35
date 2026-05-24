@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRightLeft, Plus, CheckSquare, BookOpen } from 'lucide-react';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { ProductSelect, WarehouseSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { postInventoryTransaction } from '@/core/utils/journalEntryGenerator';
 
@@ -135,8 +136,14 @@ export const InventoryTransactionsPage: React.FC = () => {
               </div>
               <Input label="التاريخ" type="date" value={form.date || new Date().toISOString().split('T')[0]} onChange={e => setForm({ ...form, date: e.target.value })} />
             </div>
-            <Input label="المنتج" value={form.product || ''} onChange={e => setForm({ ...form, product: e.target.value })} />
-            <Input label="المستودع" value={form.warehouse || ''} onChange={e => setForm({ ...form, warehouse: e.target.value })} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+              <ProductSelect companyId={activeCompany?.id || ''} value={form.product || ''} onChange={v => setForm({ ...form, product: (Array.isArray(v) ? v[0] : v) || '' })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المستودع</label>
+              <WarehouseSelect companyId={activeCompany?.id || ''} value={form.warehouse || ''} onChange={v => setForm({ ...form, warehouse: v || '' })} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Input label="الكمية" type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
               <Input label="تكلفة الوحدة" type="number" value={String(form.unitCost || '')} onChange={e => setForm({ ...form, unitCost: Number(e.target.value) })} />

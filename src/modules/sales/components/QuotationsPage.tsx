@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Tag, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { CustomerSelect } from '@/core/ui/components/smart';
+import { useAppStore } from '@/core/store';
 
 interface Quotation {
   id: string;
@@ -27,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export const QuotationsPage: React.FC = () => {
+  const activeCompany = useAppStore(state => state.activeCompany);
   const [quotations, setQuotations] = useState<Quotation[]>([
     { id: '1', quotationNumber: 'Q-2026-001', customerName: 'شركة الأمل', date: '2026-06-15', expiryDate: '2026-07-15', totalAmount: 850000, status: 'open' },
     { id: '2', quotationNumber: 'Q-2026-002', customerName: 'مؤسسة النور', date: '2026-06-10', expiryDate: '2026-07-10', totalAmount: 1200000, status: 'accepted' },
@@ -119,7 +122,10 @@ export const QuotationsPage: React.FC = () => {
       >
         <div className="space-y-4">
           <Input label="رقم العرض" value={formData.quotationNumber} onChange={e => setFormData(prev => ({ ...prev, quotationNumber: e.target.value }))} />
-          <Input label="العميل" value={formData.customerName} onChange={e => setFormData(prev => ({ ...prev, customerName: e.target.value }))} />
+           <div>
+             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العميل</label>
+             <CustomerSelect companyId={activeCompany?.id || ''} value={formData.customerName} onChange={v => setFormData(prev => ({ ...prev, customerName: Array.isArray(v) ? v[0] || '' : v || '' }))} size="sm" />
+           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="التاريخ" type="date" value={formData.date} onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))} />
             <Input label="تاريخ الانتهاء" type="date" value={formData.expiryDate} onChange={e => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))} />

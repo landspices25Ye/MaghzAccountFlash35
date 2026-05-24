@@ -24,6 +24,14 @@ export function seedAllData(companyId: string) {
     work_orders: seedWorkOrders(companyId),
     boms: seedBoms(companyId),
     transactions: seedJournalEntries(companyId),
+    document_sequences: seedDocumentSequences(companyId),
+    product_types: seedProductTypes(companyId),
+    units: seedUnits(companyId),
+    cash_boxes: seedCashBoxes(companyId),
+    banks: seedBanks(companyId),
+    cost_centers: seedCostCenters(companyId),
+    payroll_components: seedPayrollComponents(companyId),
+    default_accounts: seedDefaultAccounts(companyId),
   };
 }
 
@@ -113,47 +121,47 @@ function seedAccounts(companyId: string) {
 
 function seedCustomers(companyId: string) {
   return [
-    { id: 'cust-1', company_id: companyId, name: 'شركة اليمن للتجارة', type: 'customer', phone: '+967123456789', email: 'info@yementrade.com', address: 'صنعاء - شارع الستين', balance: 850000, tax_number: '123456789' },
-    { id: 'cust-2', company_id: companyId, name: 'مؤسسة الأمل التجارية', type: 'customer', phone: '+967987654321', email: 'alamel@local.ye', address: 'عدن - المنصورة', balance: 420000, tax_number: '987654321' },
-    { id: 'cust-3', company_id: companyId, name: 'شركة الخليج للمواد الغذائية', type: 'customer', phone: '+967112233445', email: 'gulf.foods@ye.net', address: 'الحديدة - شارع صنعاء', balance: 1200000, tax_number: '112233445' },
-    { id: 'cust-4', company_id: companyId, name: 'مؤسسة النور للأدوات المنزلية', type: 'customer', phone: '+967556677889', email: 'noor@tools.ye', address: 'تعز - جولة النور', balance: 680000, tax_number: '556677889' },
-    { id: 'cust-5', company_id: companyId, name: 'شركة البحر الأحمر', type: 'customer', phone: '+967334455667', email: 'redsea@ye.com', address: 'الحديدة - كمران', balance: 950000, tax_number: '334455667' },
-    { id: 'cust-6', company_id: companyId, name: 'مؤسسة الصقر للتجهيزات', type: 'customer', phone: '+967778899001', email: 'saqr@equip.ye', address: 'صنعاء - حدة', balance: 310000, tax_number: '778899001' },
-    { id: 'cust-7', company_id: companyId, name: 'شركة الوادي للاستيراد', type: 'customer', phone: '+967223344556', email: 'wadi@import.ye', address: 'إب - القاضي', balance: 570000, tax_number: '223344556' },
-    { id: 'cust-8', company_id: companyId, name: 'مؤسسة السعيد للتجارة', type: 'customer', phone: '+967667788990', email: 'saeed@trade.ye', address: 'صنعاء - شارع تعز', balance: 210000, tax_number: '667788990' },
+    { id: 'cust-1', company_id: companyId, name: 'شركة اليمن للتجارة', type: 'customer', phone: '+967123456789', email: 'info@yementrade.com', address: 'صنعاء - شارع الستين', balance: 850000, tax_number: '123456789', is_active: true },
+    { id: 'cust-2', company_id: companyId, name: 'مؤسسة الأمل التجارية', type: 'customer', phone: '+967987654321', email: 'alamel@local.ye', address: 'عدن - المنصورة', balance: 420000, tax_number: '987654321', is_active: true },
+    { id: 'cust-3', company_id: companyId, name: 'شركة الخليج للمواد الغذائية', type: 'customer', phone: '+967112233445', email: 'gulf.foods@ye.net', address: 'الحديدة - شارع صنعاء', balance: 1200000, tax_number: '112233445', is_active: true },
+    { id: 'cust-4', company_id: companyId, name: 'مؤسسة النور للأدوات المنزلية', type: 'customer', phone: '+967556677889', email: 'noor@tools.ye', address: 'تعز - جولة النور', balance: 680000, tax_number: '556677889', is_active: true },
+    { id: 'cust-5', company_id: companyId, name: 'شركة البحر الأحمر', type: 'customer', phone: '+967334455667', email: 'redsea@ye.com', address: 'الحديدة - كمران', balance: 950000, tax_number: '334455667', is_active: true },
+    { id: 'cust-6', company_id: companyId, name: 'مؤسسة الصقر للتجهيزات', type: 'customer', phone: '+967778899001', email: 'saqr@equip.ye', address: 'صنعاء - حدة', balance: 310000, tax_number: '778899001', is_active: true },
+    { id: 'cust-7', company_id: companyId, name: 'شركة الوادي للاستيراد', type: 'customer', phone: '+967223344556', email: 'wadi@import.ye', address: 'إب - القاضي', balance: 570000, tax_number: '223344556', is_active: true },
+    { id: 'cust-8', company_id: companyId, name: 'مؤسسة السعيد للتجارة', type: 'customer', phone: '+967667788990', email: 'saeed@trade.ye', address: 'صنعاء - شارع تعز', balance: 210000, tax_number: '667788990', is_active: true },
   ];
 }
 
 function seedSuppliers(companyId: string) {
   return [
-    { id: 'sup-1', company_id: companyId, name: 'مصنع الريان للبلاستيك', type: 'supplier', phone: '+967111222333', email: 'rayan@factory.ye', address: 'صنعاء - بئر أحمد', balance: 450000, tax_number: '111222333' },
-    { id: 'sup-2', company_id: companyId, name: 'شركة الإمارات للتصدير', type: 'supplier', phone: '+971444555666', email: 'uae@export.ae', address: 'دبي - جبل علي', balance: 1200000, tax_number: 'AE123456' },
-    { id: 'sup-3', company_id: companyId, name: 'مصنع الأمل للأدوات المنزلية', type: 'supplier', phone: '+967777888999', email: 'amel@factory.ye', address: 'تعز - الصالحية', balance: 680000, tax_number: '777888999' },
-    { id: 'sup-4', company_id: companyId, name: 'شركة الصين للتجارة الدولية', type: 'supplier', phone: '+8613800138000', email: 'china@trade.cn', address: 'إييوو - الصين', balance: 2500000, tax_number: 'CN987654' },
-    { id: 'sup-5', company_id: companyId, name: 'مؤسسة التقنية للإلكترونيات', type: 'supplier', phone: '+967333444555', email: 'tech@electronics.ye', address: 'صنعاء - جمرك البستان', balance: 380000, tax_number: '333444555' },
-    { id: 'sup-6', company_id: companyId, name: 'شركة السعودية للمواد الغذائية', type: 'supplier', phone: '+966555666777', email: 'ksa@food.sa', address: 'جدة - السعودية', balance: 890000, tax_number: 'SA112233' },
-    { id: 'sup-7', company_id: companyId, name: 'مصنع الوحدة للألبسة', type: 'supplier', phone: '+967444555666', email: 'wahda@textile.ye', address: 'الحديدة - الكثيب', balance: 520000, tax_number: '444555666' },
-    { id: 'sup-8', company_id: companyId, name: 'شركة مصر للأدوات الكهربائية', type: 'supplier', phone: '+202123456789', email: 'egypt@electric.eg', address: 'القاهرة - مصر', balance: 750000, tax_number: 'EG445566' },
+    { id: 'sup-1', company_id: companyId, name: 'مصنع الريان للبلاستيك', type: 'supplier', phone: '+967111222333', email: 'rayan@factory.ye', address: 'صنعاء - بئر أحمد', balance: 450000, tax_number: '111222333', is_active: true },
+    { id: 'sup-2', company_id: companyId, name: 'شركة الإمارات للتصدير', type: 'supplier', phone: '+971444555666', email: 'uae@export.ae', address: 'دبي - جبل علي', balance: 1200000, tax_number: 'AE123456', is_active: true },
+    { id: 'sup-3', company_id: companyId, name: 'مصنع الأمل للأدوات المنزلية', type: 'supplier', phone: '+967777888999', email: 'amel@factory.ye', address: 'تعز - الصالحية', balance: 680000, tax_number: '777888999', is_active: true },
+    { id: 'sup-4', company_id: companyId, name: 'شركة الصين للتجارة الدولية', type: 'supplier', phone: '+8613800138000', email: 'china@trade.cn', address: 'إييوو - الصين', balance: 2500000, tax_number: 'CN987654', is_active: true },
+    { id: 'sup-5', company_id: companyId, name: 'مؤسسة التقنية للإلكترونيات', type: 'supplier', phone: '+967333444555', email: 'tech@electronics.ye', address: 'صنعاء - جمرك البستان', balance: 380000, tax_number: '333444555', is_active: true },
+    { id: 'sup-6', company_id: companyId, name: 'شركة السعودية للمواد الغذائية', type: 'supplier', phone: '+966555666777', email: 'ksa@food.sa', address: 'جدة - السعودية', balance: 890000, tax_number: 'SA112233', is_active: true },
+    { id: 'sup-7', company_id: companyId, name: 'مصنع الوحدة للألبسة', type: 'supplier', phone: '+967444555666', email: 'wahda@textile.ye', address: 'الحديدة - الكثيب', balance: 520000, tax_number: '444555666', is_active: true },
+    { id: 'sup-8', company_id: companyId, name: 'شركة مصر للأدوات الكهربائية', type: 'supplier', phone: '+202123456789', email: 'egypt@electric.eg', address: 'القاهرة - مصر', balance: 750000, tax_number: 'EG445566', is_active: true },
   ];
 }
 
 function seedProducts(companyId: string) {
   return [
-    { id: 'prod-1', company_id: companyId, name: 'براد ماء 20 لتر', sku: 'BRD-20L', category: 'أدوات منزلية', unit: 'قطعة', cost: 15000, price: 22000, stock: 120, min_stock: 20 },
-    { id: 'prod-2', company_id: companyId, name: 'غسالة أوتوماتيك 7 كغ', sku: 'GSL-7KG', category: 'أدوات منزلية', unit: 'قطعة', cost: 85000, price: 115000, stock: 45, min_stock: 10 },
-    { id: 'prod-3', company_id: companyId, name: 'مكيف سبليت 18000 وحدة', sku: 'MCF-18K', category: 'تكييف', unit: 'قطعة', cost: 95000, price: 135000, stock: 30, min_stock: 8 },
-    { id: 'prod-4', company_id: companyId, name: 'ثلاجة 16 قدم', sku: 'TLG-16F', category: 'أدوات منزلية', unit: 'قطعة', cost: 120000, price: 165000, stock: 25, min_stock: 5 },
-    { id: 'prod-5', company_id: companyId, name: 'شاشة LED 55 بوصة', sku: 'LED-55', category: 'إلكترونيات', unit: 'قطعة', cost: 145000, price: 195000, stock: 18, min_stock: 5 },
-    { id: 'prod-6', company_id: companyId, name: 'لابتوب Dell i5', sku: 'DELL-I5', category: 'إلكترونيات', unit: 'قطعة', cost: 180000, price: 245000, stock: 35, min_stock: 8 },
-    { id: 'prod-7', company_id: companyId, name: 'خلاط كهربائي 500 واط', sku: 'KHB-500', category: 'أدوات مطبخ', unit: 'قطعة', cost: 12000, price: 18000, stock: 200, min_stock: 30 },
-    { id: 'prod-8', company_id: companyId, name: 'مكنسة كهربائية', sku: 'MKN-ELEC', category: 'أدوات منزلية', unit: 'قطعة', cost: 35000, price: 48000, stock: 60, min_stock: 12 },
-    { id: 'prod-9', company_id: companyId, name: 'سخان ماء 50 لتر', sku: 'SKH-50L', category: 'أدوات منزلية', unit: 'قطعة', cost: 28000, price: 39000, stock: 80, min_stock: 15 },
-    { id: 'prod-10', company_id: companyId, name: 'مجفف شعر 2000 واط', sku: 'MGF-2000', category: 'عناية شخصية', unit: 'قطعة', cost: 8500, price: 12500, stock: 150, min_stock: 25 },
-    { id: 'prod-11', company_id: companyId, name: 'مروحة سقفية', sku: 'MRF-SQF', category: 'تبريد', unit: 'قطعة', cost: 22000, price: 31000, stock: 90, min_stock: 15 },
-    { id: 'prod-12', company_id: companyId, name: 'فرن غاز 4 عيون', sku: 'FRN-4AY', category: 'أدوات مطبخ', unit: 'قطعة', cost: 45000, price: 62000, stock: 40, min_stock: 8 },
-    { id: 'prod-13', company_id: companyId, name: 'مكواة بخار', sku: 'MKW-BKH', category: 'أدوات منزلية', unit: 'قطعة', cost: 9500, price: 14000, stock: 110, min_stock: 20 },
-    { id: 'prod-14', company_id: companyId, name: 'مكبر صوت بلوتوث', sku: 'SPK-BT', category: 'إلكترونيات', unit: 'قطعة', cost: 18000, price: 26000, stock: 75, min_stock: 15 },
-    { id: 'prod-15', company_id: companyId, name: 'كاميرا مراقبة', sku: 'CMR-WCH', category: 'إلكترونيات', unit: 'قطعة', cost: 32000, price: 45000, stock: 50, min_stock: 10 },
+    { id: 'prod-1', company_id: companyId, name_ar: 'براد ماء 20 لتر', name_en: 'Water Cooler 20L', sku: 'BRD-20L', category: 'أدوات منزلية', unit: 'قطعة', cost: 15000, price: 22000, stock: 120, min_stock: 20, is_active: true },
+    { id: 'prod-2', company_id: companyId, name_ar: 'غسالة أوتوماتيك 7 كغ', name_en: 'Auto Washer 7kg', sku: 'GSL-7KG', category: 'أدوات منزلية', unit: 'قطعة', cost: 85000, price: 115000, stock: 45, min_stock: 10, is_active: true },
+    { id: 'prod-3', company_id: companyId, name_ar: 'مكيف سبليت 18000 وحدة', name_en: 'Split AC 18000', sku: 'MCF-18K', category: 'تكييف', unit: 'قطعة', cost: 95000, price: 135000, stock: 30, min_stock: 8, is_active: true },
+    { id: 'prod-4', company_id: companyId, name_ar: 'ثلاجة 16 قدم', name_en: 'Fridge 16ft', sku: 'TLG-16F', category: 'أدوات منزلية', unit: 'قطعة', cost: 120000, price: 165000, stock: 25, min_stock: 5, is_active: true },
+    { id: 'prod-5', company_id: companyId, name_ar: 'شاشة LED 55 بوصة', name_en: 'LED TV 55"', sku: 'LED-55', category: 'إلكترونيات', unit: 'قطعة', cost: 145000, price: 195000, stock: 18, min_stock: 5, is_active: true },
+    { id: 'prod-6', company_id: companyId, name_ar: 'لابتوب Dell i5', name_en: 'Dell Laptop i5', sku: 'DELL-I5', category: 'إلكترونيات', unit: 'قطعة', cost: 180000, price: 245000, stock: 35, min_stock: 8, is_active: true },
+    { id: 'prod-7', company_id: companyId, name_ar: 'خلاط كهربائي 500 واط', name_en: 'Electric Mixer 500W', sku: 'KHB-500', category: 'أدوات مطبخ', unit: 'قطعة', cost: 12000, price: 18000, stock: 200, min_stock: 30, is_active: true },
+    { id: 'prod-8', company_id: companyId, name_ar: 'مكنسة كهربائية', name_en: 'Vacuum Cleaner', sku: 'MKN-ELEC', category: 'أدوات منزلية', unit: 'قطعة', cost: 35000, price: 48000, stock: 60, min_stock: 12, is_active: true },
+    { id: 'prod-9', company_id: companyId, name_ar: 'سخان ماء 50 لتر', name_en: 'Water Heater 50L', sku: 'SKH-50L', category: 'أدوات منزلية', unit: 'قطعة', cost: 28000, price: 39000, stock: 80, min_stock: 15, is_active: true },
+    { id: 'prod-10', company_id: companyId, name_ar: 'مجفف شعر 2000 واط', name_en: 'Hair Dryer 2000W', sku: 'MGF-2000', category: 'عناية شخصية', unit: 'قطعة', cost: 8500, price: 12500, stock: 150, min_stock: 25, is_active: true },
+    { id: 'prod-11', company_id: companyId, name_ar: 'مروحة سقفية', name_en: 'Ceiling Fan', sku: 'MRF-SQF', category: 'تبريد', unit: 'قطعة', cost: 22000, price: 31000, stock: 90, min_stock: 15, is_active: true },
+    { id: 'prod-12', company_id: companyId, name_ar: 'فرن غاز 4 عيون', name_en: 'Gas Oven 4 Burner', sku: 'FRN-4AY', category: 'أدوات مطبخ', unit: 'قطعة', cost: 45000, price: 62000, stock: 40, min_stock: 8, is_active: true },
+    { id: 'prod-13', company_id: companyId, name_ar: 'مكواة بخار', name_en: 'Steam Iron', sku: 'MKW-BKH', category: 'أدوات منزلية', unit: 'قطعة', cost: 9500, price: 14000, stock: 110, min_stock: 20, is_active: true },
+    { id: 'prod-14', company_id: companyId, name_ar: 'مكبر صوت بلوتوث', name_en: 'Bluetooth Speaker', sku: 'SPK-BT', category: 'إلكترونيات', unit: 'قطعة', cost: 18000, price: 26000, stock: 75, min_stock: 15, is_active: true },
+    { id: 'prod-15', company_id: companyId, name_ar: 'كاميرا مراقبة', name_en: 'Security Camera', sku: 'CMR-WCH', category: 'إلكترونيات', unit: 'قطعة', cost: 32000, price: 45000, stock: 50, min_stock: 10, is_active: true },
   ];
 }
 
@@ -225,16 +233,16 @@ function seedPurchaseInvoices(companyId: string) {
 
 function seedEmployees(companyId: string) {
   return [
-    { id: 'emp-1', company_id: companyId, name: 'أحمد علي محمد', code: 'EMP001', department: 'المبيعات', job_title: 'مدير مبيعات', hire_date: '2020-03-15', salary: 250000, status: 'active', phone: '+967111222333' },
-    { id: 'emp-2', company_id: companyId, name: 'خالد سالم عبدالله', code: 'EMP002', department: 'المحاسبة', job_title: 'محاسب أول', hire_date: '2019-07-01', salary: 220000, status: 'active', phone: '+967444555666' },
-    { id: 'emp-3', company_id: companyId, name: 'فاطمة حسن صالح', code: 'EMP003', department: 'الموارد البشرية', job_title: 'مدير HR', hire_date: '2018-01-10', salary: 280000, status: 'active', phone: '+967777888999' },
-    { id: 'emp-4', company_id: companyId, name: 'محمد سعيد القاضي', code: 'EMP004', department: 'المشتريات', job_title: 'مدير مشتريات', hire_date: '2021-05-20', salary: 240000, status: 'active', phone: '+967222333444' },
-    { id: 'emp-5', company_id: companyId, name: 'عائشة محمود اليافعي', code: 'EMP005', department: 'المبيعات', job_title: 'مندوب مبيعات', hire_date: '2022-09-01', salary: 180000, status: 'active', phone: '+967555666777' },
-    { id: 'emp-6', company_id: companyId, name: 'علي عبدالرحمن الحديدي', code: 'EMP006', department: 'المستودعات', job_title: 'مدير مخازن', hire_date: '2017-11-15', salary: 200000, status: 'active', phone: '+967888999000' },
-    { id: 'emp-7', company_id: companyId, name: 'سميرة أحمد الجبري', code: 'EMP007', department: 'المالية', job_title: 'مراجع مالي', hire_date: '2020-06-01', salary: 260000, status: 'active', phone: '+967333444555' },
-    { id: 'emp-8', company_id: companyId, name: 'عبدالله محمد القحطاني', code: 'EMP008', department: 'التصنيع', job_title: 'مهندس إنتاج', hire_date: '2021-02-10', salary: 230000, status: 'active', phone: '+967666777888' },
-    { id: 'emp-9', company_id: companyId, name: 'ليلى سعيد الأكحلي', code: 'EMP009', department: 'خدمة العملاء', job_title: 'مشرفة', hire_date: '2022-04-15', salary: 170000, status: 'active', phone: '+967999000111' },
-    { id: 'emp-10', company_id: companyId, name: 'ياسر علي الكبسي', code: 'EMP010', department: 'IT', job_title: 'مطور برمجيات', hire_date: '2023-01-05', salary: 210000, status: 'active', phone: '+967123456789' },
+    { id: 'emp-1', company_id: companyId, full_name: 'أحمد علي محمد', employee_number: 'EMP001', department: 'المبيعات', position: 'مدير مبيعات', hire_date: '2020-03-15', base_salary: 250000, status: 'active', phone: '+967111222333', is_active: true },
+    { id: 'emp-2', company_id: companyId, full_name: 'خالد سالم عبدالله', employee_number: 'EMP002', department: 'المحاسبة', position: 'محاسب أول', hire_date: '2019-07-01', base_salary: 220000, status: 'active', phone: '+967444555666', is_active: true },
+    { id: 'emp-3', company_id: companyId, full_name: 'فاطمة حسن صالح', employee_number: 'EMP003', department: 'الموارد البشرية', position: 'مدير HR', hire_date: '2018-01-10', base_salary: 280000, status: 'active', phone: '+967777888999', is_active: true },
+    { id: 'emp-4', company_id: companyId, full_name: 'محمد سعيد القاضي', employee_number: 'EMP004', department: 'المشتريات', position: 'مدير مشتريات', hire_date: '2021-05-20', base_salary: 240000, status: 'active', phone: '+967222333444', is_active: true },
+    { id: 'emp-5', company_id: companyId, full_name: 'عائشة محمود اليافعي', employee_number: 'EMP005', department: 'المبيعات', position: 'مندوب مبيعات', hire_date: '2022-09-01', base_salary: 180000, status: 'active', phone: '+967555666777', is_active: true },
+    { id: 'emp-6', company_id: companyId, full_name: 'علي عبدالرحمن الحديدي', employee_number: 'EMP006', department: 'المستودعات', position: 'مدير مخازن', hire_date: '2017-11-15', base_salary: 200000, status: 'active', phone: '+967888999000', is_active: true },
+    { id: 'emp-7', company_id: companyId, full_name: 'سميرة أحمد الجبري', employee_number: 'EMP007', department: 'المالية', position: 'مراجع مالي', hire_date: '2020-06-01', base_salary: 260000, status: 'active', phone: '+967333444555', is_active: true },
+    { id: 'emp-8', company_id: companyId, full_name: 'عبدالله محمد القحطاني', employee_number: 'EMP008', department: 'التصنيع', position: 'مهندس إنتاج', hire_date: '2021-02-10', base_salary: 230000, status: 'active', phone: '+967666777888', is_active: true },
+    { id: 'emp-9', company_id: companyId, full_name: 'ليلى سعيد الأكحلي', employee_number: 'EMP009', department: 'خدمة العملاء', position: 'مشرفة', hire_date: '2022-04-15', base_salary: 170000, status: 'active', phone: '+967999000111', is_active: true },
+    { id: 'emp-10', company_id: companyId, full_name: 'ياسر علي الكبسي', employee_number: 'EMP010', department: 'IT', position: 'مطور برمجيات', hire_date: '2023-01-05', base_salary: 210000, status: 'active', phone: '+967123456789', is_active: true },
   ];
 }
 
@@ -469,5 +477,121 @@ function seedPaymentVouchers(companyId: string) {
     { id: 'pv-3', company_id: companyId, voucher_number: 'PV-2024-003', date: '2024-06-10', supplier: 'مصنع الأمل للأدوات المنزلية', amount: 150000, payment_method: 'check', bank_account: null, check_number: 'CH-778899', check_date: '2024-06-25', expense_account: null, notes: 'شيك مؤجل للمورد', status: 'draft' },
     { id: 'pv-4', company_id: companyId, voucher_number: 'PV-2024-004', date: '2024-06-15', supplier: 'شركة مصر للأدوات الكهربائية', amount: 250000, payment_method: 'bank', bank_account: 'البنك اليمني الدولي', check_number: null, check_date: null, expense_account: null, notes: 'تحويل بنكي للمورد', status: 'posted' },
     { id: 'pv-5', company_id: companyId, voucher_number: 'PV-2024-005', date: '2024-06-18', supplier: 'مصروفات', amount: 50000, payment_method: 'cash', bank_account: null, check_number: null, check_date: null, expense_account: 'مصروفات الكهرباء', notes: 'دفع فاتورة كهرباء', status: 'posted' },
+  ];
+}
+
+// ─── NEW: Document Sequences ──────────────────────────────────────────────────
+function seedDocumentSequences(companyId: string) {
+  const docs = [
+    { document_type: 'sales_invoice', prefix: 'INV-', suffix: '', starting_number: 1, current_number: 26, padding_length: 4, year_reset: false },
+    { document_type: 'purchase_invoice', prefix: 'PINV-', suffix: '', starting_number: 1, current_number: 21, padding_length: 4, year_reset: false },
+    { document_type: 'sales_return', prefix: 'SR-', suffix: '', starting_number: 1, current_number: 4, padding_length: 4, year_reset: false },
+    { document_type: 'purchase_return', prefix: 'PR-', suffix: '', starting_number: 1, current_number: 3, padding_length: 4, year_reset: false },
+    { document_type: 'receipt_voucher', prefix: 'RV-', suffix: '', starting_number: 1, current_number: 5, padding_length: 4, year_reset: false },
+    { document_type: 'payment_voucher', prefix: 'PV-', suffix: '', starting_number: 1, current_number: 6, padding_length: 4, year_reset: false },
+    { document_type: 'journal_voucher', prefix: 'JV-', suffix: '', starting_number: 1, current_number: 31, padding_length: 4, year_reset: false },
+    { document_type: 'purchase_order', prefix: 'PO-', suffix: '', starting_number: 1, current_number: 1, padding_length: 4, year_reset: false },
+    { document_type: 'quotation', prefix: 'QUO-', suffix: '', starting_number: 1, current_number: 1, padding_length: 4, year_reset: false },
+    { document_type: 'work_order', prefix: 'WO-', suffix: '', starting_number: 1, current_number: 7, padding_length: 4, year_reset: false },
+    { document_type: 'stock_adjustment', prefix: 'ADJ-', suffix: '', starting_number: 1, current_number: 5, padding_length: 4, year_reset: false },
+    { document_type: 'inventory_transfer', prefix: 'TRF-', suffix: '', starting_number: 1, current_number: 2, padding_length: 4, year_reset: false },
+    { document_type: 'payroll_run', prefix: 'PAY-', suffix: '', starting_number: 1, current_number: 2, padding_length: 4, year_reset: false },
+  ];
+  return docs.map((d, i) => ({
+    id: `seq-${i + 1}`,
+    company_id: companyId,
+    ...d,
+    increment_step: 1,
+    is_active: true,
+  }));
+}
+
+// ─── NEW: Product Types ───────────────────────────────────────────────────────
+function seedProductTypes(companyId: string) {
+  return [
+    { id: 'pt-1', company_id: companyId, name_ar: 'سلعة تجارية', name_en: 'Trading Goods', code: 'TRADE', appears_in_sales: true, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: false, has_stock_tracking: true, has_bom: false, default_sales_account_id: 'acc-41101', default_cogs_account_id: 'acc-51101', default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-2', company_id: companyId, name_ar: 'خدمة', name_en: 'Service', code: 'SRV', appears_in_sales: true, appears_in_purchases: false, appears_in_inventory: false, appears_in_manufacturing: false, has_stock_tracking: false, has_bom: false, default_sales_account_id: 'acc-41102', default_cogs_account_id: null, default_inventory_account_id: null },
+    { id: 'pt-3', company_id: companyId, name_ar: 'مواد أولية', name_en: 'Raw Materials', code: 'RAW', appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: true, has_stock_tracking: true, has_bom: true, default_sales_account_id: null, default_cogs_account_id: 'acc-51101', default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-4', company_id: companyId, name_ar: 'سلع تامة الإنتاج', name_en: 'Finished Goods', code: 'FG', appears_in_sales: true, appears_in_purchases: false, appears_in_inventory: true, appears_in_manufacturing: true, has_stock_tracking: true, has_bom: true, default_sales_account_id: 'acc-41101', default_cogs_account_id: 'acc-51101', default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-5', company_id: companyId, name_ar: 'سلع للاستخدام الداخلي', name_en: 'Internal Use', code: 'INT', appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: false, has_stock_tracking: true, has_bom: false, default_sales_account_id: null, default_cogs_account_id: null, default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-6', company_id: companyId, name_ar: 'منتج وسيط', name_en: 'Semi-Finished', code: 'WIP', appears_in_sales: false, appears_in_purchases: false, appears_in_inventory: true, appears_in_manufacturing: true, has_stock_tracking: true, has_bom: true, default_sales_account_id: null, default_cogs_account_id: 'acc-51101', default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-7', company_id: companyId, name_ar: 'مستهلك', name_en: 'Consumable', code: 'CON', appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: false, has_stock_tracking: true, has_bom: false, default_sales_account_id: null, default_cogs_account_id: null, default_inventory_account_id: 'acc-11301' },
+    { id: 'pt-8', company_id: companyId, name_ar: 'أصل ثابت', name_en: 'Fixed Asset', code: 'FA', appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: false, appears_in_manufacturing: false, has_stock_tracking: false, has_bom: false, default_sales_account_id: null, default_cogs_account_id: null, default_inventory_account_id: null },
+  ];
+}
+
+// ─── NEW: Units ───────────────────────────────────────────────────────────────
+function seedUnits(companyId: string) {
+  return [
+    { id: 'u-1', company_id: companyId, name_ar: 'قطعة', name_en: 'Piece', code: 'PC', conversion_factor: '1', base_unit_id: null },
+    { id: 'u-2', company_id: companyId, name_ar: 'كرتونة', name_en: 'Carton', code: 'CTN', conversion_factor: '12', base_unit_id: 'u-1' },
+    { id: 'u-3', company_id: companyId, name_ar: 'طن', name_en: 'Ton', code: 'TON', conversion_factor: '1000', base_unit_id: null },
+    { id: 'u-4', company_id: companyId, name_ar: 'كيلوغرام', name_en: 'Kilogram', code: 'KG', conversion_factor: '1', base_unit_id: null },
+    { id: 'u-5', company_id: companyId, name_ar: 'لتر', name_en: 'Liter', code: 'LTR', conversion_factor: '1', base_unit_id: null },
+    { id: 'u-6', company_id: companyId, name_ar: 'متر', name_en: 'Meter', code: 'MTR', conversion_factor: '1', base_unit_id: null },
+    { id: 'u-7', company_id: companyId, name_ar: 'ساعة', name_en: 'Hour', code: 'HR', conversion_factor: '1', base_unit_id: null },
+  ];
+}
+
+// ─── NEW: Cash Boxes ──────────────────────────────────────────────────────────
+function seedCashBoxes(companyId: string) {
+  return [
+    { id: 'cb-1', company_id: companyId, name: 'صندوق فرع صنعاء', code: 'CB-SAN', account_id: 'acc-11101', branch_id: null, responsible_user_id: null, is_active: true, current_balance: 1500000 },
+    { id: 'cb-2', company_id: companyId, name: 'صندوق فرع عدن', code: 'CB-ADN', account_id: 'acc-11101', branch_id: null, responsible_user_id: null, is_active: true, current_balance: 800000 },
+    { id: 'cb-3', company_id: companyId, name: 'صندوق فرع الحديدة', code: 'CB-HOD', account_id: 'acc-11101', branch_id: null, responsible_user_id: null, is_active: true, current_balance: 200000 },
+  ];
+}
+
+// ─── NEW: Banks ───────────────────────────────────────────────────────────────
+function seedBanks(companyId: string) {
+  return [
+    { id: 'bnk-1', company_id: companyId, name: 'حساب البنك اليمني الدولي', bank_name: 'البنك اليمني الدولي', account_number: '1234567890', iban: 'YE123456789012345678', account_id: 'acc-11102', branch_id: null, is_active: true, current_balance: 5800000 },
+    { id: 'bnk-2', company_id: companyId, name: 'حساب بنك الكريمي', bank_name: 'بنك الكريمي', account_number: '0987654321', iban: 'YE987654321098765432', account_id: 'acc-11102', branch_id: null, is_active: true, current_balance: 2500000 },
+  ];
+}
+
+// ─── NEW: Cost Centers ────────────────────────────────────────────────────────
+function seedCostCenters(companyId: string) {
+  return [
+    { id: 'cc-1', company_id: companyId, name_ar: 'فرع صنعاء', name_en: 'Sanaa Branch', code: 'CC-SAN', parent_id: null, type: 'branch', budget_amount: 5000000 },
+    { id: 'cc-2', company_id: companyId, name_ar: 'فرع عدن', name_en: 'Aden Branch', code: 'CC-ADN', parent_id: null, type: 'branch', budget_amount: 3000000 },
+    { id: 'cc-3', company_id: companyId, name_ar: 'فرع الحديدة', name_en: 'Hodeidah Branch', code: 'CC-HOD', parent_id: null, type: 'branch', budget_amount: 2000000 },
+    { id: 'cc-4', company_id: companyId, name_ar: 'قسم المبيعات', name_en: 'Sales Dept', code: 'CC-SAL', parent_id: 'cc-1', type: 'department', budget_amount: 1500000 },
+    { id: 'cc-5', company_id: companyId, name_ar: 'قسم الإنتاج', name_en: 'Production Dept', code: 'CC-PRD', parent_id: 'cc-1', type: 'department', budget_amount: 2500000 },
+    { id: 'cc-6', company_id: companyId, name_ar: 'مشروع التوسع', name_en: 'Expansion Project', code: 'CC-EXP', parent_id: null, type: 'project', budget_amount: 8000000 },
+  ];
+}
+
+// ─── NEW: Payroll Components ──────────────────────────────────────────────────
+function seedPayrollComponents(companyId: string) {
+  return [
+    { id: 'pc-1', company_id: companyId, name_ar: 'الراتب الأساسي', name_en: 'Base Salary', code: 'BAS', type: 'earning', calculation_method: 'fixed', default_amount: '0', affects_gross_salary: true, affects_tax: true, affects_social_insurance: true, default_account_id: 'acc-52101' },
+    { id: 'pc-2', company_id: companyId, name_ar: 'بدل سكن', name_en: 'Housing Allowance', code: 'HOU', type: 'earning', calculation_method: 'fixed', default_amount: '150000', affects_gross_salary: true, affects_tax: false, affects_social_insurance: false, default_account_id: 'acc-52102' },
+    { id: 'pc-3', company_id: companyId, name_ar: 'بدل نقل', name_en: 'Transport Allowance', code: 'TRN', type: 'earning', calculation_method: 'fixed', default_amount: '50000', affects_gross_salary: true, affects_tax: false, affects_social_insurance: false, default_account_id: 'acc-52102' },
+    { id: 'pc-4', company_id: companyId, name_ar: 'بدل طعام', name_en: 'Food Allowance', code: 'FOD', type: 'earning', calculation_method: 'fixed', default_amount: '30000', affects_gross_salary: true, affects_tax: false, affects_social_insurance: false, default_account_id: 'acc-52102' },
+    { id: 'pc-5', company_id: companyId, name_ar: 'ساعات إضافية', name_en: 'Overtime', code: 'OVT', type: 'earning', calculation_method: 'formula', default_amount: '0', affects_gross_salary: true, affects_tax: true, affects_social_insurance: false, default_account_id: 'acc-52101' },
+    { id: 'pc-6', company_id: companyId, name_ar: 'خصم تأمينات', name_en: 'Social Insurance Deduction', code: 'INS', type: 'deduction', calculation_method: 'percentage', default_amount: '9', affects_gross_salary: false, affects_tax: false, affects_social_insurance: true, default_account_id: null },
+    { id: 'pc-7', company_id: companyId, name_ar: 'ضريبة دخل', name_en: 'Income Tax', code: 'TAX', type: 'tax', calculation_method: 'formula', default_amount: '0', affects_gross_salary: false, affects_tax: true, affects_social_insurance: false, default_account_id: null },
+    { id: 'pc-8', company_id: companyId, name_ar: 'صافي الراتب', name_en: 'Net Salary', code: 'NET', type: 'net', calculation_method: 'formula', default_amount: '0', affects_gross_salary: false, affects_tax: false, affects_social_insurance: false, default_account_id: 'acc-52101' },
+  ];
+}
+
+// ─── NEW: Default Accounts ────────────────────────────────────────────────────
+function seedDefaultAccounts(companyId: string) {
+  return [
+    { id: 'da-1', company_id: companyId, function_key: 'default_cash', account_id: 'acc-11101', is_required: true, description: 'الحساب الافتراضي للصناديق النقدية' },
+    { id: 'da-2', company_id: companyId, function_key: 'default_bank', account_id: 'acc-11102', is_required: true, description: 'الحساب الافتراضي للبنوك' },
+    { id: 'da-3', company_id: companyId, function_key: 'default_sales', account_id: 'acc-41101', is_required: true, description: 'حساب المبيعات الافتراضي' },
+    { id: 'da-4', company_id: companyId, function_key: 'default_cogs', account_id: 'acc-51101', is_required: true, description: 'حساب تكلفة البضاعة المباعة' },
+    { id: 'da-5', company_id: companyId, function_key: 'default_inventory', account_id: 'acc-11301', is_required: true, description: 'حساب المخزون الافتراضي' },
+    { id: 'da-6', company_id: companyId, function_key: 'default_debtors', account_id: 'acc-11201', is_required: true, description: 'حساب العملاء (مدينون تجاريون)' },
+    { id: 'da-7', company_id: companyId, function_key: 'default_creditors', account_id: 'acc-21101', is_required: true, description: 'حساب الموردين (دائنون تجاريون)' },
+    { id: 'da-8', company_id: companyId, function_key: 'default_vat_output', account_id: 'acc-21301', is_required: true, description: 'ضريبة القيمة المضافة على المبيعات' },
+    { id: 'da-9', company_id: companyId, function_key: 'default_vat_input', account_id: 'acc-21301', is_required: true, description: 'ضريبة القيمة المضافة على المشتريات' },
+    { id: 'da-10', company_id: companyId, function_key: 'default_salaries', account_id: 'acc-52101', is_required: true, description: 'حساب الرواتب والأجور' },
+    { id: 'da-11', company_id: companyId, function_key: 'default_discount_allowed', account_id: 'acc-41101', is_required: false, description: 'خصم مسموح به على المبيعات' },
+    { id: 'da-12', company_id: companyId, function_key: 'default_discount_received', account_id: 'acc-21101', is_required: false, description: 'خصم مقبوض على المشتريات' },
+    { id: 'da-13', company_id: companyId, function_key: 'default_sales_returns', account_id: 'acc-41103', is_required: true, description: 'حساب مردودات المبيعات' },
+    { id: 'da-14', company_id: companyId, function_key: 'default_purchase_returns', account_id: 'acc-21101', is_required: true, description: 'حساب مردودات المشتريات' },
   ];
 }

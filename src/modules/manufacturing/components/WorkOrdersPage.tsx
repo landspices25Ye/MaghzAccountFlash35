@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Wrench, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { ProductSelect } from '@/core/ui/components/smart';
+import { useAppStore } from '@/core/store';
 
 interface WorkOrder {
   id: string;
@@ -28,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export const WorkOrdersPage: React.FC = () => {
+  const activeCompany = useAppStore(state => state.activeCompany);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([
     { id: '1', orderNumber: 'WO-2026-001', productName: 'منتج أ', quantity: 500, status: 'in_progress', plannedStartDate: '2026-06-01', plannedEndDate: '2026-06-15', totalCost: 1250000 },
     { id: '2', orderNumber: 'WO-2026-002', productName: 'منتج ب', quantity: 300, status: 'pending', plannedStartDate: '2026-07-01', plannedEndDate: '2026-07-20', totalCost: 850000 },
@@ -122,7 +125,10 @@ export const WorkOrdersPage: React.FC = () => {
       >
         <div className="space-y-4">
           <Input label="رقم الأمر" value={formData.orderNumber} onChange={e => setFormData(prev => ({ ...prev, orderNumber: e.target.value }))} />
-          <Input label="اسم المنتج" value={formData.productName} onChange={e => setFormData(prev => ({ ...prev, productName: e.target.value }))} />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+            <ProductSelect companyId={activeCompany?.id || ''} value={formData.productName} onChange={v => setFormData(prev => ({ ...prev, productName: Array.isArray(v) ? v[0] || '' : v || '' }))} size="sm" />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label="الكمية" type="number" value={formData.quantity} onChange={e => setFormData(prev => ({ ...prev, quantity: e.target.value }))} />
             <Input label="التكلفة الإجمالية" type="number" value={formData.totalCost} onChange={e => setFormData(prev => ({ ...prev, totalCost: e.target.value }))} />

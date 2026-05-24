@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Package, Plus, Pencil } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { UnitSelect } from '@/core/ui/components/smart';
 import { useProducts } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import type { Product } from '../types';
@@ -83,7 +84,10 @@ export const ProductsPage: React.FC = () => {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input label="الرمز" value={formData.code} onChange={e => setFormData(prev => ({ ...prev, code: e.target.value }))} />
-            <Input label="الوحدة" value={formData.unit} onChange={e => setFormData(prev => ({ ...prev, unit: e.target.value }))} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الوحدة</label>
+              <UnitSelect companyId={activeCompany?.id || ''} value={formData.unit} onChange={v => setFormData(prev => ({ ...prev, unit: v || 'قطعة' }))} size="sm" />
+            </div>
           </div>
           <Input label="الاسم (عربي)" value={formData.nameAr} onChange={e => setFormData(prev => ({ ...prev, nameAr: e.target.value }))} />
           <Input label="الاسم (إنجليزي)" value={formData.nameEn} onChange={e => setFormData(prev => ({ ...prev, nameEn: e.target.value }))} />

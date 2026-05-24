@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { GitBranch, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { ProductSelect } from '@/core/ui/components/smart';
+import { useAppStore } from '@/core/store';
 
 interface BomLine {
   materialName: string;
@@ -18,6 +20,7 @@ interface Bom {
 }
 
 export const BomPage: React.FC = () => {
+  const activeCompany = useAppStore(state => state.activeCompany);
   const [boms, setBoms] = useState<Bom[]>([
     {
       id: '1',
@@ -111,7 +114,10 @@ export const BomPage: React.FC = () => {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="اسم المنتج" value={formData.productName} onChange={e => setFormData(prev => ({ ...prev, productName: e.target.value }))} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+              <ProductSelect companyId={activeCompany?.id || ''} value={formData.productName} onChange={v => setFormData(prev => ({ ...prev, productName: Array.isArray(v) ? v[0] || '' : v || '' }))} size="sm" />
+            </div>
             <Input label="الإصدار" value={formData.version} onChange={e => setFormData(prev => ({ ...prev, version: e.target.value }))} />
           </div>
 

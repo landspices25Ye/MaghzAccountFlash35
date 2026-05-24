@@ -24,7 +24,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,              // Secure: use preload for IPC
       webSecurity: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
     },
     title: 'maghzaccount-pro - نظام ERP محاسبي متكامل',
     frame: true,

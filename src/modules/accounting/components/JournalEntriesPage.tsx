@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { BookOpen, Plus, Save } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
-import { useTransactions, useAccounts } from '../hooks/useAccounting';
+import { AccountSelect } from '@/core/ui/components/smart';
+import { useTransactions } from '../hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { cn } from '@/core/utils';
 import type { Transaction, JournalEntry } from '../types';
@@ -9,7 +10,6 @@ import type { Transaction, JournalEntry } from '../types';
 export const JournalEntriesPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { transactions, isLoading, create } = useTransactions(activeCompany?.id || '');
-  const { accounts } = useAccounts(activeCompany?.id || '');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [entries, setEntries] = useState<Partial<JournalEntry>[]>([
@@ -136,16 +136,12 @@ export const JournalEntriesPage: React.FC = () => {
                 {entries.map((entry, idx) => (
                   <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
                     <td className="p-2">
-                      <select
-                        value={entry.accountId}
-                        onChange={e => updateEntry(idx, 'accountId', e.target.value)}
-                        className="form-control"
-                      >
-                        <option value="">اختر الحساب</option>
-                        {accounts.map(acc => (
-                          <option key={acc.id} value={acc.id}>{acc.code} - {acc.nameAr}</option>
-                        ))}
-                      </select>
+                      <AccountSelect
+                        companyId={activeCompany?.id || ''}
+                        value={entry.accountId || ''}
+                        onChange={v => updateEntry(idx, 'accountId', v || '')}
+                        size="sm"
+                      />
                     </td>
                     <td className="p-2">
                       <Input 

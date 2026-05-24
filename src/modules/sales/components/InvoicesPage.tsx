@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Plus, BookOpen, CheckSquare, Trash2 } from 'lucide-react';
+import { FileText, Plus, BookOpen, CheckSquare, Trash2, Printer } from 'lucide-react';
+import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Table, Badge, Modal, Input } from '@/core/ui/components';
+import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useInvoices } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
@@ -60,6 +62,29 @@ export const InvoicesPage: React.FC = () => {
     setHeader({ customer: '', date: new Date().toISOString().split('T')[0], vatRate: 5 });
   };
 
+  const handlePrint = (invoice: SalesInvoice) => {
+    printDocument({
+      type: 'sales-invoice',
+      docNumber: invoice.invoiceNumber,
+      date: invoice.date,
+      dueDate: invoice.dueDate,
+      partyName: invoice.customer?.name || invoice.customerId,
+      partyLabel: 'العميل',
+      lines: invoice.lines.map(l => ({
+        description: l.productName || l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        total: l.lineTotal,
+      })),
+      subtotal: invoice.subtotal,
+      vatAmount: invoice.vatAmount,
+      totalAmount: invoice.totalAmount,
+      notes: invoice.notes,
+      companyName: activeCompany?.name,
+      currency: activeCompany?.currency,
+    });
+  };
+
   const handlePost = async (invoice: SalesInvoice) => {
     if (!activeCompany?.id) return;
     setPostingId(invoice.id);
@@ -92,11 +117,14 @@ export const InvoicesPage: React.FC = () => {
       return <Badge className={colors[row.status] || 'bg-slate-100'}>{statusLabels[row.status] || row.status}</Badge>;
     }},
     { key: 'actions', header: 'إجراء', render: (row: SalesInvoice) => (
-      row.status === 'draft' ? (
-        <Button size="sm" variant="secondary" leftIcon={<CheckSquare size={14} />} onClick={() => handlePost(row)} disabled={postingId === row.id}>
-          {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
-        </Button>
-      ) : <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="ghost" leftIcon={<Printer size={14} />} onClick={() => handlePrint(row)} title="طباعة" />
+        {row.status === 'draft' ? (
+          <Button size="sm" variant="secondary" leftIcon={<CheckSquare size={14} />} onClick={() => handlePost(row)} disabled={postingId === row.id}>
+            {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
+          </Button>
+        ) : <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>}
+      </div>
     )},
   ];
 
@@ -121,7 +149,10 @@ export const InvoicesPage: React.FC = () => {
         <Modal isOpen={isOpen} title="فاتورة مبيعات جديدة" onClose={() => setIsOpen(false)} size="lg">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="العميل" value={header.customer} onChange={e => setHeader({ ...header, customer: e.target.value })} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العميل</label>
+                <CustomerSelect companyId={activeCompany?.id || ''} value={header.customer} onChange={v => setHeader({ ...header, customer: v || '' })} />
+              </div>
               <Input label="التاريخ" type="date" value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })} />
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
@@ -131,7 +162,9 @@ export const InvoicesPage: React.FC = () => {
               </div>
               {lines.map((line, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-center">
-                  <div className="col-span-4"><Input placeholder="اسم المنتج" value={line.productName} onChange={e => updateLine(idx, 'productName', e.target.value)} /></div>
+                  <div className="col-span-4">
+                    <ProductSelect companyId={activeCompany?.id || ''} value={line.productName} onChange={v => updateLine(idx, 'productName', v || '')} size="sm" />
+                  </div>
                   <div className="col-span-2"><Input type="number" placeholder="الكمية" value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} /></div>
                   <div className="col-span-3"><Input type="number" placeholder="السعر" value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} /></div>
                   <div className="col-span-2 text-sm font-medium text-slate-700 dark:text-slate-200">{(line.quantity * line.unitPrice).toLocaleString('ar-SA')}</div>
