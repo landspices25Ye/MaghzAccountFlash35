@@ -5,16 +5,27 @@ export const salesApi = {
   // ─── Customers ────────────────────────────────────────────────────────────
   async getCustomers(companyId: string): Promise<{ success: boolean; data?: Customer[]; error?: string }> {
     const adapter = await getDbAdapter();
-    const result = await adapter.getContacts(companyId, 'customer');
+    const result = await adapter.query(
+      'SELECT * FROM customers WHERE company_id = $1 AND is_active = true ORDER BY name',
+      [companyId]
+    );
     if (result.success) {
-      return { success: true, data: result.data as Customer[] };
+      return { success: true, data: result.rows as Customer[] };
     }
     return { success: false, error: result.error };
   },
 
   async createCustomer(data: Omit<Customer, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
-    return adapter.createContact({ ...data, type: 'customer' });
+    const result = await adapter.query(
+      `INSERT INTO customers (company_id, name, phone, email, address, tax_number, credit_limit, balance, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [data.companyId, data.name, data.phone, data.email, data.address, data.taxNumber, data.creditLimit, data.balance, data.isActive]
+    );
+    if (result.success && result.rows?.[0]) {
+      return { success: true, id: result.rows[0].id };
+    }
+    return { success: false, error: result.error };
   },
 
   // ─── Sales Invoices ───────────────────────────────────────────────────────
@@ -23,7 +34,7 @@ export const salesApi = {
     const result = await adapter.query(
       `SELECT i.*, c.name as customer_name 
        FROM sales_invoices i
-       LEFT JOIN contacts c ON i.customer_id = c.id
+       LEFT JOIN customers c ON i.customer_id = c.id
        WHERE i.company_id = $1
        ORDER BY i.date DESC`,
       [companyId]

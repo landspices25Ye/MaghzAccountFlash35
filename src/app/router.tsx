@@ -11,7 +11,14 @@ const PurchasesPage = React.lazy(() => import('@/modules/purchases/components/Pu
 const ManufacturingPage = React.lazy(() => import('@/modules/manufacturing/components/ManufacturingPage'));
 const HrPage = React.lazy(() => import('@/modules/hr/components/HrPage'));
 const CrmPage = React.lazy(() => import('@/modules/crm/components/CrmPage'));
-const ReportsPage = React.lazy(() => import('@/modules/reports/dashboards/MainDashboard'));
+const ReportsPage = React.lazy(() => import('@/modules/reports/ReportsHubPage'));
+
+// Analytical reports
+const SalesAnalysisReport = React.lazy(() => import('@/modules/reports/SalesAnalysisReport'));
+const InventoryAnalysisReport = React.lazy(() => import('@/modules/reports/InventoryAnalysisReport'));
+const CustomerStatementReport = React.lazy(() => import('@/modules/reports/CustomerStatementReport'));
+const SupplierStatementReport = React.lazy(() => import('@/modules/reports/SupplierStatementReport'));
+const ProfitAnalysisReport = React.lazy(() => import('@/modules/reports/ProfitAnalysisReport'));
 
 // Auth pages
 const LoginPage = React.lazy(() => import('@/modules/auth/components/LoginPage'));
@@ -23,13 +30,16 @@ const JournalEntriesPage = React.lazy(() => import('@/modules/accounting/compone
 const TrialBalancePage = React.lazy(() => import('@/modules/accounting/components/TrialBalancePage'));
 const BalanceSheetPage = React.lazy(() => import('@/modules/accounting/components/BalanceSheetPage'));
 const ProfitLossPage = React.lazy(() => import('@/modules/accounting/components/ProfitLossPage'));
+const CashFlowPage = React.lazy(() => import('@/modules/accounting/components/CashFlowPage'));
 
 // Inventory sub-pages
 const ProductsPage = React.lazy(() => import('@/modules/inventory/components/ProductsPage'));
+const WarehousesPage = React.lazy(() => import('@/modules/inventory/components/WarehousesPage'));
 
 // Sales sub-pages
 const InvoicesPage = React.lazy(() => import('@/modules/sales/components/InvoicesPage'));
 const CustomersPage = React.lazy(() => import('@/modules/sales/components/CustomersPage'));
+const QuotationsPage = React.lazy(() => import('@/modules/sales/components/QuotationsPage'));
 
 // Purchases sub-pages
 const PurchaseInvoicesPage = React.lazy(() => import('@/modules/purchases/components/PurchaseInvoicesPage'));
@@ -48,12 +58,15 @@ const PayrollPage = React.lazy(() => import('@/modules/hr/components/PayrollPage
 // CRM sub-pages
 const LeadsPage = React.lazy(() => import('@/modules/crm/components/LeadsPage'));
 const OpportunitiesPage = React.lazy(() => import('@/modules/crm/components/OpportunitiesPage'));
+const TasksPage = React.lazy(() => import('@/modules/crm/components/TasksPage'));
 
 // Settings with nested routes
 const SettingsLayout = React.lazy(() => import('@/modules/core/components/SettingsPage'));
 const CompanySetup = React.lazy(() => import('@/modules/core/components/CompanySetup'));
 const CurrenciesPage = React.lazy(() => import('@/modules/core/components/CurrenciesPage'));
 const VatSettingsPage = React.lazy(() => import('@/modules/core/components/VatSettingsPage'));
+const BranchesPage = React.lazy(() => import('@/modules/core/components/BranchesPage'));
+const BackupPage = React.lazy(() => import('@/modules/core/components/BackupPage'));
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-full">
@@ -108,17 +121,20 @@ export const AppRouter: React.FC = () => {
                   <Route path="trial" element={withSuspense(TrialBalancePage)} />
                   <Route path="balance" element={withSuspense(BalanceSheetPage)} />
                   <Route path="profit" element={withSuspense(ProfitLossPage)} />
+                  <Route path="cashflow" element={withSuspense(CashFlowPage)} />
                 </Route>
                 
                 {/* Inventory with nested routes */}
                 <Route path="/inventory" element={withSuspense(InventoryPage)}>
                   <Route path="products" element={withSuspense(ProductsPage)} />
+                  <Route path="warehouses" element={withSuspense(WarehousesPage)} />
                 </Route>
                 
                 {/* Sales with nested routes */}
                 <Route path="/sales" element={withSuspense(SalesPage)}>
                   <Route path="invoices" element={withSuspense(InvoicesPage)} />
                   <Route path="customers" element={withSuspense(CustomersPage)} />
+                  <Route path="quotations" element={withSuspense(QuotationsPage)} />
                 </Route>
                 
                 {/* Purchases with nested routes */}
@@ -145,9 +161,16 @@ export const AppRouter: React.FC = () => {
                 <Route path="/crm" element={withSuspense(CrmPage)}>
                   <Route path="leads" element={withSuspense(LeadsPage)} />
                   <Route path="opportunities" element={withSuspense(OpportunitiesPage)} />
+                  <Route path="tasks" element={withSuspense(TasksPage)} />
                 </Route>
                 
-                <Route path="/reports/*" element={withSuspense(ReportsPage)} />
+                {/* Reports hub & analytical reports */}
+                <Route path="/reports" element={withSuspense(ReportsPage)} />
+                <Route path="/reports/sales-analysis" element={withSuspense(SalesAnalysisReport)} />
+                <Route path="/reports/inventory-analysis" element={withSuspense(InventoryAnalysisReport)} />
+                <Route path="/reports/customer-statement" element={withSuspense(CustomerStatementReport)} />
+                <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
+                <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />
                 <Route path="/users" element={withSuspense(UsersPage)} />
                 
                 {/* Settings with nested routes */}
@@ -155,6 +178,8 @@ export const AppRouter: React.FC = () => {
                   <Route path="company" element={withSuspense(CompanySetup)} />
                   <Route path="currencies" element={withSuspense(CurrenciesPage)} />
                   <Route path="vat" element={withSuspense(VatSettingsPage)} />
+                  <Route path="branches" element={withSuspense(BranchesPage)} />
+                  <Route path="backup" element={withSuspense(BackupPage)} />
                 </Route>
               </Routes>
             </AppLayout>

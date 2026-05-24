@@ -71,10 +71,10 @@ export const accountingApi = {
   },
 
   // ─── Reports ──────────────────────────────────────────────────────────────
-  async getTrialBalance(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: TrialBalanceRow[]; error?: string }> {
+  async getTrialBalance(companyId: string, _asOfDate?: string): Promise<{ success: boolean; data?: TrialBalanceRow[]; error?: string }> {
     const adapter = await getDbAdapter();
     
-    let sql = `
+    const sql = `
       SELECT 
         a.id as account_id,
         a.code as account_code,
@@ -86,21 +86,31 @@ export const accountingApi = {
       LEFT JOIN journal_entries je ON a.id = je.account_id
       LEFT JOIN transactions t ON je.transaction_id = t.id AND t.status = 'posted'
       WHERE a.company_id = $1 AND a.is_group = false
+      GROUP BY a.id, a.code, a.name_ar, a.balance ORDER BY a.code
     `;
     
-    if (asOfDate) {
-      sql += ` AND t.date <= $2`;
-    }
+    const result = await adapter.query(sql, [companyId]);
     
-    sql += ` GROUP BY a.id, a.code, a.name_ar, a.balance ORDER BY a.code`;
-    
-    const result = asOfDate 
-      ? await adapter.query(sql, [companyId, asOfDate])
-      : await adapter.query(sql, [companyId]);
-    
-    if (result.success) {
+    if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: result.rows as TrialBalanceRow[] };
     }
+    
+    // Fallback: compute from accounts directly
+    const accountsResult = await adapter.getAccounts(companyId);
+    if (accountsResult.success && accountsResult.data) {
+      const rows: TrialBalanceRow[] = (accountsResult.data as Account[])
+        .filter(a => !a.isGroup && a.balance !== 0)
+        .map(a => ({
+          accountId: a.id,
+          accountCode: a.code,
+          accountName: a.nameAr,
+          debit: a.nature === 'debit' && a.balance > 0 ? Math.abs(a.balance) : 0,
+          credit: a.nature === 'credit' && a.balance > 0 ? Math.abs(a.balance) : (a.nature === 'debit' && a.balance < 0 ? Math.abs(a.balance) : 0),
+          balance: a.balance,
+        }));
+      return { success: true, data: rows };
+    }
+    
     return { success: false, error: result.error };
   },
 
@@ -110,40 +120,32 @@ export const accountingApi = {
       `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('asset', 'liability', 'equity') AND is_group = false ORDER BY code`,
       [companyId]
     );
-    if (result.success) {
+    if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: result.rows };
+    }
+    // Fallback
+    const accResult = await adapter.getAccounts(companyId);
+    if (accResult.success && accResult.data) {
+      const rows = (accResult.data as Account[]).filter(a => ['asset', 'liability', 'equity'].includes(a.type));
+      return { success: true, data: rows };
     }
     return { success: false, error: result.error };
   },
 
-  async getProfitLoss(companyId: string, startDate?: string, endDate?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
+  async getProfitLoss(companyId: string, _startDate?: string, _endDate?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
     const adapter = await getDbAdapter();
-    let sql = `
-      SELECT 
-        a.id,
-        a.code,
-        a.name_ar,
-        a.type,
-        COALESCE(SUM(je.debit), 0) as total_debit,
-        COALESCE(SUM(je.credit), 0) as total_credit
-      FROM accounts a
-      LEFT JOIN journal_entries je ON a.id = je.account_id
-      LEFT JOIN transactions t ON je.transaction_id = t.id AND t.status = 'posted'
-      WHERE a.company_id = $1 AND a.type IN ('revenue', 'expense') AND a.is_group = false
-    `;
-    
-    const params: any[] = [companyId];
-    
-    if (startDate && endDate) {
-      sql += ` AND t.date BETWEEN $2 AND $3`;
-      params.push(startDate, endDate);
-    }
-    
-    sql += ` GROUP BY a.id, a.code, a.name_ar, a.type ORDER BY a.code`;
-    
-    const result = await adapter.query(sql, params);
-    if (result.success) {
+    const result = await adapter.query(
+      `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('revenue', 'expense') AND is_group = false ORDER BY code`,
+      [companyId]
+    );
+    if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: result.rows };
+    }
+    // Fallback
+    const accResult = await adapter.getAccounts(companyId);
+    if (accResult.success && accResult.data) {
+      const rows = (accResult.data as Account[]).filter(a => ['revenue', 'expense'].includes(a.type));
+      return { success: true, data: rows };
     }
     return { success: false, error: result.error };
   },

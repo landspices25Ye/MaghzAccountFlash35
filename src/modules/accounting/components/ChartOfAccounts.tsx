@@ -73,13 +73,36 @@ function AccountTreeItem({ account, level = 0 }: { account: Account; level?: num
 
 export const ChartOfAccounts: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { accounts, isLoading } = useAccounts(activeCompany?.id || '');
+  const { accounts, isLoading, create } = useAccounts(activeCompany?.id || '');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Account>>({
     type: 'asset',
     nature: 'debit',
     isGroup: false,
   });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!activeCompany || !formData.code || !formData.nameAr) return;
+    setIsSaving(true);
+    const result = await create({
+      companyId: activeCompany.id,
+      code: formData.code,
+      nameAr: formData.nameAr,
+      nameEn: formData.nameEn,
+      parentId: formData.parentId,
+      type: formData.type || 'asset',
+      nature: formData.nature || 'debit',
+      isGroup: formData.isGroup || false,
+      balance: 0,
+      isActive: true,
+    });
+    if (result.success) {
+      setIsModalOpen(false);
+      setFormData({ type: 'asset', nature: 'debit', isGroup: false });
+    }
+    setIsSaving(false);
+  };
 
   if (isLoading) {
     return (
@@ -123,7 +146,7 @@ export const ChartOfAccounts: React.FC = () => {
         footer={
           <>
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button>
-            <Button variant="primary">حفظ</Button>
+            <Button variant="primary" onClick={handleSave} isLoading={isSaving}>حفظ</Button>
           </>
         }
       >
