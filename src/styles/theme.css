@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800&display=swap');
+
+:root {
+  /* Fonts */
+  --font-arabic: 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif;
+  --font-english: 'Tajawal', system-ui, -apple-system, sans-serif;
+  
+  /* Shared transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  
+  /* Borders */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+/* Light Theme Variables */
+:root, [data-theme='light'] {
+  --background: 210 20% 98%;      /* #f8fafc */
+  --surface: 0 0% 100%;            /* #ffffff */
+  --surface-hover: 210 20% 96%;    /* #f1f5f9 */
+  
+  --primary: 221 83% 53%;          /* #3b82f6 (Main Blue) */
+  --primary-hover: 221 83% 45%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 215 15% 92%;        /* Secondary slate-gray */
+  --secondary-hover: 215 15% 85%;
+  --secondary-foreground: 215 25% 27%;
+  
+  --foreground: 222 47% 11%;       /* Text Primary */
+  --foreground-muted: 215 16% 47%; /* Text Muted */
+  
+  --border: 214 32% 91%;           /* Border Slate-100 */
+  --border-focus: 221 83% 53%;
+  
+  --success: 142 76% 36%;          /* Safe green */
+  --success-foreground: 0 0% 100%;
+  
+  --warning: 38 92% 50%;           /* Warning orange */
+  --warning-foreground: 0 0% 100%;
+  
+  --danger: 350 89% 60%;           /* Error red */
+  --danger-foreground: 0 0% 100%;
+
+  --sidebar-bg: 222 47% 11%;       /* Dark Sidebar even in Light Mode (for premium ERP contrast) */
+  --sidebar-fg: 210 20% 98%;
+  --sidebar-hover: 222 47% 18%;
+  --sidebar-active: 221 83% 53%;
+}
+
+/* Dark Theme Variables */
+[data-theme='dark'] {
+  --background: 222 47% 6%;       /* Very dark slate */
+  --surface: 222 47% 11%;         /* Slate-900 */
+  --surface-hover: 222 47% 15%;
+  
+  --primary: 217 91% 60%;          /* Brighter Blue */
+  --primary-hover: 217 91% 65%;
+  --primary-foreground: 222 47% 6%;
+  
+  --secondary: 217 10% 20%;
+  --secondary-hover: 217 10% 25%;
+  --secondary-foreground: 210 20% 98%;
+  
+  --foreground: 210 20% 98%;       /* Slate-50 */
+  --foreground-muted: 215 20% 65%; /* Slate-400 */
+  
+  --border: 217 10% 20%;           /* Slate-800 */
+  --border-focus: 217 91% 60%;
+  
+  --success: 142 72% 29%;
+  --success-foreground: 0 0% 100%;
+  
+  --warning: 38 92% 50%;
+  --warning-foreground: 222 47% 6%;
+  
+  --danger: 350 89% 60%;
+  --danger-foreground: 0 0% 100%;
+
+  --sidebar-bg: 224 71% 4%;        /* Solid pitch dark */
+  --sidebar-fg: 210 20% 98%;
+  --sidebar-hover: 222 47% 10%;
+  --sidebar-active: 217 91% 60%;
+}
