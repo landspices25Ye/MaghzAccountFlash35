@@ -132,6 +132,14 @@ function seedIfEmpty(companyId: string) {
       { id: 'branch-2', company_id: companyId, name: 'فرع عدن', code: 'ADN', city: 'عدن', phone: '+9672333555', is_active: true },
       { id: 'branch-3', company_id: companyId, name: 'فرع الحديدة', code: 'HOD', city: 'الحديدة', phone: '+9673222666', is_active: true },
     );
+    // Seed inventory transactions
+    const seedTx = seedAllData(companyId);
+    if (seedTx.inventory_transactions) getTable('inventory_transactions').push(...seedTx.inventory_transactions);
+    if (seedTx.stock_adjustments) getTable('stock_adjustments').push(...seedTx.stock_adjustments);
+    if (seedTx.sales_returns) getTable('sales_returns').push(...seedTx.sales_returns);
+    if (seedTx.purchase_returns) getTable('purchase_returns').push(...seedTx.purchase_returns);
+    if (seedTx.receipt_vouchers) getTable('receipt_vouchers').push(...seedTx.receipt_vouchers);
+    if (seedTx.payment_vouchers) getTable('payment_vouchers').push(...seedTx.payment_vouchers);
   }
 }
 
@@ -229,6 +237,12 @@ function handleSelect(sql: string, params: any[]): any[] {
     'customers': 'contacts',
     'suppliers': 'contacts',
     'c': 'contacts',
+    'inventory_transactions': 'inventory_transactions',
+    'stock_adjustments': 'stock_adjustments',
+    'sales_returns': 'sales_returns',
+    'purchase_returns': 'purchase_returns',
+    'receipt_vouchers': 'receipt_vouchers',
+    'payment_vouchers': 'payment_vouchers',
   };
   
   const actualTable = tableMap[tableName] || tableName;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { purchasesApi } from '../api';
-import type { Supplier, PurchaseInvoice } from '../types';
+import type { Supplier, PurchaseInvoice, PurchaseOrder } from '../types';
 
 export function useSuppliers(companyId: string) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -47,5 +47,41 @@ export function usePurchaseInvoices(companyId: string) {
     load();
   }, [companyId]);
 
-  return { invoices, isLoading };
+  const create = useCallback(async (data: Omit<PurchaseInvoice, 'id'>) => {
+    const result = await purchasesApi.createInvoice(data);
+    if (result.success && result.id) {
+      setInvoices(prev => [{ ...data, id: result.id! }, ...prev]);
+    }
+    return result;
+  }, []);
+
+  return { invoices, isLoading, create };
+}
+
+export function usePurchaseOrders(companyId: string) {
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    async function load() {
+      setIsLoading(true);
+      const result = await purchasesApi.getOrders(companyId);
+      if (result.success && result.data) {
+        setOrders(result.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, [companyId]);
+
+  const create = useCallback(async (data: Omit<PurchaseOrder, 'id'>) => {
+    const result = await purchasesApi.createOrder(data);
+    if (result.success && result.id) {
+      setOrders(prev => [{ ...data, id: result.id! }, ...prev]);
+    }
+    return result;
+  }, []);
+
+  return { orders, isLoading, create };
 }

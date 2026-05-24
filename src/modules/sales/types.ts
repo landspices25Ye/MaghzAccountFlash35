@@ -31,8 +31,8 @@ export interface SalesInvoice {
 }
 
 export interface SalesInvoiceLine {
-  id: string;
-  invoiceId: string;
+  id?: string;
+  invoiceId?: string;
   productId: string;
   productName?: string;
   quantity: number;

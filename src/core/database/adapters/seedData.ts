@@ -8,6 +8,12 @@ export function seedAllData(companyId: string) {
     contacts: [...seedCustomers(companyId), ...seedSuppliers(companyId)],
     products: seedProducts(companyId),
     sales_invoices: seedInvoices(companyId),
+    inventory_transactions: seedInventoryTransactions(companyId),
+    stock_adjustments: seedStockAdjustments(companyId),
+    sales_returns: seedSalesReturns(companyId),
+    purchase_returns: seedPurchaseReturns(companyId),
+    receipt_vouchers: seedReceiptVouchers(companyId),
+    payment_vouchers: seedPaymentVouchers(companyId),
     purchase_invoices: seedPurchaseInvoices(companyId),
     employees: seedEmployees(companyId),
     attendance: seedAttendance(companyId),
@@ -408,4 +414,60 @@ function seedJournalEntries(companyId: string) {
   }
   
   return entries;
+}
+
+function seedInventoryTransactions(companyId: string) {
+  return [
+    { id: 'invtx-1', company_id: companyId, date: '2024-06-01', type: 'in', product: 'غسالة أوتوماتيك 7 كغ', warehouse: 'المستودع الرئيسي - صنعاء', quantity: 20, reference: 'PINV-2024-0001', notes: 'استلام بضاعة من المورد' },
+    { id: 'invtx-2', company_id: companyId, date: '2024-06-02', type: 'out', product: 'براد ماء 20 لتر', warehouse: 'المستودع الرئيسي - صنعاء', quantity: -5, reference: 'INV-2024-0001', notes: 'صرف بضاعة لفاتورة مبيعات' },
+    { id: 'invtx-3', company_id: companyId, date: '2024-06-03', type: 'adjustment', product: 'مكيف سبليت 18000 وحدة', warehouse: 'مستودع عدن', quantity: -2, reference: 'ADJ-2024-0001', notes: 'تسوية بعد الجرد' },
+    { id: 'invtx-4', company_id: companyId, date: '2024-06-04', type: 'transfer', product: 'ثلاجة 16 قدم', warehouse: 'المستودع الرئيسي ← مستودع الحديدة', quantity: -8, reference: 'TRF-2024-0001', notes: 'تحويل بين المستودعات' },
+    { id: 'invtx-5', company_id: companyId, date: '2024-06-05', type: 'in', product: 'شاشة LED 55 بوصة', warehouse: 'مستودع عدن', quantity: 12, reference: 'PINV-2024-0002', notes: 'استلام بضاعة من المورد' },
+    { id: 'invtx-6', company_id: companyId, date: '2024-06-06', type: 'out', product: 'خلاط كهربائي 500 واط', warehouse: 'المستودع الرئيسي - صنعاء', quantity: -30, reference: 'INV-2024-0002', notes: 'صرف بضاعة لفاتورة مبيعات' },
+    { id: 'invtx-7', company_id: companyId, date: '2024-06-07', type: 'in', product: 'مكنسة كهربائية', warehouse: 'مستودع الحديدة', quantity: 15, reference: 'PINV-2024-0003', notes: 'استلام بضاعة' },
+    { id: 'invtx-8', company_id: companyId, date: '2024-06-08', type: 'out', product: 'سخان ماء 50 لتر', warehouse: 'المستودع الرئيسي - صنعاء', quantity: -10, reference: 'INV-2024-0003', notes: 'صرف بضاعة' },
+  ];
+}
+
+function seedStockAdjustments(companyId: string) {
+  return [
+    { id: 'adj-1', company_id: companyId, date: '2024-06-10', product: 'براد ماء 20 لتر', warehouse: 'المستودع الرئيسي - صنعاء', systemQty: 120, actualQty: 118, difference: -2, reason: 'كسر أثناء النقل', status: 'posted' },
+    { id: 'adj-2', company_id: companyId, date: '2024-06-12', product: 'غسالة أوتوماتيك 7 كغ', warehouse: 'مستودع عدن', systemQty: 45, actualQty: 45, difference: 0, reason: 'جرد دوري', status: 'posted' },
+    { id: 'adj-3', company_id: companyId, date: '2024-06-15', product: 'مكيف سبليت 18000 وحدة', warehouse: 'مستودع الحديدة', systemQty: 30, actualQty: 28, difference: -2, reason: 'عيب مصنعي - إرجاع', status: 'posted' },
+    { id: 'adj-4', company_id: companyId, date: '2024-06-18', product: 'لابتوب Dell i5', warehouse: 'المستودع الرئيسي - صنعاء', systemQty: 35, actualQty: 36, difference: 1, reason: 'عثور على قطعة مفقودة', status: 'draft' },
+  ];
+}
+
+function seedSalesReturns(companyId: string) {
+  return [
+    { id: 'sr-1', company_id: companyId, return_number: 'SR-2024-001', invoice_number: 'INV-2024-0015', customer: 'شركة اليمن للتجارة', date: '2024-06-10', product: 'غسالة أوتوماتيك 7 كغ', quantity: 1, amount: 115000, reason: 'عيب مصنعي', status: 'posted' },
+    { id: 'sr-2', company_id: companyId, return_number: 'SR-2024-002', invoice_number: 'INV-2024-0018', customer: 'مؤسسة الأمل التجارية', date: '2024-06-12', product: 'مكيف سبليت 18000 وحدة', quantity: 1, amount: 135000, reason: 'تلف أثناء النقل', status: 'posted' },
+    { id: 'sr-3', company_id: companyId, return_number: 'SR-2024-003', invoice_number: 'INV-2024-0020', customer: 'شركة الخليج للمواد الغذائية', date: '2024-06-15', product: 'براد ماء 20 لتر', quantity: 2, amount: 44000, reason: 'العميل غير راضٍ', status: 'draft' },
+  ];
+}
+
+function seedPurchaseReturns(companyId: string) {
+  return [
+    { id: 'pr-1', company_id: companyId, return_number: 'PR-2024-001', invoice_number: 'PINV-2024-0012', supplier: 'مصنع الريان للبلاستيك', date: '2024-06-08', product: 'خلاط كهربائي 500 واط', quantity: 5, amount: 75000, reason: 'عيب مصنعي', status: 'posted' },
+    { id: 'pr-2', company_id: companyId, return_number: 'PR-2024-002', invoice_number: 'PINV-2024-0015', supplier: 'شركة الصين للتجارة الدولية', date: '2024-06-14', product: 'مكيف سبليت 18000 وحدة', quantity: 2, amount: 190000, reason: 'تلف أثناء الشحن', status: 'draft' },
+  ];
+}
+
+function seedReceiptVouchers(companyId: string) {
+  return [
+    { id: 'rv-1', company_id: companyId, voucher_number: 'RV-2024-001', date: '2024-06-05', customer: 'شركة اليمن للتجارة', amount: 500000, payment_method: 'bank', bank_account: 'البنك اليمني الدولي', check_number: null, check_date: null, notes: 'تحصيل دفعة من العميل', status: 'posted' },
+    { id: 'rv-2', company_id: companyId, voucher_number: 'RV-2024-002', date: '2024-06-08', customer: 'مؤسسة الأمل التجارية', amount: 200000, payment_method: 'cash', bank_account: null, check_number: null, check_date: null, notes: 'تحصيل نقدي من العميل', status: 'posted' },
+    { id: 'rv-3', company_id: companyId, voucher_number: 'RV-2024-003', date: '2024-06-12', customer: 'شركة الخليج للمواد الغذائية', amount: 750000, payment_method: 'check', bank_account: null, check_number: 'CH-445566', check_date: '2024-06-20', notes: 'شيك بنكي مؤجل', status: 'draft' },
+    { id: 'rv-4', company_id: companyId, voucher_number: 'RV-2024-004', date: '2024-06-15', customer: 'مؤسسة النور للأدوات المنزلية', amount: 300000, payment_method: 'bank', bank_account: 'البنك اليمني الدولي', check_number: null, check_date: null, notes: 'تحويل بنكي', status: 'posted' },
+  ];
+}
+
+function seedPaymentVouchers(companyId: string) {
+  return [
+    { id: 'pv-1', company_id: companyId, voucher_number: 'PV-2024-001', date: '2024-06-03', supplier: 'مصنع الريان للبلاستيك', amount: 300000, payment_method: 'bank', bank_account: 'البنك اليمني الدولي', check_number: null, check_date: null, expense_account: null, notes: 'دفعة للمورد', status: 'posted' },
+    { id: 'pv-2', company_id: companyId, voucher_number: 'PV-2024-002', date: '2024-06-07', supplier: 'شركة الإمارات للتصدير', amount: 500000, payment_method: 'cash', bank_account: null, check_number: null, check_date: null, expense_account: null, notes: 'دفعة نقدية للمورد', status: 'posted' },
+    { id: 'pv-3', company_id: companyId, voucher_number: 'PV-2024-003', date: '2024-06-10', supplier: 'مصنع الأمل للأدوات المنزلية', amount: 150000, payment_method: 'check', bank_account: null, check_number: 'CH-778899', check_date: '2024-06-25', expense_account: null, notes: 'شيك مؤجل للمورد', status: 'draft' },
+    { id: 'pv-4', company_id: companyId, voucher_number: 'PV-2024-004', date: '2024-06-15', supplier: 'شركة مصر للأدوات الكهربائية', amount: 250000, payment_method: 'bank', bank_account: 'البنك اليمني الدولي', check_number: null, check_date: null, expense_account: null, notes: 'تحويل بنكي للمورد', status: 'posted' },
+    { id: 'pv-5', company_id: companyId, voucher_number: 'PV-2024-005', date: '2024-06-18', supplier: 'مصروفات', amount: 50000, payment_method: 'cash', bank_account: null, check_number: null, check_date: null, expense_account: 'مصروفات الكهرباء', notes: 'دفع فاتورة كهرباء', status: 'posted' },
+  ];
 }

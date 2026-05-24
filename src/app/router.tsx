@@ -31,20 +31,26 @@ const TrialBalancePage = React.lazy(() => import('@/modules/accounting/component
 const BalanceSheetPage = React.lazy(() => import('@/modules/accounting/components/BalanceSheetPage'));
 const ProfitLossPage = React.lazy(() => import('@/modules/accounting/components/ProfitLossPage'));
 const CashFlowPage = React.lazy(() => import('@/modules/accounting/components/CashFlowPage'));
+const ReceiptVouchersPage = React.lazy(() => import('@/modules/accounting/components/ReceiptVouchersPage'));
+const PaymentVouchersPage = React.lazy(() => import('@/modules/accounting/components/PaymentVouchersPage'));
 
 // Inventory sub-pages
 const ProductsPage = React.lazy(() => import('@/modules/inventory/components/ProductsPage'));
 const WarehousesPage = React.lazy(() => import('@/modules/inventory/components/WarehousesPage'));
+const InventoryTransactionsPage = React.lazy(() => import('@/modules/inventory/components/InventoryTransactionsPage'));
+const StockAdjustmentPage = React.lazy(() => import('@/modules/inventory/components/StockAdjustmentPage'));
 
 // Sales sub-pages
 const InvoicesPage = React.lazy(() => import('@/modules/sales/components/InvoicesPage'));
 const CustomersPage = React.lazy(() => import('@/modules/sales/components/CustomersPage'));
 const QuotationsPage = React.lazy(() => import('@/modules/sales/components/QuotationsPage'));
+const SalesReturnsPage = React.lazy(() => import('@/modules/sales/components/SalesReturnsPage'));
 
 // Purchases sub-pages
 const PurchaseInvoicesPage = React.lazy(() => import('@/modules/purchases/components/PurchaseInvoicesPage'));
 const PurchaseOrdersPage = React.lazy(() => import('@/modules/purchases/components/PurchaseOrdersPage'));
 const SuppliersPage = React.lazy(() => import('@/modules/purchases/components/SuppliersPage'));
+const PurchaseReturnsPage = React.lazy(() => import('@/modules/purchases/components/PurchaseReturnsPage'));
 
 // Manufacturing sub-pages
 const WorkOrdersPage = React.lazy(() => import('@/modules/manufacturing/components/WorkOrdersPage'));
@@ -122,26 +128,32 @@ export const AppRouter: React.FC = () => {
                   <Route path="balance" element={withSuspense(BalanceSheetPage)} />
                   <Route path="profit" element={withSuspense(ProfitLossPage)} />
                   <Route path="cashflow" element={withSuspense(CashFlowPage)} />
+                  <Route path="receipt-vouchers" element={withSuspense(ReceiptVouchersPage)} />
+                  <Route path="payment-vouchers" element={withSuspense(PaymentVouchersPage)} />
                 </Route>
                 
                 {/* Inventory with nested routes */}
                 <Route path="/inventory" element={withSuspense(InventoryPage)}>
                   <Route path="products" element={withSuspense(ProductsPage)} />
                   <Route path="warehouses" element={withSuspense(WarehousesPage)} />
+                  <Route path="transactions" element={withSuspense(InventoryTransactionsPage)} />
+                  <Route path="adjustments" element={withSuspense(StockAdjustmentPage)} />
                 </Route>
-                
+
                 {/* Sales with nested routes */}
                 <Route path="/sales" element={withSuspense(SalesPage)}>
                   <Route path="invoices" element={withSuspense(InvoicesPage)} />
                   <Route path="customers" element={withSuspense(CustomersPage)} />
                   <Route path="quotations" element={withSuspense(QuotationsPage)} />
+                  <Route path="returns" element={withSuspense(SalesReturnsPage)} />
                 </Route>
-                
+
                 {/* Purchases with nested routes */}
                 <Route path="/purchases" element={withSuspense(PurchasesPage)}>
                   <Route path="invoices" element={withSuspense(PurchaseInvoicesPage)} />
                   <Route path="orders" element={withSuspense(PurchaseOrdersPage)} />
                   <Route path="suppliers" element={withSuspense(SuppliersPage)} />
+                  <Route path="returns" element={withSuspense(PurchaseReturnsPage)} />
                 </Route>
                 
                 {/* Manufacturing with nested routes */}

@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { FileText, Users, Tag } from 'lucide-react';
+import { FileText, Users, Tag, Undo2 } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const salesMenu = [
   { id: 'invoices', label: 'فواتير المبيعات', icon: FileText, path: '/sales/invoices' },
   { id: 'customers', label: 'العملاء', icon: Users, path: '/sales/customers' },
   { id: 'quotations', label: 'عروض الأسعار', icon: Tag, path: '/sales/quotations' },
+  { id: 'returns', label: 'مردودات المبيعات', icon: Undo2, path: '/sales/returns' },
 ];
 
 export const SalesPage: React.FC = () => {

@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Store, FileText, ClipboardList } from 'lucide-react';
+import { Store, FileText, ClipboardList, Undo2 } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const purchasesMenu = [
   { id: 'invoices', label: 'فواتير المشتريات', icon: FileText, path: '/purchases/invoices' },
   { id: 'orders', label: 'أوامر الشراء', icon: ClipboardList, path: '/purchases/orders' },
   { id: 'suppliers', label: 'الموردين', icon: Store, path: '/purchases/suppliers' },
+  { id: 'returns', label: 'مردودات المشتريات', icon: Undo2, path: '/purchases/returns' },
 ];
 
 export const PurchasesPage: React.FC = () => {

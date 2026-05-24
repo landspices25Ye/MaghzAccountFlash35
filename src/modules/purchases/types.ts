@@ -30,8 +30,8 @@ export interface PurchaseInvoice {
 }
 
 export interface PurchaseInvoiceLine {
-  id: string;
-  invoiceId: string;
+  id?: string;
+  invoiceId?: string;
   productId?: string;
   description?: string;
   quantity: number;
@@ -44,6 +44,7 @@ export interface PurchaseOrder {
   companyId: string;
   orderNumber: string;
   supplierId: string;
+  supplier?: Supplier;
   date: string;
   expectedDate?: string;
   totalAmount: number;

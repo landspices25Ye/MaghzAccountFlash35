@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { GitBranch, BookOpen, Scale, FileText, BarChart3, Banknote } from 'lucide-react';
+import { GitBranch, BookOpen, Scale, FileText, BarChart3, Banknote, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const accountingMenu = [
@@ -10,6 +10,8 @@ const accountingMenu = [
   { id: 'balance', label: 'الميزانية العمومية', icon: FileText, path: '/accounting/balance' },
   { id: 'profit', label: 'قائمة الدخل', icon: BarChart3, path: '/accounting/profit' },
   { id: 'cashflow', label: 'التدفقات النقدية', icon: Banknote, path: '/accounting/cashflow' },
+  { id: 'receipt', label: 'سندات القبض', icon: ArrowLeftCircle, path: '/accounting/receipt-vouchers' },
+  { id: 'payment', label: 'سندات الصرف', icon: ArrowRightCircle, path: '/accounting/payment-vouchers' },
 ];
 
 export const AccountingPage: React.FC = () => {
