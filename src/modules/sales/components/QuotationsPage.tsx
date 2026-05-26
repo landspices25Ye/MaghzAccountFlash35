@@ -44,7 +44,7 @@ export const QuotationsPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredQuotations = useBranchFilter(quotations);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
-  const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -236,7 +236,7 @@ export const QuotationsPage: React.FC = () => {
     { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم', width: '120px' },
     { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: Quotation) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
-    { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? new Date(row.expiryDate).toLocaleDateString('ar-SA') : '-' },
+    { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? formatDate(row.expiryDate) : '-' },
     { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: Quotation) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '220px', render: (row: Quotation) => (

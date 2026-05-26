@@ -53,12 +53,12 @@ maghzaccount-pro/
 │   │   ├── store/                  ← Zustand stores
 │   │   ├── i18n/                   ← ar.json, en.json, useTranslation
 │   │   ├── database/               ← طبقات البيانات
-│   │   │   ├── adapters/           ← PG, Realm, Mock adapters
+│   │   │   ├── adapters/           ← PG, Mock adapters (Realm removed)
 │   │   │   ├── schema/             ← Drizzle schemas (per module)
-│   │   │   └── realm/              ← Realm schemas
+│   │   │   └── mock/               ← Mock data seed + initialization
 │   │   ├── reports/                ← محرك التقارير
 │   │   │   ├── engine/             ← ReportBuilder, QueryBuilder
-│   │   │   └── export/             ← PDF, Excel, CSV
+│   │   │   └── export/             ← PDF, Excel, CSV (lazy-loaded via dynamic import)
 │   │   └── utils/                  ← formatCurrency, validators
 │   │
 │   ├── modules/                    ← وحدات ERP المنفصلة
@@ -102,7 +102,8 @@ maghzaccount-pro/
 - **النمط:** Functional Components + Hooks فقط.
 - **الـ Store:** استخدم Zustand للحالة المشتركة.
 - **التأثيرات الجانبية:** استدعاءات قاعدة البيانات داخل `useEffect` أو hooks مخصصة.
-- **Memoization:** لا تُفرط في `useMemo`/`useCallback`.
+- **Memoization:** لا تُفرط في `useMemo`/`useCallback`. استخدم `React.memo` فقط للمكونات الأساسية (Button, Input, Card, Table, Modal).
+- **التنسيق:** استخدم `useFormatters` (من `core/utils/useFormatters`) لتنسيق العملات والتواريخ — لا تستخدم `toLocaleString('ar-SA')` مباشرة.
 
 ### 4.3 Tailwind CSS
 - **النظام:** استخدم Tailwind classes مباشرة في JSX.
@@ -110,15 +111,16 @@ maghzaccount-pro/
 - **RTL:** استخدم `rtl:` prefix أو logical properties.
 - **ممنوع:** لا تضف CSS مخصص إلا للأنماط المشتركة (`@layer components`).
 
-### 4.4 قاعدة البيانات (3 طبقات)
+### 4.4 قاعدة البيانات (طبقتان — بعد إزالة Realm)
 
 | الطبقة | البيئة | التقنية |
 |--------|--------|---------|
-| Layer 1 | Electron + PG متاح | PostgreSQL + Drizzle ORM |
-| Layer 2 | Electron بدون PG | Realm DB |
-| Layer 3 | Browser | Mock/Dexie |
+| Layer 1 | Electron + PG متاح | PostgreSQL + Drizzle ORM (`electronPgAdapter`) |
+| Layer 2 | Browser أو بدون PG | Mock adapter (`mockAdapter`) |
 
 **قاعدة حاسمة:** استخدم Database Adapters من `core/database/adapters/`. لا تكتب كود قاعدة بيانات مباشرة داخل المكونات.
+
+`getDbAdapter()` يحاول PG أولاً عبر IPC، فإن فشل يقع إلى Mock. `convertPlaceholders()` يحوِّل `?` → `$N` قبل الإرسال لـ PostgreSQL.
 
 ### 4.5 الترجمة (i18n)
 - **المفتاح:** استخدم `module.feature.element` (مثال: `sales.invoice.total`).
@@ -335,12 +337,21 @@ npx drizzle-kit migrate
 | Dark mode لا يعمل | تأكد من `darkMode: 'class'` في tailwind.config.js |
 | RTL لا يعمل | أضف `dir="rtl"` في `<html>` واستخدم `rtl:` prefix |
 | Recharts لا يظهر | استخدم `ResponsiveContainer` دائماً |
-| PDF لا يدعم العربية | حمّل خط Cairo في `@react-pdf/renderer` |
+| PDF لا يدعم العربية | `jspdf` يستخدم helvetica — للدعم الكامل استخدم Cairo عبر `doc.addFileToVFS` |
 | pgClient لا يعمل في Browser | طبيعي — استخدم Mock adapter |
+| Bundle كبير (PDF/Excel) | `jspdf` و `xlsx` يُحمَّلان ديناميكياً — لا تستخدم static import |
 
 ---
 
-## 10. الاتصال والدعم
+## 10. تحسينات الأداء (Performance)
+
+- **Layout Routes:** `AppLayout` و `ProtectedRoute` يستخدمان `<Outlet />` بدلاً من `{children}` — يمنع إعادة التصيير عند تغيير المسار
+- **Lazy Loading:** `jspdf` + `xlsx` محمَّلان ديناميكياً عبر `await import()` — لا يُحمَّلان إلا عند الضغط على زر التصدير
+- **Bundle Splitting:** Vite `manualChunks` يفصل vendor (React/Recharts) عن pdf/excel/db/table
+- **React.memo:** 5 مكونات أساسية (Button, Input, Card, Table, Modal) مغلَّفة بـ `React.memo`
+- **Barrel Removal:** `export * from './smart'` — أزيل من `core/ui/components/index.ts` لتجنب تجميع 20 مكوناً ذكياً
+
+## 11. الاتصال والدعم
 
 - **المشرف:** مالك المستودع
 - **الوثائق التقنية:** 
@@ -353,4 +364,4 @@ npx drizzle-kit migrate
 
 ---
 
-*آخر تحديث: 2026-05-24 | الإصدار: maghzaccount-pro v0.0.0*
+*آخر تحديث: 2026-05-27 | الإصدار: maghzaccount-pro v0.0.0*

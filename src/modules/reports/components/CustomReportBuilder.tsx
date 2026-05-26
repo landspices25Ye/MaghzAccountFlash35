@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { Settings, FileDown, RotateCcw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
@@ -92,6 +93,7 @@ type Step = 'table' | 'columns' | 'filters' | 'preview';
 export const CustomReportBuilder: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [step, setStep] = useState<Step>('table');
   const [selectedTable, setSelectedTable] = useState<TableMeta | null>(null);
   const [selectedColumns, setSelectedColumns] = useState<SelectedColumn[]>([]);
@@ -383,7 +385,7 @@ export const CustomReportBuilder: React.FC = () => {
                       render: (row: Record<string, unknown>) => {
                         const val = row[c.key];
                         if (val === null || val === undefined) return '-';
-                        if (typeof val === 'number') return val.toLocaleString('ar-SA');
+                        if (typeof val === 'number') return formatCurrency(val);
                         return String(val);
                       },
                     }))}

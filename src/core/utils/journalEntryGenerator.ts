@@ -22,26 +22,26 @@ export interface AutoJournalEntry {
 
 // Well-known account codes from our chart of accounts
 const ACC = {
-  CASH: '111001',           // الصندوق الرئيسي
-  BANK: '111002',           // حساب بنك الكريمي
-  TRADE_DEBTORS: '112001',  // مدينون تجاريون
-  INVENTORY: '113001',      // بضاعة أول المدة
-  PREPAID_RENT: '114001',   // إيجار مدفوع مقدماً
-  TRADE_CREDITORS: '211001',// دائنون تجاريون
-  VAT_PAYABLE: '213001',    // ضريبة القيمة المضافة
-  SALES: '411001',          // مبيعات المنتجات
-  SALES_SERVICES: '411002', // مبيعات الخدمات
-  SALES_RETURNS: '411003',  // مردودات المبيعات
-  COGS: '511003',           // تكلفة بضاعة مباعة
-  SALARIES: '511002',       // رواتب وأجور
-  RENT_WAREHOUSE: '511004', // إيجار مستودعات
-  RENT_OFFICE: '511005',    // إيجار مكاتب
-  ELECTRICITY: '511006',    // كهرباء وماء
-  ADVERTISING: '511007',    // إعلانات ودعاية
-  MAINTENANCE: '511008',    // صيانة معدات
-  SHIPPING: '511009',       // نقل وشحن
-  BUILDING_DEP: '511010',   // استهلاك مباني
-  EQUIPMENT_DEP: '511011',  // استهلاك معدات
+  CASH: '11101',           // الصندوق الرئيسي
+  BANK: '11102',           // حساب بنك الكريمي
+  TRADE_DEBTORS: '11201',  // مدينون تجاريون
+  INVENTORY: '11301',      // بضاعة أول المدة
+  PREPAID_RENT: '11401',   // إيجار مدفوع مقدماً
+  TRADE_CREDITORS: '21101',// دائنون تجاريون
+  VAT_PAYABLE: '21301',    // ضريبة القيمة المضافة
+  SALES: '41101',          // مبيعات المنتجات
+  SALES_SERVICES: '41102', // مبيعات الخدمات
+  SALES_RETURNS: '41103',  // مردودات المبيعات
+  COGS: '51101',           // تكلفة بضاعة مباعة
+  SALARIES: '52101',       // رواتب وأجور
+  RENT_WAREHOUSE: '52201', // إيجار مستودعات
+  RENT_OFFICE: '52202',    // إيجار مكاتب
+  ELECTRICITY: '52301',    // كهرباء وماء
+  ADVERTISING: '52401',    // إعلانات ودعاية
+  MAINTENANCE: '52501',    // صيانة معدات
+  SHIPPING: '52601',       // نقل وشحن
+  BUILDING_DEP: '52701',   // استهلاك مباني
+  EQUIPMENT_DEP: '52702',  // استهلاك معدات
 };
 
 async function findAccountByCode(companyId: string, code: string): Promise<string | null> {
@@ -53,17 +53,17 @@ async function findAccountByCode(companyId: string, code: string): Promise<strin
   if (result.rows?.[0]?.id) return result.rows[0].id;
   // Fallback: search by name pattern for backwards compatibility
   const nameMap: Record<string, string> = {
-    '111001': '%صندوق%',
-    '111002': '%بنك%',
-    '112001': '%مدينون%',
-    '113001': '%مخزون%|%بضاعة%',
-    '211001': '%دائنون%',
-    '213001': '%ضريبة%',
-    '411001': '%مبيعات المنتجات%',
-    '411002': '%مبيعات الخدمات%',
-    '411003': '%مردودات%',
-    '511003': '%تكلفة بضاعة%',
-    '511002': '%رواتب%',
+    '11101': '%صندوق%',
+    '11102': '%بنك%',
+    '11201': '%مدينون%',
+    '11301': '%مخزون%|%بضاعة%',
+    '21101': '%دائنون%',
+    '21301': '%ضريبة%',
+    '41101': '%مبيعات المنتجات%',
+    '41102': '%مبيعات الخدمات%',
+    '41103': '%مردودات%',
+    '51101': '%تكلفة بضاعة%',
+    '52101': '%رواتب%',
   };
   const pattern = nameMap[code];
   if (pattern) {

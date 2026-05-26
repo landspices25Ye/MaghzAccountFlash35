@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/core/utils';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -7,7 +7,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   noPadding?: boolean;
 }
 
-export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+export const Card = memo(React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, header, footer, noPadding, children, ...props }, ref) => {
     return (
       <div
@@ -32,18 +32,18 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       </div>
     );
   }
-);
+));
 
 Card.displayName = 'Card';
 
-export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => (
+export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = memo(({ className, children, ...props }) => (
   <h3 className={cn('text-base font-semibold text-slate-900 dark:text-slate-50', className)} {...props}>
     {children}
   </h3>
-);
+));
 
-export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className, children, ...props }) => (
+export const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = memo(({ className, children, ...props }) => (
   <p className={cn('text-sm text-slate-500 dark:text-slate-400 mt-1', className)} {...props}>
     {children}
   </p>
-);
+));

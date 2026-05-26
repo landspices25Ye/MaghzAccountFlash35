@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { memo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/core/utils';
@@ -14,7 +14,7 @@ export interface ModalProps {
   className?: string;
 }
 
-export const Modal: React.FC<ModalProps> = ({
+export const Modal: React.FC<ModalProps> = memo(({
   isOpen,
   onClose,
   title,
@@ -100,4 +100,4 @@ export const Modal: React.FC<ModalProps> = ({
     </div>,
     document.body
   );
-};
+});

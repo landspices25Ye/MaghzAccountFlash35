@@ -10,6 +10,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel } from '@/core/utils/exportEngine';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { logAudit } from '@/core/utils/auditLogger';
 import type { Customer } from '../types';
 
@@ -18,6 +19,7 @@ type TabKey = 'details' | 'statement' | 'aging';
 export const CustomersPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const currentUser = useAuthStore(state => state.user);
   const { customers, isLoading, create, update, remove } = useCustomers(activeCompany?.id || '');
   const { data: arAging, reload: reloadAging } = useCustomerArAging(activeCompany?.id || '');
@@ -121,7 +123,7 @@ export const CustomersPage: React.FC = () => {
       <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300"><Mail size={14} /> {row.email || '-'}</span>
     )},
     { key: 'balance', header: t('accounting.balance') || 'الرصيد', align: 'right' as const, render: (row: Customer) => (
-      <span className={row.balance > 0 ? 'text-rose-600 font-semibold' : 'text-slate-700 dark:text-slate-200'}>{Number(row.balance).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</span>
+      <span className={row.balance > 0 ? 'text-rose-600 font-semibold' : 'text-slate-700 dark:text-slate-200'}>{formatCurrency(row.balance)}</span>
     )},
     { key: 'isActive', header: t('sales.customer.isActive') || 'الحالة', render: (row: Customer) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '140px', render: (row: Customer) => (
@@ -160,7 +162,7 @@ export const CustomersPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total') || 'إجمالي العملاء'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{customers.length}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.active') || 'العملاء النشطون'}</p><p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalBalance.toLocaleString('ar-SA')} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
       </div>
 
       <Card>
@@ -249,11 +251,11 @@ export const CustomersPage: React.FC = () => {
                 <div className="space-y-4">
                   <Card className="p-4">
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.balance') || 'الرصيد الحالي'}</p>
-                    <p className={`text-2xl font-bold ${viewing.balance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{viewing.balance.toLocaleString('ar-SA')} {activeCompany?.currency || 'YER'}</p>
+                    <p className={`text-2xl font-bold ${viewing.balance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(viewing.balance)} {activeCompany?.currency || 'YER'}</p>
                   </Card>
                   <Card className="p-4">
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.creditLimit') || 'حد الائتمان'}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{(viewing.creditLimit || 0).toLocaleString('ar-SA')} {activeCompany?.currency || 'YER'}</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(viewing.creditLimit || 0)} {activeCompany?.currency || 'YER'}</p>
                   </Card>
                 </div>
               </div>
@@ -279,15 +281,17 @@ export const CustomersPage: React.FC = () => {
 
 function CustomerStatementTab({ customerId }: { customerId: string }) {
   const { t } = useTranslation();
+  const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { rows, isLoading } = useCustomerStatement(customerId);
 
   const columns = [
     { key: 'date', header: t('sales.date') || 'التاريخ' },
     { key: 'documentType', header: t('sales.documentType') || 'نوع المستند' },
     { key: 'documentNumber', header: t('sales.documentNumber') || 'رقم المستند' },
-    { key: 'debit', header: t('accounting.debit') || 'مدين', align: 'right' as const, render: (row: typeof rows[0]) => row.debit > 0 ? row.debit.toLocaleString('ar-SA') : '-' },
-    { key: 'credit', header: t('accounting.credit') || 'دائن', align: 'right' as const, render: (row: typeof rows[0]) => row.credit > 0 ? row.credit.toLocaleString('ar-SA') : '-' },
-    { key: 'balance', header: t('accounting.balance') || 'الرصيد', align: 'right' as const, render: (row: typeof rows[0]) => row.balance.toLocaleString('ar-SA') },
+    { key: 'debit', header: t('accounting.debit') || 'مدين', align: 'right' as const, render: (row: typeof rows[0]) => row.debit > 0 ? formatCurrency(row.debit) : '-' },
+    { key: 'credit', header: t('accounting.credit') || 'دائن', align: 'right' as const, render: (row: typeof rows[0]) => row.credit > 0 ? formatCurrency(row.credit) : '-' },
+    { key: 'balance', header: t('accounting.balance') || 'الرصيد', align: 'right' as const, render: (row: typeof rows[0]) => formatCurrency(row.balance) },
   ];
 
   return (
@@ -307,6 +311,8 @@ function CustomerStatementTab({ customerId }: { customerId: string }) {
 
 function CustomerAgingTab({ aging }: { aging?: { customerId: string; customerName: string; totalDue: number; buckets: { period: string; amount: number; count: number }[] } }) {
   const { t } = useTranslation();
+  const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   if (!aging) return <EmptyState icon="search" title={t('sales.customer.noAging') || 'لا توجد بيانات Aging'} description={t('sales.customer.noAgingDesc') || 'لا توجد فواتير مستحقة لهذا العميل'} />;
 
   return (
@@ -315,7 +321,7 @@ function CustomerAgingTab({ aging }: { aging?: { customerId: string; customerNam
         {aging.buckets.map(b => (
           <Card key={b.period} className="p-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">{b.period} {t('sales.customer.days') || 'يوم'}</p>
-            <p className="text-xl font-bold text-slate-900 dark:text-slate-50">{b.amount.toLocaleString('ar-SA')}</p>
+            <p className="text-xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(b.amount)}</p>
             <p className="text-xs text-slate-400">{b.count} {t('sales.customer.invoices') || 'فاتورة'}</p>
           </Card>
         ))}
@@ -323,7 +329,7 @@ function CustomerAgingTab({ aging }: { aging?: { customerId: string; customerNam
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.customer.totalDue') || 'إجمالي المستحق'}</p>
-          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{aging.totalDue.toLocaleString('ar-SA')}</p>
+          <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(aging.totalDue)}</p>
         </div>
       </Card>
     </div>

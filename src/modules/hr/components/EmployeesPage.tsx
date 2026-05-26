@@ -6,12 +6,14 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useEmployees } from '../hooks/useHr';
 import type { Employee } from '../types';
 
 export const EmployeesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { employees, isLoading, create, update, remove } = useEmployees(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,7 +124,7 @@ export const EmployeesPage: React.FC = () => {
     )},
     { key: 'position', header: 'المنصب' },
     { key: 'departmentName', header: 'القسم', render: (row: Employee) => row.departmentName || row.departmentId || '—' },
-    { key: 'baseSalary', header: 'الراتب الأساسي', align: 'right' as const, render: (row: Employee) => row.baseSalary?.toLocaleString('ar-SA') || '—' },
+    { key: 'baseSalary', header: 'الراتب الأساسي', align: 'right' as const, render: (row: Employee) => formatCurrency(row.baseSalary || 0) || '—' },
     { key: 'isActive', header: 'الحالة', width: '100px', render: (row: Employee) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: Employee) => (
       <ActionButtons onView={() => openView(row)} onEdit={() => openEdit(row)} onDelete={() => setConfirmDelete(row.id)} showPrint={false} />
@@ -236,7 +238,7 @@ export const EmployeesPage: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الهاتف:</span><p className="font-medium">{viewing.phone || '—'}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">البريد:</span><p className="font-medium">{viewing.email || '—'}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">تاريخ التعيين:</span><p className="font-medium">{viewing.hireDate || '—'}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الراتب الأساسي:</span><p className="font-medium">{viewing.baseSalary?.toLocaleString('ar-SA') || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الراتب الأساسي:</span><p className="font-medium">{formatCurrency(viewing.baseSalary || 0) || '—'}</p></div>
             </div>
           </div>
         )}

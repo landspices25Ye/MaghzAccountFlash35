@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/core/utils';
 
 export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
@@ -10,7 +10,7 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
   size?: 'sm' | 'md' | 'lg';
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(
+export const Input = memo(React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, helperText, leftIcon, rightIcon, size = 'md', ...props }, ref) => {
     return (
       <div className={cn('flex flex-col gap-1.5', className)}>
@@ -58,6 +58,6 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       </div>
     );
   }
-);
+));
 
 Input.displayName = 'Input';

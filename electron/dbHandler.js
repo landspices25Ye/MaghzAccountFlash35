@@ -106,6 +106,7 @@ export async function initializeSchema() {
     `);
     await client.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS date_format VARCHAR(20) DEFAULT 'yyyy-MM-dd';`);
     await client.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS decimal_places INTEGER DEFAULT 2;`);
+    await client.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS calendar VARCHAR(10) DEFAULT 'gregorian';`);
 
     // Users table
     await client.query(`
@@ -143,6 +144,22 @@ export async function initializeSchema() {
         UNIQUE(company_id, code)
       );
     `);
+
+    // Roles table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        description VARCHAR(255),
+        permissions TEXT,
+        is_system BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`GRANT ALL ON roles TO maghz;`);
 
     // Activity logs table
     await client.query(`
@@ -683,6 +700,13 @@ export async function seedInitialData() {
     `, [companyId, 'مدير النظام', 'admin@maghz-erp.com', 'admin']);
 
     const adminId = userResult.rows[0].id;
+
+    // 2a. Seed default admin role
+    await client.query(`
+      INSERT INTO roles (company_id, name, description, permissions, is_system)
+      SELECT $1, 'مدير النظام', 'مدير النظام - صلاحيات كاملة', '["all"]', TRUE
+      WHERE NOT EXISTS (SELECT 1 FROM roles WHERE roles.company_id = $1 AND roles.is_system = TRUE);
+    `, [companyId]);
 
     // 3. Seed Chart of Accounts
 

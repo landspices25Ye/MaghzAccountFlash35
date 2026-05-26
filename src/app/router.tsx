@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, HashRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { isElectron } from '@/core/database/adapters';
 import { AppLayout } from './layout';
 
@@ -105,7 +105,7 @@ const withSuspense = (Component: React.ComponentType) => (
 );
 
 // Protected Route wrapper
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -120,7 +120,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (isLoading) return <PageLoader />;
   if (!isAuthenticated) return null;
 
-  return <>{children}</>;
+  return <Outlet />;
 };
 
 import { useAuthStore } from '@/modules/auth/store';
@@ -134,105 +134,102 @@ export const AppRouter: React.FC = () => {
         {/* Public route */}
         <Route path="/login" element={withSuspense(LoginPage)} />
         
-        {/* Protected routes */}
-        <Route path="/*" element={
-          <ProtectedRoute>
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={withSuspense(DashboardPage)} />
-                
-                {/* Accounting with nested routes */}
-                <Route path="/accounting" element={withSuspense(AccountingPage)}>
-                  <Route path="chart" element={withSuspense(ChartOfAccounts)} />
-                  <Route path="journal" element={withSuspense(JournalEntriesPage)} />
-                  <Route path="trial" element={withSuspense(TrialBalancePage)} />
-                  <Route path="balance" element={withSuspense(BalanceSheetPage)} />
-                  <Route path="profit" element={withSuspense(ProfitLossPage)} />
-                  <Route path="cashflow" element={withSuspense(CashFlowPage)} />
-                  <Route path="receipt-vouchers" element={withSuspense(ReceiptVouchersPage)} />
-                  <Route path="payment-vouchers" element={withSuspense(PaymentVouchersPage)} />
-                  <Route path="ledger" element={withSuspense(AccountLedgerPage)} />
-                </Route>
-                
-                {/* Inventory with nested routes */}
-                <Route path="/inventory" element={withSuspense(InventoryPage)}>
-                  <Route path="products" element={withSuspense(ProductsPage)} />
-                  <Route path="warehouses" element={withSuspense(WarehousesPage)} />
-                  <Route path="stock" element={withSuspense(StockPage)} />
-                  <Route path="transactions" element={withSuspense(InventoryTransactionsPage)} />
-                  <Route path="adjustments" element={withSuspense(StockAdjustmentPage)} />
-                </Route>
+        {/* Protected layout route */}
+        <Route element={<ProtectedRoute />}>
+          {/* App layout route — renders Outlet inside AppLayout shell */}
+          <Route element={<AppLayout />}>
+            <Route path="/" element={withSuspense(DashboardPage)} />
+            
+            {/* Accounting with nested routes */}
+            <Route path="/accounting" element={withSuspense(AccountingPage)}>
+              <Route path="chart" element={withSuspense(ChartOfAccounts)} />
+              <Route path="journal" element={withSuspense(JournalEntriesPage)} />
+              <Route path="trial" element={withSuspense(TrialBalancePage)} />
+              <Route path="balance" element={withSuspense(BalanceSheetPage)} />
+              <Route path="profit" element={withSuspense(ProfitLossPage)} />
+              <Route path="cashflow" element={withSuspense(CashFlowPage)} />
+              <Route path="receipt-vouchers" element={withSuspense(ReceiptVouchersPage)} />
+              <Route path="payment-vouchers" element={withSuspense(PaymentVouchersPage)} />
+              <Route path="ledger" element={withSuspense(AccountLedgerPage)} />
+            </Route>
+            
+            {/* Inventory with nested routes */}
+            <Route path="/inventory" element={withSuspense(InventoryPage)}>
+              <Route path="products" element={withSuspense(ProductsPage)} />
+              <Route path="warehouses" element={withSuspense(WarehousesPage)} />
+              <Route path="stock" element={withSuspense(StockPage)} />
+              <Route path="transactions" element={withSuspense(InventoryTransactionsPage)} />
+              <Route path="adjustments" element={withSuspense(StockAdjustmentPage)} />
+            </Route>
 
-                {/* Sales with nested routes */}
-                <Route path="/sales" element={withSuspense(SalesPage)}>
-                  <Route path="invoices" element={withSuspense(InvoicesPage)} />
-                  <Route path="customers" element={withSuspense(CustomersPage)} />
-                  <Route path="quotations" element={withSuspense(QuotationsPage)} />
-                  <Route path="returns" element={withSuspense(SalesReturnsPage)} />
-                </Route>
+            {/* Sales with nested routes */}
+            <Route path="/sales" element={withSuspense(SalesPage)}>
+              <Route path="invoices" element={withSuspense(InvoicesPage)} />
+              <Route path="customers" element={withSuspense(CustomersPage)} />
+              <Route path="quotations" element={withSuspense(QuotationsPage)} />
+              <Route path="returns" element={withSuspense(SalesReturnsPage)} />
+            </Route>
 
-                {/* Purchases with nested routes */}
-                <Route path="/purchases" element={withSuspense(PurchasesPage)}>
-                  <Route path="invoices" element={withSuspense(PurchaseInvoicesPage)} />
-                  <Route path="orders" element={withSuspense(PurchaseOrdersPage)} />
-                  <Route path="suppliers" element={withSuspense(SuppliersPage)} />
-                  <Route path="returns" element={withSuspense(PurchaseReturnsPage)} />
-                </Route>
-                
-                {/* Manufacturing with nested routes */}
-                <Route path="/manufacturing" element={withSuspense(ManufacturingPage)}>
-                  <Route path="work-orders" element={withSuspense(WorkOrdersPage)} />
-                  <Route path="bom" element={withSuspense(BomPage)} />
-                </Route>
-                
-                {/* HR with nested routes */}
-                <Route path="/hr" element={withSuspense(HrPage)}>
-                  <Route path="employees" element={withSuspense(EmployeesPage)} />
-                  <Route path="attendance" element={withSuspense(AttendancePage)} />
-                  <Route path="payroll" element={withSuspense(PayrollPage)} />
-                </Route>
-                
-                {/* CRM with nested routes */}
-                <Route path="/crm" element={withSuspense(CrmPage)}>
-                  <Route path="leads" element={withSuspense(LeadsPage)} />
-                  <Route path="opportunities" element={withSuspense(OpportunitiesPage)} />
-                  <Route path="tasks" element={withSuspense(TasksPage)} />
-                </Route>
-                
-                {/* Reports hub & analytical reports */}
-                <Route path="/reports" element={withSuspense(ReportsPage)} />
-                <Route path="/reports/sales-analysis" element={withSuspense(SalesAnalysisReport)} />
-                <Route path="/reports/inventory-analysis" element={withSuspense(InventoryAnalysisReport)} />
-                <Route path="/reports/customer-statement" element={withSuspense(CustomerStatementReport)} />
-                <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
-                <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />
-                <Route path="/reports/custom-builder" element={withSuspense(CustomReportBuilder)} />
-                <Route path="/users" element={withSuspense(UsersPage)} />
-                <Route path="/roles" element={withSuspense(RolesPage)} />
-                <Route path="/audit-logs" element={withSuspense(AuditLogPage)} />
-                
-                {/* Settings with nested routes */}
-                <Route path="/settings" element={withSuspense(SettingsLayout)}>
-                  <Route path="company" element={withSuspense(CompanySetup)} />
-                  <Route path="currencies" element={withSuspense(CurrenciesPage)} />
-                  <Route path="vat" element={withSuspense(VatSettingsPage)} />
-                  <Route path="branches" element={withSuspense(BranchesPage)} />
-                  <Route path="backup" element={withSuspense(BackupPage)} />
-                  <Route path="document-sequences" element={withSuspense(DocumentSequencesPage)} />
-                  <Route path="product-types" element={withSuspense(ProductTypesPage)} />
-                  <Route path="product-categories" element={withSuspense(ProductCategoriesPage)} />
-                  <Route path="default-accounts" element={withSuspense(DefaultAccountsPage)} />
-                  <Route path="units" element={withSuspense(UnitsPage)} />
-                  <Route path="cash-boxes" element={withSuspense(CashBoxesPage)} />
-                  <Route path="banks" element={withSuspense(BanksPage)} />
-                  <Route path="cost-centers" element={withSuspense(CostCentersPage)} />
-                  <Route path="users" element={withSuspense(UsersSettingsPage)} />
-                  <Route path="reset" element={withSuspense(ResetOnboardingPage)} />
-                </Route>
-              </Routes>
-            </AppLayout>
-          </ProtectedRoute>
-        } />
+            {/* Purchases with nested routes */}
+            <Route path="/purchases" element={withSuspense(PurchasesPage)}>
+              <Route path="invoices" element={withSuspense(PurchaseInvoicesPage)} />
+              <Route path="orders" element={withSuspense(PurchaseOrdersPage)} />
+              <Route path="suppliers" element={withSuspense(SuppliersPage)} />
+              <Route path="returns" element={withSuspense(PurchaseReturnsPage)} />
+            </Route>
+            
+            {/* Manufacturing with nested routes */}
+            <Route path="/manufacturing" element={withSuspense(ManufacturingPage)}>
+              <Route path="work-orders" element={withSuspense(WorkOrdersPage)} />
+              <Route path="bom" element={withSuspense(BomPage)} />
+            </Route>
+            
+            {/* HR with nested routes */}
+            <Route path="/hr" element={withSuspense(HrPage)}>
+              <Route path="employees" element={withSuspense(EmployeesPage)} />
+              <Route path="attendance" element={withSuspense(AttendancePage)} />
+              <Route path="payroll" element={withSuspense(PayrollPage)} />
+            </Route>
+            
+            {/* CRM with nested routes */}
+            <Route path="/crm" element={withSuspense(CrmPage)}>
+              <Route path="leads" element={withSuspense(LeadsPage)} />
+              <Route path="opportunities" element={withSuspense(OpportunitiesPage)} />
+              <Route path="tasks" element={withSuspense(TasksPage)} />
+            </Route>
+            
+            {/* Reports hub & analytical reports */}
+            <Route path="/reports" element={withSuspense(ReportsPage)} />
+            <Route path="/reports/sales-analysis" element={withSuspense(SalesAnalysisReport)} />
+            <Route path="/reports/inventory-analysis" element={withSuspense(InventoryAnalysisReport)} />
+            <Route path="/reports/customer-statement" element={withSuspense(CustomerStatementReport)} />
+            <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
+            <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />
+            <Route path="/reports/custom-builder" element={withSuspense(CustomReportBuilder)} />
+            <Route path="/users" element={withSuspense(UsersPage)} />
+            <Route path="/roles" element={withSuspense(RolesPage)} />
+            <Route path="/audit-logs" element={withSuspense(AuditLogPage)} />
+            
+            {/* Settings with nested routes */}
+            <Route path="/settings" element={withSuspense(SettingsLayout)}>
+              <Route path="company" element={withSuspense(CompanySetup)} />
+              <Route path="currencies" element={withSuspense(CurrenciesPage)} />
+              <Route path="vat" element={withSuspense(VatSettingsPage)} />
+              <Route path="branches" element={withSuspense(BranchesPage)} />
+              <Route path="backup" element={withSuspense(BackupPage)} />
+              <Route path="document-sequences" element={withSuspense(DocumentSequencesPage)} />
+              <Route path="product-types" element={withSuspense(ProductTypesPage)} />
+              <Route path="product-categories" element={withSuspense(ProductCategoriesPage)} />
+              <Route path="default-accounts" element={withSuspense(DefaultAccountsPage)} />
+              <Route path="units" element={withSuspense(UnitsPage)} />
+              <Route path="cash-boxes" element={withSuspense(CashBoxesPage)} />
+              <Route path="banks" element={withSuspense(BanksPage)} />
+              <Route path="cost-centers" element={withSuspense(CostCentersPage)} />
+              <Route path="users" element={withSuspense(UsersSettingsPage)} />
+              <Route path="reset" element={withSuspense(ResetOnboardingPage)} />
+            </Route>
+          </Route>
+        </Route>
       </Routes>
     </Router>
   );

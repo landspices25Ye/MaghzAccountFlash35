@@ -20,6 +20,7 @@ interface CompanyFormData {
   currency: string;
   dateFormat: string;
   decimalPlaces: number;
+  calendar: 'gregorian' | 'hijri';
 }
 
 export const CompanySetupPage: React.FC = () => {
@@ -37,6 +38,7 @@ export const CompanySetupPage: React.FC = () => {
     currency: 'YER',
     dateFormat: 'yyyy-MM-dd',
     decimalPlaces: 2,
+    calendar: 'gregorian',
   });
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export const CompanySetupPage: React.FC = () => {
         currency: activeCompany.currency || 'YER',
         dateFormat: (activeCompany as any).dateFormat || 'yyyy-MM-dd',
         decimalPlaces: Number((activeCompany as any).decimalPlaces) || 2,
+        calendar: (activeCompany as any).calendar || 'gregorian',
       });
     }
   }, [activeCompany]);
@@ -74,7 +77,7 @@ export const CompanySetupPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(
-        `UPDATE companies SET name = ?, name_en = ?, tax_number = ?, address = ?, phone = ?, email = ?, logo_url = ?, fiscal_year_start = ?, currency = ?, date_format = ?, decimal_places = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE companies SET name = ?, name_en = ?, tax_number = ?, address = ?, phone = ?, email = ?, logo_url = ?, fiscal_year_start = ?, currency = ?, date_format = ?, decimal_places = ?, calendar = ?, updated_at = ? WHERE id = ?`,
         [
           formData.name,
           formData.nameEn,
@@ -87,6 +90,7 @@ export const CompanySetupPage: React.FC = () => {
           formData.currency,
           formData.dateFormat,
           formData.decimalPlaces,
+          formData.calendar,
           new Date().toISOString(),
           activeCompany.id,
         ]
@@ -101,7 +105,11 @@ export const CompanySetupPage: React.FC = () => {
       });
 
       // Update store
-      useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency, { dateFormat: formData.dateFormat, decimalPlaces: formData.decimalPlaces });
+      useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency, {
+        dateFormat: formData.dateFormat,
+        decimalPlaces: formData.decimalPlaces,
+        calendar: formData.calendar,
+      });
     } catch (error) {
       console.error('Failed to save company:', error);
     } finally {
@@ -187,15 +195,36 @@ export const CompanySetupPage: React.FC = () => {
               onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
             />
             <div>
+              <label className="form-label block mb-1.5">التقويم</label>
+              <select
+                value={formData.calendar}
+                onChange={(e) => setFormData((prev) => ({ ...prev, calendar: e.target.value as 'gregorian' | 'hijri' }))}
+                className="form-control"
+              >
+                <option value="gregorian">ميلادي</option>
+                <option value="hijri">هجري</option>
+              </select>
+            </div>
+            <div>
               <label className="form-label block mb-1.5">تنسيق التاريخ</label>
               <select
                 value={formData.dateFormat}
                 onChange={(e) => setFormData((prev) => ({ ...prev, dateFormat: e.target.value }))}
                 className="form-control"
               >
-                <option value="yyyy-MM-dd">YYYY-MM-DD (ميلادي)</option>
-                <option value="dd/MM/yyyy">DD/MM/YYYY</option>
-                <option value="yyyy/MM/dd">YYYY/MM/DD</option>
+                {formData.calendar === 'hijri' ? (
+                  <>
+                    <option value="yyyy/MM/dd">YYYY/MM/DD (هجري)</option>
+                    <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                    <option value="yyyy-MM-dd">YYYY-MM-DD</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="yyyy-MM-dd">YYYY-MM-DD (ميلادي)</option>
+                    <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                    <option value="yyyy/MM/dd">YYYY/MM/DD</option>
+                  </>
+                )}
               </select>
             </div>
             <Input

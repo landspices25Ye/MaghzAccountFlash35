@@ -6,7 +6,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { formatCurrency } from '@/core/utils';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface StockItem {
   product: string;
@@ -27,6 +27,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 export const InventoryAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [items, setItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -285,7 +286,7 @@ export const InventoryAnalysisReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis type="number" tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
                   <YAxis dataKey="product" type="category" width={100} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+                  <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
                   <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -307,7 +308,7 @@ export const InventoryAnalysisReport: React.FC = () => {
                 { key: 'product', header: 'المنتج' },
                 { key: 'sku', header: 'الرمز' },
                 { key: 'quantity', header: 'الكمية', align: 'right' },
-                { key: 'stockValue', header: 'القيمة', align: 'right', render: (row) => row.stockValue.toLocaleString('ar-SA') },
+                { key: 'stockValue', header: 'القيمة', align: 'right', render: (row) => formatCurrency(row.stockValue) },
                 { key: 'cumPct', header: 'تراكمي %', align: 'right', render: (row) => `${row.cumPct}%` },
                 { key: 'grade', header: 'الدرجة', align: 'center', render: (row) => (
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${
@@ -337,7 +338,7 @@ export const InventoryAnalysisReport: React.FC = () => {
                     {row.status === 'good' ? 'متوفر' : row.status === 'low' ? 'منخفض' : 'نفذ'}
                   </span>
                 )},
-                { key: 'value', header: 'القيمة', align: 'right', render: (row) => row.value.toLocaleString('ar-SA') },
+                { key: 'value', header: 'القيمة', align: 'right', render: (row) => formatCurrency(row.value) },
                 { key: 'turnoverDays', header: 'أيام الدوران', align: 'right' },
               ]}
               keyExtractor={(row, i) => `${row.sku}-${i}`}

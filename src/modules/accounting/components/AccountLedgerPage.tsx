@@ -13,7 +13,7 @@ import { useFormatters } from '@/core/utils/useFormatters';
 export const AccountLedgerPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const [accountId, setAccountId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -132,7 +132,7 @@ export const AccountLedgerPage: React.FC = () => {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{row.date ? new Date(row.date).toLocaleDateString('ar-SA') : '-'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{row.date ? formatDate(row.date) : '-'}</td>
                   <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-200">{row.reference || '-'}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{row.description || '-'}</td>
                   <td className="px-4 py-3 text-sm text-right tabular-nums text-slate-700 dark:text-slate-200">

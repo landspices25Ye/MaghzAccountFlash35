@@ -59,7 +59,7 @@ export const PurchaseOrdersPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredOrders = useBranchFilter(orders);
-  const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -200,7 +200,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     { accessorKey: 'orderNumber', header: t('purchases.orderNumber'), cell: ({ row }) => <span className="font-medium text-slate-900 dark:text-slate-100">{row.original.orderNumber}</span> },
     { accessorKey: 'supplier', header: t('purchases.supplier'), cell: ({ row }) => <span>{row.original.supplier?.name || row.original.supplierId}</span> },
     { accessorKey: 'date', header: t('purchases.date') },
-    { accessorKey: 'expectedDate', header: t('purchases.order.expectedDate'), cell: ({ row }) => <span>{row.original.expectedDate ? new Date(row.original.expectedDate).toLocaleDateString('ar-SA') : '-'}</span> },
+    { accessorKey: 'expectedDate', header: t('purchases.order.expectedDate'), cell: ({ row }) => <span>{row.original.expectedDate ? formatDate(row.original.expectedDate) : '-'}</span> },
     { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.totalAmount)}</span> },
     { accessorKey: 'status', header: t('purchases.status'), cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     {

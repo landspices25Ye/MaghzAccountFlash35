@@ -11,8 +11,8 @@ export async function getDocumentSequences(companyId: string): Promise<{ success
 export async function updateDocumentSequence(id: string, data: Partial<DocumentSequence>): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE document_sequences SET prefix = $1, suffix = $2, current_number = $3, increment_step = $4, padding_length = $5, year_reset = $6, is_active = $7, updated_at = NOW() WHERE id = $8',
-    [data.prefix, data.suffix, data.currentNumber, data.incrementStep, data.paddingLength, data.yearReset, data.isActive, id]
+    'UPDATE document_sequences SET prefix = $1, suffix = $2, starting_number = $3, current_number = $4, increment_step = $5, padding_length = $6, year_reset = $7, is_active = $8, updated_at = NOW() WHERE id = $9',
+    [data.prefix, data.suffix, data.startingNumber, data.currentNumber, data.incrementStep, data.paddingLength, data.yearReset, data.isActive, id]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -162,6 +162,19 @@ export async function updateBank(id: string, data: Partial<Bank>): Promise<{ suc
     'UPDATE banks SET name = $1, bank_name = $2, account_number = $3, iban = $4, account_id = $5, branch_id = $6, is_active = $7, current_balance = $8 WHERE id = $9',
     [data.name, data.bankName, data.accountNumber, data.iban, data.accountId, data.branchId, data.isActive, data.currentBalance, id]
   );
+  return result.success ? { success: true } : { success: false, error: result.error };
+}
+
+// ─── Delete Cash Boxes and Banks ──────────────────────────────────────────────
+export async function deleteCashBox(id: string): Promise<{ success: boolean; error?: string }> {
+  const adapter = await getDbAdapter();
+  const result = await adapter.query('DELETE FROM cash_boxes WHERE id = $1', [id]);
+  return result.success ? { success: true } : { success: false, error: result.error };
+}
+
+export async function deleteBank(id: string): Promise<{ success: boolean; error?: string }> {
+  const adapter = await getDbAdapter();
+  const result = await adapter.query('DELETE FROM banks WHERE id = $1', [id]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 

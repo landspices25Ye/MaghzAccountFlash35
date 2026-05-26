@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useWorkOrders } from '@/modules/manufacturing/hooks/useManufacturing';
+import { useFormatters } from '@/core/utils/useFormatters';
+import { useAppStore } from '@/core/store';
 
 interface WorkOrderSelectProps {
   companyId: string;
@@ -16,11 +18,13 @@ export const WorkOrderSelect: React.FC<WorkOrderSelectProps> = ({
   companyId, value, onChange, placeholder = 'اختر أمر الإنتاج...', disabled, size, className,
 }) => {
   const { workOrders, isLoading } = useWorkOrders(companyId);
+  const { activeCompany } = useAppStore();
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const options = useMemo(() => {
     return workOrders.map(w => ({
       label: w.orderNumber,
-      sublabel: `${w.status} | ${Number(w.quantity).toLocaleString('ar-SA')}`,
+      sublabel: `${w.status} | ${formatCurrency(w.quantity)}`,
       ...w,
     })) as SmartSelectItem[];
   }, [workOrders]);

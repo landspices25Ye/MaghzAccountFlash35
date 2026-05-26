@@ -139,7 +139,13 @@ export function useCashBoxes(companyId: string) {
     return result;
   }, []);
 
-  return { boxes, isLoading, create, update };
+  const remove = useCallback(async (id: string) => {
+    const result = await settingsApi.deleteCashBox(id);
+    if (result.success) setBoxes(prev => prev.filter(b => b.id !== id));
+    return result;
+  }, []);
+
+  return { boxes, isLoading, create, update, remove };
 }
 
 // ─── Banks ────────────────────────────────────────────────────────────────────
@@ -170,7 +176,13 @@ export function useBanks(companyId: string) {
     return result;
   }, []);
 
-  return { banks, isLoading, create, update };
+  const remove = useCallback(async (id: string) => {
+    const result = await settingsApi.deleteBank(id);
+    if (result.success) setBanks(prev => prev.filter(b => b.id !== id));
+    return result;
+  }, []);
+
+  return { banks, isLoading, create, update, remove };
 }
 
 // ─── Cost Centers ─────────────────────────────────────────────────────────────

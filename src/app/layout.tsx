@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Calculator,
@@ -340,14 +340,14 @@ export const Header: React.FC = () => {
   );
 };
 
-export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppLayout = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto p-6">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>

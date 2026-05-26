@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Layers, Plus, Pencil, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input, Badge } from '@/core/ui/components';
+import { Layers, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
+import { Card, Button, Table, Modal, Input, Badge, ConfirmDialog } from '@/core/ui/components';
 import { AccountSelect } from '@/core/ui/components/smart';
 import { useProductTypes } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
@@ -8,17 +8,19 @@ import type { ProductType } from '@/core/types';
 
 export const ProductTypesPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { types, isLoading, create, update } = useProductTypes(activeCompany?.id || '');
+  const { types, isLoading, create, update, remove } = useProductTypes(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<ProductType>>({
     nameAr: '', nameEn: '', code: '',
     appearsInSales: true, appearsInPurchases: true, appearsInInventory: true,
     appearsInManufacturing: false, hasStockTracking: true, hasBOM: false,
+    isActive: true,
   });
 
   const resetForm = () => {
-    setForm({ nameAr: '', nameEn: '', code: '', appearsInSales: true, appearsInPurchases: true, appearsInInventory: true, appearsInManufacturing: false, hasStockTracking: true, hasBOM: false });
+    setForm({ nameAr: '', nameEn: '', code: '', appearsInSales: true, appearsInPurchases: true, appearsInInventory: true, appearsInManufacturing: false, hasStockTracking: true, hasBOM: false, isActive: true });
   };
 
   const handleSave = async () => {
@@ -27,7 +29,7 @@ export const ProductTypesPage: React.FC = () => {
       await update(editingId, form);
       setEditingId(null);
     } else {
-      await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<ProductType, 'id'>);
+      await create({ ...form, companyId: activeCompany.id } as Omit<ProductType, 'id'>);
     }
     setIsOpen(false);
     resetForm();
@@ -37,6 +39,12 @@ export const ProductTypesPage: React.FC = () => {
     setForm({ ...t });
     setEditingId(t.id);
     setIsOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    await remove(deleteId);
+    setDeleteId(null);
   };
 
   const boolBadge = (val: boolean) => (
@@ -54,8 +62,14 @@ export const ProductTypesPage: React.FC = () => {
     { key: 'manufacturing', header: 'تصنيع', width: '70px', render: (row: ProductType) => boolBadge(row.appearsInManufacturing) },
     { key: 'stock', header: 'مخزوني', width: '70px', render: (row: ProductType) => boolBadge(row.hasStockTracking) },
     { key: 'bom', header: 'BOM', width: '60px', render: (row: ProductType) => boolBadge(row.hasBOM) },
-    { key: 'actions', header: '', width: '60px', render: (row: ProductType) => (
-      <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
+    { key: 'isActive', header: 'نشط', width: '60px', render: (row: ProductType) => (
+      <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? 'نعم' : 'لا'}</span>
+    )},
+    { key: 'actions', header: '', width: '100px', render: (row: ProductType) => (
+      <div className="flex gap-1">
+        <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
+        <Button size="sm" variant="ghost" onClick={() => setDeleteId(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
+      </div>
     )},
   ];
 
@@ -76,6 +90,8 @@ export const ProductTypesPage: React.FC = () => {
         <Table<ProductType> data={types} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage="لا يوجد أنواع منتجات" />
       </Card>
 
+      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="حذف نوع المنتج" message="هل أنت متأكد من حذف هذا النوع؟" />
+
       {isOpen && (
         <Modal isOpen={isOpen} title={editingId ? 'تعديل نوع المنتج' : 'نوع منتج جديد'} onClose={() => setIsOpen(false)} size="lg">
           <div className="space-y-4">
@@ -83,6 +99,16 @@ export const ProductTypesPage: React.FC = () => {
               <Input label="الاسم (عربي) *" value={form.nameAr || ''} onChange={e => setForm({ ...form, nameAr: e.target.value })} />
               <Input label="الاسم (إنجليزي)" value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
               <Input label="الرمز" value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={form.isActive ?? true}
+                onChange={e => setForm({ ...form, isActive: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="isActive" className="text-sm font-medium text-slate-700 dark:text-slate-200">نشط</label>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-3">
               <h4 className="font-semibold text-sm">قواعد الظهور</h4>

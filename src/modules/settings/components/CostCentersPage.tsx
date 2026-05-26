@@ -83,6 +83,15 @@ export const CostCentersPage: React.FC = () => {
                 </select>
               </div>
               <Input label="الميزانية" type="number" value={String(form.budgetAmount || 0)} onChange={e => setForm({ ...form, budgetAmount: Number(e.target.value) })} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">مركز التكلفة الأب</label>
+                <select className="form-control" value={form.parentId || ''} onChange={e => setForm({ ...form, parentId: e.target.value || undefined })}>
+                  <option value="">بدون (مركز رئيسي)</option>
+                  {centers.filter(c => c.id !== editingId).map(c => (
+                    <option key={c.id} value={c.id}>{c.nameAr} ({c.code})</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>

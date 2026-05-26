@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Landmark, Plus, Pencil, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input } from '@/core/ui/components';
+import { Landmark, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
+import { Card, Button, Table, Modal, Input, ConfirmDialog } from '@/core/ui/components';
+import { AccountSelect, BranchSelect } from '@/core/ui/components/smart';
 import { useBanks } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { AccountSelect } from '@/core/ui/components/smart';
 import type { Bank } from '@/core/types';
 
 export const BanksPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { banks, isLoading, create, update } = useBanks(activeCompany?.id || '');
+  const { banks, isLoading, create, update, remove } = useBanks(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Bank>>({ name: '', bankName: '', accountNumber: '', currentBalance: 0 });
 
   const reset = () => {
@@ -37,15 +38,22 @@ export const BanksPage: React.FC = () => {
     setIsOpen(true);
   };
 
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    await remove(deleteId);
+    setDeleteId(null);
+  };
+
   const columns = [
     { key: 'name', header: 'اسم الحساب', render: (row: Bank) => <span className="font-medium">{row.name}</span> },
     { key: 'bankName', header: 'اسم البنك', render: (row: Bank) => <span className="text-slate-500 text-sm">{row.bankName}</span> },
     { key: 'accountNumber', header: 'رقم الحساب', width: '140px', render: (row: Bank) => <span className="font-mono text-xs">{row.accountNumber}</span> },
     { key: 'currentBalance', header: 'الرصيد الحالي', width: '140px', align: 'right' as const, render: (row: Bank) => <span>{formatCurrency(row.currentBalance)}</span> },
     { key: 'isActive', header: 'نشط', width: '80px', render: (row: Bank) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? 'نعم' : 'لا'}</span> },
-    { key: 'actions', header: '', width: '100px', render: (row: Bank) => (
+    { key: 'actions', header: '', width: '130px', render: (row: Bank) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
+        <Button size="sm" variant="ghost" onClick={() => setDeleteId(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
       </div>
     )},
   ];
@@ -80,6 +88,10 @@ export const BanksPage: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الحساب المحاسبي</label>
                 <AccountSelect companyId={activeCompany?.id || ''} value={form.accountId || ''} onChange={v => setForm({ ...form, accountId: v || undefined })} />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الفرع</label>
+                <BranchSelect companyId={activeCompany?.id || ''} value={form.branchId || ''} onChange={v => setForm({ ...form, branchId: v || undefined })} />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
@@ -88,6 +100,8 @@ export const BanksPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="حذف الحساب البنكي" message="هل أنت متأكد من حذف هذا الحساب البنكي؟" />
     </div>
   );
 };

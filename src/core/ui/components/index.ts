@@ -9,4 +9,3 @@ export { StatusBadge } from './StatusBadge';
 export { ActionButtons } from './ActionButtons';
 export { EmptyState } from './EmptyState';
 export { DataTablePro } from './DataTablePro';
-export * from './smart';

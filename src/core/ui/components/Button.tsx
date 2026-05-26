@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/core/utils';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -9,7 +9,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   rightIcon?: React.ReactNode;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = memo(React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, leftIcon, rightIcon, children, disabled, ...props }, ref) => {
     const variants = {
       primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500/30',
@@ -51,6 +51,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </button>
     );
   }
-);
+));
 
 Button.displayName = 'Button';

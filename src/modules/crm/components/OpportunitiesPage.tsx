@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { CheckSquare, Plus, TrendingUp, BarChart3, MoveHorizontal } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -31,6 +32,7 @@ const STAGE_COLORS: Record<string, string> = {
 export const OpportunitiesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
+  const { formatCurrency } = useFormatters(companyId);
   const { opportunities, isLoading, create, update, remove } = useOpportunities(companyId);
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'funnel'>('kanban');
@@ -103,7 +105,7 @@ export const OpportunitiesPage: React.FC = () => {
 
   const listColumns = [
     { key: 'name', header: 'الفرصة' },
-    { key: 'value', header: 'القيمة', align: 'right' as const, render: (row: Opportunity) => row.value.toLocaleString('ar-SA') },
+    { key: 'value', header: 'القيمة', align: 'right' as const, render: (row: Opportunity) => formatCurrency(row.value) },
     { key: 'stage', header: 'المرحلة', render: (row: Opportunity) => <StatusBadge status={row.stage} /> },
     { key: 'probability', header: 'الاحتمالية', render: (row: Opportunity) => `${row.probability || 0}%` },
     { key: 'expectedCloseDate', header: 'تاريخ الإغلاق المتوقع', width: '160px' },
@@ -142,11 +144,11 @@ export const OpportunitiesPage: React.FC = () => {
         </div>
         <div className="card flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white"><CheckSquare size={20} /></div>
-          <div><p className="text-2xl font-bold">{totalValue.toLocaleString('ar-SA')}</p><p className="text-sm text-slate-500">إجمالي القيمة</p></div>
+          <div><p className="text-2xl font-bold">{formatCurrency(totalValue)}</p><p className="text-sm text-slate-500">إجمالي القيمة</p></div>
         </div>
         <div className="card flex items-center gap-3">
           <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white"><BarChart3 size={20} /></div>
-          <div><p className="text-2xl font-bold">{Math.round(weightedValue).toLocaleString('ar-SA')}</p><p className="text-sm text-slate-500">القيمة المرجحة</p></div>
+          <div><p className="text-2xl font-bold">{formatCurrency(Math.round(weightedValue))}</p><p className="text-sm text-slate-500">القيمة المرجحة</p></div>
         </div>
       </div>
 
@@ -179,7 +181,7 @@ export const OpportunitiesPage: React.FC = () => {
                       <p className="font-medium text-sm">{opp.name}</p>
                       <p className="text-xs text-slate-500">{opp.probability || 0}%</p>
                     </div>
-                    <p className="text-primary-600 font-bold text-sm mb-2">{opp.value.toLocaleString('ar-SA')} YER</p>
+                    <p className="text-primary-600 font-bold text-sm mb-2">{formatCurrency(opp.value)} YER</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-400">{opp.expectedCloseDate || '—'}</span>
                       <div className="flex items-center gap-1">
@@ -216,7 +218,7 @@ export const OpportunitiesPage: React.FC = () => {
                       style={{ width: `${f.count > 0 ? Math.min(100, (f.count / Math.max(1, opportunities.length)) * 100 * STAGES.length) : 0}%` }}
                     />
                     <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-700 dark:text-slate-200">
-                      {f.count} فرص ({f.value.toLocaleString('ar-SA')})
+                      {f.count} فرص ({formatCurrency(f.value)})
                     </span>
                   </div>
                 </div>

@@ -4,7 +4,6 @@ import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
 import { registerDatabaseHandlers, registerOnboardingHandlers, seedInitialData, initializeSchema } from './dbHandler.js';
 import { runDrizzleMigrations } from './migrationRunner.js';
-import { registerRealmHandlers, seedRealmData, closeRealm } from './realmHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,10 +55,7 @@ app.whenReady().then(async () => {
   // Register onboarding IPC handlers (connection test, seed, config)
   registerOnboardingHandlers();
 
-  // Register Realm DB IPC handlers (local storage)
-  registerRealmHandlers();
-
-  // 1. Run Drizzle migrations on PostgreSQL
+  // Run Drizzle migrations on PostgreSQL
   try {
     await runDrizzleMigrations();
     // Ensure base tables exist as fallback (CREATE TABLE IF NOT EXISTS)
@@ -68,15 +64,7 @@ app.whenReady().then(async () => {
     console.log('[App] PostgreSQL (Drizzle) ready.');
   } catch (err) {
     console.error('[App] PostgreSQL migration failed:', err.message);
-    console.warn('[App] PostgreSQL unavailable — Realm will serve as primary local store.');
-  }
-
-  // 2. Seed Realm local database
-  try {
-    await seedRealmData();
-    console.log('[App] Realm local database ready.');
-  } catch (err) {
-    console.error('[App] Realm initialization failed:', err.message);
+    console.warn('[App] PostgreSQL unavailable — Mock adapter will serve as demo fallback.');
   }
 
   createWindow();
@@ -89,7 +77,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  closeRealm();
   if (process.platform !== 'darwin') {
     app.quit();
   }

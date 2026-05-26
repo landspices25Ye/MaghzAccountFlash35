@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useCustomers } from '@/modules/sales/hooks/useSales';
+import { useFormatters } from '@/core/utils/useFormatters';
+import { useAppStore } from '@/core/store';
 
 interface CustomerSelectProps {
   companyId: string;
@@ -17,11 +19,13 @@ export const CustomerSelect: React.FC<CustomerSelectProps> = ({
   companyId, value, onChange, placeholder = 'اختر العميل...', disabled, size, className, showBalance = true,
 }) => {
   const { customers, isLoading } = useCustomers(companyId);
+  const { activeCompany } = useAppStore();
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const options = useMemo(() => {
     return customers.map(c => ({
       label: c.name,
-      sublabel: showBalance ? `الرصيد: ${Number(c.balance).toLocaleString('ar-SA')}` : c.phone || undefined,
+      sublabel: showBalance ? `الرصيد: ${formatCurrency(c.balance)}` : c.phone || undefined,
       disabled: !c.isActive,
       ...c,
     })) as SmartSelectItem[];

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useAppStore } from '@/core/store';
+import { useFormatters } from '@/core/utils/useFormatters';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend
@@ -33,6 +35,8 @@ interface MonthlyRevenueProps {
 }
 
 export const MonthlyRevenueChart: React.FC<MonthlyRevenueProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ month: 'لا يوجد', revenue: 0, expenses: 0 }];
   return (
     <ChartCard title="المبيعات والمصروفات الشهرية">
@@ -41,7 +45,7 @@ export const MonthlyRevenueChart: React.FC<MonthlyRevenueProps> = ({ data }) => 
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
         <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
         <Tooltip
-          formatter={(value: unknown) => [Number(value).toLocaleString('ar-SA'), '']}
+          formatter={(value: unknown) => [formatCurrency(Number(value)), '']}
           contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
         />
         <Legend />
@@ -58,6 +62,8 @@ interface TopProductsProps {
 }
 
 export const TopProductsChart: React.FC<TopProductsProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ name: 'لا يوجد', value: 0 }];
   return (
     <ChartCard title="أعلى المنتجات مبيعاً">
@@ -76,7 +82,7 @@ export const TopProductsChart: React.FC<TopProductsProps> = ({ data }) => {
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend verticalAlign="bottom" height={36} iconType="circle" />
       </PieChart>
     </ChartCard>
@@ -89,6 +95,8 @@ interface ArAgingProps {
 }
 
 export const ArAgingChart: React.FC<ArAgingProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ range: '0-30', amount: 0 }];
   return (
     <ChartCard title="عمر الديون (A/R)">
@@ -96,7 +104,7 @@ export const ArAgingChart: React.FC<ArAgingProps> = ({ data }) => {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis type="number" tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
         <YAxis dataKey="range" type="category" tick={{ fontSize: 12 }} width={60} />
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Bar dataKey="amount" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="المبلغ" />
       </BarChart>
     </ChartCard>
@@ -109,6 +117,8 @@ interface CashFlowProps {
 }
 
 export const CashFlowChart: React.FC<CashFlowProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ month: 'يناير', inflow: 0, outflow: 0 }];
   return (
     <ChartCard title="التدفقات النقدية">
@@ -116,7 +126,7 @@ export const CashFlowChart: React.FC<CashFlowProps> = ({ data }) => {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend />
         <Area type="monotone" dataKey="inflow" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="الوارد" />
         <Area type="monotone" dataKey="outflow" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} name="الصادر" />
@@ -131,6 +141,8 @@ interface SalesTrendProps {
 }
 
 export const SalesTrendChart: React.FC<SalesTrendProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ date: '-', sales: 0, purchases: 0 }];
   return (
     <ChartCard title="اتجاه المبيعات والمشتريات">
@@ -138,7 +150,7 @@ export const SalesTrendChart: React.FC<SalesTrendProps> = ({ data }) => {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={50} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend />
         <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} dot={false} name="المبيعات" />
         <Line type="monotone" dataKey="purchases" stroke="#f59e0b" strokeWidth={2} dot={false} name="المشتريات" />
@@ -153,6 +165,8 @@ interface ProfitTrendProps {
 }
 
 export const ProfitTrendChart: React.FC<ProfitTrendProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ date: '-', profit: 0 }];
   return (
     <ChartCard title="اتجاه الربحية">
@@ -160,7 +174,7 @@ export const ProfitTrendChart: React.FC<ProfitTrendProps> = ({ data }) => {
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={50} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Area type="monotone" dataKey="profit" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="الربح" />
       </AreaChart>
     </ChartCard>
@@ -173,6 +187,8 @@ interface CategoryShareProps {
 }
 
 export const CategoryShareChart: React.FC<CategoryShareProps> = ({ data }) => {
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const chartData = data?.length ? data : [{ name: 'لا يوجد', value: 0 }];
   return (
     <ChartCard title="توزيع المخزون حسب التصنيف">
@@ -190,7 +206,7 @@ export const CategoryShareChart: React.FC<CategoryShareProps> = ({ data }) => {
             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
-        <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+        <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend verticalAlign="bottom" height={36} iconType="circle" />
       </PieChart>
     </ChartCard>

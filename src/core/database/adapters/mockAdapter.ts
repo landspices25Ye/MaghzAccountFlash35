@@ -469,6 +469,9 @@ export const mockAdapter: DbAdapter = {
         address: 'صنعاء - شارع الستين - عمارة التجارة الدولية',
         phone: '+96714444888',
         email: 'info@maghzaccount.com',
+        date_format: 'yyyy-MM-dd',
+        decimal_places: 2,
+        calendar: 'gregorian',
         created_at: new Date().toISOString(),
       };
       companies.push(company);

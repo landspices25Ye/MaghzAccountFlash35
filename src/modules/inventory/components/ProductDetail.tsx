@@ -5,6 +5,7 @@ import { Card, Button, Badge } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { useProducts } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import type { Product } from '../types';
 
@@ -19,6 +20,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { products } = useProducts(activeCompany?.id || '');
 
   const product = propProduct || products.find(p => p.id === id);
@@ -100,14 +102,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
                 <span className="text-slate-500 text-sm block">{t('inventory.costPrice')}</span>
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
                   <DollarSign size={20} className="text-emerald-500" />
-                  {Number(product.costPrice).toLocaleString('ar-SA')}
+                  {formatCurrency(product.costPrice)}
                 </span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl">
                 <span className="text-slate-500 text-sm block">{t('inventory.salePrice')}</span>
                 <span className="text-2xl font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
                   <DollarSign size={20} className="text-primary-500" />
-                  {Number(product.salePrice).toLocaleString('ar-SA')}
+                  {formatCurrency(product.salePrice)}
                 </span>
               </div>
               <div className={`p-4 rounded-xl ${stockLevel === 'critical' ? 'bg-rose-50 dark:bg-rose-900/20' : stockLevel === 'warning' ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-slate-800/50'}`}>

@@ -68,8 +68,14 @@ export const DocumentSequencesPage: React.FC = () => {
     { key: 'suffix', header: 'لاحقة', width: '80px', render: (row: DocumentSequence) => (
       <Input size="sm" value={editing[row.id]?.suffix ?? row.suffix} onChange={e => handleEdit(row.id, 'suffix', e.target.value)} className="w-20" />
     )},
+    { key: 'startNumber', header: 'الرقم البداية', width: '100px', render: (row: DocumentSequence) => (
+      <Input size="sm" type="number" value={String(editing[row.id]?.startingNumber ?? row.startingNumber)} onChange={e => handleEdit(row.id, 'startingNumber', Number(e.target.value))} className="w-24" />
+    )},
     { key: 'currentNumber', header: 'الرقم الحالي', width: '100px', render: (row: DocumentSequence) => (
       <Input size="sm" type="number" value={String(editing[row.id]?.currentNumber ?? row.currentNumber)} onChange={e => handleEdit(row.id, 'currentNumber', Number(e.target.value))} className="w-24" />
+    )},
+    { key: 'incrementStep', header: 'خطوة الزيادة', width: '100px', render: (row: DocumentSequence) => (
+      <Input size="sm" type="number" value={String(editing[row.id]?.incrementStep ?? row.incrementStep)} onChange={e => handleEdit(row.id, 'incrementStep', Number(e.target.value))} className="w-20" />
     )},
     { key: 'paddingLength', header: 'الأصفار', width: '80px', render: (row: DocumentSequence) => (
       <Input size="sm" type="number" value={String(editing[row.id]?.paddingLength ?? row.paddingLength)} onChange={e => handleEdit(row.id, 'paddingLength', Number(e.target.value))} className="w-16" />

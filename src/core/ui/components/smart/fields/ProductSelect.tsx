@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useProducts } from '@/modules/inventory/hooks/useInventory';
+import { useFormatters } from '@/core/utils/useFormatters';
+import { useAppStore } from '@/core/store';
 
 interface ProductSelectProps {
   companyId: string;
@@ -18,11 +20,13 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
   companyId, value, onChange, placeholder = 'اختر المنتج...', disabled, size, className, multiple = false, showPrice = true,
 }) => {
   const { products, isLoading } = useProducts(companyId);
+  const { activeCompany } = useAppStore();
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const options = useMemo(() => {
     return products.map(p => ({
       label: p.nameAr,
-      sublabel: showPrice ? `سعر: ${Number(p.salePrice).toLocaleString('ar-SA')} | ${p.code}` : p.code,
+      sublabel: showPrice ? `سعر: ${formatCurrency(p.salePrice)} | ${p.code}` : p.code,
       disabled: !p.isActive,
       ...p,
     })) as SmartSelectItem[];

@@ -10,6 +10,7 @@ interface AppSettings {
   defaultAccounts: Record<string, string>;
   dateFormat: string;
   decimalPlaces: number;
+  calendar: 'gregorian' | 'hijri';
 }
 
 export function useSettings(companyId: string) {
@@ -49,7 +50,7 @@ export function useSettings(companyId: string) {
 
       // Load company format settings
       const companyResult = await adapter.query(
-        `SELECT date_format, decimal_places FROM companies WHERE id = ? LIMIT 1`,
+        `SELECT date_format, decimal_places, calendar FROM companies WHERE id = ? LIMIT 1`,
         [companyId]
       );
 
@@ -82,6 +83,10 @@ export function useSettings(companyId: string) {
         ? Number(companyResult.rows[0].decimal_places)
         : 2;
 
+      const calendar = companyResult.success && companyResult.rows?.[0]?.calendar === 'hijri'
+        ? 'hijri'
+        : 'gregorian';
+
       setSettings({
         vatRate,
         baseCurrency,
@@ -90,6 +95,7 @@ export function useSettings(companyId: string) {
         defaultBranchId,
         dateFormat,
         decimalPlaces,
+        calendar,
       });
     } catch (error) {
       console.error('Failed to load settings:', error);

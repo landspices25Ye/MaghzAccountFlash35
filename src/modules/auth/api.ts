@@ -153,7 +153,11 @@ export const authApi = {
     const adapter = await getDbAdapter();
     const result = await adapter.query('SELECT * FROM roles WHERE company_id = $1 OR company_id IS NULL ORDER BY name', [companyId]);
     if (result.success) {
-      let roles = (result.rows || []) as Role[];
+      let roles = (result.rows || []).map((row: any) => ({
+        ...row,
+        isSystem: row.is_system,
+        permissions: Array.isArray(row.permissions) ? row.permissions : JSON.parse(row.permissions || '[]'),
+      })) as Role[];
       if (filters?.search) {
         const q = filters.search.toLowerCase();
         roles = roles.filter((r) => (r.name?.toLowerCase() || '').includes(q));
@@ -170,6 +174,7 @@ export const authApi = {
       const row = result.rows[0] as any;
       const role: Role = {
         ...row,
+        isSystem: row.is_system,
         permissions: Array.isArray(row.permissions) ? row.permissions : JSON.parse(row.permissions || '[]'),
       };
       return { success: true, data: role };
@@ -181,9 +186,9 @@ export const authApi = {
     const adapter = await getDbAdapter();
     const permsJson = JSON.stringify(data.permissions);
     const result = await adapter.query(
-      `INSERT INTO roles (company_id, name, description, permissions, created_at)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [data.companyId, data.name, data.description, permsJson, new Date().toISOString()]
+      `INSERT INTO roles (company_id, name, description, permissions, is_system, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [data.companyId, data.name, data.description, permsJson, data.isSystem ?? false, new Date().toISOString()]
     );
     if (result.success && result.rows?.[0]) {
       return { success: true, id: result.rows[0].id };
@@ -195,8 +200,8 @@ export const authApi = {
     const adapter = await getDbAdapter();
     const permsJson = data.permissions ? JSON.stringify(data.permissions) : undefined;
     return adapter.query(
-      `UPDATE roles SET name = $1, description = $2, permissions = $3, updated_at = $4 WHERE id = $5`,
-      [data.name, data.description, permsJson, new Date().toISOString(), id]
+      `UPDATE roles SET name = $1, description = $2, permissions = $3, is_system = $4, updated_at = $5 WHERE id = $6`,
+      [data.name, data.description, permsJson, data.isSystem, new Date().toISOString(), id]
     );
   },
 

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Database,
   Server,
-  HardDrive,
   TestTube,
   CheckCircle,
   XCircle,
@@ -42,7 +41,11 @@ export const OnboardingWizard: React.FC = () => {
 
     try {
       // Update app company state
-      setActiveCompany(companyConfig.name, 'comp-1', companyConfig.currency);
+      setActiveCompany(companyConfig.name, 'comp-1', companyConfig.currency, {
+        dateFormat: 'yyyy-MM-dd',
+        decimalPlaces: 2,
+        calendar: 'gregorian',
+      });
 
       // If Electron + PG selected, update config and seed
       if (dbConfig.type === 'pg' && typeof window !== 'undefined' && (window as any).electronDB?.updateConfig) {
@@ -162,30 +165,6 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       return;
     }
 
-    if (dbConfig.type === 'realm') {
-      if (typeof window !== 'undefined' && (window as any).electronRealm?.ping) {
-        setProcessing(true, 'جارٍ اختبار اتصال Realm...');
-        try {
-          const result = await (window as any).electronRealm.ping();
-          if (result.success) {
-            setTestStatus('success');
-            setTestMessage('تم الاتصال بـ Realm بنجاح');
-          } else {
-            setTestStatus('error');
-            setTestMessage(result.error || 'فشل الاتصال');
-          }
-        } catch (err: any) {
-          setTestStatus('error');
-          setTestMessage(err.message || 'فشل الاتصال');
-        }
-        setProcessing(false);
-      } else {
-        setTestStatus('error');
-        setTestMessage('Realm غير متوفر في هذا المتصفح');
-      }
-      return;
-    }
-
     // PostgreSQL test
     if (typeof window !== 'undefined' && (window as any).electronDB?.testConnection) {
       setProcessing(true, 'جارٍ اختبار اتصال PostgreSQL...');
@@ -225,26 +204,19 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <DbTypeCard
           active={dbConfig.type === 'pg'}
           icon={<Server size={24} />}
           title="PostgreSQL"
-          desc="أفضل أداء للعمل المتعدد"
+          desc="أفضل أداء للعمل المتعدد — يتطلب خادم قاعدة بيانات"
           onClick={() => setDbConfig({ type: 'pg' })}
-        />
-        <DbTypeCard
-          active={dbConfig.type === 'realm'}
-          icon={<HardDrive size={24} />}
-          title="Realm (محلي)"
-          desc="تخزين محلي بدون خادم"
-          onClick={() => setDbConfig({ type: 'realm' })}
         />
         <DbTypeCard
           active={dbConfig.type === 'mock'}
           icon={<TestTube size={24} />}
-          title="وضع العرض"
-          desc="بيانات وهمية في الذاكرة"
+          title="وضع العرض (تجريبي)"
+          desc="بيانات وهمية في الذاكرة — بدون تثبيت"
           onClick={() => setDbConfig({ type: 'mock' })}
         />
       </div>
@@ -406,9 +378,6 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
             throw new Error(result.error || 'فشل البذر');
           }
         }
-      } else if (dbConfig.type === 'realm') {
-        setSeedStatus('success');
-        setSeedMessage('تم تهيئة Realm بنجاح');
       }
 
       setProcessing(false);
@@ -502,7 +471,7 @@ function CompleteStep({ onFinish, onBack }: { onFinish: () => void; onBack: () =
   const { companyConfig, dbConfig, seedOption } = useOnboardingStore();
 
   const seedLabel = seedOption === 'none' ? 'بدون بيانات' : seedOption === 'default' ? 'البيانات الافتراضية' : 'البيانات الوهمية';
-  const dbLabel = dbConfig.type === 'pg' ? 'PostgreSQL' : dbConfig.type === 'realm' ? 'Realm' : 'وضع العرض';
+  const dbLabel = dbConfig.type === 'pg' ? 'PostgreSQL' : 'وضع العرض (تجريبي)';
 
   return (
     <div className="space-y-6 text-center">

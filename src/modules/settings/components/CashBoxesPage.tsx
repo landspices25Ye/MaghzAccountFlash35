@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Vault, Plus, Pencil, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input } from '@/core/ui/components';
+import { Vault, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
+import { Card, Button, Table, Modal, Input, ConfirmDialog } from '@/core/ui/components';
+import { BranchSelect, UserSelect, AccountSelect } from '@/core/ui/components/smart';
 import { useCashBoxes } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { AccountSelect } from '@/core/ui/components/smart';
 import type { CashBox } from '@/core/types';
 
 export const CashBoxesPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { boxes, isLoading, create, update } = useCashBoxes(activeCompany?.id || '');
+  const { boxes, isLoading, create, update, remove } = useCashBoxes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<CashBox>>({ name: '', code: '', currentBalance: 0 });
 
   const reset = () => {
@@ -37,14 +38,21 @@ export const CashBoxesPage: React.FC = () => {
     setIsOpen(true);
   };
 
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    await remove(deleteId);
+    setDeleteId(null);
+  };
+
   const columns = [
     { key: 'name', header: 'اسم الصندوق', render: (row: CashBox) => <span className="font-medium">{row.name}</span> },
     { key: 'code', header: 'الرمز', width: '100px', render: (row: CashBox) => <span className="font-mono text-xs">{row.code}</span> },
     { key: 'currentBalance', header: 'الرصيد الحالي', width: '140px', align: 'right' as const, render: (row: CashBox) => <span>{formatCurrency(row.currentBalance)}</span> },
     { key: 'isActive', header: 'نشط', width: '80px', render: (row: CashBox) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? 'نعم' : 'لا'}</span> },
-    { key: 'actions', header: '', width: '100px', render: (row: CashBox) => (
+    { key: 'actions', header: '', width: '130px', render: (row: CashBox) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
+        <Button size="sm" variant="ghost" onClick={() => setDeleteId(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
       </div>
     )},
   ];
@@ -77,6 +85,14 @@ export const CashBoxesPage: React.FC = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الحساب المحاسبي</label>
                 <AccountSelect companyId={activeCompany?.id || ''} value={form.accountId || ''} onChange={v => setForm({ ...form, accountId: v || undefined })} />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الفرع</label>
+                <BranchSelect companyId={activeCompany?.id || ''} value={form.branchId || ''} onChange={v => setForm({ ...form, branchId: v || undefined })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المستخدم المسؤول</label>
+                <UserSelect companyId={activeCompany?.id || ''} value={form.responsibleUserId || ''} onChange={v => setForm({ ...form, responsibleUserId: v || undefined })} />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
@@ -85,6 +101,8 @@ export const CashBoxesPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="حذف الصندوق" message="هل أنت متأكد من حذف هذا الصندوق؟" />
     </div>
   );
 };

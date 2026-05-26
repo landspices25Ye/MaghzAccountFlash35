@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useOpportunities } from '@/modules/crm/hooks/useCrm';
+import { useFormatters } from '@/core/utils/useFormatters';
+import { useAppStore } from '@/core/store';
 
 interface OpportunitySelectProps {
   companyId: string;
@@ -16,11 +18,13 @@ export const OpportunitySelect: React.FC<OpportunitySelectProps> = ({
   companyId, value, onChange, placeholder = 'اختر الفرصة...', disabled, size, className,
 }) => {
   const { opportunities, isLoading } = useOpportunities(companyId);
+  const { activeCompany } = useAppStore();
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const options = useMemo(() => {
     return opportunities.map(o => ({
       label: o.name,
-      sublabel: `${Number(o.value).toLocaleString('ar-SA')} | ${o.stage}`,
+      sublabel: `${formatCurrency(o.value)} | ${o.stage}`,
       ...o,
     })) as SmartSelectItem[];
   }, [opportunities]);

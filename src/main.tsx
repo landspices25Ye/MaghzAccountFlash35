@@ -18,75 +18,72 @@ initAuth();
 
 function App() {
   const setDbStatus = useAppStore((state) => state.setDbStatus);
-  const setRealmReady = useAppStore((state) => state.setRealmReady);
   const setActiveCompany = useAppStore((state) => state.setActiveCompany);
   const completed = useOnboardingStore((state) => state.completed);
-  const companyConfig = useOnboardingStore((state) => state.companyConfig);
 
   useEffect(() => {
     async function initDb() {
       try {
         setDbStatus('connecting', false);
-        let adapter = await getDbAdapter();
-        let ping = await adapter.ping();
+        const adapter = await getDbAdapter();
+        const ping = await adapter.ping();
 
-        // If ping failed or we're in browser without Electron, use mock
-        if (!ping.success || typeof window !== 'undefined' && !(window as any).electronEnv?.isElectron) {
-          console.log('[App] Using Mock adapter for demo data');
-          adapter = mockAdapter;
-          ping = await adapter.ping();
+        if (!ping.success) {
+          console.warn('[App] Adapter ping failed, falling back to mock');
         }
 
         if (ping.success) {
-          setDbStatus('mock', true);
-          setRealmReady(false);
+          // Detect which adapter is in use via ping result
+          const isPg = ping.message?.includes('PostgreSQL') || !!ping.db;
+          setDbStatus(isPg ? 'postgresql' : 'mock', true);
 
-          // Try to load company - mockAdapter auto-creates demo company if none exists
-          let companyResult = await adapter.getCompany();
-
-          // If getCompany failed (e.g. electron IPC unavailable), force mockAdapter
-          if (!companyResult.success || !companyResult.data) {
-            console.log('[App] getCompany failed, forcing mockAdapter...');
-            adapter = mockAdapter;
-            companyResult = await adapter.getCompany();
-          }
+          const companyResult = await adapter.getCompany();
 
           if (companyResult.success && companyResult.data) {
             setActiveCompany(
               companyResult.data.name,
               companyResult.data.id,
-              companyResult.data.currency || 'YER'
+              companyResult.data.currency || 'YER',
+              {
+                dateFormat: companyResult.data.date_format || companyResult.data.dateFormat,
+                decimalPlaces: Number(companyResult.data.decimal_places ?? companyResult.data.decimalPlaces ?? 2),
+                calendar: companyResult.data.calendar || 'gregorian',
+              }
             );
-            console.log('[App] Demo company loaded:', companyResult.data.name, '| ID:', companyResult.data.id);
+            console.log('[App] Company loaded:', companyResult.data.name);
           } else {
-            console.error('[App] CRITICAL: Could not load or create company');
+            console.error('[App] Could not load company');
           }
         }
       } catch (err) {
         console.warn('[App] DB init error:', err);
-        // Even on error, try mock adapter as last resort
         try {
           const companyResult = await mockAdapter.getCompany();
           if (companyResult.success && companyResult.data) {
             setActiveCompany(
               companyResult.data.name,
               companyResult.data.id,
-              companyResult.data.currency || 'YER'
+              companyResult.data.currency || 'YER',
+              {
+                dateFormat: companyResult.data.date_format || companyResult.data.dateFormat,
+                decimalPlaces: Number(companyResult.data.decimal_places ?? companyResult.data.decimalPlaces ?? 2),
+                calendar: companyResult.data.calendar || 'gregorian',
+              }
             );
             console.log('[App] Recovered with mock adapter');
+            setDbStatus('mock', true);
           }
         } catch {
           console.error('[App] Mock adapter also failed');
+          setDbStatus('mock', false);
         }
-        setDbStatus('mock', false);
-        setRealmReady(false);
       }
     }
 
     if (completed) {
       initDb();
     }
-  }, [completed, setDbStatus, setRealmReady, setActiveCompany, companyConfig]);
+  }, [completed, setDbStatus, setActiveCompany]);
 
   if (!completed) {
     return <OnboardingWizard />;

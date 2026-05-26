@@ -5,6 +5,7 @@ import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { accountingApi } from '../api';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { Account } from '../types';
 
 interface PnLRow {
@@ -19,12 +20,12 @@ interface PnLRow {
 export const ProfitLossReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [pnlData, setPnlData] = useState<PnLRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const formatNumber = (n: number) => Number(Math.abs(n)).toLocaleString('ar-SA', { minimumFractionDigits: 2 });
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -142,7 +143,7 @@ export const ProfitLossReport: React.FC = () => {
               return (
                 <div key={idx} className="flex justify-between py-3 px-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
                   <span className="font-bold text-primary-700 dark:text-primary-300">{row.account}</span>
-                  <span className="font-bold text-primary-700 dark:text-primary-300 tabular-nums">{formatNumber(row.amount)}</span>
+                  <span className="font-bold text-primary-700 dark:text-primary-300 tabular-nums">{formatCurrency(row.amount)}</span>
                 </div>
               );
             }
@@ -150,7 +151,7 @@ export const ProfitLossReport: React.FC = () => {
               return (
                 <div key={idx} className="flex justify-between py-2 px-4 bg-slate-50 dark:bg-slate-800/50 font-semibold border-t border-slate-200 dark:border-slate-700">
                   <span>{row.account}</span>
-                  <span className="tabular-nums">{formatNumber(row.amount)}</span>
+                  <span className="tabular-nums">{formatCurrency(row.amount)}</span>
                 </div>
               );
             }
@@ -161,7 +162,7 @@ export const ProfitLossReport: React.FC = () => {
                 className="flex justify-between py-1.5 px-4 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded transition-colors"
               >
                 <span className={row.section === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : ''}>{row.account}</span>
-                <span className="tabular-nums">{formatNumber(row.amount)}</span>
+                <span className="tabular-nums">{formatCurrency(row.amount)}</span>
               </a>
             );
           })}

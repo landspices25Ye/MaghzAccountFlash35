@@ -4,7 +4,7 @@
  */
 export interface DbAdapter {
   // Connection
-  ping(): Promise<{ success: boolean; message?: string }>;
+  ping(): Promise<{ success: boolean; message?: string; db?: string; }>;
   
   // Generic CRUD
   query<T = any>(sql: string, params?: any[]): Promise<{ success: boolean; rows?: T[]; error?: string }>;

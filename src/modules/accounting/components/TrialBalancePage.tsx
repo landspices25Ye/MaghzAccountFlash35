@@ -5,12 +5,14 @@ import { useTrialBalance } from '../hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { cn } from '@/core/utils';
 
 
 export const TrialBalancePage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [asOfDate, setAsOfDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const { rows, isLoading } = useTrialBalance(activeCompany?.id || '', asOfDate || undefined);
@@ -109,13 +111,13 @@ export const TrialBalancePage: React.FC = () => {
                   <td className="px-4 py-3 text-sm font-mono text-slate-700 dark:text-slate-200">{row.accountCode}</td>
                   <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{row.accountName}</td>
                   <td className="px-4 py-3 text-sm text-right tabular-nums text-slate-700 dark:text-slate-200">
-                    {Number(row.debit).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {formatCurrency(row.debit)}
                   </td>
                   <td className="px-4 py-3 text-sm text-right tabular-nums text-slate-700 dark:text-slate-200">
-                    {Number(row.credit).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {formatCurrency(row.credit)}
                   </td>
                   <td className={cn('px-4 py-3 text-sm text-right tabular-nums font-medium', Number(row.balance) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400')}>
-                    {Number(row.balance).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {formatCurrency(row.balance)}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <a href={`/accounting/ledger?accountId=${row.accountId}`} className="text-primary-600 hover:text-primary-700 flex items-center gap-1">
@@ -132,9 +134,9 @@ export const TrialBalancePage: React.FC = () => {
               )}
               <tr className="bg-slate-50 dark:bg-slate-800 font-semibold border-t-2 border-slate-200 dark:border-slate-700">
                 <td className="px-4 py-3 text-sm" colSpan={2}>{t('accounting.balance')}</td>
-                <td className="px-4 py-3 text-sm text-right tabular-nums">{totalDebit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</td>
-                <td className="px-4 py-3 text-sm text-right tabular-nums">{totalCredit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</td>
-                <td className="px-4 py-3 text-sm text-right tabular-nums">{(totalDebit - totalCredit).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatCurrency(totalDebit)}</td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatCurrency(totalCredit)}</td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatCurrency(totalDebit - totalCredit)}</td>
                 <td />
               </tr>
             </tbody>

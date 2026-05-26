@@ -1,7 +1,3 @@
-import { utils, writeFile } from 'xlsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 interface ExportColumn {
   key: string;
   header: string;
@@ -19,11 +15,11 @@ export async function exportToExcel(
     ...rows.map((row) => columns.map((c) => row[c.key] ?? '')),
   ];
 
+  const { utils, writeFile } = await import('xlsx');
   const worksheet = utils.aoa_to_sheet(worksheetData);
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, worksheet, 'Data');
 
-  // Set column widths
   worksheet['!cols'] = columns.map((c) => ({ wch: c.width || 15 }));
 
   writeFile(workbook, `${filename}.xlsx`);
@@ -71,14 +67,19 @@ export async function exportToPDF(
   }
 ): Promise<void> {
   const rows = data as Record<string, unknown>[];
+  const [jsPDFModule, autoTableModule] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
+  const jsPDF = jsPDFModule.default;
+  const autoTable = autoTableModule.default;
+
   const doc = new jsPDF(options?.rtl ? { orientation: 'portrait', unit: 'mm', format: 'a4' } : {});
   
-  // RTL support
   if (options?.rtl) {
     doc.setR2L(true);
   }
 
-  // Title
   if (options?.title) {
     doc.setFontSize(18);
     doc.text(options.title, options?.rtl ? doc.internal.pageSize.width - 14 : 14, 20, { align: options?.rtl ? 'right' : 'left' });
@@ -90,7 +91,6 @@ export async function exportToPDF(
     doc.text(options.subtitle, options?.rtl ? doc.internal.pageSize.width - 14 : 14, 28, { align: options?.rtl ? 'right' : 'left' });
   }
 
-  // Table
   autoTable(doc, {
     startY: options?.title ? 35 : 20,
     head: [columns.map((c) => c.header)],

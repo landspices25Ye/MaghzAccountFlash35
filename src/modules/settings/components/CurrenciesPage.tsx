@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Coins, Plus, Pencil, Trash2, Save, Star } from 'lucide-react';
 import { Card, Button, Input, Table, ConfirmDialog } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
@@ -19,6 +20,7 @@ interface Currency {
 export const CurrenciesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,7 +90,7 @@ export const CurrenciesPage: React.FC = () => {
     { key: 'code', header: 'الرمز', width: '80px' },
     { key: 'name', header: 'الاسم' },
     { key: 'symbol', header: 'الرمز', width: '80px' },
-    { key: 'exchangeRate', header: 'سعر الصرف', render: (row: Currency) => row.exchangeRate.toLocaleString('ar-SA') },
+    { key: 'exchangeRate', header: 'سعر الصرف', render: (row: Currency) => formatCurrency(row.exchangeRate) },
     { key: 'isDefault', header: 'أساسية', render: (row: Currency) => row.isDefault ? <Star size={16} className="text-gold-500 fill-gold-500" /> : null },
     { key: 'actions', header: '', render: (row: Currency) => (
       <div className="flex items-center gap-1">

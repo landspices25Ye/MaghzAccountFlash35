@@ -12,35 +12,6 @@ contextBridge.exposeInMainWorld('electronDB', {
   getDbInfo: () => ipcRenderer.invoke('db:info'),
 });
 
-// ─── Realm DB Local Storage (IPC Bridge) ─────────────────────────────────────
-contextBridge.exposeInMainWorld('electronRealm', {
-  ping: () => ipcRenderer.invoke('realm:ping'),
-
-  queryAccounts: (companyId) =>
-    ipcRenderer.invoke('realm:query-accounts', companyId),
-
-  queryLogs: (limit = 5) =>
-    ipcRenderer.invoke('realm:query-logs', limit),
-
-  queryCompany: () =>
-    ipcRenderer.invoke('realm:query-company'),
-
-  updateAccountBalance: (payload) =>
-    ipcRenderer.invoke('realm:update-account-balance', payload),
-
-  addLog: (payload) =>
-    ipcRenderer.invoke('realm:add-log', payload),
-
-  addAccount: (payload) =>
-    ipcRenderer.invoke('realm:add-account', payload),
-
-  queryTransactions: (companyId) =>
-    ipcRenderer.invoke('realm:query-transactions', companyId),
-
-  postTransaction: (payload) =>
-    ipcRenderer.invoke('realm:post-transaction', payload),
-});
-
 // ─── App Environment Info ─────────────────────────────────────────────────────
 contextBridge.exposeInMainWorld('electronEnv', {
   isElectron: true,

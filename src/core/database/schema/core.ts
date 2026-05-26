@@ -11,6 +11,9 @@ export const companies = pgTable('companies', {
   phone: varchar('phone', { length: 50 }),
   email: varchar('email', { length: 255 }),
   logoUrl: text('logo_url'),
+  dateFormat: varchar('date_format', { length: 20 }).default('yyyy-MM-dd'),
+  decimalPlaces: numeric('decimal_places', { precision: 1, scale: 0 }).default('2'),
+  calendar: varchar('calendar', { length: 10 }).default('gregorian'),
   fiscalYearStart: date('fiscal_year_start'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -34,8 +37,11 @@ export const roles = pgTable('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 100 }).notNull(),
+  description: varchar('description', { length: 255 }),
   permissions: text('permissions'), // JSON array of permission strings
+  isSystem: boolean('is_system').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // ─── Settings ─────────────────────────────────────────────────────────────────

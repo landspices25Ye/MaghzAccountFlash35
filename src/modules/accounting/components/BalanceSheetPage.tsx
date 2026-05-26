@@ -5,6 +5,7 @@ import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { accountingApi } from '../api';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { Account } from '../types';
 
 interface BSRow {
@@ -18,13 +19,13 @@ interface BSRow {
 export const BalanceSheetReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [assets, setAssets] = useState<BSRow[]>([]);
   const [liabilities, setLiabilities] = useState<BSRow[]>([]);
   const [equity, setEquity] = useState<BSRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [asOfDate, setAsOfDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const formatNumber = (n: number) => Number(n).toLocaleString('ar-SA', { minimumFractionDigits: 2 });
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -89,7 +90,7 @@ export const BalanceSheetReport: React.FC = () => {
           return (
             <div key={idx} className="flex justify-between py-1.5 px-3 font-semibold border-t border-slate-200 dark:border-slate-700">
               <span>{row.account}</span>
-              <span className="tabular-nums">{formatNumber(row.amount)}</span>
+              <span className="tabular-nums">{formatCurrency(row.amount)}</span>
             </div>
           );
         }
@@ -100,7 +101,7 @@ export const BalanceSheetReport: React.FC = () => {
             className="flex justify-between py-1 px-3 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded transition-colors"
           >
             <span>{row.account}</span>
-            <span className="tabular-nums">{formatNumber(row.amount)}</span>
+            <span className="tabular-nums">{formatCurrency(row.amount)}</span>
           </a>
         );
       })}

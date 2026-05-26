@@ -7,7 +7,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { formatCurrency } from '@/core/utils';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface ExpenseBreakdown {
   category: string;
@@ -37,6 +37,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 export const ProfitAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [currentPeriod, setCurrentPeriod] = useState<PeriodData | null>(null);
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -276,7 +277,7 @@ export const ProfitAnalysisReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                   <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                  <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+                  <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
                   <Legend />
                   <Bar dataKey="current" fill="#3b82f6" name={t('reports.currentPeriod')} radius={[4, 4, 0, 0]} />
                   <Bar dataKey="previous" fill="#94a3b8" name={t('reports.previousPeriod')} radius={[4, 4, 0, 0]} />
@@ -299,7 +300,7 @@ export const ProfitAnalysisReport: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: unknown) => Number(value).toLocaleString('ar-SA')} />
+                  <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
                 </RePieChart>
               </ResponsiveContainer>
             </div>
@@ -321,7 +322,7 @@ export const ProfitAnalysisReport: React.FC = () => {
               data={currentPeriod.expenses}
               columns={[
                 { key: 'category', header: 'البند' },
-                { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => row.amount.toLocaleString('ar-SA') },
+                { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => formatCurrency(row.amount) },
                 { key: 'percent', header: 'النسبة', align: 'right', render: (row) => `${row.percent}%` },
               ]}
               keyExtractor={(row) => row.category}
@@ -337,9 +338,9 @@ export const ProfitAnalysisReport: React.FC = () => {
             data={currentPeriod.products}
             columns={[
               { key: 'product', header: 'المنتج' },
-              { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
-              { key: 'cost', header: 'التكلفة', align: 'right', render: (row) => row.cost.toLocaleString('ar-SA') },
-              { key: 'profit', header: 'الربح', align: 'right', render: (row) => row.profit.toLocaleString('ar-SA') },
+              { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
+              { key: 'cost', header: 'التكلفة', align: 'right', render: (row) => formatCurrency(row.cost) },
+              { key: 'profit', header: 'الربح', align: 'right', render: (row) => formatCurrency(row.profit) },
               { key: 'margin', header: 'الهامش %', align: 'right', render: (row) => (
                 <span className={`font-medium ${row.margin >= 30 ? 'text-emerald-600' : row.margin >= 15 ? 'text-amber-600' : 'text-rose-600'}`}>
                   {row.margin}%

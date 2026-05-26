@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface DbConfig {
-  type: 'pg' | 'realm' | 'mock';
+  type: 'pg' | 'mock';
   host?: string;
   port?: string;
   database?: string;

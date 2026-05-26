@@ -72,6 +72,15 @@ export const UnitsPage: React.FC = () => {
               <Input label="الاسم (إنجليزي)" value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
               <Input label="الرمز" value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
               <Input label="معامل التحويل" type="number" value={String(form.conversionFactor || 1)} onChange={e => setForm({ ...form, conversionFactor: Number(e.target.value) })} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الوحدة الأساسية</label>
+                <select className="form-control" value={form.baseUnitId || ''} onChange={e => setForm({ ...form, baseUnitId: e.target.value || undefined })}>
+                  <option value="">بدون</option>
+                  {units.filter(u => u.id !== editingId).map(u => (
+                    <option key={u.id} value={u.id}>{u.nameAr} ({u.code})</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>

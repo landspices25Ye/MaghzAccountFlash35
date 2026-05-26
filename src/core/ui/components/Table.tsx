@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/core/utils';
 
 export interface TableProps<T> {
@@ -17,7 +17,7 @@ export interface TableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-export function Table<T>({
+function TableNoMemo<T>({
   data,
   columns,
   keyExtractor,
@@ -89,7 +89,7 @@ export function Table<T>({
                   {col.render ? col.render(row, rowIndex) : (() => {
                     const val = (row as Record<string, unknown>)[col.key];
                     if (val === null || val === undefined) return '-';
-                    if (val instanceof Date) return val.toLocaleDateString('ar-SA');
+                    if (val instanceof Date) return val.toLocaleDateString();
                     return String(val);
                   })()}
                 </td>
@@ -101,3 +101,5 @@ export function Table<T>({
     </div>
   );
 }
+
+export const Table = memo(TableNoMemo) as typeof TableNoMemo;

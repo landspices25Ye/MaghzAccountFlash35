@@ -31,7 +31,7 @@ export const JournalEntriesPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredTransactions = useBranchFilter(transactions);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
-  const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -151,7 +151,7 @@ export const JournalEntriesPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'date', header: t('accounting.date'), render: (row: Transaction) => row.date ? new Date(row.date).toLocaleDateString('ar-SA') : '-' },
+    { key: 'date', header: t('accounting.date'), render: (row: Transaction) => row.date ? formatDate(row.date) : '-' },
     { key: 'reference', header: t('accounting.reference'), render: (row: Transaction) => row.reference || '-' },
     { key: 'description', header: t('accounting.description'), render: (row: Transaction) => row.description || '-' },
     { key: 'totalAmount', header: t('accounting.amount'), align: 'right' as const, render: (row: Transaction) => 
@@ -331,7 +331,7 @@ export const JournalEntriesPage: React.FC = () => {
         {selectedTx && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div><span className="text-slate-500">{t('accounting.date')}:</span> {selectedTx.date ? new Date(selectedTx.date).toLocaleDateString('ar-SA') : '-'}</div>
+              <div><span className="text-slate-500">{t('accounting.date')}:</span> {selectedTx.date ? formatDate(selectedTx.date) : '-'}</div>
               <div><span className="text-slate-500">{t('accounting.reference')}:</span> {selectedTx.reference || '-'}</div>
               <div><span className="text-slate-500">{t('sales.status')}:</span> <StatusBadge status={selectedTx.status} size="sm" /></div>
             </div>

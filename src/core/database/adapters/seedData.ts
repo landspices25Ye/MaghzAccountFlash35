@@ -4,6 +4,7 @@ function genId(): string {
 
 export function seedAllData(companyId: string) {
   return {
+    roles: seedRoles(companyId),
     accounts: seedAccounts(companyId),
     contacts: [...seedCustomers(companyId), ...seedSuppliers(companyId)],
     products: seedProducts(companyId),
@@ -33,6 +34,35 @@ export function seedAllData(companyId: string) {
     payroll_components: seedPayrollComponents(companyId),
     default_accounts: seedDefaultAccounts(companyId),
   };
+}
+
+function seedRoles(companyId: string) {
+  return [
+    {
+      id: 'role-1',
+      company_id: companyId,
+      name: 'مدير النظام',
+      description: 'مدير النظام - صلاحيات كاملة',
+      permissions: JSON.stringify(['all']),
+      is_system: true,
+    },
+    {
+      id: 'role-2',
+      company_id: companyId,
+      name: 'محاسب',
+      description: 'محاسب - صلاحيات الحسابات والمبيعات والمشتريات',
+      permissions: JSON.stringify(['accounting.view', 'accounting.create', 'accounting.edit', 'accounting.delete', 'accounting.post', 'sales.view', 'sales.create', 'sales.edit', 'purchases.view', 'purchases.create', 'purchases.edit', 'reports.view', 'reports.export']),
+      is_system: false,
+    },
+    {
+      id: 'role-3',
+      company_id: companyId,
+      name: 'مخزني',
+      description: 'مسؤول المخازن - صلاحيات المخازن والمنتجات',
+      permissions: JSON.stringify(['inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'purchases.view', 'reports.view']),
+      is_system: false,
+    },
+  ];
 }
 
 function seedAccounts(companyId: string) {
