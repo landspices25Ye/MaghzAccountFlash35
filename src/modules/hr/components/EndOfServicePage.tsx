@@ -6,6 +6,7 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useEndOfServices, useEmployees } from '../hooks/useHr';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { EndOfService } from '../types';
 
 export const EndOfServicePage: React.FC = () => {
@@ -13,6 +14,7 @@ export const EndOfServicePage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { items, isLoading, create, updateStatus, remove } = useEndOfServices(companyId);
   const { employees } = useEmployees(companyId);
+  const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export const EndOfServicePage: React.FC = () => {
   const handlePrint = (item: EndOfService) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const html = generateEosPrintHtml(item);
+    const html = generateEosPrintHtml(item, formatCurrency);
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -80,8 +82,8 @@ export const EndOfServicePage: React.FC = () => {
     { key: 'employeeName', header: 'الموظف', render: (row: EndOfService) => row.employeeName || row.employeeId },
     { key: 'terminationDate', header: 'تاريخ الانتهاء', width: '140px' },
     { key: 'serviceYears', header: 'سنوات الخدمة', width: '110px' },
-    { key: 'lastSalary', header: 'آخر راتب', align: 'right' as const, render: (row: EndOfService) => row.lastSalary.toLocaleString('ar-SA') },
-    { key: 'eosAmount', header: 'مبلغ نهاية الخدمة', align: 'right' as const, render: (row: EndOfService) => <span className="font-bold text-primary-600">{row.eosAmount.toLocaleString('ar-SA')}</span> },
+    { key: 'lastSalary', header: 'آخر راتب', align: 'right' as const, render: (row: EndOfService) => formatCurrency(row.lastSalary) },
+    { key: 'eosAmount', header: 'مبلغ نهاية الخدمة', align: 'right' as const, render: (row: EndOfService) => <span className="font-bold text-primary-600">{formatCurrency(row.eosAmount)}</span> },
     { key: 'status', header: 'الحالة', width: '100px', render: (row: EndOfService) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: '', width: '140px', render: (row: EndOfService) => (
       <div className="flex items-center gap-1">
@@ -166,11 +168,11 @@ export const EndOfServicePage: React.FC = () => {
           {selectedEmployee && (
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-slate-500">تاريخ التعيين:</span><span className="font-medium">{selectedEmployee.hireDate || '—'}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">الراتب الأخير:</span><span className="font-medium">{lastSalary.toLocaleString('ar-SA')}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">الراتب الأخير:</span><span className="font-medium">{formatCurrency(lastSalary)}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">سنوات الخدمة:</span><span className="font-medium">{serviceYears.toFixed(1)}</span></div>
               <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
                 <span className="text-slate-500 font-bold">مبلغ نهاية الخدمة:</span>
-                <span className="font-bold text-primary-600 text-lg">{eosAmount.toLocaleString('ar-SA')} YER</span>
+                <span className="font-bold text-primary-600 text-lg">{formatCurrency(eosAmount)} YER</span>
               </div>
             </div>
           )}
@@ -191,10 +193,10 @@ export const EndOfServicePage: React.FC = () => {
             <div className="flex justify-between"><span className="text-slate-500">الموظف:</span><span className="font-medium">{selectedItem.employeeName || selectedItem.employeeId}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">تاريخ الانتهاء:</span><span className="font-medium">{selectedItem.terminationDate}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">سنوات الخدمة:</span><span className="font-medium">{selectedItem.serviceYears}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">آخر راتب:</span><span className="font-medium">{selectedItem.lastSalary.toLocaleString('ar-SA')}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">آخر راتب:</span><span className="font-medium">{formatCurrency(selectedItem.lastSalary)}</span></div>
             <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2">
               <span className="text-slate-500 font-bold">المبلغ:</span>
-              <span className="font-bold text-primary-600 text-lg">{selectedItem.eosAmount.toLocaleString('ar-SA')} YER</span>
+              <span className="font-bold text-primary-600 text-lg">{formatCurrency(selectedItem.eosAmount)} YER</span>
             </div>
           </div>
         </Modal>
@@ -212,7 +214,7 @@ export const EndOfServicePage: React.FC = () => {
   );
 };
 
-function generateEosPrintHtml(item: EndOfService): string {
+function generateEosPrintHtml(item: EndOfService, formatCurrency: (value: number | string) => string): string {
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>نهاية خدمة</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
   <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0}.total{font-weight:700;color:#1e40af;font-size:18px;text-align:left;margin-top:12px}</style></head><body>
@@ -220,8 +222,8 @@ function generateEosPrintHtml(item: EndOfService): string {
   <div class="row"><span>الموظف:</span><strong>${item.employeeName || item.employeeId}</strong></div>
   <div class="row"><span>تاريخ الانتهاء:</span><strong>${item.terminationDate}</strong></div>
   <div class="row"><span>سنوات الخدمة:</span><strong>${item.serviceYears}</strong></div>
-  <div class="row"><span>آخر راتب:</span><strong>${item.lastSalary.toLocaleString('ar-SA')}</strong></div>
-  <div class="total">المبلغ الإجمالي: ${item.eosAmount.toLocaleString('ar-SA')} ر.ي</div>
+  <div class="row"><span>آخر راتب:</span><strong>${formatCurrency(item.lastSalary)}</strong></div>
+  <div class="total">المبلغ الإجمالي: ${formatCurrency(item.eosAmount)} ر.ي</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
   </div></body></html>`;
 }

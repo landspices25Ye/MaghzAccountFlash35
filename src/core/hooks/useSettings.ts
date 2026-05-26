@@ -30,7 +30,11 @@ export function useDocumentSequences(companyId: string) {
     return settingsApi.getNextDocumentNumber(companyId, documentType);
   }, [companyId]);
 
-  return { sequences, isLoading, update, getNextNumber };
+  const peekNextNumber = useCallback(async (documentType: string) => {
+    return settingsApi.peekNextDocumentNumber(companyId, documentType);
+  }, [companyId]);
+
+  return { sequences, isLoading, update, getNextNumber, peekNextNumber };
 }
 
 // ─── Product Types ────────────────────────────────────────────────────────────

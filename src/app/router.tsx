@@ -80,6 +80,7 @@ const VatSettingsPage = React.lazy(() => import('@/modules/settings/components/V
 const BranchesPage = React.lazy(() => import('@/modules/settings/components/BranchesPage'));
 const BackupPage = React.lazy(() => import('@/modules/core/components/BackupPage'));
 const UsersSettingsPage = React.lazy(() => import('@/modules/settings/components/UsersPage'));
+const ResetOnboardingPage = React.lazy(() => import('@/modules/settings/components/ResetOnboardingPage'));
 
 // New admin screens
 const DocumentSequencesPage = React.lazy(() => import('@/modules/settings/components/DocumentSequencesPage'));
@@ -87,6 +88,9 @@ const ProductTypesPage = React.lazy(() => import('@/modules/settings/components/
 const ProductCategoriesPage = React.lazy(() => import('@/modules/settings/components/ProductCategoriesPage'));
 const DefaultAccountsPage = React.lazy(() => import('@/modules/settings/components/DefaultAccountsPage'));
 const UnitsPage = React.lazy(() => import('@/modules/settings/components/UnitsPage'));
+const CashBoxesPage = React.lazy(() => import('@/modules/settings/components/CashBoxesPage'));
+const BanksPage = React.lazy(() => import('@/modules/settings/components/BanksPage'));
+const CostCentersPage = React.lazy(() => import('@/modules/settings/components/CostCentersPage'));
 
 const PageLoader: React.FC = () => (
   <div className="flex items-center justify-center h-full">
@@ -219,7 +223,11 @@ export const AppRouter: React.FC = () => {
                   <Route path="product-categories" element={withSuspense(ProductCategoriesPage)} />
                   <Route path="default-accounts" element={withSuspense(DefaultAccountsPage)} />
                   <Route path="units" element={withSuspense(UnitsPage)} />
+                  <Route path="cash-boxes" element={withSuspense(CashBoxesPage)} />
+                  <Route path="banks" element={withSuspense(BanksPage)} />
+                  <Route path="cost-centers" element={withSuspense(CostCentersPage)} />
                   <Route path="users" element={withSuspense(UsersSettingsPage)} />
+                  <Route path="reset" element={withSuspense(ResetOnboardingPage)} />
                 </Route>
               </Routes>
             </AppLayout>

@@ -6,6 +6,7 @@ import { useAccounts } from '../hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { Account } from '../types';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,20 +28,21 @@ interface AccountTreeItemProps {
   searchQuery: string;
   onEdit: (account: Account) => void;
   onDelete: (account: Account) => void;
+  formatCurrency: (value: number | string) => string;
 }
 
-function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete }: AccountTreeItemProps) {
+function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete, formatCurrency }: AccountTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = account.children && account.children.length > 0;
   const isMatch = searchQuery === '' || 
-    account.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    account.code.includes(searchQuery);
+    (account.nameAr?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    account.code?.includes(searchQuery);
 
   const matchesChild = useMemo(() => {
     if (!searchQuery || !hasChildren) return false;
     return account.children!.some(child => 
-      child.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      child.code.includes(searchQuery)
+      (child.nameAr?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      child.code?.includes(searchQuery)
     );
   }, [account, hasChildren, searchQuery]);
 
@@ -78,7 +80,7 @@ function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete }: 
           <StatusBadge status={account.isActive ? 'active' : 'inactive'} size="sm" />
           {!account.isGroup && (
             <span className="font-mono text-slate-700 dark:text-slate-200 w-32 text-left tabular-nums">
-              {Number(account.balance).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+              {formatCurrency(account.balance)}
             </span>
           )}
           <ActionButtons
@@ -103,6 +105,7 @@ function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete }: 
               searchQuery={searchQuery}
               onEdit={onEdit}
               onDelete={onDelete}
+              formatCurrency={formatCurrency}
             />
           ))}
         </div>
@@ -115,6 +118,7 @@ export const ChartOfAccounts: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { accounts, isLoading, create, update, remove } = useAccounts(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,11 +199,11 @@ export const ChartOfAccounts: React.FC = () => {
   const filteredAccounts = useMemo(() => {
     if (!searchQuery) return accounts;
     return accounts.filter(acc => 
-      acc.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      acc.code.includes(searchQuery) ||
+      (acc.nameAr?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      acc.code?.includes(searchQuery) ||
       acc.children?.some(child => 
-        child.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        child.code.includes(searchQuery)
+        (child.nameAr?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        child.code?.includes(searchQuery)
       )
     );
   }, [accounts, searchQuery]);
@@ -246,6 +250,7 @@ export const ChartOfAccounts: React.FC = () => {
               searchQuery={searchQuery}
               onEdit={handleEdit}
               onDelete={acc => setConfirmDelete(acc)}
+              formatCurrency={formatCurrency}
             />
           ))}
           {filteredAccounts.length === 0 && (

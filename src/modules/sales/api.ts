@@ -1,4 +1,5 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { mapRows } from '@/core/utils/mapPgRow';
 import type { Customer, SalesInvoice, SalesInvoiceLine, Quotation, QuotationLine, SalesReturn, SalesReturnLine, CustomerStatementRow, CustomerArAging } from './types';
 
 const adapterPromise = getDbAdapter();
@@ -11,14 +12,14 @@ export const salesApi = {
       'SELECT * FROM customers WHERE company_id = $1 ORDER BY name',
       [companyId]
     );
-    if (result.success) return { success: true, data: result.rows as Customer[] };
+    if (result.success) return { success: true, data: mapRows<Customer>(result.rows) };
     return { success: false, error: result.error };
   },
 
   async getCustomerById(id: string): Promise<{ success: boolean; data?: Customer; error?: string }> {
     const adapter = await adapterPromise;
     const result = await adapter.query('SELECT * FROM customers WHERE id = $1 LIMIT 1', [id]);
-    if (result.success && result.rows?.[0]) return { success: true, data: result.rows[0] as Customer };
+    if (result.success && result.rows?.[0]) return { success: true, data: mapRows<Customer>([result.rows[0]])[0] };
     return { success: false, error: result.error || 'Not found' };
   },
 

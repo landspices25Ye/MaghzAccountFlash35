@@ -2,7 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
-import { registerDatabaseHandlers, seedInitialData } from './dbHandler.js';
+import { registerDatabaseHandlers, registerOnboardingHandlers, seedInitialData, initializeSchema } from './dbHandler.js';
 import { runDrizzleMigrations } from './migrationRunner.js';
 import { registerRealmHandlers, seedRealmData, closeRealm } from './realmHandler.js';
 
@@ -53,12 +53,17 @@ app.whenReady().then(async () => {
   // Register PostgreSQL IPC handlers (Drizzle ORM bridge)
   registerDatabaseHandlers();
 
+  // Register onboarding IPC handlers (connection test, seed, config)
+  registerOnboardingHandlers();
+
   // Register Realm DB IPC handlers (local storage)
   registerRealmHandlers();
 
   // 1. Run Drizzle migrations on PostgreSQL
   try {
     await runDrizzleMigrations();
+    // Ensure base tables exist as fallback (CREATE TABLE IF NOT EXISTS)
+    await initializeSchema();
     await seedInitialData();
     console.log('[App] PostgreSQL (Drizzle) ready.');
   } catch (err) {

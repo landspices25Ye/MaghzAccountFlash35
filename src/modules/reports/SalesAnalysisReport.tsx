@@ -7,7 +7,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { formatCurrency } from '@/core/utils';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface SalesLine {
   month: string;
@@ -32,6 +32,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'
 export const SalesAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [rawData, setRawData] = useState<SalesLine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -110,9 +111,9 @@ export const SalesAnalysisReport: React.FC = () => {
       if (toDate && row.date) {
         if (new Date(row.date) > new Date(toDate)) return false;
       }
-      if (customerFilter && !row.customerName.toLowerCase().includes(customerFilter.toLowerCase())) return false;
-      if (productFilter && !row.productName.toLowerCase().includes(productFilter.toLowerCase())) return false;
-      if (repFilter && !row.repName.toLowerCase().includes(repFilter.toLowerCase())) return false;
+      if (customerFilter && !(row.customerName?.toLowerCase() || '').includes(customerFilter.toLowerCase())) return false;
+      if (productFilter && !(row.productName?.toLowerCase() || '').includes(productFilter.toLowerCase())) return false;
+      if (repFilter && !(row.repName?.toLowerCase() || '').includes(repFilter.toLowerCase())) return false;
       return true;
     });
   }, [rawData, fromDate, toDate, customerFilter, productFilter, repFilter]);
@@ -305,7 +306,7 @@ export const SalesAnalysisReport: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                  <Tooltip formatter={(value) => Number(value).toLocaleString('ar-SA')} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -323,7 +324,7 @@ export const SalesAnalysisReport: React.FC = () => {
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => Number(value).toLocaleString('ar-SA')} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -343,9 +344,9 @@ export const SalesAnalysisReport: React.FC = () => {
               data={pivotData}
               columns={[
                 { key: 'dimension', header: pivotBy === 'customer' ? 'العميل' : pivotBy === 'product' ? 'المنتج' : 'الشهر' },
-                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
+                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
                 { key: 'invoiceCount', header: 'الفواتير', align: 'right' },
-                { key: 'avgValue', header: 'المتوسط', align: 'right', render: (row) => row.avgValue.toLocaleString('ar-SA') },
+                { key: 'avgValue', header: 'المتوسط', align: 'right', render: (row) => formatCurrency(row.avgValue) },
               ]}
               keyExtractor={(row) => row.dimension}
             />
@@ -357,7 +358,7 @@ export const SalesAnalysisReport: React.FC = () => {
                 { key: 'customerName', header: 'العميل' },
                 { key: 'productName', header: 'المنتج' },
                 { key: 'repName', header: 'المندوب' },
-                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
+                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
               ]}
               keyExtractor={(row, i) => `${row.customerName}-${i}`}
             />

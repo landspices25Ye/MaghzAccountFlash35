@@ -11,6 +11,14 @@ import {
   DatabaseBackup,
   ChevronLeft,
   Settings,
+  RefreshCcw,
+  Layers,
+  Tag,
+  Ruler,
+  BookOpen,
+  Vault,
+  Landmark,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/core/utils';
 
@@ -27,9 +35,17 @@ const menuItems: SettingsMenuItem[] = [
   { id: 'vat', label: 'إعدادات الضريبة', icon: Receipt, path: '/settings/vat' },
   { id: 'branches', label: 'الفروع', icon: GitBranch, path: '/settings/branches' },
   { id: 'document-sequences', label: 'الترقيم المتسلسل', icon: Hash, path: '/settings/document-sequences' },
+  { id: 'default-accounts', label: 'الحسابات الافتراضية', icon: BookOpen, path: '/settings/default-accounts' },
+  { id: 'product-types', label: 'أنواع المنتجات', icon: Layers, path: '/settings/product-types' },
+  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: Tag, path: '/settings/product-categories' },
+  { id: 'units', label: 'الوحدات', icon: Ruler, path: '/settings/units' },
+  { id: 'cash-boxes', label: 'الصناديق والخزائن', icon: Vault, path: '/settings/cash-boxes' },
+  { id: 'banks', label: 'البنوك والحسابات', icon: Landmark, path: '/settings/banks' },
+  { id: 'cost-centers', label: 'مراكز التكلفة', icon: Target, path: '/settings/cost-centers' },
   { id: 'users', label: 'المستخدمين', icon: Users, path: '/settings/users' },
   { id: 'roles', label: 'الأدوار والصلاحيات', icon: Shield, path: '/roles' },
   { id: 'backup', label: 'النسخ الاحتياطي', icon: DatabaseBackup, path: '/settings/backup' },
+  { id: 'reset', label: 'إعادة التهيئة', icon: RefreshCcw, path: '/settings/reset' },
 ];
 
 export const SettingsPage: React.FC = () => {

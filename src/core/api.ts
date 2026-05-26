@@ -17,17 +17,39 @@ export async function updateDocumentSequence(id: string, data: Partial<DocumentS
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
+function formatSequenceNumber(seq: DocumentSequence): string {
+  const num = String(seq.currentNumber + (seq.incrementStep || 1)).padStart(seq.paddingLength || 4, '0');
+  let prefix = seq.prefix || '';
+  let suffix = seq.suffix || '';
+  if (seq.yearReset) {
+    const currentYear = new Date().getFullYear();
+    prefix = prefix.replace(/YYYY/g, String(currentYear)).replace(/YY/g, String(currentYear).slice(-2));
+    suffix = suffix.replace(/YYYY/g, String(currentYear)).replace(/YY/g, String(currentYear).slice(-2));
+  }
+  // Avoid double dash
+  const sep = prefix && !prefix.endsWith('-') ? '-' : '';
+  return `${prefix}${sep}${num}${suffix}`;
+}
+
 export async function getNextDocumentNumber(companyId: string, documentType: string): Promise<{ success: boolean; number?: string; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 AND document_type = $2 AND is_active = true', [companyId, documentType]);
   if (!result.success || !result.rows?.[0]) return { success: false, error: 'Sequence not found' };
   const seq = result.rows[0] as DocumentSequence;
-  const num = String(seq.currentNumber).padStart(seq.paddingLength, '0');
-  const year = new Date().getFullYear();
-  const fullNumber = `${seq.prefix}${seq.yearReset ? year + '-' : ''}${num}${seq.suffix}`;
+  const fullNumber = formatSequenceNumber(seq);
   // Increment
   await adapter.query('UPDATE document_sequences SET current_number = current_number + increment_step WHERE id = $1', [seq.id]);
   return { success: true, number: fullNumber };
+}
+
+export async function peekNextDocumentNumber(companyId: string, documentType: string): Promise<{ success: boolean; number?: string; error?: string }> {
+  const adapter = await getDbAdapter();
+  const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 AND document_type = $2 AND is_active = true', [companyId, documentType]);
+  if (!result.success || !result.rows?.[0]) return { success: false, error: 'Sequence not found' };
+  const seq = result.rows[0] as DocumentSequence;
+  // Preview only: use currentNumber (as if next consumption) without incrementing
+  const previewSeq = { ...seq, currentNumber: seq.currentNumber + (seq.incrementStep || 1) };
+  return { success: true, number: formatSequenceNumber(previewSeq) };
 }
 
 // ─── Product Types ────────────────────────────────────────────────────────────

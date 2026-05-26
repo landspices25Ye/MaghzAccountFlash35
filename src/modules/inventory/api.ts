@@ -1,4 +1,5 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { mapRows } from '@/core/utils/mapPgRow';
 import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTransaction, StockAdjustment, ProductCategory } from './types';
 
 export const inventoryApi = {
@@ -6,7 +7,7 @@ export const inventoryApi = {
   async getProducts(companyId: string): Promise<{ success: boolean; data?: Product[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.getProducts(companyId);
-    return { success: result.success, data: result.data as Product[], error: result.error };
+    return { success: result.success, data: mapRows<Product>(result.data), error: result.error };
   },
 
   async createProduct(data: Omit<Product, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -35,7 +36,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as Warehouse[] };
+      return { success: true, data: mapRows<Warehouse>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -73,7 +74,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as Stock[] };
+      return { success: true, data: mapRows<Stock>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -88,7 +89,7 @@ export const inventoryApi = {
     }
     const result = await adapter.query(sql, params);
     if (result.success) {
-      return { success: true, data: result.rows as Stock[] };
+      return { success: true, data: mapRows<Stock>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -105,7 +106,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as StockItem[] };
+      return { success: true, data: mapRows<StockItem>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -130,7 +131,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as StockTransfer[] };
+      return { success: true, data: mapRows<StockTransfer>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -143,7 +144,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as InventoryTransaction[] };
+      return { success: true, data: mapRows<InventoryTransaction>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -173,7 +174,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as StockAdjustment[] };
+      return { success: true, data: mapRows<StockAdjustment>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -219,7 +220,7 @@ export const inventoryApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as ProductCategory[] };
+      return { success: true, data: mapRows<ProductCategory>(result.rows) };
     }
     return { success: false, error: result.error };
   },

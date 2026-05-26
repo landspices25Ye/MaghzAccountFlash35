@@ -18,6 +18,8 @@ interface CompanyFormData {
   stampUrl?: string;
   fiscalYearStart: string;
   currency: string;
+  dateFormat: string;
+  decimalPlaces: number;
 }
 
 export const CompanySetupPage: React.FC = () => {
@@ -33,6 +35,8 @@ export const CompanySetupPage: React.FC = () => {
     email: '',
     fiscalYearStart: '',
     currency: 'YER',
+    dateFormat: 'yyyy-MM-dd',
+    decimalPlaces: 2,
   });
 
   useEffect(() => {
@@ -47,6 +51,8 @@ export const CompanySetupPage: React.FC = () => {
         logoUrl: activeCompany.logoUrl || '',
         fiscalYearStart: activeCompany.fiscalYearStart || '',
         currency: activeCompany.currency || 'YER',
+        dateFormat: (activeCompany as any).dateFormat || 'yyyy-MM-dd',
+        decimalPlaces: Number((activeCompany as any).decimalPlaces) || 2,
       });
     }
   }, [activeCompany]);
@@ -68,7 +74,7 @@ export const CompanySetupPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(
-        `UPDATE companies SET name = ?, name_en = ?, tax_number = ?, address = ?, phone = ?, email = ?, logo_url = ?, fiscal_year_start = ?, currency = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE companies SET name = ?, name_en = ?, tax_number = ?, address = ?, phone = ?, email = ?, logo_url = ?, fiscal_year_start = ?, currency = ?, date_format = ?, decimal_places = ?, updated_at = ? WHERE id = ?`,
         [
           formData.name,
           formData.nameEn,
@@ -79,6 +85,8 @@ export const CompanySetupPage: React.FC = () => {
           formData.logoUrl,
           formData.fiscalYearStart,
           formData.currency,
+          formData.dateFormat,
+          formData.decimalPlaces,
           new Date().toISOString(),
           activeCompany.id,
         ]
@@ -93,7 +101,7 @@ export const CompanySetupPage: React.FC = () => {
       });
 
       // Update store
-      useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency);
+      useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency, { dateFormat: formData.dateFormat, decimalPlaces: formData.decimalPlaces });
     } catch (error) {
       console.error('Failed to save company:', error);
     } finally {
@@ -177,6 +185,26 @@ export const CompanySetupPage: React.FC = () => {
               label="العملة الافتراضية"
               value={formData.currency}
               onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
+            />
+            <div>
+              <label className="form-label block mb-1.5">تنسيق التاريخ</label>
+              <select
+                value={formData.dateFormat}
+                onChange={(e) => setFormData((prev) => ({ ...prev, dateFormat: e.target.value }))}
+                className="form-control"
+              >
+                <option value="yyyy-MM-dd">YYYY-MM-DD (ميلادي)</option>
+                <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                <option value="yyyy/MM/dd">YYYY/MM/DD</option>
+              </select>
+            </div>
+            <Input
+              label="عدد المنازل العشرية"
+              type="number"
+              min={0}
+              max={6}
+              value={String(formData.decimalPlaces)}
+              onChange={(e) => setFormData((prev) => ({ ...prev, decimalPlaces: Number(e.target.value) }))}
             />
             <Input
               label="بداية السنة المالية"

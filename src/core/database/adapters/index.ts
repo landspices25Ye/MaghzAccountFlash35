@@ -24,11 +24,21 @@ let adapter: DbAdapter | null = null;
 let adapterType: 'pg' | 'realm' | 'mock' | null = null;
 
 export async function getDbAdapter(): Promise<DbAdapter> {
-  // If we already have a working mock adapter, return it
-  if (adapter && adapterType === 'mock') return adapter;
-
-  // Reset if previous adapter failed (allows retry)
+  // Always retry PostgreSQL/Realm first — don't get stuck on mock forever
   if (adapter && adapterType !== 'mock') {
+    // Verify still alive
+    try {
+      const ping = await adapter.ping();
+      if (ping.success) return adapter;
+    } catch {
+      // stale adapter, reset
+    }
+    adapter = null;
+    adapterType = null;
+  }
+
+  // If mock was cached but PG/Realm may now be available, reset and retry
+  if (adapter && adapterType === 'mock') {
     adapter = null;
     adapterType = null;
   }

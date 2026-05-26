@@ -11,6 +11,7 @@ import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { cn } from '@/core/utils';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { Transaction, JournalEntry as JournalEntryType } from '../types';
 
 interface EntryLine {
@@ -30,6 +31,7 @@ export const JournalEntriesPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredTransactions = useBranchFilter(transactions);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -149,11 +151,11 @@ export const JournalEntriesPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'date', header: t('accounting.date'), render: (row: Transaction) => row.date },
+    { key: 'date', header: t('accounting.date'), render: (row: Transaction) => row.date ? new Date(row.date).toLocaleDateString('ar-SA') : '-' },
     { key: 'reference', header: t('accounting.reference'), render: (row: Transaction) => row.reference || '-' },
     { key: 'description', header: t('accounting.description'), render: (row: Transaction) => row.description || '-' },
     { key: 'totalAmount', header: t('accounting.amount'), align: 'right' as const, render: (row: Transaction) => 
-      Number(row.totalAmount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })
+      formatCurrency(row.totalAmount)
     },
     { key: 'status', header: t('sales.status'), render: (row: Transaction) => (
       <StatusBadge status={row.status} size="sm" />
@@ -290,10 +292,10 @@ export const JournalEntriesPage: React.FC = () => {
                 <tr>
                   <td className="p-2 text-right">{t('accounting.totalDebit')} / {t('accounting.totalCredit')}</td>
                   <td className={cn('p-2 text-right', totalDebit !== totalCredit ? 'text-danger-600' : '')}>
-                    {totalDebit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {formatCurrency(totalDebit)}
                   </td>
                   <td className={cn('p-2 text-right', totalDebit !== totalCredit ? 'text-danger-600' : '')}>
-                    {totalCredit.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}
+                    {formatCurrency(totalCredit)}
                   </td>
                   <td colSpan={2} />
                 </tr>
@@ -304,7 +306,7 @@ export const JournalEntriesPage: React.FC = () => {
           <Button variant="secondary" onClick={addEntry} size="sm">+ {t('accounting.addLine')}</Button>
           
           {!isBalanced && entries.length > 1 && (
-            <p className="text-danger-600 text-sm">{t('accounting.unbalancedEntry')}: {t('accounting.difference')} = {(totalDebit - totalCredit).toLocaleString('ar-SA')}</p>
+            <p className="text-danger-600 text-sm">{t('accounting.unbalancedEntry')}: {t('accounting.difference')} = {formatCurrency(totalDebit - totalCredit)}</p>
           )}
         </div>
       </Modal>
@@ -329,7 +331,7 @@ export const JournalEntriesPage: React.FC = () => {
         {selectedTx && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div><span className="text-slate-500">{t('accounting.date')}:</span> {selectedTx.date}</div>
+              <div><span className="text-slate-500">{t('accounting.date')}:</span> {selectedTx.date ? new Date(selectedTx.date).toLocaleDateString('ar-SA') : '-'}</div>
               <div><span className="text-slate-500">{t('accounting.reference')}:</span> {selectedTx.reference || '-'}</div>
               <div><span className="text-slate-500">{t('sales.status')}:</span> <StatusBadge status={selectedTx.status} size="sm" /></div>
             </div>
@@ -346,11 +348,11 @@ export const JournalEntriesPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedTx.entries.map((entry, idx) => (
+                  {(selectedTx.entries || []).map((entry, idx) => (
                     <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
                       <td className="p-2 text-sm">{entry.account?.nameAr || entry.accountId}</td>
-                      <td className="p-2 text-sm text-right tabular-nums">{entry.debit > 0 ? entry.debit.toLocaleString('ar-SA', { minimumFractionDigits: 2 }) : '-'}</td>
-                      <td className="p-2 text-sm text-right tabular-nums">{entry.credit > 0 ? entry.credit.toLocaleString('ar-SA', { minimumFractionDigits: 2 }) : '-'}</td>
+                      <td className="p-2 text-sm text-right tabular-nums">{entry.debit > 0 ? formatCurrency(entry.debit) : '-'}</td>
+                      <td className="p-2 text-sm text-right tabular-nums">{entry.credit > 0 ? formatCurrency(entry.credit) : '-'}</td>
                       <td className="p-2 text-sm">{entry.memo || '-'}</td>
                     </tr>
                   ))}
@@ -360,7 +362,7 @@ export const JournalEntriesPage: React.FC = () => {
             
             <div className="flex justify-between text-sm font-semibold">
               <span>{t('accounting.amount')}</span>
-              <span className="tabular-nums">{Number(selectedTx.totalAmount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</span>
+              <span className="tabular-nums">{formatCurrency(selectedTx.totalAmount)}</span>
             </div>
           </div>
         )}

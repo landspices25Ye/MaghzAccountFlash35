@@ -4,6 +4,7 @@ import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Card, Button, Modal, Input } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
@@ -66,6 +67,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { invoices, isLoading, create, update, remove, post } = usePurchaseInvoices(activeCompany?.id || '');
   const { orders } = usePurchaseOrders(activeCompany?.id || '');
   const { settings } = useSettings(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const filteredInvoices = useBranchFilter(invoices);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
@@ -258,6 +260,8 @@ export const PurchaseInvoicesPage: React.FC = () => {
         recordId: confirmPost,
         companyId: activeCompany.id,
       });
+    } else {
+      alert(`فشل ترحيل الفاتورة: ${result.error || 'خطأ غير معروف'}`);
     }
     setPostingId(null);
     setConfirmPost(null);
@@ -327,12 +331,12 @@ export const PurchaseInvoicesPage: React.FC = () => {
     {
       accessorKey: 'date',
       header: t('purchases.date'),
-      cell: ({ row }) => <span>{row.original.date}</span>,
+      cell: ({ row }) => <span>{row.original.date ? formatDate(row.original.date) : '-'}</span>,
     },
     {
       accessorKey: 'totalAmount',
       header: t('purchases.total'),
-      cell: ({ row }) => <span className="text-slate-900 dark:text-slate-100 font-medium">{Number(row.original.totalAmount).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</span>,
+      cell: ({ row }) => <span className="text-slate-900 dark:text-slate-100 font-medium">{formatCurrency(row.original.totalAmount)}</span>,
     },
     {
       accessorKey: 'status',
@@ -484,7 +488,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
                   <Input type="number" placeholder={t('purchases.vat') + '%'} value={String(line.vatPercent)} onChange={e => updateLine(idx, { vatPercent: Number(e.target.value) })} />
                 </div>
                 <div className="col-span-1 text-sm font-medium text-slate-700 dark:text-slate-200 text-center">
-                  {line.lineTotal.toLocaleString('ar-SA')}
+                  {formatCurrency(line.lineTotal)}
                 </div>
                 <div className="col-span-1">
                   <Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
@@ -500,9 +504,9 @@ export const PurchaseInvoicesPage: React.FC = () => {
           <div className="flex justify-between text-sm border-t border-slate-200 dark:border-slate-700 pt-3">
             <span className="text-slate-500">{t('purchases.vat')}: {vatRate}%</span>
             <div className="space-y-1 text-end">
-              <p>{t('purchases.subtotal')}: <strong>{formTotals.subtotal.toLocaleString('ar-SA')}</strong></p>
-              <p>{t('purchases.vat')}: <strong>{formTotals.vatAmount.toLocaleString('ar-SA')}</strong></p>
-              <p className="text-lg font-bold text-primary-600">{t('purchases.total')}: {formTotals.totalAmount.toLocaleString('ar-SA')}</p>
+              <p>{t('purchases.subtotal')}: <strong>{formatCurrency(formTotals.subtotal)}</strong></p>
+              <p>{t('purchases.vat')}: <strong>{formatCurrency(formTotals.vatAmount)}</strong></p>
+              <p className="text-lg font-bold text-primary-600">{t('purchases.total')}: {formatCurrency(formTotals.totalAmount)}</p>
             </div>
           </div>
         </div>
@@ -536,22 +540,22 @@ export const PurchaseInvoicesPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedInvoice.lines.map((line, idx) => (
+                  {(selectedInvoice.lines || []).map((line, idx) => (
                     <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
                       <td className="p-2">{idx + 1}</td>
                       <td className="p-2">{line.description || line.productId}</td>
                       <td className="p-2">{line.quantity}</td>
-                      <td className="p-2">{line.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="p-2 font-medium">{line.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="p-2">{formatCurrency(line.unitPrice)}</td>
+                      <td className="p-2 font-medium">{formatCurrency(line.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-end gap-4 text-sm">
-              <span>{t('purchases.subtotal')}: <strong>{selectedInvoice.subtotal.toLocaleString('ar-SA')}</strong></span>
-              <span>{t('purchases.vat')}: <strong>{selectedInvoice.vatAmount.toLocaleString('ar-SA')}</strong></span>
-              <span className="text-primary-600 font-bold">{t('purchases.total')}: {selectedInvoice.totalAmount.toLocaleString('ar-SA')}</span>
+              <span>{t('purchases.subtotal')}: <strong>{formatCurrency(selectedInvoice.subtotal)}</strong></span>
+              <span>{t('purchases.vat')}: <strong>{formatCurrency(selectedInvoice.vatAmount)}</strong></span>
+              <span className="text-primary-600 font-bold">{t('purchases.total')}: {formatCurrency(selectedInvoice.totalAmount)}</span>
             </div>
             {selectedInvoice.notes && (
               <div className="text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">

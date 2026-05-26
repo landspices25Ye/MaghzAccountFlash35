@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useBoms } from '../hooks/useManufacturing';
 import { manufacturingApi } from '../api';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { BOM, BOMLine } from '../types';
 
 interface BomFormLine {
@@ -21,6 +22,7 @@ export const BomPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { boms, isLoading, create, update, remove } = useBoms(companyId);
+  const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -100,7 +102,7 @@ export const BomPage: React.FC = () => {
     if (!viewing) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const html = generateBomPrintHtml(viewing.bom, viewing.lines);
+    const html = generateBomPrintHtml(viewing.bom, viewing.lines, formatCurrency);
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -116,7 +118,7 @@ export const BomPage: React.FC = () => {
     { key: 'productName', header: 'المنتج' },
     { key: 'version', header: 'الإصدار', width: '100px' },
     { key: 'lines', header: 'المواد', width: '100px', render: (row: BOM) => `${boms.find((b) => b.id === row.id)?.id ? '—' : '—'}` },
-    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: BOM) => row.totalCost?.toLocaleString('ar-SA') || '—' },
+    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: BOM) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
     { key: 'isActive', header: 'الحالة', width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: BOM) => (
       <ActionButtons
@@ -214,7 +216,7 @@ export const BomPage: React.FC = () => {
             <Button variant="secondary" className="mt-3" onClick={addLine}>+ إضافة مادة</Button>
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
               <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة المقدرة:</span>
-              <span className="font-bold text-primary-600 tabular-nums">{estimatedTotal.toLocaleString('ar-SA')}</span>
+              <span className="font-bold text-primary-600 tabular-nums">{formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
         </div>
@@ -250,14 +252,14 @@ export const BomPage: React.FC = () => {
               columns={[
                 { key: 'materialName', header: 'المادة' },
                 { key: 'quantity', header: 'الكمية', width: '100px' },
-                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => (row.unitCost || 0).toLocaleString('ar-SA') },
-                { key: 'totalCost', header: 'الإجمالي', align: 'right' as const, render: (row) => ((row.quantity || 0) * (row.unitCost || 0)).toLocaleString('ar-SA') },
+                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
+                { key: 'totalCost', header: 'الإجمالي', align: 'right' as const, render: (row) => formatCurrency((row.quantity || 0) * (row.unitCost || 0)) },
               ]}
               keyExtractor={(row) => row.id}
             />
             <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
               <span className="font-bold text-slate-700 dark:text-slate-200">التكلفة الإجمالية:</span>
-              <span className="font-bold text-primary-600">{viewing.bom.totalCost?.toLocaleString('ar-SA') || estimatedTotal.toLocaleString('ar-SA')}</span>
+              <span className="font-bold text-primary-600">{viewing.bom.totalCost !== undefined ? formatCurrency(viewing.bom.totalCost) : formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
         )}
@@ -275,14 +277,14 @@ export const BomPage: React.FC = () => {
   );
 };
 
-function generateBomPrintHtml(bom: BOM, lines: BOMLine[]): string {
+function generateBomPrintHtml(bom: BOM, lines: BOMLine[], formatCurrency: (value: number | string) => string): string {
   const rows = lines.map((l, i) => `
     <tr>
       <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
       <td style="padding:8px;border:1px solid #e2e8f0">${l.materialName || l.materialId}</td>
       <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.quantity}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${(l.unitCost || 0).toLocaleString('ar-SA')}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${((l.quantity || 0) * (l.unitCost || 0)).toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.unitCost || 0)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency((l.quantity || 0) * (l.unitCost || 0))}</td>
     </tr>
   `).join('');
 
@@ -293,7 +295,7 @@ function generateBomPrintHtml(bom: BOM, lines: BOMLine[]): string {
   <p><strong>المنتج:</strong> ${bom.productName || bom.productId}</p>
   <p><strong>الإصدار:</strong> ${bom.version}</p>
   <table><thead><tr><th>#</th><th>المادة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="total">التكلفة الإجمالية: ${bom.totalCost?.toLocaleString('ar-SA') || '—'} ر.ي</div>
+  <div class="total">التكلفة الإجمالية: ${bom.totalCost !== undefined ? formatCurrency(bom.totalCost) : '—'} ر.ي</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
   </div></body></html>`;
 }

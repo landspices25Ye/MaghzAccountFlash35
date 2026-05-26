@@ -10,6 +10,7 @@ import { useQuotations } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
@@ -43,6 +44,7 @@ export const QuotationsPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredQuotations = useBranchFilter(quotations);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -234,8 +236,8 @@ export const QuotationsPage: React.FC = () => {
     { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم', width: '120px' },
     { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: Quotation) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
-    { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate || '-' },
-    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => row.totalAmount.toLocaleString('ar-SA') },
+    { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? new Date(row.expiryDate).toLocaleDateString('ar-SA') : '-' },
+    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: Quotation) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '220px', render: (row: Quotation) => (
       <div className="flex items-center gap-1">
@@ -331,7 +333,7 @@ export const QuotationsPage: React.FC = () => {
                         <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} max={100} value={String(line.discountPercent)} onChange={e => updateLine(idx, 'discountPercent', Number(e.target.value))} size="sm" /></td>
-                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{lineTotal.toLocaleString('ar-SA', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{formatCurrency(lineTotal)}</td>
                         <td className="px-2 py-1"><Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></td>
                       </tr>
                     );
@@ -345,7 +347,7 @@ export const QuotationsPage: React.FC = () => {
             <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))} />
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 flex items-center justify-between">
               <span className="text-slate-600 dark:text-slate-300 font-medium">{t('sales.total') || 'الإجمالي'}</span>
-              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{calculations.totalAmount.toLocaleString('ar-SA')}</span>
+              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(calculations.totalAmount)}</span>
             </div>
           </div>
 
@@ -370,13 +372,13 @@ export const QuotationsPage: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><tr><th className="px-3 py-2 text-right">#</th><th className="px-3 py-2 text-right">{t('inventory.productName') || 'المنتج'}</th><th className="px-3 py-2 text-right">{t('inventory.quantity') || 'الكمية'}</th><th className="px-3 py-2 text-right">{t('inventory.unitPrice') || 'السعر'}</th><th className="px-3 py-2 text-right">{t('sales.total') || 'الإجمالي'}</th></tr></thead>
                 <tbody>
-                  {viewing.lines.map((l, i) => (
+                  {(viewing.lines || []).map((l, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2 text-slate-500">{i + 1}</td>
                       <td className="px-3 py-2 font-medium">{l.productName || l.productId}</td>
                       <td className="px-3 py-2">{l.quantity}</td>
-                      <td className="px-3 py-2">{l.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="px-3 py-2 font-medium">{l.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="px-3 py-2">{formatCurrency(l.unitPrice)}</td>
+                      <td className="px-3 py-2 font-medium">{formatCurrency(l.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -384,7 +386,7 @@ export const QuotationsPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
               <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.total') || 'الإجمالي'}</p>
-              <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{viewing.totalAmount.toLocaleString('ar-SA')}</p>
+              <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(viewing.totalAmount)}</p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close') || 'إغلاق'}</Button>

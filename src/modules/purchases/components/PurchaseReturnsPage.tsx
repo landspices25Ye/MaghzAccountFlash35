@@ -15,6 +15,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseReturn } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface ReturnFormLine {
   productId: string;
@@ -56,6 +57,7 @@ export const PurchaseReturnsPage: React.FC = () => {
   const user = useAuthStore(state => state.user);
   const { returns, isLoading, create, update, remove, post } = usePurchaseReturns(activeCompany?.id || '');
   const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -210,7 +212,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     { accessorKey: 'invoiceNumber', header: t('purchases.return.originalInvoice'), cell: ({ row }) => <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.original.invoiceNumber || '-'}</span> },
     { accessorKey: 'supplier', header: t('purchases.supplier'), cell: ({ row }) => <span>{row.original.supplier?.name || row.original.supplierId}</span> },
     { accessorKey: 'date', header: t('purchases.date') },
-    { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{Number(row.original.totalAmount).toLocaleString('ar-SA')}</span> },
+    { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.totalAmount)}</span> },
     { accessorKey: 'status', header: t('purchases.status'), cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     {
       accessorKey: 'actions',
@@ -281,7 +283,7 @@ export const PurchaseReturnsPage: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.return.postedTotal')}</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalPosted.toLocaleString('ar-SA')} {activeCompany?.currency || 'YER'}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalPosted)} {activeCompany?.currency || 'YER'}</p>
           </div>
         </Card>
         <Card>
@@ -386,7 +388,7 @@ export const PurchaseReturnsPage: React.FC = () => {
           </div>
 
           <div className="flex justify-end text-lg font-bold text-primary-600">
-            {t('purchases.total')}: {formTotal.toLocaleString('ar-SA')}
+            {t('purchases.total')}: {formatCurrency(formTotal || 0)}
           </div>
         </div>
       </Modal>
@@ -419,20 +421,20 @@ export const PurchaseReturnsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedReturn.lines.map((line, idx) => (
+                  {(selectedReturn.lines || []).map((line, idx) => (
                     <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
                       <td className="p-2">{idx + 1}</td>
                       <td className="p-2">{line.description || line.productId}</td>
                       <td className="p-2">{line.quantity}</td>
-                      <td className="p-2">{line.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="p-2 font-medium">{line.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="p-2">{formatCurrency(line.unitPrice || 0)}</td>
+                      <td className="p-2 font-medium">{formatCurrency(line.lineTotal || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-end text-lg font-bold text-primary-600">
-              {t('purchases.total')}: {selectedReturn.totalAmount.toLocaleString('ar-SA')}
+              {t('purchases.total')}: {formatCurrency(selectedReturn.totalAmount || 0)}
             </div>
             {selectedReturn.reason && (
               <div className="text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">

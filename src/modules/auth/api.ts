@@ -77,7 +77,7 @@ export const authApi = {
       let users = (result.rows || []) as User[];
       if (filters?.search) {
         const q = filters.search.toLowerCase();
-        users = users.filter((u) => u.username.toLowerCase().includes(q) || (u.email && u.email.toLowerCase().includes(q)));
+        users = users.filter((u) => (u.username?.toLowerCase() || '').includes(q) || (u.email && u.email.toLowerCase().includes(q)));
       }
       if (filters?.role) {
         users = users.filter((u) => u.role === filters.role);
@@ -156,7 +156,7 @@ export const authApi = {
       let roles = (result.rows || []) as Role[];
       if (filters?.search) {
         const q = filters.search.toLowerCase();
-        roles = roles.filter((r) => r.name.toLowerCase().includes(q));
+        roles = roles.filter((r) => (r.name?.toLowerCase() || '').includes(q));
       }
       return { success: true, data: roles };
     }

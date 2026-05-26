@@ -8,6 +8,8 @@ interface AppSettings {
   baseCurrency: string;
   defaultBranchId?: string;
   defaultAccounts: Record<string, string>;
+  dateFormat: string;
+  decimalPlaces: number;
 }
 
 export function useSettings(companyId: string) {
@@ -45,6 +47,12 @@ export function useSettings(companyId: string) {
         [companyId]
       );
 
+      // Load company format settings
+      const companyResult = await adapter.query(
+        `SELECT date_format, decimal_places FROM companies WHERE id = ? LIMIT 1`,
+        [companyId]
+      );
+
       const vatRate = vatResult.success && vatResult.rows?.[0]
         ? Number(vatResult.rows[0].vat_rate)
         : 15;
@@ -66,12 +74,22 @@ export function useSettings(companyId: string) {
         ? branchResult.rows[0].id
         : undefined;
 
+      const dateFormat = companyResult.success && companyResult.rows?.[0]?.date_format
+        ? String(companyResult.rows[0].date_format)
+        : 'yyyy-MM-dd';
+
+      const decimalPlaces = companyResult.success && companyResult.rows?.[0]?.decimal_places !== undefined
+        ? Number(companyResult.rows[0].decimal_places)
+        : 2;
+
       setSettings({
         vatRate,
         baseCurrency,
         defaultCurrency: baseCurrency,
         defaultAccounts,
         defaultBranchId,
+        dateFormat,
+        decimalPlaces,
       });
     } catch (error) {
       console.error('Failed to load settings:', error);

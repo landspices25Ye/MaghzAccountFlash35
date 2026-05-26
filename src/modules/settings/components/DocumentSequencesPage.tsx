@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Hash, RotateCcw, Save } from 'lucide-react';
-import { Card, Button, Table, Input, Badge } from '@/core/ui/components';
+import { Hash, RotateCcw, Save, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Card, Button, Table, Input } from '@/core/ui/components';
 import { useDocumentSequences } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import type { DocumentSequence } from '@/core/types';
@@ -23,7 +23,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 export const DocumentSequencesPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { sequences, isLoading, update, getNextNumber } = useDocumentSequences(activeCompany?.id || '');
+  const { sequences, isLoading, update, peekNextNumber } = useDocumentSequences(activeCompany?.id || '');
   const [editing, setEditing] = useState<Record<string, Partial<DocumentSequence>>>({});
   const [previewNumber, setPreviewNumber] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -45,10 +45,14 @@ export const DocumentSequencesPage: React.FC = () => {
   };
 
   const handlePreview = async (seq: DocumentSequence) => {
-    const result = await getNextNumber(seq.documentType);
+    const result = await peekNextNumber(seq.documentType);
     if (result.success && result.number) {
       setPreviewNumber(prev => ({ ...prev, [seq.id]: result.number! }));
     }
+  };
+
+  const toggleActive = async (seq: DocumentSequence) => {
+    await update(seq.id, { isActive: !seq.isActive });
   };
 
   const columns = [
@@ -60,6 +64,9 @@ export const DocumentSequencesPage: React.FC = () => {
     )},
     { key: 'prefix', header: 'بادئة', width: '100px', render: (row: DocumentSequence) => (
       <Input size="sm" value={editing[row.id]?.prefix ?? row.prefix} onChange={e => handleEdit(row.id, 'prefix', e.target.value)} className="w-24" />
+    )},
+    { key: 'suffix', header: 'لاحقة', width: '80px', render: (row: DocumentSequence) => (
+      <Input size="sm" value={editing[row.id]?.suffix ?? row.suffix} onChange={e => handleEdit(row.id, 'suffix', e.target.value)} className="w-20" />
     )},
     { key: 'currentNumber', header: 'الرقم الحالي', width: '100px', render: (row: DocumentSequence) => (
       <Input size="sm" type="number" value={String(editing[row.id]?.currentNumber ?? row.currentNumber)} onChange={e => handleEdit(row.id, 'currentNumber', Number(e.target.value))} className="w-24" />
@@ -75,17 +82,21 @@ export const DocumentSequencesPage: React.FC = () => {
         className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
       />
     )},
-    { key: 'isActive', header: 'نشط', width: '60px', render: (row: DocumentSequence) => (
-      <Badge className={row.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>
-        {row.isActive ? 'نعم' : 'لا'}
-      </Badge>
-    )},
-    { key: 'preview', header: 'معاينة', width: '140px', render: (row: DocumentSequence) => (
-      <div className="flex items-center gap-1">
-        {previewNumber[row.id] && (
-          <span className="text-xs font-mono bg-primary-50 text-primary-700 px-2 py-0.5 rounded">{previewNumber[row.id]}</span>
+    { key: 'isActive', header: 'نشط', width: '80px', render: (row: DocumentSequence) => (
+      <button onClick={() => toggleActive(row)} className="focus:outline-none" title={row.isActive ? 'إلغاء التفعيل' : 'تفعيل'}>
+        {row.isActive ? (
+          <ToggleRight size={20} className="text-emerald-500" />
+        ) : (
+          <ToggleLeft size={20} className="text-slate-400" />
         )}
-        <Button size="sm" variant="ghost" onClick={() => handlePreview(row)} leftIcon={<Hash size={12} />}>معاينة</Button>
+      </button>
+    )},
+    { key: 'preview', header: 'معاينة', width: '160px', render: (row: DocumentSequence) => (
+      <div className="flex items-center gap-2">
+        {previewNumber[row.id] && (
+          <span className="text-xs font-mono bg-primary-50 text-primary-700 px-2 py-0.5 rounded border border-primary-100">{previewNumber[row.id]}</span>
+        )}
+        <Button size="sm" variant="ghost" onClick={() => handlePreview(row)} leftIcon={<Eye size={12} />}>معاينة</Button>
       </div>
     )},
     { key: 'actions', header: '', width: '80px', render: (row: DocumentSequence) => (

@@ -14,6 +14,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { Supplier, SupplierStatementItem } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface SupplierForm {
   name: string;
@@ -40,6 +41,7 @@ export const SuppliersPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const { suppliers, isLoading, create, update, remove } = useSuppliers(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -138,7 +140,7 @@ export const SuppliersPage: React.FC = () => {
     { accessorKey: 'name', header: t('purchases.supplier.name'), cell: ({ row }) => <span className="font-medium text-slate-900 dark:text-slate-100">{row.original.name}</span> },
     { accessorKey: 'phone', header: t('purchases.supplier.phone') },
     { accessorKey: 'email', header: t('purchases.supplier.email') },
-    { accessorKey: 'balance', header: t('purchases.supplier.totalBalance'), cell: ({ row }) => <span>{Number(row.original.balance).toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</span> },
+    { accessorKey: 'balance', header: t('purchases.supplier.totalBalance'), cell: ({ row }) => <span>{formatCurrency(row.original.balance)}</span> },
     { accessorKey: 'isActive', header: t('purchases.supplier.isActive'), cell: ({ row }) => <StatusBadge status={row.original.isActive ? 'active' : 'inactive'} /> },
     {
       accessorKey: 'actions',
@@ -164,9 +166,9 @@ export const SuppliersPage: React.FC = () => {
     { accessorKey: 'date', header: t('date') },
     { accessorKey: 'documentNumber', header: t('documentNumber') },
     { accessorKey: 'description', header: t('description') },
-    { accessorKey: 'debit', header: t('accounting.debit'), cell: ({ row }) => <span className="text-rose-600">{row.original.debit > 0 ? row.original.debit.toLocaleString('ar-SA') : '-'}</span> },
-    { accessorKey: 'credit', header: t('accounting.credit'), cell: ({ row }) => <span className="text-emerald-600">{row.original.credit > 0 ? row.original.credit.toLocaleString('ar-SA') : '-'}</span> },
-    { accessorKey: 'balance', header: t('balance'), cell: ({ row }) => <span className="font-medium">{row.original.balance.toLocaleString('ar-SA')}</span> },
+    { accessorKey: 'debit', header: t('accounting.debit'), cell: ({ row }) => <span className="text-rose-600">{Number(row.original.debit || 0) > 0 ? formatCurrency(row.original.debit || 0) : '-'}</span> },
+    { accessorKey: 'credit', header: t('accounting.credit'), cell: ({ row }) => <span className="text-emerald-600">{Number(row.original.credit || 0) > 0 ? formatCurrency(row.original.credit || 0) : '-'}</span> },
+    { accessorKey: 'balance', header: t('balance'), cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.balance || 0)}</span> },
   ], [t]);
 
   return (
@@ -200,7 +202,7 @@ export const SuppliersPage: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.supplier.totalBalance')}</p>
-            <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{totalBalance.toLocaleString('ar-SA', { minimumFractionDigits: 2 })}</p>
+            <p className="text-2xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(totalBalance)}</p>
           </div>
         </Card>
       </div>
@@ -362,7 +364,7 @@ export const SuppliersPage: React.FC = () => {
                     <Card key={bucket.bucket}>
                       <div className="p-4 text-center">
                         <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.bucket} {t('purchases.supplier.days')}</p>
-                        <p className="text-xl font-bold text-slate-900 dark:text-slate-50">{bucket.amount.toLocaleString('ar-SA')}</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(bucket.amount || 0)}</p>
                       </div>
                     </Card>
                   ))}

@@ -12,6 +12,8 @@ interface Company {
   logoUrl?: string;
   stampUrl?: string;
   fiscalYearStart?: string;
+  dateFormat?: string;
+  decimalPlaces?: number;
 }
 
 interface AppState {
@@ -34,7 +36,7 @@ interface AppState {
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
   setLanguage: (language: 'ar' | 'en') => void;
-  setActiveCompany: (name: string, id: string, currency: string) => void;
+  setActiveCompany: (name: string, id: string, currency: string, extra?: Partial<Company>) => void;
   setSelectedBranchId: (id: string | null) => void;
   setDbStatus: (status: 'connecting' | 'postgresql' | 'realm' | 'mock', connected: boolean) => void;
   setRealmReady: (ready: boolean) => void;
@@ -71,8 +73,8 @@ export const useAppStore = create<AppState>((set) => ({
     set({ language });
   },
   
-  setActiveCompany: (name, id, currency) => set({
-    activeCompany: { name, id, currency },
+  setActiveCompany: (name, id, currency, extra) => set({
+    activeCompany: { name, id, currency, ...extra },
   }),
   
   setSelectedBranchId: (id) => set({ selectedBranchId: id }),

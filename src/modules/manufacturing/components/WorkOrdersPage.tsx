@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useWorkOrders, useWorkOrderVariance } from '../hooks/useManufacturing';
 import { manufacturingApi } from '../api';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { WorkOrder, WorkOrderLine } from '../types';
 
 interface WorkOrderFormLine {
@@ -22,6 +23,7 @@ export const WorkOrdersPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { workOrders, isLoading, create, update, remove, changeStatus } = useWorkOrders(companyId);
+  const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -137,8 +139,8 @@ export const WorkOrdersPage: React.FC = () => {
     { key: 'orderNumber', header: 'رقم الأمر', width: '130px' },
     { key: 'productName', header: 'المنتج', render: (row: WorkOrder) => row.productName || row.productId },
     { key: 'quantity', header: 'الكمية', width: '90px' },
-    { key: 'estimatedCost', header: 'التكلفة المقدرة', align: 'right' as const, render: (row: WorkOrder) => row.estimatedCost?.toLocaleString('ar-SA') || '—' },
-    { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row: WorkOrder) => row.actualCost?.toLocaleString('ar-SA') || '—' },
+    { key: 'estimatedCost', header: 'التكلفة المقدرة', align: 'right' as const, render: (row: WorkOrder) => row.estimatedCost !== undefined ? formatCurrency(row.estimatedCost) : '—' },
+    { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row: WorkOrder) => row.actualCost !== undefined ? formatCurrency(row.actualCost) : '—' },
     { key: 'status', header: 'الحالة', width: '120px', render: (row: WorkOrder) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: '', width: '180px', render: (row: WorkOrder) => (
       <div className="flex items-center gap-1">
@@ -241,7 +243,7 @@ export const WorkOrdersPage: React.FC = () => {
             <Button variant="secondary" className="mt-3" onClick={() => setLines((prev) => [...prev, { materialId: '', plannedQuantity: 1, unitCost: 0 }])}>+ إضافة مادة</Button>
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
               <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة المقدرة (تلقائية):</span>
-              <span className="font-bold text-primary-600 tabular-nums">{estimatedTotal.toLocaleString('ar-SA')}</span>
+              <span className="font-bold text-primary-600 tabular-nums">{formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
         </div>
@@ -267,8 +269,8 @@ export const WorkOrdersPage: React.FC = () => {
               columns={[
                 { key: 'materialName', header: 'المادة' },
                 { key: 'plannedQuantity', header: 'المخطط', width: '100px' },
-                { key: 'actualQuantity', header: 'الفعلي', width: '100px', render: (row) => row.actualQuantity?.toLocaleString('ar-SA') || '—' },
-                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => (row.unitCost || 0).toLocaleString('ar-SA') },
+                { key: 'actualQuantity', header: 'الفعلي', width: '100px', render: (row) => row.actualQuantity !== undefined ? formatCurrency(row.actualQuantity) : '—' },
+                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
               ]}
               keyExtractor={(row) => row.id}
             />
@@ -310,6 +312,8 @@ export const WorkOrdersPage: React.FC = () => {
 
 function VarianceTable({ workOrderId }: { workOrderId: string }) {
   const { variances, isLoading } = useWorkOrderVariance(workOrderId);
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   if (isLoading) return <div className="py-8 text-center text-slate-500">جارٍ التحميل...</div>;
   if (variances.length === 0) return <EmptyState title="لا يوجد تباين" description="لم يتم تسجيل فروقات لهذا الأمر" />;
   return (
@@ -319,10 +323,10 @@ function VarianceTable({ workOrderId }: { workOrderId: string }) {
         { key: 'materialName', header: 'المادة' },
         { key: 'plannedQty', header: 'المخطط', width: '90px' },
         { key: 'actualQty', header: 'الفعلي', width: '90px' },
-        { key: 'varianceQty', header: 'الفروق', width: '90px', render: (row) => <span className={row.varianceQty > 0 ? 'text-rose-600' : row.varianceQty < 0 ? 'text-emerald-600' : ''}>{row.varianceQty.toLocaleString('ar-SA')}</span> },
-        { key: 'plannedCost', header: 'التكلفة المخططة', align: 'right' as const, render: (row) => row.plannedCost.toLocaleString('ar-SA') },
-        { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row) => row.actualCost.toLocaleString('ar-SA') },
-        { key: 'varianceCost', header: 'فرق التكلفة', align: 'right' as const, render: (row) => <span className={row.varianceCost > 0 ? 'text-rose-600 font-semibold' : row.varianceCost < 0 ? 'text-emerald-600 font-semibold' : ''}>{row.varianceCost.toLocaleString('ar-SA')}</span> },
+        { key: 'varianceQty', header: 'الفروق', width: '90px', render: (row) => <span className={row.varianceQty > 0 ? 'text-rose-600' : row.varianceQty < 0 ? 'text-emerald-600' : ''}>{formatCurrency(row.varianceQty)}</span> },
+        { key: 'plannedCost', header: 'التكلفة المخططة', align: 'right' as const, render: (row) => formatCurrency(row.plannedCost) },
+        { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row) => formatCurrency(row.actualCost) },
+        { key: 'varianceCost', header: 'فرق التكلفة', align: 'right' as const, render: (row) => <span className={row.varianceCost > 0 ? 'text-rose-600 font-semibold' : row.varianceCost < 0 ? 'text-emerald-600 font-semibold' : ''}>{formatCurrency(row.varianceCost)}</span> },
       ]}
       keyExtractor={(row, i) => `${row.materialName}-${i}`}
     />

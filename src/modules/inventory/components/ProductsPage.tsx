@@ -12,6 +12,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { barcodeScanner } from '@/core/utils/barcodeScanner';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { Product } from '../types';
 
 interface FormData {
@@ -43,6 +44,7 @@ export const ProductsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const { products, isLoading, create, update, remove } = useProducts(activeCompany?.id || '');
   const { categories } = useProductCategories(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -55,8 +57,8 @@ export const ProductsPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const filteredProducts = products.filter(p =>
-    p.nameAr.toLowerCase().includes(search.toLowerCase()) ||
-    p.code.toLowerCase().includes(search.toLowerCase()) ||
+    (p.nameAr?.toLowerCase() || '').includes(search.toLowerCase()) ||
+    (p.code?.toLowerCase() || '').includes(search.toLowerCase()) ||
     (p.barcode && p.barcode.includes(search))
   );
 
@@ -211,8 +213,8 @@ export const ProductsPage: React.FC = () => {
     { key: 'nameAr', header: t('inventory.productName') },
     { key: 'barcode', header: t('inventory.barcode'), width: '120px' },
     { key: 'unit', header: t('inventory.unitPrice'), width: '80px' },
-    { key: 'costPrice', header: t('inventory.costPrice'), align: 'right' as const, render: (row: Product) => Number(row.costPrice).toLocaleString('ar-SA') },
-    { key: 'salePrice', header: t('inventory.salePrice'), align: 'right' as const, render: (row: Product) => Number(row.salePrice).toLocaleString('ar-SA') },
+    { key: 'costPrice', header: t('inventory.costPrice'), align: 'right' as const, render: (row: Product) => formatCurrency(row.costPrice) },
+    { key: 'salePrice', header: t('inventory.salePrice'), align: 'right' as const, render: (row: Product) => formatCurrency(row.salePrice) },
     { key: 'isActive', header: t('inventory.status'), width: '90px', render: (row: Product) => (
       <StatusBadge status={row.isActive ? 'active' : 'inactive'} />
     )},
@@ -423,11 +425,11 @@ export const ProductsPage: React.FC = () => {
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                 <span className="text-slate-500 block">{t('inventory.costPrice')}</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">{Number(detailProduct.costPrice).toLocaleString('ar-SA')}</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(detailProduct.costPrice)}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                 <span className="text-slate-500 block">{t('inventory.salePrice')}</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">{Number(detailProduct.salePrice).toLocaleString('ar-SA')}</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(detailProduct.salePrice)}</span>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                 <span className="text-slate-500 block">{t('inventory.minStock')}</span>

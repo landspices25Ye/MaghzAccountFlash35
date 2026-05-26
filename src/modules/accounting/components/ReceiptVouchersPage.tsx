@@ -10,6 +10,7 @@ import { useReceiptVouchers } from '../hooks/useAccounting';
 import { postReceiptVoucher } from '@/core/utils/journalEntryGenerator';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import type { ReceiptVoucher } from '../types';
 
@@ -19,6 +20,7 @@ export const ReceiptVouchersPage: React.FC = () => {
   const { vouchers, isLoading, create, update, remove } = useReceiptVouchers(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const filteredVouchers = useBranchFilter(vouchers);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -63,11 +65,21 @@ export const ReceiptVouchersPage: React.FC = () => {
     setPostingId(null);
     if (result.success) {
       await update(voucher.id, { status: 'posted' });
+    } else {
+      alert(`فشل ترحيل السند: ${result.error || 'خطأ غير معروف'}`);
     }
   };
 
   const handleSave = async () => {
-    if (!activeCompany?.id || !form.customerId || !form.amount) return;
+    if (!activeCompany?.id) return;
+    if (!form.customerId) {
+      alert('يرجى اختيار العميل');
+      return;
+    }
+    if (!form.amount || Number(form.amount) <= 0) {
+      alert('يرجى إدخال المبلغ بشكل صحيح');
+      return;
+    }
     setIsSaving(true);
     
     let voucherNumber = form.voucherNumber || '';
@@ -124,7 +136,7 @@ export const ReceiptVouchersPage: React.FC = () => {
     { key: 'customerName', header: t('accounting.customer'), render: (row: ReceiptVoucher) => (
       <span className="flex items-center gap-1"><Users size={14} /> {row.customerName}</span>
     )},
-    { key: 'amount', header: t('accounting.amount'), align: 'right' as const, render: (row: ReceiptVoucher) => row.amount.toLocaleString('ar-SA') },
+    { key: 'amount', header: t('accounting.amount'), align: 'right' as const, render: (row: ReceiptVoucher) => formatCurrency(row.amount) },
     { key: 'paymentMethod', header: t('accounting.paymentMethod'), render: (row: ReceiptVoucher) => (
       <Badge className={
         row.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' :
@@ -182,13 +194,13 @@ export const ReceiptVouchersPage: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي القبض النقدي</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalCash.toLocaleString('ar-SA')} {currencySymbol}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalCash)} {currencySymbol}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي القبض البنكي</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalBank.toLocaleString('ar-SA')} {currencySymbol}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalBank)} {currencySymbol}</p>
           </div>
         </Card>
         <Card>

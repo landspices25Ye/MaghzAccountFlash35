@@ -10,6 +10,7 @@ import { useReturns, useInvoices } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
@@ -31,6 +32,7 @@ export const SalesReturnsPage: React.FC = () => {
   const { returns, isLoading: returnsLoading, create, update, remove, post } = useReturns(activeCompany?.id || '');
   const { invoices } = useInvoices(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -214,7 +216,7 @@ export const SalesReturnsPage: React.FC = () => {
     { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: SalesReturn) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
     { key: 'reason', header: t('sales.return.reason') || 'السبب' },
-    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: SalesReturn) => row.totalAmount.toLocaleString('ar-SA') },
+    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: SalesReturn) => formatCurrency(row.totalAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesReturn) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '200px', render: (row: SalesReturn) => (
       <div className="flex items-center gap-1">
@@ -269,7 +271,7 @@ export const SalesReturnsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{returns.length}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{stats.total.toLocaleString('ar-SA')} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.drafts') || 'مسودات'}</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p></div></Card>
       </div>
 
@@ -338,7 +340,7 @@ export const SalesReturnsPage: React.FC = () => {
                         <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
-                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{lineTotal.toLocaleString('ar-SA', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{formatCurrency(lineTotal)}</td>
                         <td className="px-2 py-1"><Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></td>
                       </tr>
                     );
@@ -353,7 +355,7 @@ export const SalesReturnsPage: React.FC = () => {
             <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))} />
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 flex items-center justify-between">
               <span className="text-slate-600 dark:text-slate-300 font-medium">{t('sales.total') || 'الإجمالي'}</span>
-              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{calculations.totalAmount.toLocaleString('ar-SA')}</span>
+              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(calculations.totalAmount)}</span>
             </div>
           </div>
 
@@ -374,7 +376,7 @@ export const SalesReturnsPage: React.FC = () => {
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.originalInvoice') || 'الفاتورة الأصلية'}</p><p className="font-semibold flex items-center gap-1"><FileText size={14} /> {viewing.invoice?.invoiceNumber || viewing.invoiceId}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.reason') || 'السبب'}</p><p className="font-semibold">{viewing.reason}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.total') || 'المبلغ'}</p><p className="font-semibold">{viewing.totalAmount.toLocaleString('ar-SA')}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.total') || 'المبلغ'}</p><p className="font-semibold">{formatCurrency(viewing.totalAmount)}</p></div>
             </div>
 
             {/* Impact badges */}
@@ -391,13 +393,13 @@ export const SalesReturnsPage: React.FC = () => {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><tr><th className="px-3 py-2 text-right">#</th><th className="px-3 py-2 text-right">{t('inventory.productName') || 'المنتج'}</th><th className="px-3 py-2 text-right">{t('inventory.quantity') || 'الكمية'}</th><th className="px-3 py-2 text-right">{t('inventory.unitPrice') || 'السعر'}</th><th className="px-3 py-2 text-right">{t('sales.total') || 'الإجمالي'}</th></tr></thead>
                 <tbody>
-                  {viewing.lines.map((l, i) => (
+                  {(viewing.lines || []).map((l, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2 text-slate-500">{i + 1}</td>
                       <td className="px-3 py-2 font-medium">{l.productName || l.productId}</td>
                       <td className="px-3 py-2">{l.quantity}</td>
-                      <td className="px-3 py-2">{l.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="px-3 py-2 font-medium">{l.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="px-3 py-2">{formatCurrency(l.unitPrice)}</td>
+                      <td className="px-3 py-2 font-medium">{formatCurrency(l.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -405,11 +407,11 @@ export const SalesReturnsPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
               <div className="space-y-1 text-sm">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.subtotal.toLocaleString('ar-SA')}</span></p>
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.vatAmount.toLocaleString('ar-SA')}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.subtotal)}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.vatAmount)}</span></p>
               </div>
               <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                {t('sales.total') || 'الإجمالي'}: {viewing.totalAmount.toLocaleString('ar-SA')}
+                {t('sales.total') || 'الإجمالي'}: {formatCurrency(viewing.totalAmount)}
               </div>
             </div>
             <div className="flex justify-end gap-2">

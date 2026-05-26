@@ -11,6 +11,136 @@ import type {
   ApAgingBucket,
 } from './types';
 
+function toNum(v: unknown): number {
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function mapSupplier(row: Record<string, unknown>): Supplier {
+  return {
+    id: String(row.id),
+    companyId: String(row.company_id || row.companyId),
+    code: row.code ? String(row.code) : undefined,
+    name: String(row.name),
+    phone: row.phone ? String(row.phone) : undefined,
+    email: row.email ? String(row.email) : undefined,
+    address: row.address ? String(row.address) : undefined,
+    taxNumber: row.tax_number ? String(row.tax_number) : undefined,
+    balance: toNum(row.balance),
+    isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
+    createdAt: row.created_at ? String(row.created_at) : undefined,
+    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+  };
+}
+
+function mapInvoice(row: Record<string, unknown>): PurchaseInvoice {
+  return {
+    id: String(row.id),
+    companyId: String(row.company_id || row.companyId),
+    invoiceNumber: String(row.invoice_number || row.invoiceNumber || ''),
+    supplierId: String(row.supplier_id || row.supplierId),
+    supplier: row.supplier_name
+      ? { id: String(row.supplier_id || row.supplierId), companyId: String(row.company_id || row.companyId), name: String(row.supplier_name), balance: 0, isActive: true }
+      : undefined,
+    purchaseOrderId: row.purchase_order_id ? String(row.purchase_order_id) : undefined,
+    date: row.date ? String(row.date).split('T')[0] : '',
+    dueDate: row.due_date ? String(row.due_date).split('T')[0] : undefined,
+    subtotal: toNum(row.subtotal),
+    discountAmount: toNum(row.discount_amount || row.discountAmount),
+    vatAmount: toNum(row.vat_amount || row.vatAmount),
+    totalAmount: toNum(row.total_amount || row.totalAmount),
+    paidAmount: toNum(row.paid_amount || row.paidAmount),
+    status: (row.status as any) || 'draft',
+    notes: row.notes ? String(row.notes) : undefined,
+    createdAt: row.created_at ? String(row.created_at) : undefined,
+    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+    lines: [],
+  };
+}
+
+function mapInvoiceLine(row: Record<string, unknown>): PurchaseInvoiceLine {
+  return {
+    id: row.id ? String(row.id) : undefined,
+    invoiceId: row.invoice_id ? String(row.invoice_id) : undefined,
+    productId: row.product_id ? String(row.product_id) : undefined,
+    description: row.description ? String(row.description) : undefined,
+    quantity: toNum(row.quantity),
+    unitPrice: toNum(row.unit_price || row.unitPrice),
+    discountPercent: toNum(row.discount_percent || row.discountPercent),
+    vatPercent: toNum(row.vat_percent || row.vatPercent),
+    lineTotal: toNum(row.line_total || row.lineTotal),
+  };
+}
+
+function mapOrder(row: Record<string, unknown>): PurchaseOrder {
+  return {
+    id: String(row.id),
+    companyId: String(row.company_id || row.companyId),
+    orderNumber: String(row.order_number || row.orderNumber || ''),
+    supplierId: String(row.supplier_id || row.supplierId),
+    supplier: row.supplier_name
+      ? { id: String(row.supplier_id || row.supplierId), companyId: String(row.company_id || row.companyId), name: String(row.supplier_name), balance: 0, isActive: true }
+      : undefined,
+    date: row.date ? String(row.date).split('T')[0] : '',
+    expectedDate: row.expected_date ? String(row.expected_date).split('T')[0] : undefined,
+    totalAmount: toNum(row.total_amount || row.totalAmount),
+    status: (row.status as any) || 'draft',
+    notes: row.notes ? String(row.notes) : undefined,
+    createdAt: row.created_at ? String(row.created_at) : undefined,
+    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+    lines: [],
+  };
+}
+
+function mapOrderLine(row: Record<string, unknown>): PurchaseOrderLine {
+  return {
+    id: row.id ? String(row.id) : undefined,
+    orderId: row.order_id ? String(row.order_id) : undefined,
+    productId: row.product_id ? String(row.product_id) : undefined,
+    description: row.description ? String(row.description) : undefined,
+    quantity: toNum(row.quantity),
+    unitPrice: toNum(row.unit_price || row.unitPrice),
+    lineTotal: toNum(row.line_total || row.lineTotal),
+    receivedQuantity: row.received_quantity ? toNum(row.received_quantity) : undefined,
+  };
+}
+
+function mapReturn(row: Record<string, unknown>): PurchaseReturn {
+  return {
+    id: String(row.id),
+    companyId: String(row.company_id || row.companyId),
+    returnNumber: String(row.return_number || row.returnNumber || ''),
+    invoiceId: row.invoice_id ? String(row.invoice_id) : undefined,
+    invoiceNumber: row.invoice_number ? String(row.invoice_number) : undefined,
+    supplierId: String(row.supplier_id || row.supplierId),
+    supplier: row.supplier_name
+      ? { id: String(row.supplier_id || row.supplierId), companyId: String(row.company_id || row.companyId), name: String(row.supplier_name), balance: 0, isActive: true }
+      : undefined,
+    date: row.date ? String(row.date).split('T')[0] : '',
+    subtotal: toNum(row.subtotal),
+    vatAmount: toNum(row.vat_amount || row.vatAmount),
+    totalAmount: toNum(row.total_amount || row.totalAmount),
+    status: (row.status as any) || 'draft',
+    notes: row.notes ? String(row.notes) : undefined,
+    reason: row.reason ? String(row.reason) : undefined,
+    createdAt: row.created_at ? String(row.created_at) : undefined,
+    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+    lines: [],
+  };
+}
+
+function mapReturnLine(row: Record<string, unknown>): PurchaseReturnLine {
+  return {
+    id: row.id ? String(row.id) : undefined,
+    returnId: row.return_id ? String(row.return_id) : undefined,
+    productId: row.product_id ? String(row.product_id) : undefined,
+    description: row.description ? String(row.description) : undefined,
+    quantity: toNum(row.quantity),
+    unitPrice: toNum(row.unit_price || row.unitPrice),
+    lineTotal: toNum(row.line_total || row.lineTotal),
+  };
+}
+
 export const purchasesApi = {
   // ─── Suppliers ────────────────────────────────────────────────────────────
   async getSuppliers(companyId: string): Promise<{ success: boolean; data?: Supplier[]; error?: string }> {
@@ -20,7 +150,7 @@ export const purchasesApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as Supplier[] };
+      return { success: true, data: (result.rows || []).map(mapSupplier) };
     }
     return { success: false, error: result.error };
   },
@@ -32,7 +162,7 @@ export const purchasesApi = {
       [id, companyId]
     );
     if (result.success && result.rows?.[0]) {
-      return { success: true, data: result.rows[0] as Supplier };
+      return { success: true, data: mapSupplier(result.rows[0]) };
     }
     return { success: false, error: result.error || 'Supplier not found' };
   },
@@ -197,11 +327,7 @@ export const purchasesApi = {
       [companyId]
     );
     if (result.success) {
-      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
-        ...r,
-        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
-      }));
-      return { success: true, data: rows as PurchaseInvoice[] };
+      return { success: true, data: (result.rows || []).map(mapInvoice) };
     }
     return { success: false, error: result.error };
   },
@@ -220,12 +346,9 @@ export const purchasesApi = {
       [id]
     );
 
-    const invoice = {
-      ...inv.rows[0],
-      supplier: inv.rows[0].supplier_name ? { id: inv.rows[0].supplier_id, name: inv.rows[0].supplier_name } : undefined,
-      lines: (lines.rows || []) as PurchaseInvoiceLine[],
-    };
-    return { success: true, data: invoice as PurchaseInvoice };
+    const invoice = mapInvoice(inv.rows[0]);
+    invoice.lines = (lines.rows || []).map(mapInvoiceLine);
+    return { success: true, data: invoice };
   },
 
   async createInvoice(data: Omit<PurchaseInvoice, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -303,11 +426,7 @@ export const purchasesApi = {
       [companyId]
     );
     if (result.success) {
-      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
-        ...r,
-        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
-      }));
-      return { success: true, data: rows as PurchaseOrder[] };
+      return { success: true, data: (result.rows || []).map(mapOrder) };
     }
     return { success: false, error: result.error };
   },
@@ -326,14 +445,9 @@ export const purchasesApi = {
       [id]
     );
 
-    return {
-      success: true,
-      data: {
-        ...order.rows[0],
-        supplier: order.rows[0].supplier_name ? { id: order.rows[0].supplier_id, name: order.rows[0].supplier_name } : undefined,
-        lines: (lines.rows || []) as PurchaseOrderLine[],
-      } as PurchaseOrder,
-    };
+    const mapped = mapOrder(order.rows[0]);
+    mapped.lines = (lines.rows || []).map(mapOrderLine);
+    return { success: true, data: mapped };
   },
 
   async createOrder(data: Omit<PurchaseOrder, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -439,11 +553,7 @@ export const purchasesApi = {
       [companyId]
     );
     if (result.success) {
-      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
-        ...r,
-        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
-      }));
-      return { success: true, data: rows as PurchaseReturn[] };
+      return { success: true, data: (result.rows || []).map(mapReturn) };
     }
     return { success: false, error: result.error };
   },
@@ -462,14 +572,9 @@ export const purchasesApi = {
       [id]
     );
 
-    return {
-      success: true,
-      data: {
-        ...ret.rows[0],
-        supplier: ret.rows[0].supplier_name ? { id: ret.rows[0].supplier_id, name: ret.rows[0].supplier_name } : undefined,
-        lines: (lines.rows || []) as PurchaseReturnLine[],
-      } as PurchaseReturn,
-    };
+    const mapped = mapReturn(ret.rows[0]);
+    mapped.lines = (lines.rows || []).map(mapReturnLine);
+    return { success: true, data: mapped };
   },
 
   async createReturn(data: Omit<PurchaseReturn, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {

@@ -9,6 +9,7 @@ import { useInventoryTransactions } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { useFormatters } from '@/core/utils/useFormatters';
 // import { printDocument } from '@/core/utils/printDocument';
 import type { InventoryTransaction } from '../types';
 
@@ -23,6 +24,7 @@ export const InventoryTransactionsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { transactions, isLoading, create, remove } = useInventoryTransactions(activeCompany?.id || '');
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<Partial<InventoryTransaction>>({
@@ -180,7 +182,7 @@ ${filtered.map(tx => `<tr>
               { key: 'productId', header: t('inventory.productName') },
               { key: 'warehouseId', header: t('inventory.warehouse') },
               { key: 'quantity', header: t('inventory.quantity'), align: 'right' as const },
-              { key: 'unitCost', header: t('inventory.costPrice'), align: 'right' as const, render: (row) => row.unitCost?.toLocaleString('ar-SA') || '-' },
+              { key: 'unitCost', header: t('inventory.costPrice'), align: 'right' as const, render: (row) => row.unitCost !== undefined ? formatCurrency(row.unitCost) : '-' },
               { key: 'reference', header: t('inventory.reference') },
               { key: 'actions', header: '', width: '80px', render: (row) => (
                 <ActionButtons

@@ -86,7 +86,12 @@ export function Table<T>({
                     alignClass[col.align || 'left']
                   )}
                 >
-                  {col.render ? col.render(row, rowIndex) : String((row as Record<string, unknown>)[col.key] ?? '-')}
+                  {col.render ? col.render(row, rowIndex) : (() => {
+                    const val = (row as Record<string, unknown>)[col.key];
+                    if (val === null || val === undefined) return '-';
+                    if (val instanceof Date) return val.toLocaleDateString('ar-SA');
+                    return String(val);
+                  })()}
                 </td>
               ))}
             </tr>

@@ -2,7 +2,9 @@ import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { AppRouter } from './app/router';
+import { OnboardingWizard } from './app/onboarding';
 import { useAppStore } from './core/store';
+import { useOnboardingStore } from './core/store/onboardingStore';
 import { getDbAdapter } from './core/database/adapters';
 import { mockAdapter } from './core/database/adapters/mockAdapter';
 import { initAuth } from './modules/auth/store';
@@ -18,6 +20,8 @@ function App() {
   const setDbStatus = useAppStore((state) => state.setDbStatus);
   const setRealmReady = useAppStore((state) => state.setRealmReady);
   const setActiveCompany = useAppStore((state) => state.setActiveCompany);
+  const completed = useOnboardingStore((state) => state.completed);
+  const companyConfig = useOnboardingStore((state) => state.companyConfig);
 
   useEffect(() => {
     async function initDb() {
@@ -79,8 +83,14 @@ function App() {
       }
     }
 
-    initDb();
-  }, [setDbStatus, setRealmReady, setActiveCompany]);
+    if (completed) {
+      initDb();
+    }
+  }, [completed, setDbStatus, setRealmReady, setActiveCompany, companyConfig]);
+
+  if (!completed) {
+    return <OnboardingWizard />;
+  }
 
   return <AppRouter />;
 }

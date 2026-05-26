@@ -1,4 +1,5 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { mapRows } from '@/core/utils/mapPgRow';
 import type { Account, Transaction, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from './types';
 
 export const accountingApi = {
@@ -8,7 +9,7 @@ export const accountingApi = {
     const result = await adapter.getAccounts(companyId);
     
     if (result.success && result.data) {
-      const accounts = result.data as Account[];
+      const accounts = mapRows<Account>(result.data);
       const accountMap = new Map<string, Account>();
       const rootAccounts: Account[] = [];
       
@@ -67,7 +68,7 @@ export const accountingApi = {
       [id]
     );
     if (result.success && result.rows && result.rows.length > 0) {
-      return { success: true, data: result.rows[0] as Account };
+      return { success: true, data: mapRows<Account>([result.rows[0]])[0] };
     }
     return { success: false, error: 'Account not found' };
   },
@@ -76,7 +77,7 @@ export const accountingApi = {
   async getTransactions(companyId: string): Promise<{ success: boolean; data?: Transaction[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.getTransactions(companyId);
-    return { success: result.success, data: result.data as Transaction[], error: result.error };
+    return { success: result.success, data: mapRows<Transaction>(result.data), error: result.error };
   },
 
   async getTransactionById(id: string): Promise<{ success: boolean; data?: Transaction; error?: string }> {
@@ -86,7 +87,7 @@ export const accountingApi = {
       [id]
     );
     if (result.success && result.rows && result.rows.length > 0) {
-      const tx = result.rows[0] as Transaction;
+      const tx = mapRows<Transaction>([result.rows[0]])[0];
       const entriesResult = await adapter.query(
         `SELECT je.*, a.name_ar as account_name, a.code as account_code 
          FROM journal_entries je 
@@ -159,7 +160,7 @@ export const accountingApi = {
       [companyId]
     );
     if (result.success && result.rows) {
-      return { success: true, data: result.rows as ReceiptVoucher[] };
+      return { success: true, data: mapRows<ReceiptVoucher>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -201,7 +202,7 @@ export const accountingApi = {
       [companyId]
     );
     if (result.success && result.rows) {
-      return { success: true, data: result.rows as PaymentVoucher[] };
+      return { success: true, data: mapRows<PaymentVoucher>(result.rows) };
     }
     return { success: false, error: result.error };
   },
@@ -254,25 +255,25 @@ export const accountingApi = {
     const result = await adapter.query(sql, [companyId]);
     
     if (result.success && result.rows && result.rows.length > 0) {
-      return { success: true, data: result.rows as TrialBalanceRow[] };
+      const rows: TrialBalanceRow[] = result.rows.map((r: any) => ({
+        accountId: r.account_id || r.id,
+        accountCode: r.account_code || r.code,
+        accountName: r.account_name || r.name_ar,
+        debit: Number(r.debit) || 0,
+        credit: Number(r.credit) || 0,
+        balance: Number(r.balance) || 0,
+      }));
+      return { success: true, data: rows };
     }
     
     const accountsResult = await adapter.getAccounts(companyId);
     if (accountsResult.success && accountsResult.data) {
-      const rows: TrialBalanceRow[] = (accountsResult.data as Account[])
+      const rows: TrialBalanceRow[] = mapRows<Account>(accountsResult.data)
         .filter(a => !a.isGroup && a.balance !== 0)
-        .map(a => ({
-          accountId: a.id,
-          accountCode: a.code,
-          accountName: a.nameAr,
-          debit: a.nature === 'debit' && a.balance > 0 ? Math.abs(a.balance) : 0,
-          credit: a.nature === 'credit' && a.balance > 0 ? Math.abs(a.balance) : (a.nature === 'debit' && a.balance < 0 ? Math.abs(a.balance) : 0),
-          balance: a.balance,
-        }));
+        .map(a => ({ accountId: a.id, accountCode: a.code, accountName: a.nameAr, debit: a.balance > 0 ? a.balance : 0, credit: a.balance < 0 ? Math.abs(a.balance) : 0, balance: a.balance }));
       return { success: true, data: rows };
     }
-    
-    return { success: false, error: result.error };
+    return { success: true, data: [] };
   },
 
   async getBalanceSheet(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
@@ -283,11 +284,11 @@ export const accountingApi = {
       [companyId]
     );
     if (result.success && result.rows && result.rows.length > 0) {
-      return { success: true, data: result.rows };
+      return { success: true, data: mapRows<Account>(result.rows).filter(a => ['asset', 'liability', 'equity'].includes(a.type)) };
     }
     const accResult = await adapter.getAccounts(companyId);
     if (accResult.success && accResult.data) {
-      const rows = (accResult.data as Account[]).filter(a => ['asset', 'liability', 'equity'].includes(a.type));
+      const rows = mapRows<Account>(accResult.data).filter(a => ['asset', 'liability', 'equity'].includes(a.type));
       return { success: true, data: rows };
     }
     return { success: false, error: result.error };
@@ -308,11 +309,11 @@ export const accountingApi = {
       [companyId]
     );
     if (result.success && result.rows && result.rows.length > 0) {
-      return { success: true, data: result.rows };
+      return { success: true, data: mapRows<Account>(result.rows).filter(a => ['revenue', 'expense'].includes(a.type)) };
     }
     const accResult = await adapter.getAccounts(companyId);
     if (accResult.success && accResult.data) {
-      const rows = (accResult.data as Account[]).filter(a => ['revenue', 'expense'].includes(a.type));
+      const rows = mapRows<Account>(accResult.data).filter(a => ['revenue', 'expense'].includes(a.type));
       return { success: true, data: rows };
     }
     return { success: false, error: result.error };

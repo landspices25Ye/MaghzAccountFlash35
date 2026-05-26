@@ -9,6 +9,50 @@ function getDB() {
   throw new Error('electronDB not available');
 }
 
+// PostgreSQL numeric types are returned as strings by node-postgres.
+// Auto-convert known numeric columns to actual JS numbers to avoid NaN / "ليس رقماً".
+const NUMERIC_COLUMNS = new Set([
+  'balance', 'debit', 'credit', 'total_amount', 'subtotal', 'vat_amount',
+  'paid_amount', 'discount_amount', 'cost_price', 'sale_price', 'stock_qty',
+  'min_stock_alert', 'unit_price', 'line_total', 'quantity', 'exchange_rate',
+  'vat_rate', 'amount', 'base_salary', 'allowances', 'deductions', 'overtime',
+  'net_salary', 'value', 'estimated_value', 'probability', 'duration',
+  'estimated_cost', 'actual_cost', 'planned_cost', 'variance_cost', 'variance_qty',
+  'unit_cost', 'stock_value', 'revenue', 'cost', 'profit', 'avg_value',
+  'credit_limit', 'tax_rate', 'rate', 'starting_number', 'current_number',
+  'increment_step', 'padding_length',
+]);
+
+function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
+  if (!row || typeof row !== 'object') return row;
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(row)) {
+    if (val === null || val === undefined) {
+      out[key] = val;
+    } else if (NUMERIC_COLUMNS.has(key)) {
+      const n = Number(val);
+      out[key] = isNaN(n) ? 0 : n;
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
+function normalizeResult(result: { success: boolean; rows?: Record<string, unknown>[]; error?: string }) {
+  if (result.success && result.rows) {
+    return { ...result, rows: result.rows.map(normalizeRow) };
+  }
+  return result;
+}
+
+/** Convert SQLite-style ? placeholders to PostgreSQL $1, $2... */
+function convertPlaceholders(sql: string): string {
+  let i = 1;
+  return sql.replace(/\?/g, () => `$${i++}`);
+}
+// ensure-rebuild: v2
+
 /**
  * Electron IPC Adapter (PostgreSQL via main process)
  * Used when running in Electron with PostgreSQL available
@@ -19,18 +63,25 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async query(sql, params) {
-    return getDB().query(sql, params);
+    const pgSql = convertPlaceholders(sql);
+    const raw = await getDB().query(pgSql, params);
+    const normalized = normalizeResult(raw);
+    return normalized as any;
   },
 
   async transaction(queries) {
-    return getDB().transaction(queries);
+    const pgQueries = queries.map(q => ({
+      sql: convertPlaceholders(q.sql),
+      params: q.params,
+    }));
+    const raw = await getDB().transaction(pgQueries);
+    return raw;
   },
 
   async getCompany() {
-    const result = await getDB().query(
-      'SELECT * FROM companies LIMIT 1',
-    );
-    if (result.success && result.rows?.length > 0) {
+    const raw = await getDB().query('SELECT * FROM companies LIMIT 1');
+    const result = normalizeResult(raw);
+    if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: result.rows[0] };
     }
     return { success: false, error: 'No company found' };
@@ -65,16 +116,54 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async getTransactions(companyId) {
-    const result = await getDB().query(
-      `SELECT t.*, json_agg(je.*) as entries
-       FROM transactions t
-       LEFT JOIN journal_entries je ON t.id = je.transaction_id
-       WHERE t.company_id = $1
-       GROUP BY t.id
-       ORDER BY t.date DESC`,
+    // Fetch transactions and entries separately to avoid json_agg issues
+    const txResult = await getDB().query(
+      `SELECT * FROM transactions WHERE company_id = $1 ORDER BY date DESC`,
       [companyId],
     );
-    return { success: result.success, data: result.rows, error: result.error };
+    if (!txResult.success) return { success: false, error: txResult.error };
+    
+    const transactions = normalizeResult(txResult).rows || [];
+    if (transactions.length === 0) {
+      return { success: true, data: [] };
+    }
+    
+    const txIds = transactions.map((t: any) => t.id);
+    const entriesResult = await getDB().query(
+      `SELECT je.*, a.name_ar as account_name, a.code as account_code 
+       FROM journal_entries je 
+       LEFT JOIN accounts a ON je.account_id = a.id 
+       WHERE je.transaction_id = ANY($1)`,
+      [txIds],
+    );
+    
+    const allEntries = normalizeResult(entriesResult).rows || [];
+    const entriesByTx = new Map<string, any[]>();
+    for (const entry of allEntries) {
+      const txId = String(entry.transaction_id || entry.transactionId);
+      if (!entriesByTx.has(txId)) entriesByTx.set(txId, []);
+      entriesByTx.get(txId)!.push(entry);
+    }
+    
+    for (const tx of transactions) {
+      const txId = String(tx.id);
+      const txEntries = entriesByTx.get(txId) || [];
+      tx.entries = txEntries.map((row: any) => ({
+        id: row.id,
+        transactionId: row.transaction_id || row.transactionId,
+        accountId: row.account_id || row.accountId,
+        account: row.account_name ? { 
+          id: row.account_id || row.accountId, 
+          nameAr: row.account_name || row.accountName, 
+          code: row.account_code || row.accountCode 
+        } : undefined,
+        debit: Number(row.debit) || 0,
+        credit: Number(row.credit) || 0,
+        memo: row.memo,
+      }));
+    }
+    
+    return { success: true, data: transactions };
   },
 
   async createTransaction(data) {

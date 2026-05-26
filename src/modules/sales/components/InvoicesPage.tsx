@@ -12,6 +12,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
+import { useFormatters } from '@/core/utils/useFormatters';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
@@ -43,6 +44,7 @@ export const InvoicesPage: React.FC = () => {
   const { invoices, isLoading, create, update, remove, post } = useInvoices(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
+  const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const filteredInvoices = useBranchFilter(invoices);
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -225,6 +227,8 @@ export const InvoicesPage: React.FC = () => {
         if (postResult.success) {
           await post(invoice.id);
           await logAudit({ userId: currentUser?.id || 'system', action: 'post', tableName: 'sales_invoices', recordId: invoice.id, companyId: activeCompany.id });
+        } else {
+          alert(`فشل ترحيل الفاتورة: ${postResult.error || 'خطأ غير معروف'}`);
         }
         setPostingId(null);
       },
@@ -290,7 +294,7 @@ export const InvoicesPage: React.FC = () => {
       customerName: i.customer?.name || i.customerId,
       date: i.date,
       status: STATUS_FLOW[i.status] || i.status,
-      totalAmount: i.totalAmount.toLocaleString('ar-SA'),
+      totalAmount: formatCurrency(i.totalAmount),
     }));
     exportToPDF(data, exportColumns, `sales_invoices_${new Date().toISOString().split('T')[0]}`, {
       title: t('sales.invoices') || 'فواتير المبيعات',
@@ -301,12 +305,12 @@ export const InvoicesPage: React.FC = () => {
   const tableColumns = [
     { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: '130px' },
     { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: SalesInvoice) => row.customer?.name || row.customerId },
-    { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
-    { key: 'dueDate', header: t('sales.dueDate') || 'الاستحقاق', width: '110px', render: (row: SalesInvoice) => row.dueDate || '-' },
-    { key: 'subtotal', header: t('sales.subtotal') || 'المجموع', align: 'right' as const, render: (row: SalesInvoice) => Number(row.subtotal).toLocaleString('ar-SA') },
-    { key: 'vatAmount', header: t('sales.vat') || 'الضريبة', align: 'right' as const, render: (row: SalesInvoice) => Number(row.vatAmount).toLocaleString('ar-SA') },
-    { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => Number(row.totalAmount).toLocaleString('ar-SA', { minimumFractionDigits: 2 }) },
-    { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => Number(row.paidAmount).toLocaleString('ar-SA') },
+    { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px', render: (row: SalesInvoice) => formatDate(row.date) },
+    { key: 'dueDate', header: t('sales.dueDate') || 'الاستحقاق', width: '110px', render: (row: SalesInvoice) => row.dueDate ? formatDate(row.dueDate) : '-' },
+    { key: 'subtotal', header: t('sales.subtotal') || 'المجموع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.subtotal) },
+    { key: 'vatAmount', header: t('sales.vat') || 'الضريبة', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.vatAmount) },
+    { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.totalAmount) },
+    { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '180px', render: (row: SalesInvoice) => (
       <div className="flex items-center gap-1">
@@ -378,13 +382,13 @@ export const InvoicesPage: React.FC = () => {
         <Card>
           <div className="p-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.total') || 'الإجمالي'}</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{stats.total.toLocaleString('ar-SA')} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
           </div>
         </Card>
         <Card>
           <div className="p-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.paid') || 'المدفوع'}</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{stats.paid.toLocaleString('ar-SA')} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stats.paid)} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
           </div>
         </Card>
         <Card>
@@ -456,7 +460,7 @@ export const InvoicesPage: React.FC = () => {
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} max={100} value={String(line.discountPercent)} onChange={e => updateLine(idx, 'discountPercent', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.vatPercent)} onChange={e => updateLine(idx, 'vatPercent', Number(e.target.value))} size="sm" /></td>
-                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{lineTotal.toLocaleString('ar-SA', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{formatCurrency(lineTotal)}</td>
                         <td className="px-2 py-1"><Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></td>
                       </tr>
                     );
@@ -469,12 +473,12 @@ export const InvoicesPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(prev => ({ ...prev, notes: e.target.value }))} />
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 space-y-1 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.subtotal') || 'المجموع'}</span><span className="font-medium">{calculations.subtotal.toLocaleString('ar-SA')}</span></div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.discount') || 'الخصم'}</span><span className="font-medium">{calculations.discountAmount.toLocaleString('ar-SA')}</span></div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.vat') || 'الضريبة'}</span><span className="font-medium">{calculations.vatAmount.toLocaleString('ar-SA')}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.subtotal') || 'المجموع'}</span><span className="font-medium">{formatCurrency(calculations.subtotal)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.discount') || 'الخصم'}</span><span className="font-medium">{formatCurrency(calculations.discountAmount)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.vat') || 'الضريبة'}</span><span className="font-medium">{formatCurrency(calculations.vatAmount)}</span></div>
               <div className="flex justify-between text-lg font-bold text-primary-600 dark:text-primary-400 pt-1 border-t border-slate-200 dark:border-slate-700">
                 <span>{t('sales.total') || 'الإجمالي'}</span>
-                <span>{calculations.totalAmount.toLocaleString('ar-SA')}</span>
+                <span>{formatCurrency(calculations.totalAmount)}</span>
               </div>
             </div>
           </div>
@@ -501,11 +505,11 @@ export const InvoicesPage: React.FC = () => {
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
                 <p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p>
-                <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.date}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">{formatDate(viewing.date)}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
                 <p className="text-slate-500 dark:text-slate-400">{t('sales.dueDate') || 'الاستحقاق'}</p>
-                <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.dueDate || '-'}</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.dueDate ? formatDate(viewing.dueDate) : '-'}</p>
               </div>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
@@ -520,13 +524,13 @@ export const InvoicesPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {viewing.lines.map((l, i) => (
+                  {(viewing.lines || []).map((l, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2 text-slate-500">{i + 1}</td>
                       <td className="px-3 py-2 font-medium">{l.productName || l.productId}</td>
                       <td className="px-3 py-2">{l.quantity}</td>
-                      <td className="px-3 py-2">{l.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="px-3 py-2 font-medium">{l.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="px-3 py-2">{formatCurrency(l.unitPrice)}</td>
+                      <td className="px-3 py-2 font-medium">{formatCurrency(l.lineTotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -534,11 +538,11 @@ export const InvoicesPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
               <div className="space-y-1 text-sm">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.subtotal.toLocaleString('ar-SA')}</span></p>
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.vatAmount.toLocaleString('ar-SA')}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.subtotal)}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.vatAmount)}</span></p>
               </div>
               <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                {t('sales.total') || 'الإجمالي'}: {viewing.totalAmount.toLocaleString('ar-SA')}
+                {t('sales.total') || 'الإجمالي'}: {formatCurrency(viewing.totalAmount)}
               </div>
             </div>
             <div className="flex justify-end gap-2">

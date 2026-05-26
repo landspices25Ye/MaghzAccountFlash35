@@ -5,6 +5,7 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { usePayrollRuns, useEmployees } from '../hooks/useHr';
+import { useFormatters } from '@/core/utils/useFormatters';
 import type { PayrollLine } from '../types';
 
 export const PayrollPage: React.FC = () => {
@@ -12,6 +13,7 @@ export const PayrollPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { payrolls, isLoading, create, post } = usePayrollRuns(companyId);
   const { employees } = useEmployees(companyId);
+  const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPayroll, setSelectedPayroll] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export const PayrollPage: React.FC = () => {
 
   const columns = [
     { key: 'month', header: 'الشهر', render: (row: { month: number; year: number }) => `${row.month}/${row.year}` },
-    { key: 'totalAmount', header: 'المجموع', align: 'right' as const, render: (row: { totalAmount: number }) => row.totalAmount.toLocaleString('ar-SA') },
+    { key: 'totalAmount', header: 'المجموع', align: 'right' as const, render: (row: { totalAmount: number }) => formatCurrency(row.totalAmount) },
     { key: 'status', header: 'الحالة', render: (row: { status: string }) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: '', render: (row: { id: string; status: string }) => (
       <div className="flex items-center gap-1">
@@ -118,7 +120,7 @@ export const PayrollPage: React.FC = () => {
           footer={
             <div className="flex items-center gap-2 justify-end w-full">
               <Button variant="secondary" onClick={() => setSelectedPayroll(null)}>إغلاق</Button>
-              <Button variant="primary" leftIcon={<Printer size={16} />} onClick={() => handlePrintPayroll(selectedPayrollData)}>طباعة</Button>
+              <Button variant="primary" leftIcon={<Printer size={16} />} onClick={() => handlePrintPayroll(selectedPayrollData, formatCurrency)}>طباعة</Button>
             </div>
           }
         >
@@ -126,17 +128,17 @@ export const PayrollPage: React.FC = () => {
             data={selectedPayrollData.lines}
             columns={[
               { key: 'employeeName', header: 'الموظف' },
-              { key: 'baseSalary', header: 'الأساسي', align: 'right' as const, render: (row) => row.baseSalary.toLocaleString('ar-SA') },
-              { key: 'allowances', header: 'البدلات', align: 'right' as const, render: (row) => row.allowances.toLocaleString('ar-SA') },
-              { key: 'overtime', header: 'الإضافي', align: 'right' as const, render: (row) => row.overtime.toLocaleString('ar-SA') },
-              { key: 'deductions', header: 'الاستقطاعات', align: 'right' as const, render: (row) => row.deductions.toLocaleString('ar-SA') },
-              { key: 'netSalary', header: 'الصافي', align: 'right' as const, render: (row) => <span className="font-bold">{row.netSalary.toLocaleString('ar-SA')}</span> },
+              { key: 'baseSalary', header: 'الأساسي', align: 'right' as const, render: (row) => formatCurrency(row.baseSalary) },
+              { key: 'allowances', header: 'البدلات', align: 'right' as const, render: (row) => formatCurrency(row.allowances) },
+              { key: 'overtime', header: 'الإضافي', align: 'right' as const, render: (row) => formatCurrency(row.overtime) },
+              { key: 'deductions', header: 'الاستقطاعات', align: 'right' as const, render: (row) => formatCurrency(row.deductions) },
+              { key: 'netSalary', header: 'الصافي', align: 'right' as const, render: (row) => <span className="font-bold">{formatCurrency(row.netSalary)}</span> },
             ]}
             keyExtractor={(row) => row.id}
           />
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between">
             <span className="font-bold text-slate-700 dark:text-slate-200">الإجمالي:</span>
-            <span className="font-bold text-primary-600 text-xl">{selectedPayrollData.totalAmount.toLocaleString('ar-SA')} YER</span>
+            <span className="font-bold text-primary-600 text-xl">{formatCurrency(selectedPayrollData.totalAmount)} YER</span>
           </div>
         </Modal>
       )}
@@ -180,7 +182,7 @@ export const PayrollPage: React.FC = () => {
                     <td className="p-2"><Input type="number" value={String(line.allowances)} onChange={(e) => updateLine(idx, 'allowances', Number(e.target.value))} /></td>
                     <td className="p-2"><Input type="number" value={String(line.deductions)} onChange={(e) => updateLine(idx, 'deductions', Number(e.target.value))} /></td>
                     <td className="p-2"><Input type="number" value={String(line.overtime)} onChange={(e) => updateLine(idx, 'overtime', Number(e.target.value))} /></td>
-                    <td className="p-2 text-sm font-bold text-primary-600 text-right">{line.netSalary.toLocaleString('ar-SA')}</td>
+                    <td className="p-2 text-sm font-bold text-primary-600 text-right">{formatCurrency(line.netSalary)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -189,7 +191,7 @@ export const PayrollPage: React.FC = () => {
 
           <div className="flex justify-between py-3 px-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
             <span className="font-bold text-primary-700 dark:text-primary-300">الإجمالي:</span>
-            <span className="font-bold text-primary-700 dark:text-primary-300 text-xl">{totalPayroll.toLocaleString('ar-SA')} YER</span>
+            <span className="font-bold text-primary-700 dark:text-primary-300 text-xl">{formatCurrency(totalPayroll)} YER</span>
           </div>
         </div>
       </Modal>
@@ -197,18 +199,18 @@ export const PayrollPage: React.FC = () => {
   );
 };
 
-function handlePrintPayroll(payroll: { month: number; year: number; totalAmount: number; lines: PayrollLine[] }) {
+function handlePrintPayroll(payroll: { month: number; year: number; totalAmount: number; lines: PayrollLine[] }, formatCurrency: (value: number | string) => string) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
   const rows = payroll.lines.map((l, i) => `
     <tr>
       <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
       <td style="padding:8px;border:1px solid #e2e8f0">${l.employeeName}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.baseSalary.toLocaleString('ar-SA')}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.allowances.toLocaleString('ar-SA')}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.deductions.toLocaleString('ar-SA')}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.overtime.toLocaleString('ar-SA')}</td>
-      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;font-weight:700">${l.netSalary.toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.baseSalary)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.allowances)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.deductions)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.overtime)}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;font-weight:700">${formatCurrency(l.netSalary)}</td>
     </tr>
   `).join('');
   const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>مسير رواتب</title>
@@ -217,7 +219,7 @@ function handlePrintPayroll(payroll: { month: number; year: number; totalAmount:
   <div class="page"><h2>مسير الرواتب</h2>
   <p><strong>الشهر/السنة:</strong> ${payroll.month}/${payroll.year}</p>
   <table><thead><tr><th>#</th><th>الموظف</th><th>الأساسي</th><th>البدلات</th><th>الاستقطاعات</th><th>الإضافي</th><th>الصافي</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="total">الإجمالي: ${payroll.totalAmount.toLocaleString('ar-SA')} ر.ي</div>
+  <div class="total">الإجمالي: ${formatCurrency(payroll.totalAmount)} ر.ي</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
   </div></body></html>`;
   printWindow.document.open();

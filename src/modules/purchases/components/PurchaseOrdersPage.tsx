@@ -17,6 +17,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseOrder } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 interface OrderFormLine {
   productId: string;
@@ -58,6 +59,7 @@ export const PurchaseOrdersPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const filteredOrders = useBranchFilter(orders);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -198,8 +200,8 @@ export const PurchaseOrdersPage: React.FC = () => {
     { accessorKey: 'orderNumber', header: t('purchases.orderNumber'), cell: ({ row }) => <span className="font-medium text-slate-900 dark:text-slate-100">{row.original.orderNumber}</span> },
     { accessorKey: 'supplier', header: t('purchases.supplier'), cell: ({ row }) => <span>{row.original.supplier?.name || row.original.supplierId}</span> },
     { accessorKey: 'date', header: t('purchases.date') },
-    { accessorKey: 'expectedDate', header: t('purchases.order.expectedDate'), cell: ({ row }) => <span>{row.original.expectedDate || '-'}</span> },
-    { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{Number(row.original.totalAmount).toLocaleString('ar-SA')}</span> },
+    { accessorKey: 'expectedDate', header: t('purchases.order.expectedDate'), cell: ({ row }) => <span>{row.original.expectedDate ? new Date(row.original.expectedDate).toLocaleDateString('ar-SA') : '-'}</span> },
+    { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.totalAmount)}</span> },
     { accessorKey: 'status', header: t('purchases.status'), cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     {
       accessorKey: 'actions',
@@ -324,7 +326,7 @@ export const PurchaseOrdersPage: React.FC = () => {
           <Input label={t('notes')} value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} />
 
           <div className="flex justify-end text-lg font-bold text-primary-600">
-            {t('purchases.total')}: {formTotal.toLocaleString('ar-SA')}
+            {t('purchases.total')}: {formatCurrency(formTotal)}
           </div>
         </div>
       </Modal>
@@ -362,15 +364,15 @@ export const PurchaseOrdersPage: React.FC = () => {
                       <td className="p-2">{idx + 1}</td>
                       <td className="p-2">{line.description || line.productId}</td>
                       <td className="p-2">{line.quantity}</td>
-                      <td className="p-2">{line.unitPrice.toLocaleString('ar-SA')}</td>
-                      <td className="p-2 font-medium">{line.lineTotal.toLocaleString('ar-SA')}</td>
+                      <td className="p-2">{formatCurrency(line.unitPrice || 0)}</td>
+                      <td className="p-2 font-medium">{formatCurrency(line.lineTotal || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
             <div className="flex justify-end text-lg font-bold text-primary-600">
-              {t('purchases.total')}: {selectedOrder.totalAmount.toLocaleString('ar-SA')}
+              {t('purchases.total')}: {formatCurrency(selectedOrder.totalAmount || 0)}
             </div>
             {selectedOrder.notes && (
               <div className="text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">
