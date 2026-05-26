@@ -1,0 +1,235 @@
+﻿src/core/ui/components/DataTablePro.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/core/ui/components/StatusBadge.tsx(29,3): error TS1117: An object literal cannot have multiple properties with the same name.
+src/core/utils/exportEngine.ts(3,23): error TS2307: Cannot find module 'jspdf-autotable' or its corresponding type declarations.
+src/core/utils/exportEngine.ts(11,23): error TS2323: Cannot redeclare exported variable 'exportToExcel'.
+src/core/utils/exportEngine.ts(32,23): error TS2323: Cannot redeclare exported variable 'exportToCSV'.
+src/core/utils/exportEngine.ts(61,23): error TS2323: Cannot redeclare exported variable 'exportToPDF'.
+src/core/utils/exportEngine.ts(108,10): error TS2323: Cannot redeclare exported variable 'exportToExcel'.
+src/core/utils/exportEngine.ts(108,10): error TS2484: Export declaration conflicts with exported declaration of 'exportToExcel'.
+src/core/utils/exportEngine.ts(108,25): error TS2323: Cannot redeclare exported variable 'exportToCSV'.
+src/core/utils/exportEngine.ts(108,25): error TS2484: Export declaration conflicts with exported declaration of 'exportToCSV'.
+src/core/utils/exportEngine.ts(108,38): error TS2323: Cannot redeclare exported variable 'exportToPDF'.
+src/core/utils/exportEngine.ts(108,38): error TS2484: Export declaration conflicts with exported declaration of 'exportToPDF'.
+src/core/utils/thermalPrinter.ts(24,17): error TS2304: Cannot find name 'SerialPort'.
+src/core/utils/thermalPrinter.ts(30,97): error TS2304: Cannot find name 'SerialPort'.
+src/core/utils/thermalPrinter.ts(68,48): error TS2345: Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'string'.
+src/core/utils/useDocumentSequence.ts(28,38): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useDocumentSequence.ts(28,53): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useDocumentSequence.ts(34,44): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(42,54): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(43,28): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(46,61): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(47,22): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(50,86): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(51,41): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(52,48): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/core/utils/useSettings.ts(53,37): error TS2339: Property 'data' does not exist on type '{ success: boolean; rows?: any[] | undefined; error?: string | undefined; }'.
+src/modules/auth/api.ts(2,1): error TS6133: 'logAudit' is declared but its value is never read.
+src/modules/auth/api.ts(21,7): error TS6133: 'MOCK_ROLES' is declared but its value is never read.
+src/modules/auth/api.ts(22,54): error TS2322: Type '"*"' is not assignable to type 'Permission'.
+src/modules/auth/components/AuditLogPage.tsx(3,22): error TS6133: 'Download' is declared but its value is never read.
+src/modules/auth/components/AuditLogPage.tsx(3,59): error TS6133: 'Search' is declared but its value is never read.
+src/modules/auth/components/RolesPage.tsx(3,55): error TS6133: 'X' is declared but its value is never read.
+src/modules/auth/components/RolesPage.tsx(186,26): error TS2322: Type '{ children: string; variant: string; className: string; }' is not assignable to type 'IntrinsicAttributes & BadgeProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & BadgeProps'.
+src/modules/auth/components/UsersPage.tsx(3,31): error TS2300: Duplicate identifier 'User'.
+src/modules/auth/components/UsersPage.tsx(3,85): error TS6133: 'Eye' is declared but its value is never read.
+src/modules/auth/components/UsersPage.tsx(8,1): error TS6133: 'EmptyState' is declared but its value is never read.
+src/modules/auth/components/UsersPage.tsx(14,15): error TS2300: Duplicate identifier 'User'.
+src/modules/auth/components/UsersPage.tsx(28,9): error TS6133: 't' is declared but its value is never read.
+src/modules/auth/components/UsersPage.tsx(49,42): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(50,52): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(56,27): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(69,41): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(113,31): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(126,37): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(148,28): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(170,16): error TS2322: Type '{ children: any; variant: string; className: string; }' is not assignable to type 'IntrinsicAttributes & BadgeProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & BadgeProps'.
+src/modules/auth/components/UsersPage.tsx(274,23): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/auth/components/UsersPage.tsx(330,92): error TS2749: 'User' refers to a value, but is being used as a type here. Did you mean 'typeof User'?
+src/modules/crm/components/ActivitiesPage.tsx(29,34): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/crm/components/LeadsPage.tsx(15,29): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/crm/components/OpportunitiesPage.tsx(34,37): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/crm/components/TasksPage.tsx(5,1): error TS6133: 'StatusBadge' is declared but its value is never read.
+src/modules/crm/components/TasksPage.tsx(14,29): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/hr/components/AttendancePage.tsx(8,1): error TS6133: 'hrApi' is declared but its value is never read.
+src/modules/hr/components/AttendancePage.tsx(26,25): error TS6133: 'setSelectedMonth' is declared but its value is never read.
+src/modules/hr/components/AttendancePage.tsx(27,24): error TS6133: 'setSelectedYear' is declared but its value is never read.
+src/modules/hr/components/AttendancePage.tsx(55,9): error TS2322: Type '"present" | "absent" | "late" | "on_leave"' is not assignable to type '"present" | "absent" | "late"'.
+  Type '"on_leave"' is not assignable to type '"present" | "absent" | "late"'.
+src/modules/hr/components/EmployeesPage.tsx(15,33): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/hr/components/EndOfServicePage.tsx(9,29): error TS6196: 'Employee' is declared but never used.
+src/modules/hr/components/EndOfServicePage.tsx(14,29): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/hr/components/LeavesPage.tsx(14,30): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/hr/components/PayrollPage.tsx(2,47): error TS6133: 'CheckSquare' is declared but its value is never read.
+src/modules/hr/components/PayrollPage.tsx(8,1): error TS6133: 'hrApi' is declared but its value is never read.
+src/modules/hr/components/PayrollPage.tsx(14,32): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/hr/hooks/useHr.ts(3,55): error TS6196: 'PayrollLine' is declared but never used.
+src/modules/inventory/components/InventoryTransactionsPage.tsx(236,127): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/modules/inventory/components/ProductDetail.tsx(39,15): error TS2339: Property 'quantity' does not exist on type 'Product'.
+src/modules/inventory/components/ProductDetail.tsx(39,49): error TS2339: Property 'quantity' does not exist on type 'Product'.
+src/modules/inventory/components/ProductDetail.tsx(41,17): error TS2339: Property 'quantity' does not exist on type 'Product'.
+src/modules/inventory/components/ProductDetail.tsx(41,51): error TS2339: Property 'quantity' does not exist on type 'Product'.
+src/modules/inventory/components/ProductsPage.tsx(176,24): error TS2551: Property 'stopCameraScan' does not exist on type 'BarcodeScanner'. Did you mean 'stopCamera'?
+src/modules/inventory/components/ProductsPage.tsx(178,7): error TS2554: Expected 2 arguments, but got 3.
+src/modules/inventory/components/ProductsPage.tsx(178,8): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/modules/inventory/components/ProductsPage.tsx(187,20): error TS2551: Property 'stopCameraScan' does not exist on type 'BarcodeScanner'. Did you mean 'stopCamera'?
+src/modules/inventory/components/StockAdjustmentPage.tsx(279,127): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/modules/inventory/components/StockPage.tsx(65,68): error TS2322: Type '{ size: number; className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/modules/inventory/components/StockPage.tsx(149,126): error TS2345: Argument of type '(prev: { productId: string; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }) => { productId: string | string[]; fromWarehouseId: string; ... 4 more ...; notes: string; }' is not assignable to parameter of type 'SetStateAction<{ productId: string; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }>'.
+  Type '(prev: { productId: string; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }) => { productId: string | string[]; fromWarehouseId: string; ... 4 more ...; notes: string; }' is not assignable to type '(prevState: { productId: string; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }) => { productId: string; fromWarehouseId: string; ... 4 more ...; notes: string; }'.
+    Call signature return types '{ productId: string | string[]; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }' and '{ productId: string; fromWarehouseId: string; toWarehouseId: string; quantity: string; date: string; reference: string; notes: string; }' are incompatible.
+      The types of 'productId' are incompatible between these types.
+        Type 'string | string[]' is not assignable to type 'string'.
+          Type 'string[]' is not assignable to type 'string'.
+src/modules/manufacturing/components/BomPage.tsx(23,28): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/manufacturing/components/WorkOrdersPage.tsx(2,24): error TS6133: 'Printer' is declared but its value is never read.
+src/modules/manufacturing/components/WorkOrdersPage.tsx(2,41): error TS6133: 'Pencil' is declared but its value is never read.
+src/modules/manufacturing/components/WorkOrdersPage.tsx(24,34): error TS6133: 'refresh' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(2,66): error TS6133: 'Download' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(2,76): error TS6133: 'Eye' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(2,81): error TS6133: 'Pencil' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(2,89): error TS6133: 'X' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(12,1): error TS6133: 'EmptyState' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(20,32): error TS6196: 'PurchaseInvoiceLine' is declared but never used.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(64,43): error TS2339: Property 'user' does not exist on type 'AppState'.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(313,9): error TS6133: 'handleExportCsv' is declared but its value is never read.
+src/modules/purchases/components/PurchaseInvoicesPage.tsx(480,126): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(2,61): error TS6133: 'FileText' is declared but its value is never read.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(2,71): error TS6133: 'Pencil' is declared but its value is never read.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(2,79): error TS6133: 'Eye' is declared but its value is never read.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(9,1): error TS6133: 'EmptyState' is declared but its value is never read.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(15,30): error TS6196: 'PurchaseOrderLine' is declared but never used.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(53,43): error TS2339: Property 'user' does not exist on type 'AppState'.
+src/modules/purchases/components/PurchaseOrdersPage.tsx(295,126): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(2,53): error TS6133: 'Eye' is declared but its value is never read.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(2,58): error TS6133: 'Pencil' is declared but its value is never read.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(10,1): error TS6133: 'EmptyState' is declared but its value is never read.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(16,31): error TS6196: 'PurchaseReturnLine' is declared but never used.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(56,43): error TS2339: Property 'user' does not exist on type 'AppState'.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(210,160): error TS2304: Cannot find name 'FileText'.
+src/modules/purchases/components/PurchaseReturnsPage.tsx(357,126): error TS2322: Type 'string | string[]' is not assignable to type 'string | undefined'.
+  Type 'string[]' is not assignable to type 'string'.
+src/modules/purchases/components/SuppliersPage.tsx(2,23): error TS6133: 'Eye' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(2,28): error TS6133: 'Pencil' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(2,36): error TS6133: 'Trash2' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(2,54): error TS6133: 'Printer' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(2,63): error TS6133: 'Download' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(2,73): error TS6133: 'X' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(3,38): error TS6133: 'exportToCSV' is declared but its value is never read.
+src/modules/purchases/components/SuppliersPage.tsx(14,48): error TS6196: 'ApAgingBucket' is declared but never used.
+src/modules/purchases/components/SuppliersPage.tsx(40,43): error TS2339: Property 'user' does not exist on type 'AppState'.
+src/modules/purchases/hooks/usePurchases.ts(67,38): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/purchases/hooks/usePurchases.ts(68,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/purchases/hooks/usePurchases.ts(69,33): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/modules/reports/dashboards/charts.tsx(44,11): error TS2322: Type '(value: number | string) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => [string, string]' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(79,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(99,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(119,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(141,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(163,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/charts.tsx(193,18): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/dashboards/MainDashboard.tsx(133,34): error TS2345: Argument of type '(p: DashboardFilters) => { dateRange: { from: string; to?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' is not assignable to parameter of type 'SetStateAction<DashboardFilters>'.
+  Type '(p: DashboardFilters) => { dateRange: { from: string; to?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' is not assignable to type '(prevState: DashboardFilters) => DashboardFilters'.
+    Call signature return types '{ dateRange: { from: string; to?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' and 'DashboardFilters' are incompatible.
+      The types of 'dateRange.to' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/modules/reports/dashboards/MainDashboard.tsx(142,34): error TS2345: Argument of type '(p: DashboardFilters) => { dateRange: { to: string; from?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' is not assignable to parameter of type 'SetStateAction<DashboardFilters>'.
+  Type '(p: DashboardFilters) => { dateRange: { to: string; from?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' is not assignable to type '(prevState: DashboardFilters) => DashboardFilters'.
+    Call signature return types '{ dateRange: { to: string; from?: string | undefined; }; period: PeriodFilter; comparePrevious: boolean; }' and 'DashboardFilters' are incompatible.
+      The types of 'dateRange.from' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/modules/reports/dashboards/MainDashboard.tsx(380,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { className?: string | undefined; }, context?: any): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ size: number; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+      Property 'size' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Overload 2 of 2, '(props: { className?: string | undefined; }): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ size: number; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+      Property 'size' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/modules/reports/dashboards/MainDashboard.tsx(406,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { className?: string | undefined; }, context?: any): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ size: number; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+      Property 'size' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Overload 2 of 2, '(props: { className?: string | undefined; }): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | ... 4 more ... | undefined', gave the following error.
+    Type '{ size: number; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+      Property 'size' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/modules/reports/InventoryAnalysisReport.tsx(288,28): error TS2322: Type '(value: number) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/modules/reports/ProfitAnalysisReport.tsx(279,28): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/ProfitAnalysisReport.tsx(302,28): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/SalesAnalysisReport.tsx(70,39): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number'.
+src/modules/reports/SalesAnalysisReport.tsx(76,13): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(77,13): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(79,13): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(88,15): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(89,15): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(90,15): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(91,15): error TS2322: Type '{}' is not assignable to type 'string'.
+src/modules/reports/SalesAnalysisReport.tsx(92,42): error TS18046: 'l.quantity' is of type 'unknown'.
+src/modules/reports/SalesAnalysisReport.tsx(92,55): error TS18046: 'l.unit_price' is of type 'unknown'.
+src/modules/reports/SalesAnalysisReport.tsx(94,43): error TS18046: 'l.quantity' is of type 'unknown'.
+src/modules/reports/SalesAnalysisReport.tsx(94,56): error TS18046: 'l.unit_price' is of type 'unknown'.
+src/modules/reports/SalesAnalysisReport.tsx(308,28): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.
+src/modules/reports/SalesAnalysisReport.tsx(326,28): error TS2322: Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType> & ((value: ValueType, name: NameType, item: TooltipPayloadEntry, index: number, payload: TooltipPayload) => ReactNode | [...])'.
+  Type '(value: number | string) => string' is not assignable to type 'Formatter<ValueType, NameType>'.
+    Types of parameters 'value' and 'value' are incompatible.
+      Type 'ValueType | undefined' is not assignable to type 'string | number'.
+        Type 'undefined' is not assignable to type 'string | number'.

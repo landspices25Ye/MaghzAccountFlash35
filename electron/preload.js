@@ -5,6 +5,11 @@ contextBridge.exposeInMainWorld('electronDB', {
   ping: () => ipcRenderer.invoke('db:ping'),
   query: (sql, params = []) => ipcRenderer.invoke('db:query', { sql, params }),
   transaction: (queries) => ipcRenderer.invoke('db:transaction', queries),
+  testConnection: (config) => ipcRenderer.invoke('db:test-connection', config),
+  updateConfig: (config) => ipcRenderer.invoke('db:update-config', config),
+  seedDefault: () => ipcRenderer.invoke('db:seed-default'),
+  seedDemo: () => ipcRenderer.invoke('db:seed-demo'),
+  getDbInfo: () => ipcRenderer.invoke('db:info'),
 });
 
 // ─── Realm DB Local Storage (IPC Bridge) ─────────────────────────────────────

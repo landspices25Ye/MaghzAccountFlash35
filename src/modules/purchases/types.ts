@@ -9,6 +9,8 @@ export interface Supplier {
   taxNumber?: string;
   balance: number;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PurchaseInvoice {
@@ -17,6 +19,7 @@ export interface PurchaseInvoice {
   invoiceNumber: string;
   supplierId: string;
   supplier?: Supplier;
+  purchaseOrderId?: string;
   date: string;
   dueDate?: string;
   subtotal: number;
@@ -26,6 +29,8 @@ export interface PurchaseInvoice {
   paidAmount: number;
   status: 'draft' | 'posted' | 'paid' | 'partially_paid' | 'cancelled';
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
   lines: PurchaseInvoiceLine[];
 }
 
@@ -36,6 +41,8 @@ export interface PurchaseInvoiceLine {
   description?: string;
   quantity: number;
   unitPrice: number;
+  discountPercent?: number;
+  vatPercent?: number;
   lineTotal: number;
 }
 
@@ -48,6 +55,67 @@ export interface PurchaseOrder {
   date: string;
   expectedDate?: string;
   totalAmount: number;
-  status: 'draft' | 'sent' | 'partially_received' | 'received' | 'cancelled';
+  status: 'draft' | 'sent' | 'partially_received' | 'received' | 'invoiced' | 'cancelled';
   notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lines?: PurchaseOrderLine[];
+}
+
+export interface PurchaseOrderLine {
+  id?: string;
+  orderId?: string;
+  productId?: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  receivedQuantity?: number;
+}
+
+export interface PurchaseReturn {
+  id: string;
+  companyId: string;
+  returnNumber: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  supplierId: string;
+  supplier?: Supplier;
+  date: string;
+  subtotal: number;
+  vatAmount: number;
+  totalAmount: number;
+  status: 'draft' | 'posted' | 'cancelled';
+  notes?: string;
+  reason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lines: PurchaseReturnLine[];
+}
+
+export interface PurchaseReturnLine {
+  id?: string;
+  returnId?: string;
+  productId?: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface SupplierStatementItem {
+  id: string;
+  date: string;
+  type: 'invoice' | 'payment' | 'return' | 'opening';
+  documentNumber: string;
+  description: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface ApAgingBucket {
+  bucket: string;
+  amount: number;
+  count: number;
 }

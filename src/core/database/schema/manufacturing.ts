@@ -2,7 +2,7 @@ import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date } from 
 import { companies } from './core';
 
 // ─── Bills of Materials (BOM) ─────────────────────────────────────────────────
-export const billsOfMaterials = pgTable('bills_of_materials', {
+export const boms = pgTable('boms', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull(), // finished product
@@ -13,7 +13,7 @@ export const billsOfMaterials = pgTable('bills_of_materials', {
 
 export const bomLines = pgTable('bom_lines', {
   id: uuid('id').defaultRandom().primaryKey(),
-  bomId: uuid('bom_id').notNull().references(() => billsOfMaterials.id, { onDelete: 'cascade' }),
+  bomId: uuid('bom_id').notNull().references(() => boms.id, { onDelete: 'cascade' }),
   materialId: uuid('material_id').notNull(), // raw material product
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitCost: numeric('unit_cost', { precision: 18, scale: 4 }).default('0'),
@@ -38,8 +38,8 @@ export const workOrders = pgTable('work_orders', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── Work Order Lines (Material Consumption) ──────────────────────────────────
-export const workOrderLines = pgTable('work_order_lines', {
+// ─── Work Order Consumptions ──────────────────────────────────────────────────
+export const workOrderConsumptions = pgTable('work_order_consumptions', {
   id: uuid('id').defaultRandom().primaryKey(),
   workOrderId: uuid('work_order_id').notNull().references(() => workOrders.id, { onDelete: 'cascade' }),
   materialId: uuid('material_id').notNull(),

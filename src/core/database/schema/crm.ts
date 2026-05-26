@@ -34,8 +34,8 @@ export const opportunities = pgTable('opportunities', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── CRM Tasks ────────────────────────────────────────────────────────────────
-export const crmTasks = pgTable('crm_tasks', {
+// ─── CRM Activities ───────────────────────────────────────────────────────────
+export const crmActivities = pgTable('crm_activities', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   opportunityId: uuid('opportunity_id'),

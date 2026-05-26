@@ -79,3 +79,19 @@ export const payrollLines = pgTable('payroll_lines', {
   netSalary: numeric('net_salary', { precision: 18, scale: 4 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
+
+// ─── End of Service ───────────────────────────────────────────────────────────
+export const endOfService = pgTable('end_of_service', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  employeeId: uuid('employee_id').notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  terminationDate: date('termination_date').notNull(),
+  serviceYears: numeric('service_years', { precision: 5, scale: 2 }).notNull(),
+  lastSalary: numeric('last_salary', { precision: 18, scale: 4 }).notNull(),
+  eosAmount: numeric('eos_amount', { precision: 18, scale: 4 }).notNull(),
+  reason: varchar('reason', { length: 50 }).notNull(), // resignation, termination, contract_end, retirement
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // draft, approved, paid
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});

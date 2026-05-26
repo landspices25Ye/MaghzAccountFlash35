@@ -1,73 +1,253 @@
-import React, { useState } from 'react';
-import { Undo2, Plus, CheckSquare, FileText, BookOpen } from 'lucide-react';
-import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Undo2, Plus, CheckSquare, Trash2, Printer, FileText, Package, BookOpen } from 'lucide-react';
+import { Card, Button, Table, Input, Modal } from '@/core/ui/components';
+import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
+import { StatusBadge } from '@/core/ui/components/StatusBadge';
+import { ActionButtons } from '@/core/ui/components/ActionButtons';
+import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
+import { useReturns, useInvoices } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
+import { useAuthStore } from '@/modules/auth/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
+import { printDocument } from '@/core/utils/printDocument';
+import { exportToExcel } from '@/core/utils/exportEngine';
 import { postSalesReturn } from '@/core/utils/journalEntryGenerator';
+import { logAudit } from '@/core/utils/auditLogger';
+import type { SalesReturn } from '../types';
 
-interface SalesReturn {
-  id: string;
-  returnNumber: string;
-  invoiceNumber: string;
-  customer: string;
-  date: string;
-  product: string;
+interface ReturnLineForm {
+  productId: string;
+  productName: string;
   quantity: number;
-  amount: number;
-  reason: string;
-  status: 'draft' | 'posted';
+  unitPrice: number;
 }
 
 export const SalesReturnsPage: React.FC = () => {
-  const [returns, setReturns] = useState<SalesReturn[]>([
-    { id: '1', returnNumber: 'SR-2024-001', invoiceNumber: 'INV-2024-0015', customer: 'شركة اليمن للتجارة', date: '2024-06-10', product: 'غسالة أوتوماتيك 7 كغ', quantity: 1, amount: 115000, reason: 'عيب مصنعي', status: 'posted' },
-    { id: '2', returnNumber: 'SR-2024-002', invoiceNumber: 'INV-2024-0018', customer: 'مؤسسة الأمل التجارية', date: '2024-06-12', product: 'مكيف سبليت 18000', quantity: 1, amount: 135000, reason: 'تلف أثناء النقل', status: 'posted' },
-    { id: '3', returnNumber: 'SR-2024-003', invoiceNumber: 'INV-2024-0020', customer: 'شركة الخليج للمواد الغذائية', date: '2024-06-15', product: 'براد ماء 20 لتر', quantity: 2, amount: 44000, reason: 'العميل غير راضٍ', status: 'draft' },
-  ]);
-
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const [postingId, setPostingId] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<Partial<SalesReturn>>({});
+  const currentUser = useAuthStore(state => state.user);
+  const { returns, isLoading: returnsLoading, create, update, remove, post } = useReturns(activeCompany?.id || '');
+  const { invoices } = useInvoices(activeCompany?.id || '');
+  const { getNextNumber } = useDocumentSequence();
 
-  const handlePost = async (ret: SalesReturn) => {
-    if (!activeCompany?.id) return;
-    setPostingId(ret.id);
-    const result = await postSalesReturn(activeCompany.id, {
-      returnNumber: ret.returnNumber,
-      date: ret.date,
-      customer: ret.customer,
-      amount: ret.amount,
+  const [formOpen, setFormOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<SalesReturn | null>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState<{ title: string; message: string; onConfirm: () => void; variant?: 'danger' | 'warning' | 'info'; confirmText?: string } | null>(null);
+
+  const [postingId, setPostingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const [header, setHeader] = useState({ invoiceId: '', customerId: '', date: new Date().toISOString().split('T')[0], reason: '', notes: '' });
+  const [lines, setLines] = useState<ReturnLineForm[]>([{ productId: '', productName: '', quantity: 1, unitPrice: 0 }]);
+
+  const defaultLine = (): ReturnLineForm => ({ productId: '', productName: '', quantity: 1, unitPrice: 0 });
+
+  const resetForm = useCallback(() => {
+    setHeader({ invoiceId: '', customerId: '', date: new Date().toISOString().split('T')[0], reason: '', notes: '' });
+    setLines([defaultLine()]);
+    setEditingId(null);
+  }, []);
+
+  const addLine = () => setLines(prev => [...prev, defaultLine()]);
+  const removeLine = (idx: number) => setLines(prev => prev.filter((_, i) => i !== idx));
+  const updateLine = (idx: number, field: keyof ReturnLineForm, value: string | number) => {
+    setLines(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      if (field === 'productId' && typeof value === 'string') next[idx].productName = value;
+      return next;
     });
-    setPostingId(null);
-    if (result.success) {
-      alert(`تم ترحيل مردود المبيعات ${ret.returnNumber} وتوليد القيد اليومي بنجاح!`);
-      setReturns(returns.map(r => r.id === ret.id ? { ...r, status: 'posted' as const } : r));
+  };
+
+  const calculations = useMemo(() => {
+    const subtotal = lines.reduce((s, l) => s + (l.quantity * l.unitPrice), 0);
+    const vatAmount = Math.floor(subtotal * 0.15); // simplified VAT 15%
+    const totalAmount = subtotal + vatAmount;
+    return { subtotal, vatAmount, totalAmount };
+  }, [lines]);
+
+  const handleInvoiceSelect = (invoiceId: string) => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    if (inv) {
+      setHeader(prev => ({ ...prev, invoiceId, customerId: inv.customerId }));
+      setLines(inv.lines.map(l => ({ productId: l.productId, productName: l.productName || l.productId, quantity: 1, unitPrice: l.unitPrice })));
     } else {
-      alert(`فشل الترحيل: ${result.error}`);
+      setHeader(prev => ({ ...prev, invoiceId, customerId: '' }));
+      setLines([defaultLine()]);
     }
   };
 
-  const handleAdd = () => {
-    if (!form.customer || !form.invoiceNumber) return;
-    const newRet: SalesReturn = {
-      id: String(returns.length + 1),
-      returnNumber: `SR-2024-${String(returns.length + 1).padStart(3, '0')}`,
-      invoiceNumber: form.invoiceNumber,
-      customer: form.customer,
-      date: new Date().toISOString().split('T')[0],
-      product: form.product || '',
-      quantity: Number(form.quantity) || 0,
-      amount: Number(form.amount) || 0,
-      reason: form.reason || '',
-      status: 'draft',
-    };
-    setReturns([newRet, ...returns]);
-    setIsOpen(false);
-    setForm({});
+  const buildPayload = (returnNumber: string): Omit<SalesReturn, 'id'> => ({
+    companyId: activeCompany!.id,
+    returnNumber,
+    invoiceId: header.invoiceId,
+    customerId: header.customerId,
+    date: header.date,
+    subtotal: calculations.subtotal,
+    vatAmount: calculations.vatAmount,
+    totalAmount: calculations.totalAmount,
+    reason: header.reason,
+    status: 'draft',
+    notes: header.notes,
+    lines: lines.map(l => ({
+      productId: l.productId,
+      productName: l.productName,
+      quantity: l.quantity,
+      unitPrice: l.unitPrice,
+      lineTotal: l.quantity * l.unitPrice,
+    })),
+  });
+
+  const handleSave = async () => {
+    if (!header.customerId || !header.invoiceId || lines.length === 0 || !activeCompany?.id) return;
+    setSaving(true);
+    let returnNumber = '';
+    if (editingId) {
+      const existing = returns.find(r => r.id === editingId);
+      returnNumber = existing?.returnNumber || '';
+      const res = await update(editingId, buildPayload(returnNumber));
+      if (res.success && activeCompany.id) {
+        await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'sales_returns', recordId: editingId, companyId: activeCompany.id });
+      }
+    } else {
+      const seq = await getNextNumber('sales_return', activeCompany.id);
+      returnNumber = seq.number || `SR-${Date.now()}`;
+      const res = await create(buildPayload(returnNumber));
+      if (res.success && res.id && activeCompany.id) {
+        await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'sales_returns', recordId: res.id, companyId: activeCompany.id });
+      }
+    }
+    setSaving(false);
+    setFormOpen(false);
+    resetForm();
   };
 
-  const totalAmount = returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.amount, 0);
+  const handleDelete = (ret: SalesReturn) => {
+    if (ret.status !== 'draft') return;
+    setConfirmConfig({
+      title: t('sales.return.deleteTitle') || 'حذف المردود',
+      message: `${t('sales.return.deleteConfirm') || 'هل أنت متأكد من حذف مردود المبيعات'} ${ret.returnNumber}؟`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmOpen(false);
+        const res = await remove(ret.id);
+        if (res.success && activeCompany?.id) {
+          await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'sales_returns', recordId: ret.id, companyId: activeCompany.id });
+        }
+      },
+    });
+    setConfirmOpen(true);
+  };
+
+  const handlePost = (ret: SalesReturn) => {
+    if (ret.status !== 'draft') return;
+    setConfirmConfig({
+      title: t('sales.return.postTitle') || 'ترحيل المردود',
+      message: `${t('sales.return.postConfirm') || 'سيتم ترحيل المردود وتوليد القيد اليومي (مخزني + محاسبي) تلقائياً. هل أنت متأكد؟'}`,
+      variant: 'warning',
+      confirmText: t('sales.return.post') || 'ترحيل',
+      onConfirm: async () => {
+        setConfirmOpen(false);
+        if (!activeCompany?.id) return;
+        setPostingId(ret.id);
+        const postResult = await postSalesReturn(activeCompany.id, {
+          returnNumber: ret.returnNumber,
+          date: ret.date,
+          customer: ret.customer?.name || ret.customerId,
+          amount: ret.totalAmount,
+        });
+        if (postResult.success) {
+          await post(ret.id);
+          await logAudit({ userId: currentUser?.id || 'system', action: 'post', tableName: 'sales_returns', recordId: ret.id, companyId: activeCompany.id });
+        }
+        setPostingId(null);
+      },
+    });
+    setConfirmOpen(true);
+  };
+
+  const handlePrint = (ret: SalesReturn) => {
+    printDocument({
+      type: 'sales-invoice',
+      docNumber: ret.returnNumber,
+      date: ret.date,
+      partyName: ret.customer?.name || ret.customerId,
+      partyLabel: t('sales.customer') || 'العميل',
+      lines: ret.lines.map(l => ({
+        description: l.productName || l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        total: l.lineTotal,
+      })),
+      subtotal: ret.subtotal,
+      vatAmount: ret.vatAmount,
+      totalAmount: ret.totalAmount,
+      notes: `${ret.reason}\n${ret.notes || ''}`,
+      companyName: activeCompany?.name,
+      currency: activeCompany?.currency,
+    });
+  };
+
+  const handleExportExcel = () => {
+    const cols = [
+      { key: 'returnNumber', header: t('sales.return.number') || 'رقم المردود' },
+      { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'الفاتورة الأصلية' },
+      { key: 'customerName', header: t('sales.customer') || 'العميل' },
+      { key: 'date', header: t('sales.date') || 'التاريخ' },
+      { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
+      { key: 'status', header: t('sales.status') || 'الحالة' },
+    ];
+    exportToExcel(returns.map(r => ({ returnNumber: r.returnNumber, invoiceNumber: r.invoice?.invoiceNumber || r.invoiceId, customerName: r.customer?.name || r.customerId, date: r.date, totalAmount: r.totalAmount, status: r.status })), cols, `sales_returns_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const tableColumns = [
+    { key: 'returnNumber', header: t('sales.return.number') || 'رقم المردود', width: '130px' },
+    { key: 'invoiceNumber', header: t('sales.return.originalInvoice') || 'الفاتورة الأصلية', width: '140px', render: (row: SalesReturn) => (
+      <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.invoice?.invoiceNumber || row.invoiceId}</span>
+    )},
+    { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: SalesReturn) => row.customer?.name || row.customerId },
+    { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
+    { key: 'reason', header: t('sales.return.reason') || 'السبب' },
+    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: SalesReturn) => row.totalAmount.toLocaleString('ar-SA') },
+    { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesReturn) => <StatusBadge status={row.status} /> },
+    { key: 'actions', header: t('sales.actions') || 'إجراء', width: '200px', render: (row: SalesReturn) => (
+      <div className="flex items-center gap-1">
+        <ActionButtons
+          onView={() => { setViewing(row); setDetailOpen(true); }}
+          onEdit={row.status === 'draft' ? () => {
+            setEditingId(row.id);
+            setHeader({ invoiceId: row.invoiceId, customerId: row.customerId, date: row.date, reason: row.reason, notes: row.notes || '' });
+            setLines(row.lines.map(l => ({ productId: l.productId, productName: l.productName || l.productId, quantity: l.quantity, unitPrice: l.unitPrice })));
+            setFormOpen(true);
+          } : undefined}
+          onDelete={row.status === 'draft' ? () => handleDelete(row) : undefined}
+          onPrint={() => handlePrint(row)}
+          showView
+          showEdit={row.status === 'draft'}
+          showDelete={row.status === 'draft'}
+          showPrint
+        />
+        {row.status === 'draft' && (
+          <Button size="sm" variant="secondary" onClick={() => handlePost(row)} disabled={postingId === row.id} leftIcon={<CheckSquare size={14} />}>
+            {postingId === row.id ? (t('loading') || 'جارٍ...') : (t('sales.return.post') || 'ترحيل')}
+          </Button>
+        )}
+      </div>
+    )},
+  ];
+
+  const stats = useMemo(() => {
+    const total = returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0);
+    const draftCount = returns.filter(r => r.status === 'draft').length;
+    const postedCount = returns.filter(r => r.status === 'posted').length;
+    return { total, draftCount, postedCount };
+  }, [returns]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -75,97 +255,181 @@ export const SalesReturnsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Undo2 size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">مردودات المبيعات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة مردودات البضاعة من العملاء - اضغط ترحيل لتوليد القيد المحاسبي</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.returns') || 'مردودات المبيعات'}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.returnsSubtitle') || 'إدارة مردودات البضاعة من العملاء مع الأثر المخزني والمحاسبي'}</p>
           </div>
         </div>
-        <Button leftIcon={<Plus size={18} />} onClick={() => setIsOpen(true)}>مردود جديد</Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير'}>
+            <FileText size={16} className="text-emerald-600" />
+          </Button>
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setFormOpen(true); }}>{t('sales.return.create') || 'مردود جديد'}</Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">عدد المردودات</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{returns.length}</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المردودات المرحّلة</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalAmount.toLocaleString('ar-SA')} YER</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">مسودات</p>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{returns.filter(r => r.status === 'draft').length}</p>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{returns.length}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{stats.total.toLocaleString('ar-SA')} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.drafts') || 'مسودات'}</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p></div></Card>
       </div>
 
       <Card>
-        <Table
-          data={returns}
-          columns={[
-            { key: 'returnNumber', header: 'رقم المردود' },
-            { key: 'date', header: 'التاريخ' },
-            { key: 'invoiceNumber', header: 'رقم الفاتورة', render: (row) => (
-              <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.invoiceNumber}</span>
-            )},
-            { key: 'customer', header: 'العميل' },
-            { key: 'product', header: 'المنتج' },
-            { key: 'quantity', header: 'الكمية', align: 'right' },
-            { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => row.amount.toLocaleString('ar-SA') },
-            { key: 'reason', header: 'السبب' },
-            { key: 'status', header: 'الحالة', render: (row) => (
-              <Badge className={row.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                {row.status === 'posted' ? 'مرحّل' : 'مسوّد'}
-              </Badge>
-            )},
-            { key: 'actions', header: 'إجراء', render: (row) => (
-              row.status === 'draft' ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<CheckSquare size={14} />}
-                  onClick={() => handlePost(row)}
-                  disabled={postingId === row.id}
-                >
-                  {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
-                </Button>
-              ) : (
-                <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
-              )
-            )},
-          ]}
-          keyExtractor={(row) => row.id}
-        />
+        {returnsLoading ? (
+          <div className="space-y-3 p-4">
+            {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
+          </div>
+        ) : returns.length === 0 ? (
+          <EmptyState
+            icon="inbox"
+            title={t('sales.return.emptyTitle') || 'لا توجد مردودات'}
+            description={t('sales.return.emptyDesc') || 'يمكنك إنشاء مردود مبيعات جديد الآن'}
+            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setFormOpen(true); }}>{t('sales.return.create') || 'مردود جديد'}</Button>}
+          />
+        ) : (
+          <Table<SalesReturn> data={returns} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={returnsLoading} />
+        )}
       </Card>
 
-      {isOpen && (
-        <Modal isOpen={isOpen} title="مردود مبيعات جديد" onClose={() => setIsOpen(false)}>
-          <div className="space-y-4">
-            <Input label="رقم الفاتورة الأصلية" value={form.invoiceNumber || ''} onChange={e => setForm({ ...form, invoiceNumber: e.target.value })} />
+      {/* Form Modal */}
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="xl" title={editingId ? (t('sales.return.edit') || 'تعديل المردود') : (t('sales.return.new') || 'مردود مبيعات جديد')}>
+        <div className="space-y-4 p-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العميل</label>
-              <CustomerSelect companyId={activeCompany?.id || ''} value={form.customer || ''} onChange={v => setForm({ ...form, customer: v || '' })} />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.return.originalInvoice') || 'الفاتورة الأصلية'}</label>
+              <select
+                className="form-control w-full"
+                value={header.invoiceId}
+                onChange={e => handleInvoiceSelect(e.target.value)}
+              >
+                <option value="">{t('sales.invoice.select') || 'اختر الفاتورة'}</option>
+                {invoices.filter(i => i.status === 'posted' || i.status === 'partially_paid' || i.status === 'paid').map(inv => (
+                  <option key={inv.id} value={inv.id}>{inv.invoiceNumber} - {inv.customer?.name || inv.customerId}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
-              <ProductSelect companyId={activeCompany?.id || ''} value={form.product || ''} onChange={v => setForm({ ...form, product: (Array.isArray(v) ? v[0] : v) || '' })} />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer') || 'العميل'}</label>
+              <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(p => ({ ...p, customerId: v || '' }))} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="الكمية" type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
-              <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+            <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(p => ({ ...p, date: e.target.value }))} />
+          </div>
+
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">{t('sales.invoice.lines') || 'سطور المردود'}</h4>
+              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>{t('sales.invoice.addLine') || 'إضافة سطر'}</Button>
             </div>
-            <Input label="سبب المردود" value={form.reason || ''} onChange={e => setForm({ ...form, reason: e.target.value })} />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleAdd} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <tr>
+                    <th className="px-2 py-1 text-right">{t('inventory.productName') || 'المنتج'}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('inventory.quantity') || 'الكمية'}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('inventory.unitPrice') || 'السعر'}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('sales.total') || 'الإجمالي'}</th>
+                    <th className="px-2 py-1 w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line, idx) => {
+                    const lineTotal = line.quantity * line.unitPrice;
+                    return (
+                      <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" /></td>
+                        <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
+                        <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
+                        <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{lineTotal.toLocaleString('ar-SA', { maximumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-1"><Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-        </Modal>
-      )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input label={t('sales.return.reason') || 'سبب المردود'} value={header.reason} onChange={e => setHeader(p => ({ ...p, reason: e.target.value }))} />
+            <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))} />
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 flex items-center justify-between">
+              <span className="text-slate-600 dark:text-slate-300 font-medium">{t('sales.total') || 'الإجمالي'}</span>
+              <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{calculations.totalAmount.toLocaleString('ar-SA')}</span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel') || 'إلغاء'}</Button>
+            <Button onClick={handleSave} isLoading={saving} leftIcon={<CheckSquare size={16} />}>{editingId ? (t('save') || 'حفظ') : (t('sales.return.saveDraft') || 'حفظ كمسودة')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="lg" title={`${t('sales.return.details') || 'تفاصيل المردود'} - ${viewing?.returnNumber}`}>
+        {viewing && (
+          <div className="space-y-4 p-1">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.originalInvoice') || 'الفاتورة الأصلية'}</p><p className="font-semibold flex items-center gap-1"><FileText size={14} /> {viewing.invoice?.invoiceNumber || viewing.invoiceId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.reason') || 'السبب'}</p><p className="font-semibold">{viewing.reason}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.total') || 'المبلغ'}</p><p className="font-semibold">{viewing.totalAmount.toLocaleString('ar-SA')}</p></div>
+            </div>
+
+            {/* Impact badges */}
+            <div className="flex gap-2">
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg px-3 py-2 text-sm">
+                <BookOpen size={16} /> {t('sales.return.accountingEffect') || 'أثر محاسبي: قيد تلقائي'}
+              </div>
+              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg px-3 py-2 text-sm">
+                <Package size={16} /> {t('sales.return.inventoryEffect') || 'أثر مخزني: إعادة بضاعة'}
+              </div>
+            </div>
+
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><tr><th className="px-3 py-2 text-right">#</th><th className="px-3 py-2 text-right">{t('inventory.productName') || 'المنتج'}</th><th className="px-3 py-2 text-right">{t('inventory.quantity') || 'الكمية'}</th><th className="px-3 py-2 text-right">{t('inventory.unitPrice') || 'السعر'}</th><th className="px-3 py-2 text-right">{t('sales.total') || 'الإجمالي'}</th></tr></thead>
+                <tbody>
+                  {viewing.lines.map((l, i) => (
+                    <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="px-3 py-2 text-slate-500">{i + 1}</td>
+                      <td className="px-3 py-2 font-medium">{l.productName || l.productId}</td>
+                      <td className="px-3 py-2">{l.quantity}</td>
+                      <td className="px-3 py-2">{l.unitPrice.toLocaleString('ar-SA')}</td>
+                      <td className="px-3 py-2 font-medium">{l.lineTotal.toLocaleString('ar-SA')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
+              <div className="space-y-1 text-sm">
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.subtotal.toLocaleString('ar-SA')}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{viewing.vatAmount.toLocaleString('ar-SA')}</span></p>
+              </div>
+              <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
+                {t('sales.total') || 'الإجمالي'}: {viewing.totalAmount.toLocaleString('ar-SA')}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close') || 'إغلاق'}</Button>
+              <Button variant="primary" onClick={() => handlePrint(viewing)} leftIcon={<Printer size={16} />}>{t('print') || 'طباعة'}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => { confirmConfig?.onConfirm(); }}
+        title={confirmConfig?.title || ''}
+        message={confirmConfig?.message || ''}
+        variant={confirmConfig?.variant || 'warning'}
+        confirmText={confirmConfig?.confirmText || (t('confirm') || 'تأكيد')}
+        cancelText={t('cancel') || 'إلغاء'}
+      />
     </div>
   );
 };

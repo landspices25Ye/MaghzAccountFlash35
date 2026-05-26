@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,43 +13,232 @@ import {
   Settings,
   ChevronRight,
   ChevronLeft,
-  Moon,
-  Sun,
-  Globe,
+  ChevronDown,
   Building2,
   LogOut,
   User,
+  Moon,
+  Sun,
+  Globe,
 } from 'lucide-react';
 import { useAppStore } from '@/core/store';
-import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAuthStore } from '@/modules/auth/store';
 import { cn } from '@/core/utils';
 
-const menuItems = [
-  { id: 'dashboard', labelKey: 'sidebar.dashboard', icon: LayoutDashboard, path: '/', permission: 'core.view' },
-  { id: 'accounting', labelKey: 'sidebar.accounting', icon: Calculator, path: '/accounting', permission: 'accounting.view' },
-  { id: 'inventory', labelKey: 'sidebar.inventory', icon: Package, path: '/inventory', permission: 'inventory.view' },
-  { id: 'sales', labelKey: 'sidebar.sales', icon: ShoppingCart, path: '/sales', permission: 'sales.view' },
-  { id: 'purchases', labelKey: 'sidebar.purchases', icon: Store, path: '/purchases', permission: 'purchases.view' },
-  { id: 'manufacturing', labelKey: 'sidebar.manufacturing', icon: Factory, path: '/manufacturing', permission: 'manufacturing.view' },
-  { id: 'hr', labelKey: 'sidebar.hr', icon: Users, path: '/hr', permission: 'hr.view' },
-  { id: 'crm', labelKey: 'sidebar.crm', icon: HeartHandshake, path: '/crm', permission: 'crm.view' },
-  { id: 'reports', labelKey: 'sidebar.reports', icon: BarChart3, path: '/reports', permission: 'reports.view' },
-  { id: 'settings', labelKey: 'sidebar.settings', icon: Settings, path: '/settings', permission: 'settings.view' },
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  path: string;
+  permission: string;
+  children?: { label: string; path: string }[];
+}
+
+const menuItems: MenuItem[] = [
+  { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, path: '/', permission: 'core.view' },
+  {
+    id: 'accounting',
+    label: 'الحسابات',
+    icon: Calculator,
+    path: '/accounting',
+    permission: 'accounting.view',
+    children: [
+      { label: 'شجرة الحسابات', path: '/accounting/chart' },
+      { label: 'القيود اليومية', path: '/accounting/journal' },
+      { label: 'ميزان المراجعة', path: '/accounting/trial' },
+      { label: 'الميزانية العمومية', path: '/accounting/balance' },
+      { label: 'قائمة الدخل', path: '/accounting/profit' },
+      { label: 'التدفقات النقدية', path: '/accounting/cashflow' },
+      { label: 'سندات القبض', path: '/accounting/receipt-vouchers' },
+      { label: 'سندات الصرف', path: '/accounting/payment-vouchers' },
+    ],
+  },
+  {
+    id: 'inventory',
+    label: 'المخازن',
+    icon: Package,
+    path: '/inventory',
+    permission: 'inventory.view',
+    children: [
+      { label: 'المنتجات', path: '/inventory/products' },
+      { label: 'المستودعات', path: '/inventory/warehouses' },
+      { label: 'المخزون', path: '/inventory/stock' },
+      { label: 'الحركات المخزنية', path: '/inventory/transactions' },
+      { label: 'التسويات', path: '/inventory/adjustments' },
+    ],
+  },
+  {
+    id: 'sales',
+    label: 'المبيعات',
+    icon: ShoppingCart,
+    path: '/sales',
+    permission: 'sales.view',
+    children: [
+      { label: 'فواتير المبيعات', path: '/sales/invoices' },
+      { label: 'العملاء', path: '/sales/customers' },
+      { label: 'عروض الأسعار', path: '/sales/quotations' },
+      { label: 'مردودات المبيعات', path: '/sales/returns' },
+    ],
+  },
+  {
+    id: 'purchases',
+    label: 'المشتريات',
+    icon: Store,
+    path: '/purchases',
+    permission: 'purchases.view',
+    children: [
+      { label: 'فواتير المشتريات', path: '/purchases/invoices' },
+      { label: 'الموردين', path: '/purchases/suppliers' },
+      { label: 'أوامر الشراء', path: '/purchases/orders' },
+      { label: 'مردودات المشتريات', path: '/purchases/returns' },
+    ],
+  },
+  {
+    id: 'manufacturing',
+    label: 'التصنيع',
+    icon: Factory,
+    path: '/manufacturing',
+    permission: 'manufacturing.view',
+    children: [
+      { label: 'فاتير المواد', path: '/manufacturing/bom' },
+      { label: 'أوامر التشغيل', path: '/manufacturing/work-orders' },
+    ],
+  },
+  {
+    id: 'hr',
+    label: 'الموظفين',
+    icon: Users,
+    path: '/hr',
+    permission: 'hr.view',
+    children: [
+      { label: 'الموظفين', path: '/hr/employees' },
+      { label: 'الحضور', path: '/hr/attendance' },
+      { label: 'الرواتب', path: '/hr/payroll' },
+      { label: 'الإجازات', path: '/hr/leaves' },
+      { label: 'نهاية الخدمة', path: '/hr/end-of-service' },
+    ],
+  },
+  {
+    id: 'crm',
+    label: 'العملاء',
+    icon: HeartHandshake,
+    path: '/crm',
+    permission: 'crm.view',
+    children: [
+      { label: 'العملاء المحتملين', path: '/crm/leads' },
+      { label: 'الفرص', path: '/crm/opportunities' },
+      { label: 'المهام', path: '/crm/tasks' },
+      { label: 'النشاطات', path: '/crm/activities' },
+    ],
+  },
+  {
+    id: 'reports',
+    label: 'التقارير',
+    icon: BarChart3,
+    path: '/reports',
+    permission: 'reports.view',
+    children: [
+      { label: 'مركز التقارير', path: '/reports' },
+      { label: 'تحليل المبيعات', path: '/reports/sales-analysis' },
+      { label: 'تحليل المخزون', path: '/reports/inventory-analysis' },
+      { label: 'كشف حساب عميل', path: '/reports/customer-statement' },
+      { label: 'كشف حساب مورد', path: '/reports/supplier-statement' },
+      { label: 'تحليل الأرباح', path: '/reports/profit-analysis' },
+      { label: 'تقرير مخصص', path: '/reports/custom-builder' },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'الإعدادات',
+    icon: Settings,
+    path: '/settings',
+    permission: 'settings.view',
+    children: [
+      { label: 'بيانات الشركة', path: '/settings/company' },
+      { label: 'العملات', path: '/settings/currencies' },
+      { label: 'الضريبة', path: '/settings/vat' },
+      { label: 'الفروع', path: '/settings/branches' },
+      { label: 'المستخدمين', path: '/settings/users' },
+      { label: 'الأدوار', path: '/roles' },
+    ],
+  },
 ];
 
+function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boolean }) {
+  const location = useLocation();
+  const hasChildren = item.children && item.children.length > 0;
+  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+  const [isExpanded, setIsExpanded] = useState(isActive);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+
+  if (!hasPermission(item.permission)) return null;
+
+  return (
+    <div className="space-y-0.5">
+      <Link
+        to={item.path}
+        onClick={(e) => {
+          if (hasChildren) {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
+        className={cn(
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
+          isActive
+            ? 'bg-primary-600/20 text-primary-400'
+            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+        )}
+        title={!sidebarOpen ? item.label : undefined}
+      >
+        <item.icon size={20} className="shrink-0" />
+        {sidebarOpen && (
+          <>
+            <span className="text-sm font-medium flex-1">{item.label}</span>
+            {hasChildren && (
+              <ChevronDown
+                size={14}
+                className={cn('transition-transform duration-200', isExpanded && 'rotate-180')}
+              />
+            )}
+          </>
+        )}
+      </Link>
+
+      {hasChildren && sidebarOpen && isExpanded && (
+        <div className="mr-6 space-y-0.5 border-r border-slate-800 pr-2">
+          {item.children!.map((child) => {
+            const childActive = location.pathname === child.path;
+            return (
+              <Link
+                key={child.path}
+                to={child.path}
+                className={cn(
+                  'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
+                  childActive
+                    ? 'bg-primary-600/10 text-primary-400'
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+                )}
+              >
+                {child.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export const Sidebar: React.FC = () => {
-  const { t } = useTranslation();
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
-  const location = useLocation();
-  const hasPermission = useAuthStore((state) => state.hasPermission);
 
   return (
     <aside
       className={cn(
         'h-screen bg-slate-900 text-slate-100 flex flex-col transition-all duration-300 ease-in-out shrink-0',
-        sidebarOpen ? 'w-64' : 'w-16'
+        sidebarOpen ? 'w-72' : 'w-16'
       )}
     >
       {/* Logo */}
@@ -59,7 +248,7 @@ export const Sidebar: React.FC = () => {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Building2 size={18} className="text-white" />
             </div>
-            <span className="font-bold text-lg">{t('appName')}</span>
+            <span className="font-bold text-lg">محاسبة المهذب</span>
           </div>
         ) : (
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mx-auto">
@@ -70,30 +259,9 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
-          
-          // Check permission
-          if (!hasPermission(item.permission)) return null;
-          
-          return (
-            <Link
-              key={item.id}
-              to={item.path}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                isActive
-                  ? 'bg-primary-600/20 text-primary-400'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
-              )}
-              title={!sidebarOpen ? t(item.labelKey) : undefined}
-            >
-              <Icon size={20} className="shrink-0" />
-              {sidebarOpen && <span className="text-sm font-medium">{t(item.labelKey)}</span>}
-            </Link>
-          );
-        })}
+        {menuItems.map((item) => (
+          <SidebarItem key={item.id} item={item} sidebarOpen={sidebarOpen} />
+        ))}
       </nav>
 
       {/* Toggle */}
@@ -102,7 +270,7 @@ export const Sidebar: React.FC = () => {
           onClick={toggleSidebar}
           className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
         >
-          {sidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
         </button>
       </div>
     </aside>
@@ -110,8 +278,11 @@ export const Sidebar: React.FC = () => {
 };
 
 export const Header: React.FC = () => {
-  const { t } = useTranslation();
-  const { theme, toggleTheme, language, setLanguage, activeCompany } = useAppStore();
+  const theme = useAppStore((state) => state.theme);
+  const toggleTheme = useAppStore((state) => state.toggleTheme);
+  const language = useAppStore((state) => state.language);
+  const setLanguage = useAppStore((state) => state.setLanguage);
+  const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -133,7 +304,6 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        {/* User info */}
         {user && (
           <div className="flex items-center gap-3 pl-2">
             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -143,27 +313,25 @@ export const Header: React.FC = () => {
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"
+              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
               title="تسجيل الخروج"
             >
               <LogOut size={18} />
             </button>
           </div>
         )}
-        
+
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-        
+
         <button
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          title={t('settings.language')}
         >
           <Globe size={18} />
         </button>
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          title={t('settings.theme')}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
@@ -185,3 +353,5 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     </div>
   );
 };
+
+export default Sidebar;

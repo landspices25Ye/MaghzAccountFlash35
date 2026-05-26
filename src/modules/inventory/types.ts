@@ -7,10 +7,15 @@ export interface Product {
   barcode?: string;
   sku?: string;
   unit: string;
-  categoryId?: string;
+  categoryIds?: string[];
   costPrice: number;
   salePrice: number;
   isActive: boolean;
+  image?: string;
+  quantity?: number;
+  minStock?: number;
+  maxStock?: number;
+  reorderPoint?: number;
 }
 
 export interface Warehouse {
@@ -31,6 +36,14 @@ export interface Stock {
   minStockAlert?: number;
 }
 
+export interface StockItem extends Stock {
+  productName?: string;
+  productCode?: string;
+  warehouseName?: string;
+  unit?: string;
+  costPrice?: number;
+}
+
 export interface StockMovement {
   id: string;
   companyId: string;
@@ -41,6 +54,51 @@ export interface StockMovement {
   reference?: string;
   notes?: string;
   createdAt?: string;
+}
+
+export interface StockTransfer {
+  id: string;
+  companyId: string;
+  productId: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  quantity: number;
+  date: string;
+  reference?: string;
+  notes?: string;
+  status: 'draft' | 'completed' | 'cancelled';
+  createdAt?: string;
+}
+
+export interface InventoryTransaction {
+  id: string;
+  companyId: string;
+  date: string;
+  type: 'in' | 'out' | 'adjustment' | 'transfer';
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  reference: string;
+  notes?: string;
+  unitCost?: number;
+  createdAt?: string;
+}
+
+export interface StockAdjustment {
+  id: string;
+  companyId: string;
+  date: string;
+  productId: string;
+  warehouseId: string;
+  systemQty: number;
+  actualQty: number;
+  difference: number;
+  reason: string;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'posted';
+  unitCost?: number;
+  approvedBy?: string;
+  approvedAt?: string;
+  postedAt?: string;
 }
 
 export interface ProductCategory {

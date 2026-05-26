@@ -1,69 +1,41 @@
 import React, { useState, useMemo } from 'react';
-import { Banknote, Plus, Calculator } from 'lucide-react';
+import { Banknote, Plus, Calculator, Printer } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
-
-interface PayrollLine {
-  id: string;
-  employeeName: string;
-  baseSalary: number;
-  allowances: number;
-  deductions: number;
-  overtime: number;
-  netSalary: number;
-}
-
-interface PayrollRun {
-  id: string;
-  month: number;
-  year: number;
-  totalAmount: number;
-  status: 'draft' | 'posted';
-  lines: PayrollLine[];
-}
+import { StatusBadge } from '@/core/ui/components/StatusBadge';
+import { EmptyState } from '@/core/ui/components/EmptyState';
+import { useAppStore } from '@/core/store';
+import { usePayrollRuns, useEmployees } from '../hooks/useHr';
+import type { PayrollLine } from '../types';
 
 export const PayrollPage: React.FC = () => {
-  const [payrolls, setPayrolls] = useState<PayrollRun[]>([
-    {
-      id: '1', month: 6, year: 2026, status: 'posted',
-      totalAmount: 4750000,
-      lines: [
-        { id: '1', employeeName: 'أحمد محمد', baseSalary: 250000, allowances: 50000, deductions: 25000, overtime: 30000, netSalary: 295000 },
-        { id: '2', employeeName: 'خالد عبدالله', baseSalary: 300000, allowances: 60000, deductions: 30000, overtime: 45000, netSalary: 375000 },
-        { id: '3', employeeName: 'محمد علي', baseSalary: 200000, allowances: 40000, deductions: 20000, overtime: 20000, netSalary: 240000 },
-      ],
-    },
-  ]);
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const companyId = activeCompany?.id || '';
+  const { payrolls, isLoading, create, post } = usePayrollRuns(companyId);
+  const { employees } = useEmployees(companyId);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPayroll, setSelectedPayroll] = useState<PayrollRun | null>(null);
-
-  const [employees] = useState([
-    { name: 'أحمد محمد', baseSalary: 250000 },
-    { name: 'خالد عبدالله', baseSalary: 300000 },
-    { name: 'محمد علي', baseSalary: 200000 },
-    { name: 'عبدالرحمن سالم', baseSalary: 180000 },
-  ]);
-
+  const [selectedPayroll, setSelectedPayroll] = useState<string | null>(null);
   const [formData, setFormData] = useState({ month: new Date().getMonth() + 1, year: new Date().getFullYear() });
   const [lines, setLines] = useState<PayrollLine[]>([]);
 
-  const calculateNet = (base: number, allowances: number, deductions: number, overtime: number) => {
-    return base + allowances + overtime - deductions;
-  };
+  const calculateNet = (base: number, allowances: number, deductions: number, overtime: number) => base + allowances + overtime - deductions;
 
   const initLines = () => {
-    setLines(employees.map(emp => ({
+    setLines(employees.map((emp) => ({
       id: crypto.randomUUID(),
-      employeeName: emp.name,
-      baseSalary: emp.baseSalary,
+      payrollRunId: '',
+      employeeId: emp.id,
+      employeeName: emp.fullName,
+      baseSalary: emp.baseSalary || 0,
       allowances: 0,
       deductions: 0,
       overtime: 0,
-      netSalary: emp.baseSalary,
+      netSalary: emp.baseSalary || 0,
     })));
   };
 
   const updateLine = (index: number, field: keyof PayrollLine, value: number) => {
-    setLines(prev => prev.map((l, i) => {
+    setLines((prev) => prev.map((l, i) => {
       if (i !== index) return l;
       const updated = { ...l, [field]: value };
       updated.netSalary = calculateNet(updated.baseSalary, updated.allowances, updated.deductions, updated.overtime);
@@ -73,31 +45,36 @@ export const PayrollPage: React.FC = () => {
 
   const totalPayroll = useMemo(() => lines.reduce((sum, l) => sum + l.netSalary, 0), [lines]);
 
-  const handleSave = () => {
-    setPayrolls(prev => [...prev, {
-      id: crypto.randomUUID(),
+  const handleSave = async () => {
+    await create({
+      companyId,
       month: formData.month,
       year: formData.year,
       totalAmount: totalPayroll,
       status: 'draft',
       lines: [...lines],
-    }]);
+    });
     setIsModalOpen(false);
     setLines([]);
   };
 
+  const handlePost = async (id: string) => {
+    await post(id);
+  };
+
+  const selectedPayrollData = selectedPayroll ? payrolls.find((p) => p.id === selectedPayroll) || null : null;
+
   const columns = [
-    { key: 'month', header: 'الشهر', render: (row: PayrollRun) => `${row.month}/${row.year}` },
-    { key: 'totalAmount', header: 'المجموع', align: 'right' as const, render: (row: PayrollRun) => Number(row.totalAmount).toLocaleString('ar-SA') },
-    { key: 'status', header: 'الحالة', render: (row: PayrollRun) => (
-      <span className={`px-2 py-0.5 rounded-full text-xs ${row.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-        {row.status === 'posted' ? 'مرحل' : 'مسودة'}
-      </span>
-    )},
-    { key: 'actions', header: '', render: (row: PayrollRun) => (
-      <button onClick={() => setSelectedPayroll(row)} className="text-sm text-primary-600 hover:underline">
-        عرض التفاصيل
-      </button>
+    { key: 'month', header: 'الشهر', render: (row: { month: number; year: number }) => `${row.month}/${row.year}` },
+    { key: 'totalAmount', header: 'المجموع', align: 'right' as const, render: (row: { totalAmount: number }) => row.totalAmount.toLocaleString('ar-SA') },
+    { key: 'status', header: 'الحالة', render: (row: { status: string }) => <StatusBadge status={row.status} /> },
+    { key: 'actions', header: '', render: (row: { id: string; status: string }) => (
+      <div className="flex items-center gap-1">
+        <button onClick={() => setSelectedPayroll(row.id)} className="text-sm text-primary-600 hover:underline">عرض التفاصيل</button>
+        {row.status === 'draft' && (
+          <button onClick={() => handlePost(row.id)} className="text-sm text-emerald-600 hover:underline mr-2">ترحيل</button>
+        )}
+      </div>
     )},
   ];
 
@@ -117,38 +94,49 @@ export const PayrollPage: React.FC = () => {
       </div>
 
       <Card>
-        <Table<PayrollRun>
-          data={payrolls}
-          columns={columns}
-          keyExtractor={(row, i) => row.id || String(i)}
-          emptyMessage="لا يوجد مسير رواتب"
-        />
+        {isLoading ? (
+          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+        ) : payrolls.length === 0 ? (
+          <EmptyState icon="file" title="لا يوجد مسير رواتب" description="يمكنك إنشاء مسير جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>مسير جديد</Button>} />
+        ) : (
+          <Table
+            data={payrolls}
+            columns={columns}
+            keyExtractor={(row) => row.id}
+            emptyMessage="لا يوجد مسير رواتب"
+          />
+        )}
       </Card>
 
-      {/* Payroll Detail Modal */}
-      {selectedPayroll && (
+      {/* Detail Modal */}
+      {selectedPayrollData && (
         <Modal
-          isOpen={!!selectedPayroll}
+          isOpen={!!selectedPayrollData}
           onClose={() => setSelectedPayroll(null)}
-          title={`مسير ${selectedPayroll.month}/${selectedPayroll.year}`}
+          title={`مسير ${selectedPayrollData.month}/${selectedPayrollData.year}`}
           size="lg"
-          footer={<Button variant="secondary" onClick={() => setSelectedPayroll(null)}>إغلاق</Button>}
+          footer={
+            <div className="flex items-center gap-2 justify-end w-full">
+              <Button variant="secondary" onClick={() => setSelectedPayroll(null)}>إغلاق</Button>
+              <Button variant="primary" leftIcon={<Printer size={16} />} onClick={() => handlePrintPayroll(selectedPayrollData)}>طباعة</Button>
+            </div>
+          }
         >
           <Table<PayrollLine>
-            data={selectedPayroll.lines}
+            data={selectedPayrollData.lines}
             columns={[
               { key: 'employeeName', header: 'الموظف' },
-              { key: 'baseSalary', header: 'الأساسي', align: 'right' as const, render: (row) => Number(row.baseSalary).toLocaleString('ar-SA') },
-              { key: 'allowances', header: 'البدلات', align: 'right' as const, render: (row) => Number(row.allowances).toLocaleString('ar-SA') },
-              { key: 'overtime', header: 'الإضافي', align: 'right' as const, render: (row) => Number(row.overtime).toLocaleString('ar-SA') },
-              { key: 'deductions', header: 'الاستقطاعات', align: 'right' as const, render: (row) => Number(row.deductions).toLocaleString('ar-SA') },
-              { key: 'netSalary', header: 'الصافي', align: 'right' as const, render: (row) => <span className="font-bold">{Number(row.netSalary).toLocaleString('ar-SA')}</span> },
+              { key: 'baseSalary', header: 'الأساسي', align: 'right' as const, render: (row) => row.baseSalary.toLocaleString('ar-SA') },
+              { key: 'allowances', header: 'البدلات', align: 'right' as const, render: (row) => row.allowances.toLocaleString('ar-SA') },
+              { key: 'overtime', header: 'الإضافي', align: 'right' as const, render: (row) => row.overtime.toLocaleString('ar-SA') },
+              { key: 'deductions', header: 'الاستقطاعات', align: 'right' as const, render: (row) => row.deductions.toLocaleString('ar-SA') },
+              { key: 'netSalary', header: 'الصافي', align: 'right' as const, render: (row) => <span className="font-bold">{row.netSalary.toLocaleString('ar-SA')}</span> },
             ]}
-            keyExtractor={(row, i) => row.id || String(i)}
+            keyExtractor={(row) => row.id}
           />
           <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between">
             <span className="font-bold text-slate-700 dark:text-slate-200">الإجمالي:</span>
-            <span className="font-bold text-primary-600 text-xl">{Number(selectedPayroll.totalAmount).toLocaleString('ar-SA')} YER</span>
+            <span className="font-bold text-primary-600 text-xl">{selectedPayrollData.totalAmount.toLocaleString('ar-SA')} YER</span>
           </div>
         </Modal>
       )}
@@ -159,12 +147,17 @@ export const PayrollPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title="إنشاء مسير رواتب"
         size="lg"
-        footer={<><Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button><Button variant="primary" leftIcon={<Calculator size={16} />} onClick={handleSave}>حساب وحفظ</Button></>}
+        footer={
+          <div className="flex items-center gap-2 justify-end w-full">
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button>
+            <Button variant="primary" leftIcon={<Calculator size={16} />} onClick={handleSave}>حساب وحفظ</Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="الشهر" type="number" value={String(formData.month)} onChange={e => setFormData(prev => ({ ...prev, month: Number(e.target.value) }))} />
-            <Input label="السنة" type="number" value={String(formData.year)} onChange={e => setFormData(prev => ({ ...prev, year: Number(e.target.value) }))} />
+            <Input label="الشهر" type="number" value={String(formData.month)} onChange={(e) => setFormData((prev) => ({ ...prev, month: Number(e.target.value) }))} />
+            <Input label="السنة" type="number" value={String(formData.year)} onChange={(e) => setFormData((prev) => ({ ...prev, year: Number(e.target.value) }))} />
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
@@ -183,10 +176,10 @@ export const PayrollPage: React.FC = () => {
                 {lines.map((line, idx) => (
                   <tr key={line.id} className="border-t border-slate-200 dark:border-slate-700">
                     <td className="p-2 text-sm">{line.employeeName}</td>
-                    <td className="p-2"><Input type="number" value={String(line.baseSalary)} onChange={e => updateLine(idx, 'baseSalary', Number(e.target.value))} /></td>
-                    <td className="p-2"><Input type="number" value={String(line.allowances)} onChange={e => updateLine(idx, 'allowances', Number(e.target.value))} /></td>
-                    <td className="p-2"><Input type="number" value={String(line.deductions)} onChange={e => updateLine(idx, 'deductions', Number(e.target.value))} /></td>
-                    <td className="p-2"><Input type="number" value={String(line.overtime)} onChange={e => updateLine(idx, 'overtime', Number(e.target.value))} /></td>
+                    <td className="p-2"><Input type="number" value={String(line.baseSalary)} onChange={(e) => updateLine(idx, 'baseSalary', Number(e.target.value))} /></td>
+                    <td className="p-2"><Input type="number" value={String(line.allowances)} onChange={(e) => updateLine(idx, 'allowances', Number(e.target.value))} /></td>
+                    <td className="p-2"><Input type="number" value={String(line.deductions)} onChange={(e) => updateLine(idx, 'deductions', Number(e.target.value))} /></td>
+                    <td className="p-2"><Input type="number" value={String(line.overtime)} onChange={(e) => updateLine(idx, 'overtime', Number(e.target.value))} /></td>
                     <td className="p-2 text-sm font-bold text-primary-600 text-right">{line.netSalary.toLocaleString('ar-SA')}</td>
                   </tr>
                 ))}
@@ -203,5 +196,33 @@ export const PayrollPage: React.FC = () => {
     </div>
   );
 };
+
+function handlePrintPayroll(payroll: { month: number; year: number; totalAmount: number; lines: PayrollLine[] }) {
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
+  const rows = payroll.lines.map((l, i) => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0">${l.employeeName}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.baseSalary.toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.allowances.toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.deductions.toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.overtime.toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center;font-weight:700">${l.netSalary.toLocaleString('ar-SA')}</td>
+    </tr>
+  `).join('');
+  const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>مسير رواتب</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}td{border:1px solid #e2e8f0}.total{font-weight:700;color:#1e40af;font-size:18px;text-align:left;margin-top:12px}</style></head><body>
+  <div class="page"><h2>مسير الرواتب</h2>
+  <p><strong>الشهر/السنة:</strong> ${payroll.month}/${payroll.year}</p>
+  <table><thead><tr><th>#</th><th>الموظف</th><th>الأساسي</th><th>البدلات</th><th>الاستقطاعات</th><th>الإضافي</th><th>الصافي</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="total">الإجمالي: ${payroll.totalAmount.toLocaleString('ar-SA')} ر.ي</div>
+  <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
+  </div></body></html>`;
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
 
 export default PayrollPage;

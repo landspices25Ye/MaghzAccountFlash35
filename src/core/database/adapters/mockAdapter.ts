@@ -42,13 +42,19 @@ function seedIfEmpty(companyId: string) {
     'cost_centers', 'payroll_components', 'default_accounts'
   ];
   const needsSeed = tablesToSeed.some(t => getTable(t).length === 0);
+  console.log('[seedIfEmpty] needsSeed:', needsSeed, '| companyId:', companyId);
   if (needsSeed) {
+    console.log('[seedIfEmpty] Seeding data for company:', companyId);
     const seed = seedAllData(companyId);
+    let seededCount = 0;
     for (const [table, rows] of Object.entries(seed)) {
       if (rows && rows.length > 0 && getTable(table).length === 0) {
         getTable(table).push(...rows);
+        seededCount += rows.length;
+        console.log(`[seedIfEmpty]  -> ${table}: ${rows.length} rows`);
       }
     }
+    console.log(`[seedIfEmpty] Total seeded rows: ${seededCount}`);
     // Create sales invoice lines from invoices
     const salesInvoices = getTable('sales_invoices');
     for (const inv of salesInvoices) {
@@ -290,6 +296,7 @@ function handleSelect(sql: string, params: any[]): any[] {
   
   const actualTable = tableMap[tableName] || tableName;
   let rows = [...getTable(actualTable)];
+  console.log(`[handleSelect] table=${tableName} -> ${actualTable}, rawRows=${rows.length}, params=${JSON.stringify(params)}`);
   
   // Apply WHERE filtering
   rows = applyWhere(rows, params, sql);
@@ -399,9 +406,14 @@ export const mockAdapter: DbAdapter = {
   async query(sql, params = []) {
     const lower = sql.toLowerCase().trim();
     
-    // Ensure seed data is available for queries (first param is typically companyId)
-    if (lower.startsWith('select') && params[0] && typeof params[0] === 'string' && params[0].startsWith('comp-')) {
-      seedIfEmpty(params[0]);
+    // Ensure seed data is available for queries
+    // Look for any param that looks like a companyId (starts with comp-)
+    if (lower.startsWith('select')) {
+      const companyId = params.find(p => typeof p === 'string' && p.startsWith('comp-'));
+      if (companyId) {
+        console.log('[MockAdapter] query triggered seedIfEmpty for:', companyId, '| SQL:', sql.substring(0, 60));
+        seedIfEmpty(companyId as string);
+      }
     }
     
     try {

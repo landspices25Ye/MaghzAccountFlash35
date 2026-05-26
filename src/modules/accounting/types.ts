@@ -58,3 +58,48 @@ export interface FinancialReportLine {
   isGroup: boolean;
   level: number;
 }
+
+export interface LedgerRow {
+  id: string;
+  date: string;
+  reference?: string;
+  description?: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface ReceiptVoucher {
+  id: string;
+  companyId: string;
+  voucherNumber: string;
+  date: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  paymentMethod: 'cash' | 'bank' | 'check';
+  bankAccountId?: string;
+  checkNumber?: string;
+  checkDate?: string;
+  notes?: string;
+  status: 'draft' | 'posted' | 'cancelled';
+  createdAt?: string;
+}
+
+export interface PaymentVoucher {
+  id: string;
+  companyId: string;
+  voucherNumber: string;
+  date: string;
+  supplierId?: string;
+  supplierName?: string;
+  expenseAccountId?: string;
+  amount: number;
+  paymentMethod: 'cash' | 'bank' | 'check';
+  bankAccountId?: string;
+  checkNumber?: string;
+  checkDate?: string;
+  notes?: string;
+  status: 'draft' | 'posted' | 'cancelled';
+  createdAt?: string;
+}

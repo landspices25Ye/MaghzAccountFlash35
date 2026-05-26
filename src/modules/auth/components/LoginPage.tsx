@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, LogIn, Eye, EyeOff } from 'lucide-react';
+import { Building2, LogIn, Eye, EyeOff, ShieldCheck, User, Lock } from 'lucide-react';
 import { Button, Input } from '@/core/ui/components';
 import { useAuthStore } from '../store';
 import { authApi } from '../api';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const login = useAuthStore(state => state.login);
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const { t } = useTranslation();
+  const login = useAuthStore((state) => state.login);
+  const [credentials, setCredentials] = useState({ username: '', password: '', rememberMe: false });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showAnimation, setShowAnimation] = useState(false);
+
+  useEffect(() => {
+    const remembered = localStorage.getItem('auth_remember');
+    if (remembered) {
+      setCredentials((prev) => ({ ...prev, username: remembered, rememberMe: true }));
+    }
+    // Trigger entrance animation
+    const timer = setTimeout(() => setShowAnimation(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,63 +32,97 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     const result = await authApi.login(credentials);
-    
+
     if (result.success && result.user) {
       login(result.user);
       navigate('/');
     } else {
-      setError(result.error || 'حدث خطأ أثناء تسجيل الدخول');
+      setError(result.error || t('auth.invalidCredentials'));
     }
-    
+
     setIsLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-secondary-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-600/5 rounded-full blur-3xl" />
+        {/* Floating shapes */}
+        <div className="absolute top-20 left-20 w-8 h-8 bg-primary-500/20 rounded-lg rotate-45 animate-bounce" style={{ animationDuration: '3s' }} />
+        <div className="absolute bottom-32 right-24 w-6 h-6 bg-secondary-500/20 rounded-full animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }} />
+        <div className="absolute top-1/3 right-16 w-10 h-10 border-2 border-primary-500/20 rounded-xl rotate-12 animate-pulse" />
+      </div>
+
+      <div className={`w-full max-w-md relative z-10 transition-all duration-700 ${showAnimation ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Building2 size={32} className="text-white" />
+          <div className="w-20 h-20 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-600/30 animate-scale-in">
+            <Building2 size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">محاسبة المهذب</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">نظام ERP محاسبي متكامل</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('appName')}</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('appSubtitle')}</p>
         </div>
 
         {/* Login Form */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50 mb-4">تسجيل الدخول</h2>
-          
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-6">
+            <ShieldCheck size={20} className="text-primary-600" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{t('auth.login')}</h2>
+          </div>
+
           {error && (
-            <div className="mb-4 p-3 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg text-danger-600 dark:text-danger-400 text-sm">
+            <div className="mb-4 p-3 bg-danger-50 dark:bg-danger-900/20 border border-danger-200 dark:border-danger-800 rounded-lg text-danger-600 dark:text-danger-400 text-sm animate-shake">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="اسم المستخدم"
-              value={credentials.username}
-              onChange={e => setCredentials(prev => ({ ...prev, username: e.target.value }))}
-              required
-              autoFocus
-            />
-            
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="relative">
+              <User size={18} className="absolute right-3 top-[2.6rem] text-slate-400 pointer-events-none" />
               <Input
-                label="كلمة المرور"
+                label={t('auth.username')}
+                value={credentials.username}
+                onChange={(e) => setCredentials((prev) => ({ ...prev, username: e.target.value }))}
+                required
+                autoFocus
+                className="pr-10"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock size={18} className="absolute right-3 top-[2.6rem] text-slate-400 pointer-events-none" />
+              <Input
+                label={t('auth.password')}
                 type={showPassword ? 'text' : 'password'}
                 value={credentials.password}
-                onChange={e => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
                 required
+                className="pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-3 top-[2.1rem] text-slate-400 hover:text-slate-600"
+                className="absolute left-3 top-[2.6rem] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={credentials.rememberMe}
+                  onChange={(e) => setCredentials((prev) => ({ ...prev, rememberMe: e.target.checked }))}
+                  className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
+                  {t('auth.rememberMe')}
+                </span>
+              </label>
             </div>
 
             <Button
@@ -85,21 +132,37 @@ export const LoginPage: React.FC = () => {
               leftIcon={<LogIn size={18} />}
               isLoading={isLoading}
             >
-              تسجيل الدخول
+              {t('auth.login')}
             </Button>
           </form>
 
           {/* Demo accounts hint */}
-          <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs text-slate-500">
-            <p className="font-medium mb-1">حسابات تجريبية:</p>
-            <div className="space-y-1">
-              <p>admin (مدير النظام)</p>
-              <p>محاسب (محاسب)</p>
-              <p>مبيعات (مندوب مبيعات)</p>
-              <p>مدير (مدير)</p>
+          <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl text-xs text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
+            <p className="font-medium mb-2 text-slate-700 dark:text-slate-300">حسابات تجريبية:</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 flex items-center justify-center font-bold text-[10px]">A</div>
+                <span>admin</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="w-6 h-6 rounded-full bg-secondary-100 dark:bg-secondary-900/30 text-secondary-600 flex items-center justify-center font-bold text-[10px]">M</div>
+                <span>مدير</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold text-[10px]">ح</div>
+                <span>محاسب</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center font-bold text-[10px]">ب</div>
+                <span>مبيعات</span>
+              </div>
             </div>
           </div>
         </div>
+
+        <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-6">
+          © {new Date().getFullYear()} maghzaccount-pro — v0.0.0
+        </p>
       </div>
     </div>
   );

@@ -1,24 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Scale, FileDown } from 'lucide-react';
-import { Card, Button } from '@/core/ui/components';
-import { exportToExcel, exportToPdf } from '@/core/utils/export';
-import { accountingApi } from '../api';
+import { Scale, FileDown, Calendar } from 'lucide-react';
+import { Card, Button, Input } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { accountingApi } from '../api';
+import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import type { Account } from '../types';
 
 interface BSRow {
   account: string;
+  accountId: string;
   amount: number;
   isHeader?: boolean;
   isTotal?: boolean;
 }
 
 export const BalanceSheetReport: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const [assets, setAssets] = useState<BSRow[]>([]);
   const [liabilities, setLiabilities] = useState<BSRow[]>([]);
   const [equity, setEquity] = useState<BSRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [asOfDate, setAsOfDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const formatNumber = (n: number) => Number(n).toLocaleString('ar-SA', { minimumFractionDigits: 2 });
 
   useEffect(() => {
@@ -26,10 +31,9 @@ export const BalanceSheetReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const result = await accountingApi.getBalanceSheet(companyId);
+      const result = await accountingApi.getBalanceSheet(companyId, asOfDate || undefined);
       if (result.success && result.data) {
         const accounts = result.data as Account[];
-
         const assetAccs = accounts.filter(a => a.type === 'asset');
         const liabilityAccs = accounts.filter(a => a.type === 'liability');
         const equityAccs = accounts.filter(a => a.type === 'equity');
@@ -39,12 +43,12 @@ export const BalanceSheetReport: React.FC = () => {
           let total = 0;
           for (const acc of accs) {
             if (Math.abs(acc.balance) > 0) {
-              rows.push({ account: acc.nameAr, amount: Math.abs(acc.balance) });
+              rows.push({ account: acc.nameAr, accountId: acc.id, amount: Math.abs(acc.balance) });
               total += Math.abs(acc.balance);
             }
           }
           if (total > 0) {
-            rows.push({ account: 'الإجمالي', amount: total, isTotal: true });
+            rows.push({ account: 'الإجمالي', accountId: '', amount: total, isTotal: true });
           }
           return rows;
         };
@@ -56,9 +60,27 @@ export const BalanceSheetReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id]);
+  }, [activeCompany?.id, asOfDate]);
 
   const allRows = [...assets, ...liabilities, ...equity];
+
+  const handleExportExcel = () => {
+    exportToExcel(allRows.map(r => ({ البند: r.account, المبلغ: r.amount })), [
+      { key: 'البند', header: 'البند', width: 40 },
+      { key: 'المبلغ', header: 'المبلغ', width: 15 },
+    ], 'BalanceSheet');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF(allRows.map(r => ({ item: r.account, amount: r.amount })), [
+      { key: 'item', header: 'البند' },
+      { key: 'amount', header: 'المبلغ' },
+    ], 'BalanceSheet', {
+      title: t('accounting.balanceSheet'),
+      subtitle: activeCompany?.name,
+      rtl: true,
+    });
+  };
 
   const renderRows = (rows: BSRow[]) => (
     <div className="space-y-1">
@@ -72,10 +94,14 @@ export const BalanceSheetReport: React.FC = () => {
           );
         }
         return (
-          <div key={idx} className="flex justify-between py-1 px-3 text-slate-600 dark:text-slate-300">
+          <a 
+            key={idx} 
+            href={`/accounting/ledger?accountId=${row.accountId}`}
+            className="flex justify-between py-1 px-3 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded transition-colors"
+          >
             <span>{row.account}</span>
             <span className="tabular-nums">{formatNumber(row.amount)}</span>
-          </div>
+          </a>
         );
       })}
     </div>
@@ -95,15 +121,32 @@ export const BalanceSheetReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <Scale size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الميزانية العمومية</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">تاريخ: 30 يونيو 2026</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.balanceSheet')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {asOfDate ? `تاريخ: ${asOfDate}` : 'تاريخ: اليوم'}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToExcel(allRows, 'BalanceSheet_Report')}>Excel</Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToPdf('bs-print', 'BalanceSheet_Report', 'الميزانية العمومية')}>PDF</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" leftIcon={<Calendar size={14} />} onClick={() => setShowFilters(!showFilters)}>
+            {t('filter')}
+          </Button>
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={handleExportExcel}>Excel</Button>
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={handleExportPDF}>PDF</Button>
         </div>
       </div>
+
+      {showFilters && (
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <Input label={t('accounting.toDate')} type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)} />
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setAsOfDate('')}>{t('cancel')}</Button>
+              <Button onClick={() => setShowFilters(false)}>{t('accounting.applyFilter')}</Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -121,21 +164,6 @@ export const BalanceSheetReport: React.FC = () => {
             {renderRows(equity)}
           </Card>
         </div>
-      </div>
-
-      {/* Hidden printable table */}
-      <div id="bs-print" className="hidden">
-        <table>
-          <thead><tr><th>البند</th><th>المبلغ</th></tr></thead>
-          <tbody>
-            {allRows.map((row, idx) => (
-              <tr key={idx} className={row.isTotal ? 'total-row' : ''}>
-                <td>{row.account}</td>
-                <td className="number">{Number(row.amount).toLocaleString('ar-SA')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );

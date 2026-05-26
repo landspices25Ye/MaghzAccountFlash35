@@ -6,10 +6,12 @@ export interface Lead {
   email?: string;
   company?: string;
   source?: string;
-  status: string;
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  rating: 'hot' | 'warm' | 'cold';
   estimatedValue?: number;
   assignedTo?: string;
   notes?: string;
+  createdAt?: string;
 }
 
 export interface Opportunity {
@@ -19,10 +21,12 @@ export interface Opportunity {
   customerId?: string;
   name: string;
   value: number;
-  stage: string;
+  stage: 'new' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
   probability?: number;
   expectedCloseDate?: string;
   assignedTo?: string;
+  notes?: string;
+  createdAt?: string;
 }
 
 export interface Task {
@@ -30,10 +34,27 @@ export interface Task {
   companyId: string;
   opportunityId?: string;
   leadId?: string;
+  customerId?: string;
   title: string;
   description?: string;
   dueDate?: string;
-  priority: string;
-  status: string;
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'completed' | 'cancelled';
   assignedTo?: string;
+  createdAt?: string;
+}
+
+export interface Activity {
+  id: string;
+  companyId: string;
+  leadId?: string;
+  opportunityId?: string;
+  customerId?: string;
+  type: 'call' | 'meeting' | 'email' | 'visit' | 'note';
+  subject: string;
+  description?: string;
+  activityDate: string;
+  durationMinutes?: number;
+  assignedTo?: string;
+  createdAt?: string;
 }

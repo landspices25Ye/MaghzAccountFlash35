@@ -1,83 +1,130 @@
-import React, { useState } from 'react';
-import { GitBranch, Plus, Pencil, Trash2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { GitBranch, Plus, Printer, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
-import { ProductSelect } from '@/core/ui/components/smart';
+import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
+import { StatusBadge } from '@/core/ui/components/StatusBadge';
+import { ActionButtons } from '@/core/ui/components/ActionButtons';
+import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
+import { useBoms } from '../hooks/useManufacturing';
+import { manufacturingApi } from '../api';
+import type { BOM, BOMLine } from '../types';
 
-interface BomLine {
+interface BomFormLine {
+  materialId: string;
   materialName: string;
   quantity: number;
   unitCost: number;
 }
 
-interface Bom {
-  id: string;
-  productName: string;
-  version: string;
-  lines: BomLine[];
-  totalCost: number;
-  isActive: boolean;
-}
-
 export const BomPage: React.FC = () => {
-  const activeCompany = useAppStore(state => state.activeCompany);
-  const [boms, setBoms] = useState<Bom[]>([
-    {
-      id: '1',
-      productName: 'منتج أ',
-      version: '1.0',
-      isActive: true,
-      totalCost: 2500,
-      lines: [
-        { materialName: 'خامة أ1', quantity: 2, unitCost: 500 },
-        { materialName: 'خامة أ2', quantity: 1, unitCost: 1500 },
-      ],
-    },
-  ]);
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const companyId = activeCompany?.id || '';
+  const { boms, isLoading, create, update, remove } = useBoms(companyId);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Bom | null>(null);
-  const [formData, setFormData] = useState({ productName: '', version: '1.0' });
-  const [lines, setLines] = useState<BomLine[]>([{ materialName: '', quantity: 1, unitCost: 0 }]);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [editing, setEditing] = useState<BOM | null>(null);
+  const [viewing, setViewing] = useState<{ bom: BOM; lines: BOMLine[] } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const addLine = () => setLines(prev => [...prev, { materialName: '', quantity: 1, unitCost: 0 }]);
-  const updateLine = (index: number, field: keyof BomLine, value: string | number) => {
-    setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  const [formData, setFormData] = useState({ productId: '', productName: '', version: '1.0', isActive: true });
+  const [lines, setLines] = useState<BomFormLine[]>([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
+
+  const estimatedTotal = useMemo(() =>
+    lines.reduce((sum, l) => sum + (l.quantity * l.unitCost), 0),
+  [lines]);
+
+  const resetForm = () => {
+    setFormData({ productId: '', productName: '', version: '1.0', isActive: true });
+    setLines([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
+    setEditing(null);
   };
-  const removeLine = (index: number) => setLines(prev => prev.filter((_, i) => i !== index));
 
-  const calculateTotal = () => lines.reduce((sum, l) => sum + (l.quantity * l.unitCost), 0);
+  const openCreate = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
 
-  const handleSave = () => {
-    if (!formData.productName) return;
-    const total = calculateTotal();
-    if (editing) {
-      setBoms(prev => prev.map(b => b.id === editing.id ? { ...b, productName: formData.productName, version: formData.version, lines, totalCost: total } : b));
+  const openEdit = async (bom: BOM) => {
+    setEditing(bom);
+    setFormData({ productId: bom.productId, productName: bom.productName || '', version: bom.version, isActive: bom.isActive });
+    const res = await manufacturingApi.getBomById(bom.id);
+    if (res.success && res.data) {
+      setLines(res.data.lines.map((l) => ({
+        materialId: l.materialId,
+        materialName: l.materialName || l.materialId,
+        quantity: l.quantity,
+        unitCost: l.unitCost || 0,
+      })));
     } else {
-      setBoms(prev => [...prev, { id: crypto.randomUUID(), productName: formData.productName, version: formData.version, lines, totalCost: total, isActive: true }]);
+      setLines([]);
+    }
+    setIsModalOpen(true);
+  };
+
+  const openView = async (bom: BOM) => {
+    const res = await manufacturingApi.getBomById(bom.id);
+    if (res.success && res.data) {
+      setViewing(res.data);
+      setIsDetailOpen(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.productId || lines.length === 0 || lines.some((l) => !l.materialId)) return;
+    const payload = {
+      companyId,
+      productId: formData.productId,
+      version: formData.version,
+      isActive: formData.isActive,
+      totalCost: estimatedTotal,
+      lines: lines.map((l) => ({ materialId: l.materialId, quantity: l.quantity, unitCost: l.unitCost })),
+    };
+    if (editing) {
+      await update(editing.id, payload);
+    } else {
+      await create(payload);
     }
     setIsModalOpen(false);
-    setEditing(null);
-    setFormData({ productName: '', version: '1.0' });
-    setLines([{ materialName: '', quantity: 1, unitCost: 0 }]);
+    resetForm();
   };
 
-  const handleDelete = (id: string) => setBoms(prev => prev.filter(b => b.id !== id));
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    await remove(confirmDelete);
+    setConfirmDelete(null);
+  };
+
+  const handlePrint = () => {
+    if (!viewing) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const html = generateBomPrintHtml(viewing.bom, viewing.lines);
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const addLine = () => setLines((prev) => [...prev, { materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
+  const updateLine = (index: number, field: keyof BomFormLine, value: string | number) => {
+    setLines((prev) => prev.map((l, i) => (i === index ? { ...l, [field]: value } : l)));
+  };
+  const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
 
   const columns = [
     { key: 'productName', header: 'المنتج' },
     { key: 'version', header: 'الإصدار', width: '100px' },
-    { key: 'lines', header: 'المواد', render: (row: Bom) => `${row.lines.length} مادة` },
-    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: Bom) => Number(row.totalCost).toLocaleString('ar-SA') },
-    { key: 'isActive', header: 'الحالة', width: '100px', render: (row: Bom) => row.isActive ? 'نشط' : 'معطل' },
-    { key: 'actions', header: '', width: '100px', render: (row: Bom) => (
-      <div className="flex gap-1">
-        <button onClick={() => { setEditing(row); setFormData({ productName: row.productName, version: row.version }); setLines(row.lines); setIsModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-primary-600">
-          <Pencil size={14} />
-        </button>
-        <button onClick={() => handleDelete(row.id)} className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-danger-600">
-          <Trash2 size={14} />
-        </button>
-      </div>
+    { key: 'lines', header: 'المواد', width: '100px', render: (row: BOM) => `${boms.find((b) => b.id === row.id)?.id ? '—' : '—'}` },
+    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: BOM) => row.totalCost?.toLocaleString('ar-SA') || '—' },
+    { key: 'isActive', header: 'الحالة', width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
+    { key: 'actions', header: '', width: '140px', render: (row: BOM) => (
+      <ActionButtons
+        onView={() => openView(row)}
+        onEdit={() => openEdit(row)}
+        onDelete={() => setConfirmDelete(row.id)}
+        showPrint={false}
+      />
     )},
   ];
 
@@ -91,62 +138,164 @@ export const BomPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">Bill of Materials - إدارة تكوين المنتجات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditing(null); setFormData({ productName: '', version: '1.0' }); setLines([{ materialName: '', quantity: 1, unitCost: 0 }]); setIsModalOpen(true); }}>
+        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           BOM جديد
         </Button>
       </div>
 
       <Card>
-        <Table<Bom>
-          data={boms}
-          columns={columns}
-          keyExtractor={(row, i) => row.id || String(i)}
-          emptyMessage="لا توجد BOMs"
-        />
+        {isLoading ? (
+          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+        ) : boms.length === 0 ? (
+          <EmptyState icon="file" title="لا توجد BOMs" description="يمكنك إضافة BOM جديد للبدء" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>BOM جديد</Button>} />
+        ) : (
+          <Table<BOM>
+            data={boms}
+            columns={columns}
+            keyExtractor={(row) => row.id}
+            emptyMessage="لا توجد BOMs"
+          />
+        )}
       </Card>
 
+      {/* Create/Edit Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { setIsModalOpen(false); resetForm(); }}
         title={editing ? 'تعديل BOM' : 'BOM جديد'}
         size="lg"
-        footer={<><Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button><Button variant="primary" onClick={handleSave}>حفظ</Button></>}
+        footer={
+          <div className="flex items-center gap-2 justify-end w-full">
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
+            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+          </div>
+        }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
-              <ProductSelect companyId={activeCompany?.id || ''} value={formData.productName} onChange={v => setFormData(prev => ({ ...prev, productName: Array.isArray(v) ? v[0] || '' : v || '' }))} size="sm" />
+            <Input label="معرف المنتج" value={formData.productId} onChange={(e) => setFormData((prev) => ({ ...prev, productId: e.target.value }))} />
+            <Input label="اسم المنتج" value={formData.productName} onChange={(e) => setFormData((prev) => ({ ...prev, productName: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="الإصدار" value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
+            <div className="flex items-center gap-2 pt-6">
+              <input type="checkbox" id="isActive" checked={formData.isActive} onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))} className="rounded" />
+              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">نشط</label>
             </div>
-            <Input label="الإصدار" value={formData.version} onChange={e => setFormData(prev => ({ ...prev, version: e.target.value }))} />
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">مواد التصنيع</h4>
             <div className="space-y-2">
               {lines.map((line, idx) => (
-                <div key={idx} className="grid grid-cols-4 gap-2 items-end">
-                  <Input label={idx === 0 ? 'المادة' : ''} value={line.materialName} onChange={e => updateLine(idx, 'materialName', e.target.value)} />
-                  <Input label={idx === 0 ? 'الكمية' : ''} type="number" value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} />
-                  <Input label={idx === 0 ? 'سعر الوحدة' : ''} type="number" value={String(line.unitCost)} onChange={e => updateLine(idx, 'unitCost', Number(e.target.value))} />
+                <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-4">
+                    <Input label={idx === 0 ? 'معرف المادة' : ''} value={line.materialId} onChange={(e) => updateLine(idx, 'materialId', e.target.value)} />
+                  </div>
+                  <div className="col-span-3">
+                    <Input label={idx === 0 ? 'اسم المادة' : ''} value={line.materialName} onChange={(e) => updateLine(idx, 'materialName', e.target.value)} />
+                  </div>
+                  <div className="col-span-2">
+                    <Input label={idx === 0 ? 'الكمية' : ''} type="number" value={String(line.quantity)} onChange={(e) => updateLine(idx, 'quantity', Number(e.target.value))} />
+                  </div>
+                  <div className="col-span-2">
+                    <Input label={idx === 0 ? 'سعر الوحدة' : ''} type="number" value={String(line.unitCost)} onChange={(e) => updateLine(idx, 'unitCost', Number(e.target.value))} />
+                  </div>
                   {lines.length > 1 && (
-                    <button onClick={() => removeLine(idx)} className="p-2 rounded text-rose-500 hover:bg-rose-50">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="col-span-1">
+                      <Button variant="ghost" size="sm" onClick={() => removeLine(idx)} className="text-rose-600">
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}
             </div>
             <Button variant="secondary" className="mt-3" onClick={addLine}>+ إضافة مادة</Button>
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة الإجمالية:</span>
-              <span className="font-bold text-primary-600 tabular-nums">{calculateTotal().toLocaleString('ar-SA')}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة المقدرة:</span>
+              <span className="font-bold text-primary-600 tabular-nums">{estimatedTotal.toLocaleString('ar-SA')}</span>
             </div>
           </div>
         </div>
       </Modal>
+
+      {/* View/Print Modal */}
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={() => { setIsDetailOpen(false); setViewing(null); }}
+        title="تفاصيل BOM"
+        size="lg"
+        footer={
+          <div className="flex items-center gap-2 justify-end w-full">
+            <Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); }}>إغلاق</Button>
+            <Button variant="primary" leftIcon={<Printer size={16} />} onClick={handlePrint}>طباعة</Button>
+          </div>
+        }
+      >
+        {viewing && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3">
+                <span className="text-slate-500">المنتج:</span>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.bom.productName || viewing.bom.productId}</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3">
+                <span className="text-slate-500">الإصدار:</span>
+                <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.bom.version}</p>
+              </div>
+            </div>
+            <Table<BOMLine>
+              data={viewing.lines}
+              columns={[
+                { key: 'materialName', header: 'المادة' },
+                { key: 'quantity', header: 'الكمية', width: '100px' },
+                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => (row.unitCost || 0).toLocaleString('ar-SA') },
+                { key: 'totalCost', header: 'الإجمالي', align: 'right' as const, render: (row) => ((row.quantity || 0) * (row.unitCost || 0)).toLocaleString('ar-SA') },
+              ]}
+              keyExtractor={(row) => row.id}
+            />
+            <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+              <span className="font-bold text-slate-700 dark:text-slate-200">التكلفة الإجمالية:</span>
+              <span className="font-bold text-primary-600">{viewing.bom.totalCost?.toLocaleString('ar-SA') || estimatedTotal.toLocaleString('ar-SA')}</span>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="حذف BOM"
+        message="هل أنت متأكد من حذف قائمة المواد هذه؟ لا يمكن التراجع عن هذا الإجراء."
+        variant="danger"
+      />
     </div>
   );
 };
+
+function generateBomPrintHtml(bom: BOM, lines: BOMLine[]): string {
+  const rows = lines.map((l, i) => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0">${l.materialName || l.materialId}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.quantity}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${(l.unitCost || 0).toLocaleString('ar-SA')}</td>
+      <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${((l.quantity || 0) * (l.unitCost || 0)).toLocaleString('ar-SA')}</td>
+    </tr>
+  `).join('');
+
+  return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>BOM - ${bom.productName}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}td{border:1px solid #e2e8f0}.total{font-weight:700;color:#1e40af;font-size:16px;text-align:left;margin-top:12px}</style></head><body>
+  <div class="page"><h2>فاتير المواد (BOM)</h2>
+  <p><strong>المنتج:</strong> ${bom.productName || bom.productId}</p>
+  <p><strong>الإصدار:</strong> ${bom.version}</p>
+  <table><thead><tr><th>#</th><th>المادة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="total">التكلفة الإجمالية: ${bom.totalCost?.toLocaleString('ar-SA') || '—'} ر.ي</div>
+  <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
+  </div></body></html>`;
+}
 
 export default BomPage;

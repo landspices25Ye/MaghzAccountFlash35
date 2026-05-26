@@ -1,12 +1,13 @@
 import React from 'react';
-import { BarChart2, PieChart, TrendingUp, Package, Users, Truck } from 'lucide-react';
+import { BarChart2, PieChart, TrendingUp, Package, Users, Truck, Settings } from 'lucide-react';
 import { Card } from '@/core/ui/components';
 import { Link } from 'react-router-dom';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 const reportModules = [
   {
     id: 'sales-analysis',
-    title: 'تحليل المبيعات',
+    titleKey: 'reports.salesAnalysis',
     description: 'أداء المبيعات الشهري، أفضل العملاء، تحليل المنتجات',
     icon: TrendingUp,
     color: 'bg-blue-500',
@@ -14,7 +15,7 @@ const reportModules = [
   },
   {
     id: 'inventory-analysis',
-    title: 'تحليل المخزون',
+    titleKey: 'reports.inventoryAnalysis',
     description: 'حالة المخزون، دوران البضاعة، منتجات منخفضة',
     icon: Package,
     color: 'bg-amber-500',
@@ -22,7 +23,7 @@ const reportModules = [
   },
   {
     id: 'customer-statement',
-    title: 'كشف حساب العملاء',
+    titleKey: 'reports.customerStatement',
     description: 'حركات العملاء، الأرصدة، الديون المستحقة',
     icon: Users,
     color: 'bg-emerald-500',
@@ -30,7 +31,7 @@ const reportModules = [
   },
   {
     id: 'supplier-statement',
-    title: 'كشف حساب الموردين',
+    titleKey: 'reports.supplierStatement',
     description: 'حركات الموردين، الأرصدة، الالتزامات',
     icon: Truck,
     color: 'bg-purple-500',
@@ -38,27 +39,36 @@ const reportModules = [
   },
   {
     id: 'profit-analysis',
-    title: 'تحليل الربحية',
+    titleKey: 'reports.profitAnalysis',
     description: 'هامش الربح، تحليل التكاليف، ربحية المنتجات',
     icon: PieChart,
     color: 'bg-rose-500',
     path: '/reports/profit-analysis',
   },
   {
+    id: 'custom-builder',
+    titleKey: 'reports.customReportBuilder',
+    description: 'بناء تقارير مخصصة من الجداول المتاحة',
+    icon: Settings,
+    color: 'bg-cyan-500',
+    path: '/reports/custom-builder',
+  },
+  {
     id: 'financial-overview',
-    title: 'النظرة المالية',
+    titleKey: 'accounting.balanceSheet',
     description: 'الأصول، الالتزامات، حقوق الملكية، النقدية',
     icon: BarChart2,
-    color: 'bg-cyan-500',
-    path: '/accounting/balance-sheet',
+    color: 'bg-indigo-500',
+    path: '/accounting/balance',
   },
 ];
 
 export const ReportsHubPage: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">التقارير والتحليلات</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sidebar.reports')}</h1>
         <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">تقارير تحليلية متقدمة لجميع وحدات النظام</p>
       </div>
 
@@ -72,7 +82,7 @@ export const ReportsHubPage: React.FC = () => {
                     <module.icon size={28} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">{module.title}</h3>
+                    <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">{t(module.titleKey)}</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{module.description}</p>
                   </div>
                 </div>

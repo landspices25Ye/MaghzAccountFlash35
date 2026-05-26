@@ -1,77 +1,116 @@
 import React, { useState } from 'react';
-import { CheckSquare, Plus, User } from 'lucide-react';
+import { CheckSquare, Plus, User, AlertTriangle } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate: string;
-  priority: 'low' | 'medium' | 'high';
-  status: 'pending' | 'completed' | 'cancelled';
-  assignedTo?: string;
-}
-
-const PRIORITY_LABELS: Record<string, string> = {
-  low: 'منخفض',
-  medium: 'متوسط',
-  high: 'عالي',
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-slate-100 text-slate-700',
-  medium: 'bg-amber-100 text-amber-700',
-  high: 'bg-rose-100 text-rose-700',
-};
+import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
+import { EmptyState } from '@/core/ui/components/EmptyState';
+import { useAppStore } from '@/core/store';
+import { useTasks } from '../hooks/useCrm';
+import type { Task } from '../types';
 
 export const TasksPage: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: 'متابعة العميل المحتمل أحمد', dueDate: '2026-07-05', priority: 'high', status: 'pending', assignedTo: 'خالد' },
-    { id: '2', title: 'إعداد عرض سعر لمؤسسة النور', dueDate: '2026-07-03', priority: 'medium', status: 'pending', assignedTo: 'محمد' },
-    { id: '3', title: 'تحديث بيانات العملاء', dueDate: '2026-06-28', priority: 'low', status: 'completed', assignedTo: 'أحمد' },
-  ]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ title: '', description: '', dueDate: '', priority: 'medium' as Task['priority'], assignedTo: '' });
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const companyId = activeCompany?.id || '';
+  const { tasks, isLoading, create, update, remove } = useTasks(companyId);
 
-  const handleSave = () => {
-    if (!formData.title) return;
-    setTasks(prev => [...prev, {
-      id: crypto.randomUUID(),
-      title: formData.title,
-      description: formData.description,
-      dueDate: formData.dueDate,
-      priority: formData.priority,
-      status: 'pending',
-      assignedTo: formData.assignedTo,
-    }]);
-    setIsModalOpen(false);
-    setFormData({ title: '', description: '', dueDate: '', priority: 'medium', assignedTo: '' });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Task | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    title: '', description: '', dueDate: '', priority: 'medium' as Task['priority'], assignedTo: '', leadId: '', opportunityId: '', customerId: '',
+  });
+
+  const resetForm = () => {
+    setFormData({ title: '', description: '', dueDate: '', priority: 'medium', assignedTo: '', leadId: '', opportunityId: '', customerId: '' });
+    setEditing(null);
   };
 
-  const toggleStatus = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'pending' ? 'completed' : 'pending' } : t));
+  const openCreate = () => { resetForm(); setIsModalOpen(true); };
+  const openEdit = (task: Task) => {
+    setEditing(task);
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      dueDate: task.dueDate || '',
+      priority: task.priority,
+      assignedTo: task.assignedTo || '',
+      leadId: task.leadId || '',
+      opportunityId: task.opportunityId || '',
+      customerId: task.customerId || '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!formData.title) return;
+    const payload = {
+      companyId,
+      title: formData.title,
+      description: formData.description || undefined,
+      dueDate: formData.dueDate || undefined,
+      priority: formData.priority,
+      status: (editing ? editing.status : 'pending') as Task['status'],
+      assignedTo: formData.assignedTo || undefined,
+      leadId: formData.leadId || undefined,
+      opportunityId: formData.opportunityId || undefined,
+      customerId: formData.customerId || undefined,
+    };
+    if (editing) {
+      await update(editing.id, payload);
+    } else {
+      await create(payload);
+    }
+    setIsModalOpen(false);
+    resetForm();
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    await remove(confirmDelete);
+    setConfirmDelete(null);
+  };
+
+  const toggleStatus = async (task: Task) => {
+    const newStatus: Task['status'] = task.status === 'pending' ? 'completed' : 'pending';
+    await update(task.id, { status: newStatus });
+  };
+
+  const isOverdue = (task: Task) => {
+    if (!task.dueDate || task.status === 'completed') return false;
+    return new Date(task.dueDate) < new Date();
   };
 
   const columns = [
     { key: 'title', header: 'المهمة', render: (row: Task) => (
-      <div>
-        <p className={row.status === 'completed' ? 'line-through text-slate-400' : 'font-medium'}>{row.title}</p>
-        {row.description && <p className="text-xs text-slate-400">{row.description}</p>}
+      <div className="flex items-center gap-2">
+        {isOverdue(row) && <AlertTriangle size={14} className="text-rose-500" />}
+        <div>
+          <p className={row.status === 'completed' ? 'line-through text-slate-400' : 'font-medium'}>{row.title}</p>
+          {row.description && <p className="text-xs text-slate-400">{row.description}</p>}
+        </div>
       </div>
     )},
-    { key: 'assignedTo', header: 'المكلف', width: '100px', render: (row: Task) => (
+    { key: 'assignedTo', header: 'المكلف', width: '120px', render: (row: Task) => (
       <div className="flex items-center gap-1 text-sm text-slate-500">
-        <User size={14} />{row.assignedTo || '-'}
+        <User size={14} />{row.assignedTo || '—'}
       </div>
     )},
-    { key: 'dueDate', header: 'الموعد', width: '120px' },
-    { key: 'priority', header: 'الأولوية', width: '100px', render: (row: Task) => (
-      <span className={`px-2 py-0.5 rounded-full text-xs ${PRIORITY_COLORS[row.priority]}`}>{PRIORITY_LABELS[row.priority]}</span>
+    { key: 'dueDate', header: 'تاريخ الاستحقاق', width: '130px', render: (row: Task) => (
+      <span className={isOverdue(row) ? 'text-rose-600 font-medium' : ''}>{row.dueDate || '—'}</span>
     )},
-    { key: 'status', header: '', width: '80px', render: (row: Task) => (
-      <button onClick={() => toggleStatus(row.id)} className={`px-2 py-1 rounded text-xs ${row.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+    { key: 'priority', header: 'الأولوية', width: '100px', render: (row: Task) => (
+      <span className={`px-2 py-0.5 rounded-full text-xs ${priorityColor(row.priority)}`}>{priorityLabel(row.priority)}</span>
+    )},
+    { key: 'status', header: '', width: '90px', render: (row: Task) => (
+      <Button variant="ghost" size="sm" onClick={() => toggleStatus(row)} className={row.status === 'completed' ? 'text-emerald-600' : 'text-slate-500'}>
         {row.status === 'completed' ? '✓ تم' : 'إنجاز'}
-      </button>
+      </Button>
+    )},
+    { key: 'actions', header: '', width: '100px', render: (row: Task) => (
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => openEdit(row)}>تعديل</Button>
+        <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => setConfirmDelete(row.id)}>حذف</Button>
+      </div>
     )},
   ];
 
@@ -85,46 +124,77 @@ export const TasksPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة مهام فريق المبيعات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>
-          مهمة جديدة
-        </Button>
+        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>
       </div>
 
       <Card>
-        <Table<Task>
-          data={tasks}
-          columns={columns}
-          keyExtractor={(row, i) => row.id || String(i)}
-          emptyMessage="لا توجد مهام"
-        />
+        {isLoading ? (
+          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+        ) : tasks.length === 0 ? (
+          <EmptyState icon="inbox" title="لا توجد مهام" description="يمكنك إضافة مهمة جديدة" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>} />
+        ) : (
+          <Table<Task>
+            data={tasks}
+            columns={columns}
+            keyExtractor={(row) => row.id}
+            emptyMessage="لا توجد مهام"
+          />
+        )}
       </Card>
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="مهمة جديدة"
+        onClose={() => { setIsModalOpen(false); resetForm(); }}
+        title={editing ? 'تعديل مهمة' : 'مهمة جديدة'}
         size="md"
-        footer={<><Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button><Button variant="primary" onClick={handleSave}>حفظ</Button></>}
+        footer={
+          <div className="flex items-center gap-2 justify-end w-full">
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
+            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+          </div>
+        }
       >
         <div className="space-y-4">
-          <Input label="العنوان" value={formData.title} onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))} />
-          <Input label="الوصف" value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} />
+          <Input label="العنوان" value={formData.title} onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))} />
+          <Input label="الوصف" value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="تاريخ الاستحقاق" type="date" value={formData.dueDate} onChange={e => setFormData(prev => ({ ...prev, dueDate: e.target.value }))} />
-            <Input label="المكلف" value={formData.assignedTo} onChange={e => setFormData(prev => ({ ...prev, assignedTo: e.target.value }))} />
+            <Input label="تاريخ الاستحقاق" type="date" value={formData.dueDate} onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الأولوية</label>
+              <select value={formData.priority} onChange={(e) => setFormData((prev) => ({ ...prev, priority: e.target.value as Task['priority'] }))} className="form-control">
+                <option value="low">منخفض</option>
+                <option value="medium">متوسط</option>
+                <option value="high">عالي</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-500 block mb-1.5">الأولوية</label>
-            <select value={formData.priority} onChange={e => setFormData(prev => ({ ...prev, priority: e.target.value as Task['priority'] }))} className="form-control">
-              <option value="low">منخفض</option>
-              <option value="medium">متوسط</option>
-              <option value="high">عالي</option>
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="المكلف" value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
+            <Input label="معرف العميل/الفرصة" value={formData.opportunityId || formData.leadId || formData.customerId} onChange={(e) => setFormData((prev) => ({ ...prev, opportunityId: e.target.value }))} />
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="حذف المهمة"
+        message="هل أنت متأكد من حذف هذه المهمة؟"
+        variant="danger"
+      />
     </div>
   );
 };
+
+function priorityLabel(priority: Task['priority']) {
+  const labels: Record<string, string> = { low: 'منخفض', medium: 'متوسط', high: 'عالي' };
+  return labels[priority] || priority;
+}
+
+function priorityColor(priority: Task['priority']) {
+  const colors: Record<string, string> = { low: 'bg-slate-100 text-slate-700', medium: 'bg-amber-100 text-amber-700', high: 'bg-rose-100 text-rose-700' };
+  return colors[priority] || 'bg-slate-100 text-slate-700';
+}
 
 export default TasksPage;

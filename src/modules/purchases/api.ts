@@ -1,5 +1,15 @@
 import { getDbAdapter } from '@/core/database/adapters';
-import type { Supplier, PurchaseInvoice, PurchaseOrder } from './types';
+import type {
+  Supplier,
+  PurchaseInvoice,
+  PurchaseInvoiceLine,
+  PurchaseOrder,
+  PurchaseOrderLine,
+  PurchaseReturn,
+  PurchaseReturnLine,
+  SupplierStatementItem,
+  ApAgingBucket,
+} from './types';
 
 export const purchasesApi = {
   // ─── Suppliers ────────────────────────────────────────────────────────────
@@ -15,24 +25,171 @@ export const purchasesApi = {
     return { success: false, error: result.error };
   },
 
+  async getSupplierById(id: string, companyId: string): Promise<{ success: boolean; data?: Supplier; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      'SELECT * FROM suppliers WHERE id = $1 AND company_id = $2 LIMIT 1',
+      [id, companyId]
+    );
+    if (result.success && result.rows?.[0]) {
+      return { success: true, data: result.rows[0] as Supplier };
+    }
+    return { success: false, error: result.error || 'Supplier not found' };
+  },
+
   async createSupplier(data: Omit<Supplier, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.query(
-      `INSERT INTO suppliers (company_id, name, phone, email, address, tax_number, balance, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [data.companyId, data.name, data.phone, data.email, data.address, data.taxNumber, data.balance, data.isActive]
+      `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [data.companyId, data.code, data.name, data.phone, data.email, data.address, data.taxNumber, data.balance, data.isActive]
     );
     if (result.success && result.rows?.[0]) {
-      return { success: true, id: result.rows[0].id };
+      return { success: true, id: result.rows[0].id as string };
     }
     return { success: false, error: result.error };
+  },
+
+  async updateSupplier(id: string, data: Partial<Supplier>): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
+    if (data.code !== undefined) { fields.push(`code = $${idx++}`); values.push(data.code); }
+    if (data.phone !== undefined) { fields.push(`phone = $${idx++}`); values.push(data.phone); }
+    if (data.email !== undefined) { fields.push(`email = $${idx++}`); values.push(data.email); }
+    if (data.address !== undefined) { fields.push(`address = $${idx++}`); values.push(data.address); }
+    if (data.taxNumber !== undefined) { fields.push(`tax_number = $${idx++}`); values.push(data.taxNumber); }
+    if (data.balance !== undefined) { fields.push(`balance = $${idx++}`); values.push(data.balance); }
+    if (data.isActive !== undefined) { fields.push(`is_active = $${idx++}`); values.push(data.isActive); }
+
+    if (fields.length === 0) return { success: true };
+    values.push(id);
+
+    const result = await adapter.query(
+      `UPDATE suppliers SET ${fields.join(', ')} WHERE id = $${idx}`,
+      values
+    );
+    return { success: result.success, error: result.error };
+  },
+
+  async deleteSupplier(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      'UPDATE suppliers SET is_active = false WHERE id = $1',
+      [id]
+    );
+    return { success: result.success, error: result.error };
+  },
+
+  async getSupplierStatement(supplierId: string, companyId: string): Promise<{ success: boolean; data?: SupplierStatementItem[]; error?: string }> {
+    const adapter = await getDbAdapter();
+    const invoices = await adapter.query(
+      `SELECT id, date, invoice_number as doc_number, total_amount, paid_amount, status
+       FROM purchase_invoices WHERE supplier_id = $1 AND company_id = $2 AND status != 'cancelled'
+       ORDER BY date`,
+      [supplierId, companyId]
+    );
+    const payments = await adapter.query(
+      `SELECT id, date, reference as doc_number, amount
+       FROM payment_vouchers WHERE beneficiary_id = $1 AND company_id = $2
+       ORDER BY date`,
+      [supplierId, companyId]
+    );
+
+    if (!invoices.success || !payments.success) {
+      return { success: false, error: invoices.error || payments.error };
+    }
+
+    const items: SupplierStatementItem[] = [];
+    let balance = 0;
+
+    for (const inv of invoices.rows || []) {
+      const amount = Number(inv.total_amount);
+      const paid = Number(inv.paid_amount || 0);
+      balance += amount;
+      items.push({
+        id: inv.id,
+        date: inv.date,
+        type: 'invoice',
+        documentNumber: inv.doc_number,
+        description: 'فاتورة مشتريات',
+        debit: amount,
+        credit: 0,
+        balance,
+      });
+      if (paid > 0) {
+        balance -= paid;
+        items.push({
+          id: `p-${inv.id}`,
+          date: inv.date,
+          type: 'payment',
+          documentNumber: inv.doc_number,
+          description: 'دفعة',
+          debit: 0,
+          credit: paid,
+          balance,
+        });
+      }
+    }
+
+    for (const pay of payments.rows || []) {
+      const amount = Number(pay.amount);
+      balance -= amount;
+      items.push({
+        id: pay.id,
+        date: pay.date,
+        type: 'payment',
+        documentNumber: pay.doc_number,
+        description: 'سند صرف',
+        debit: 0,
+        credit: amount,
+        balance,
+      });
+    }
+
+    return { success: true, data: items };
+  },
+
+  async getApAging(supplierId: string, companyId: string): Promise<{ success: boolean; data?: ApAgingBucket[]; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      `SELECT due_date, total_amount, paid_amount FROM purchase_invoices
+       WHERE supplier_id = $1 AND company_id = $2 AND status IN ('posted', 'partially_paid')`,
+      [supplierId, companyId]
+    );
+    if (!result.success) return { success: false, error: result.error };
+
+    const buckets: Record<string, number> = { '0-30': 0, '31-60': 0, '61-90': 0, '91+': 0 };
+    const now = new Date();
+
+    for (const row of result.rows || []) {
+      const due = new Date(row.due_date || row.date);
+      const remaining = Number(row.total_amount) - Number(row.paid_amount || 0);
+      if (remaining <= 0) continue;
+      const diffDays = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) buckets['0-30'] += remaining;
+      else if (diffDays <= 60) buckets['31-60'] += remaining;
+      else if (diffDays <= 90) buckets['61-90'] += remaining;
+      else buckets['91+'] += remaining;
+    }
+
+    const data: ApAgingBucket[] = Object.entries(buckets).map(([bucket, amount]) => ({
+      bucket,
+      amount,
+      count: amount > 0 ? 1 : 0,
+    }));
+
+    return { success: true, data };
   },
 
   // ─── Purchase Invoices ────────────────────────────────────────────────────
   async getInvoices(companyId: string): Promise<{ success: boolean; data?: PurchaseInvoice[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.query(
-      `SELECT i.*, s.name as supplier_name 
+      `SELECT i.*, s.name as supplier_name, s.id as supplier_id
        FROM purchase_invoices i
        LEFT JOIN suppliers s ON i.supplier_id = s.id
        WHERE i.company_id = $1
@@ -40,23 +197,47 @@ export const purchasesApi = {
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as PurchaseInvoice[] };
+      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
+        ...r,
+        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
+      }));
+      return { success: true, data: rows as PurchaseInvoice[] };
     }
     return { success: false, error: result.error };
   },
 
+  async getInvoiceById(id: string): Promise<{ success: boolean; data?: PurchaseInvoice; error?: string }> {
+    const adapter = await getDbAdapter();
+    const inv = await adapter.query(
+      `SELECT i.*, s.name as supplier_name FROM purchase_invoices i
+       LEFT JOIN suppliers s ON i.supplier_id = s.id WHERE i.id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!inv.success || !inv.rows?.[0]) return { success: false, error: inv.error || 'Not found' };
+
+    const lines = await adapter.query(
+      `SELECT * FROM purchase_invoice_lines WHERE invoice_id = $1`,
+      [id]
+    );
+
+    const invoice = {
+      ...inv.rows[0],
+      supplier: inv.rows[0].supplier_name ? { id: inv.rows[0].supplier_id, name: inv.rows[0].supplier_name } : undefined,
+      lines: (lines.rows || []) as PurchaseInvoiceLine[],
+    };
+    return { success: true, data: invoice as PurchaseInvoice };
+  },
+
   async createInvoice(data: Omit<PurchaseInvoice, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
-    
     const txResult = await adapter.transaction([
-      { sql: `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, status, notes)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-        params: [data.companyId, data.invoiceNumber, data.supplierId, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, data.status, data.notes] },
+      { sql: `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, purchase_order_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, status, notes)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+        params: [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, data.status, data.notes] },
     ]);
-    
+
     if (txResult.success && txResult.results?.[0]?.[0]) {
-      const invoiceId = txResult.results[0][0].id;
-      
+      const invoiceId = txResult.results[0][0].id as string;
       for (const line of data.lines) {
         await adapter.query(
           `INSERT INTO purchase_invoice_lines (invoice_id, product_id, quantity, unit_price, line_total)
@@ -64,10 +245,95 @@ export const purchasesApi = {
           [invoiceId, line.productId, line.quantity, line.unitPrice, line.lineTotal]
         );
       }
-      
       return { success: true, id: invoiceId };
     }
     return { success: false, error: txResult.error };
+  },
+
+  async updateInvoice(id: string, data: Partial<PurchaseInvoice>): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.supplierId !== undefined) { fields.push(`supplier_id = $${idx++}`); values.push(data.supplierId); }
+    if (data.purchaseOrderId !== undefined) { fields.push(`purchase_order_id = $${idx++}`); values.push(data.purchaseOrderId); }
+    if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
+    if (data.dueDate !== undefined) { fields.push(`due_date = $${idx++}`); values.push(data.dueDate); }
+    if (data.subtotal !== undefined) { fields.push(`subtotal = $${idx++}`); values.push(data.subtotal); }
+    if (data.discountAmount !== undefined) { fields.push(`discount_amount = $${idx++}`); values.push(data.discountAmount); }
+    if (data.vatAmount !== undefined) { fields.push(`vat_amount = $${idx++}`); values.push(data.vatAmount); }
+    if (data.totalAmount !== undefined) { fields.push(`total_amount = $${idx++}`); values.push(data.totalAmount); }
+    if (data.paidAmount !== undefined) { fields.push(`paid_amount = $${idx++}`); values.push(data.paidAmount); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+    if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+
+    if (fields.length === 0) return { success: true };
+    values.push(id);
+
+    const result = await adapter.query(`UPDATE purchase_invoices SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    return { success: result.success, error: result.error };
+  },
+
+  async deleteInvoice(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query('DELETE FROM purchase_invoices WHERE id = $1', [id]);
+    await adapter.query('DELETE FROM purchase_invoice_lines WHERE invoice_id = $1', [id]);
+    return { success: result.success, error: result.error };
+  },
+
+  async postInvoice(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      `UPDATE purchase_invoices SET status = 'posted' WHERE id = $1 AND status = 'draft'`,
+      [id]
+    );
+    return { success: result.success, error: result.error };
+  },
+
+  // ─── Purchase Orders ──────────────────────────────────────────────────────
+  async getOrders(companyId: string): Promise<{ success: boolean; data?: PurchaseOrder[]; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      `SELECT po.*, s.name as supplier_name, s.id as supplier_id
+       FROM purchase_orders po
+       LEFT JOIN suppliers s ON po.supplier_id = s.id
+       WHERE po.company_id = $1
+       ORDER BY po.date DESC`,
+      [companyId]
+    );
+    if (result.success) {
+      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
+        ...r,
+        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
+      }));
+      return { success: true, data: rows as PurchaseOrder[] };
+    }
+    return { success: false, error: result.error };
+  },
+
+  async getOrderById(id: string): Promise<{ success: boolean; data?: PurchaseOrder; error?: string }> {
+    const adapter = await getDbAdapter();
+    const order = await adapter.query(
+      `SELECT po.*, s.name as supplier_name FROM purchase_orders po
+       LEFT JOIN suppliers s ON po.supplier_id = s.id WHERE po.id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!order.success || !order.rows?.[0]) return { success: false, error: order.error || 'Not found' };
+
+    const lines = await adapter.query(
+      `SELECT * FROM purchase_order_lines WHERE order_id = $1`,
+      [id]
+    );
+
+    return {
+      success: true,
+      data: {
+        ...order.rows[0],
+        supplier: order.rows[0].supplier_name ? { id: order.rows[0].supplier_id, name: order.rows[0].supplier_name } : undefined,
+        lines: (lines.rows || []) as PurchaseOrderLine[],
+      } as PurchaseOrder,
+    };
   },
 
   async createOrder(data: Omit<PurchaseOrder, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -78,25 +344,191 @@ export const purchasesApi = {
       [data.companyId, data.orderNumber, data.supplierId, data.date, data.expectedDate, data.totalAmount, data.status, data.notes]
     );
     if (result.success && result.rows?.[0]) {
-      return { success: true, id: result.rows[0].id };
+      const orderId = result.rows[0].id as string;
+      if (data.lines) {
+        for (const line of data.lines) {
+          await adapter.query(
+            `INSERT INTO purchase_order_lines (order_id, product_id, quantity, unit_price, line_total)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [orderId, line.productId, line.quantity, line.unitPrice, line.lineTotal]
+          );
+        }
+      }
+      return { success: true, id: orderId };
     }
     return { success: false, error: result.error };
   },
 
-  // ─── Purchase Orders ──────────────────────────────────────────────────────
-  async getOrders(companyId: string): Promise<{ success: boolean; data?: PurchaseOrder[]; error?: string }> {
+  async updateOrder(id: string, data: Partial<PurchaseOrder>): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.supplierId !== undefined) { fields.push(`supplier_id = $${idx++}`); values.push(data.supplierId); }
+    if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
+    if (data.expectedDate !== undefined) { fields.push(`expected_date = $${idx++}`); values.push(data.expectedDate); }
+    if (data.totalAmount !== undefined) { fields.push(`total_amount = $${idx++}`); values.push(data.totalAmount); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+    if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+
+    if (fields.length === 0) return { success: true };
+    values.push(id);
+
+    const result = await adapter.query(`UPDATE purchase_orders SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    return { success: result.success, error: result.error };
+  },
+
+  async deleteOrder(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query('DELETE FROM purchase_orders WHERE id = $1', [id]);
+    await adapter.query('DELETE FROM purchase_order_lines WHERE order_id = $1', [id]);
+    return { success: result.success, error: result.error };
+  },
+
+  async convertOrderToInvoice(orderId: string, companyId: string): Promise<{ success: boolean; id?: string; error?: string }> {
+    const adapter = await getDbAdapter();
+    const order = await purchasesApi.getOrderById(orderId);
+    if (!order.success || !order.data) return { success: false, error: 'Order not found' };
+
+    const invNumberResult = await adapter.query(
+      `SELECT COUNT(*) as cnt FROM purchase_invoices WHERE company_id = $1`,
+      [companyId]
+    );
+    const count = Number(invNumberResult.rows?.[0]?.cnt || 0) + 1;
+    const invoiceNumber = `PINV-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+
+    const invData: Omit<PurchaseInvoice, 'id'> = {
+      companyId,
+      invoiceNumber,
+      supplierId: order.data.supplierId,
+      purchaseOrderId: orderId,
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date().toISOString().split('T')[0],
+      subtotal: order.data.totalAmount,
+      discountAmount: 0,
+      vatAmount: 0,
+      totalAmount: order.data.totalAmount,
+      paidAmount: 0,
+      status: 'draft',
+      notes: `تم التحويل من أمر الشراء ${order.data.orderNumber}`,
+      lines: (order.data.lines || []).map(l => ({
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        lineTotal: l.lineTotal,
+      })),
+    };
+
+    const createResult = await purchasesApi.createInvoice(invData);
+    if (createResult.success) {
+      await adapter.query(`UPDATE purchase_orders SET status = 'invoiced' WHERE id = $1`, [orderId]);
+    }
+    return createResult;
+  },
+
+  // ─── Purchase Returns ─────────────────────────────────────────────────────
+  async getReturns(companyId: string): Promise<{ success: boolean; data?: PurchaseReturn[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.query(
-      `SELECT po.*, s.name as supplier_name 
-       FROM purchase_orders po
-       LEFT JOIN suppliers s ON po.supplier_id = s.id
-       WHERE po.company_id = $1
-       ORDER BY po.date DESC`,
+      `SELECT r.*, s.name as supplier_name, s.id as supplier_id
+       FROM purchase_returns r
+       LEFT JOIN suppliers s ON r.supplier_id = s.id
+       WHERE r.company_id = $1
+       ORDER BY r.date DESC`,
       [companyId]
     );
     if (result.success) {
-      return { success: true, data: result.rows as PurchaseOrder[] };
+      const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
+        ...r,
+        supplier: r.supplier_name ? { id: r.supplier_id, name: r.supplier_name } : undefined,
+      }));
+      return { success: true, data: rows as PurchaseReturn[] };
     }
     return { success: false, error: result.error };
+  },
+
+  async getReturnById(id: string): Promise<{ success: boolean; data?: PurchaseReturn; error?: string }> {
+    const adapter = await getDbAdapter();
+    const ret = await adapter.query(
+      `SELECT r.*, s.name as supplier_name FROM purchase_returns r
+       LEFT JOIN suppliers s ON r.supplier_id = s.id WHERE r.id = $1 LIMIT 1`,
+      [id]
+    );
+    if (!ret.success || !ret.rows?.[0]) return { success: false, error: ret.error || 'Not found' };
+
+    const lines = await adapter.query(
+      `SELECT * FROM purchase_return_lines WHERE return_id = $1`,
+      [id]
+    );
+
+    return {
+      success: true,
+      data: {
+        ...ret.rows[0],
+        supplier: ret.rows[0].supplier_name ? { id: ret.rows[0].supplier_id, name: ret.rows[0].supplier_name } : undefined,
+        lines: (lines.rows || []) as PurchaseReturnLine[],
+      } as PurchaseReturn,
+    };
+  },
+
+  async createReturn(data: Omit<PurchaseReturn, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      `INSERT INTO purchase_returns (company_id, return_number, invoice_id, supplier_id, date, subtotal, vat_amount, total_amount, status, notes, reason)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      [data.companyId, data.returnNumber, data.invoiceId || null, data.supplierId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.status, data.notes, data.reason]
+    );
+    if (result.success && result.rows?.[0]) {
+      const returnId = result.rows[0].id as string;
+      for (const line of data.lines) {
+        await adapter.query(
+          `INSERT INTO purchase_return_lines (return_id, product_id, quantity, unit_price, line_total)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [returnId, line.productId, line.quantity, line.unitPrice, line.lineTotal]
+        );
+      }
+      return { success: true, id: returnId };
+    }
+    return { success: false, error: result.error };
+  },
+
+  async updateReturn(id: string, data: Partial<PurchaseReturn>): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.supplierId !== undefined) { fields.push(`supplier_id = $${idx++}`); values.push(data.supplierId); }
+    if (data.invoiceId !== undefined) { fields.push(`invoice_id = $${idx++}`); values.push(data.invoiceId); }
+    if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
+    if (data.subtotal !== undefined) { fields.push(`subtotal = $${idx++}`); values.push(data.subtotal); }
+    if (data.vatAmount !== undefined) { fields.push(`vat_amount = $${idx++}`); values.push(data.vatAmount); }
+    if (data.totalAmount !== undefined) { fields.push(`total_amount = $${idx++}`); values.push(data.totalAmount); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+    if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+    if (data.reason !== undefined) { fields.push(`reason = $${idx++}`); values.push(data.reason); }
+
+    if (fields.length === 0) return { success: true };
+    values.push(id);
+
+    const result = await adapter.query(`UPDATE purchase_returns SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+    return { success: result.success, error: result.error };
+  },
+
+  async deleteReturn(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query('DELETE FROM purchase_returns WHERE id = $1', [id]);
+    await adapter.query('DELETE FROM purchase_return_lines WHERE return_id = $1', [id]);
+    return { success: result.success, error: result.error };
+  },
+
+  async postReturn(id: string): Promise<{ success: boolean; error?: string }> {
+    const adapter = await getDbAdapter();
+    const result = await adapter.query(
+      `UPDATE purchase_returns SET status = 'posted' WHERE id = $1 AND status = 'draft'`,
+      [id]
+    );
+    return { success: result.success, error: result.error };
   },
 };

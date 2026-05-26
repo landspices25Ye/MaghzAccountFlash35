@@ -1,44 +1,41 @@
 import React, { useState } from 'react';
-import { Banknote, Plus, CheckSquare, Users, BookOpen, Printer } from 'lucide-react';
+import { Banknote, Plus, CheckSquare, Users } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components';
 import { CustomerSelect, BankSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { useReceiptVouchers } from '../hooks/useAccounting';
 import { postReceiptVoucher } from '@/core/utils/journalEntryGenerator';
-
-interface ReceiptVoucher {
-  id: string;
-  voucherNumber: string;
-  date: string;
-  customer: string;
-  amount: number;
-  paymentMethod: 'cash' | 'bank' | 'check';
-  bankAccount?: string;
-  checkNumber?: string;
-  checkDate?: string;
-  notes: string;
-  status: 'draft' | 'posted';
-}
+import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
+import { useSettings } from '@/core/utils/useSettings';
+import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import type { ReceiptVoucher } from '../types';
 
 export const ReceiptVouchersPage: React.FC = () => {
-  const [vouchers, setVouchers] = useState<ReceiptVoucher[]>([
-    { id: '1', voucherNumber: 'RV-2024-001', date: '2024-06-05', customer: 'شركة اليمن للتجارة', amount: 500000, paymentMethod: 'bank', bankAccount: 'البنك اليمني الدولي', notes: 'تحصيل دفعة من العميل', status: 'posted' },
-    { id: '2', voucherNumber: 'RV-2024-002', date: '2024-06-08', customer: 'مؤسسة الأمل التجارية', amount: 200000, paymentMethod: 'cash', notes: 'تحصيل نقدي من العميل', status: 'posted' },
-    { id: '3', voucherNumber: 'RV-2024-003', date: '2024-06-12', customer: 'شركة الخليج للمواد الغذائية', amount: 750000, paymentMethod: 'check', checkNumber: 'CH-445566', checkDate: '2024-06-20', notes: 'شيك بنكي مؤجل', status: 'draft' },
-    { id: '4', voucherNumber: 'RV-2024-004', date: '2024-06-15', customer: 'مؤسسة النور للأدوات المنزلية', amount: 300000, paymentMethod: 'bank', bankAccount: 'البنك اليمني الدولي', notes: 'تحويل بنكي', status: 'posted' },
-  ]);
-
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
+  const { vouchers, isLoading, create, update, remove } = useReceiptVouchers(activeCompany?.id || '');
+  const { getNextNumber } = useDocumentSequence();
+  const { settings } = useSettings(activeCompany?.id || '');
+  const filteredVouchers = useBranchFilter(vouchers);
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+
   const [postingId, setPostingId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<Partial<ReceiptVoucher>>({ paymentMethod: 'cash' });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<ReceiptVoucher>>({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0] });
+  const [confirmDelete, setConfirmDelete] = useState<ReceiptVoucher | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handlePrint = (voucher: ReceiptVoucher) => {
     printDocument({
       type: 'receipt-voucher',
       docNumber: voucher.voucherNumber,
       date: voucher.date,
-      partyName: voucher.customer,
+      partyName: voucher.customerName,
       partyLabel: 'العميل',
       lines: [{
         description: voucher.notes || 'سند قبض',
@@ -49,7 +46,7 @@ export const ReceiptVouchersPage: React.FC = () => {
       totalAmount: voucher.amount,
       notes: voucher.notes,
       companyName: activeCompany?.name,
-      currency: activeCompany?.currency,
+      currency: currencySymbol,
     });
   };
 
@@ -59,41 +56,114 @@ export const ReceiptVouchersPage: React.FC = () => {
     const result = await postReceiptVoucher(activeCompany.id, {
       voucherNumber: voucher.voucherNumber,
       date: voucher.date,
-      customer: voucher.customer,
+      customer: voucher.customerName,
       amount: voucher.amount,
       paymentMethod: voucher.paymentMethod,
     });
     setPostingId(null);
     if (result.success) {
-      alert(`تم ترحيل سند القبض ${voucher.voucherNumber} وتوليد القيد اليومي بنجاح!`);
-      setVouchers(vouchers.map(v => v.id === voucher.id ? { ...v, status: 'posted' as const } : v));
-    } else {
-      alert(`فشل الترحيل: ${result.error}`);
+      await update(voucher.id, { status: 'posted' });
     }
   };
 
-  const handleAdd = () => {
-    if (!form.customer || !form.amount) return;
-    const newV: ReceiptVoucher = {
-      id: String(vouchers.length + 1),
-      voucherNumber: `RV-2024-${String(vouchers.length + 1).padStart(3, '0')}`,
-      date: new Date().toISOString().split('T')[0],
-      customer: form.customer,
+  const handleSave = async () => {
+    if (!activeCompany?.id || !form.customerId || !form.amount) return;
+    setIsSaving(true);
+    
+    let voucherNumber = form.voucherNumber || '';
+    if (!isEditMode || !editingId) {
+      const seq = await getNextNumber('receipt_voucher', activeCompany.id);
+      voucherNumber = seq.number || `RV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
+    }
+
+    const payload = {
+      companyId: activeCompany.id,
+      voucherNumber,
+      date: form.date || new Date().toISOString().split('T')[0],
+      customerId: form.customerId,
+      customerName: form.customerName || '',
       amount: Number(form.amount) || 0,
-      paymentMethod: form.paymentMethod as any || 'cash',
-      bankAccount: form.bankAccount,
+      paymentMethod: form.paymentMethod || 'cash',
+      bankAccountId: form.bankAccountId,
       checkNumber: form.checkNumber,
       checkDate: form.checkDate,
       notes: form.notes || '',
-      status: 'draft',
+      status: (form.status || 'draft') as 'draft' | 'posted' | 'cancelled',
     };
-    setVouchers([newV, ...vouchers]);
+
+    if (isEditMode && editingId) {
+      await update(editingId, payload);
+    } else {
+      await create(payload);
+    }
+    
+    setIsSaving(false);
     setIsOpen(false);
-    setForm({ paymentMethod: 'cash' });
+    resetForm();
   };
 
-  const totalCash = vouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'cash').reduce((s, v) => s + v.amount, 0);
-  const totalBank = vouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'bank').reduce((s, v) => s + v.amount, 0);
+  const resetForm = () => {
+    setForm({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0] });
+    setIsEditMode(false);
+    setEditingId(null);
+  };
+
+  const handleEdit = (voucher: ReceiptVoucher) => {
+    setForm({ ...voucher });
+    setEditingId(voucher.id);
+    setIsEditMode(true);
+    setIsOpen(true);
+  };
+
+  const totalCash = filteredVouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'cash').reduce((s, v) => s + v.amount, 0);
+  const totalBank = filteredVouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'bank').reduce((s, v) => s + v.amount, 0);
+
+  const columns = [
+    { key: 'voucherNumber', header: t('accounting.voucherNumber') },
+    { key: 'date', header: t('accounting.date') },
+    { key: 'customerName', header: t('accounting.customer'), render: (row: ReceiptVoucher) => (
+      <span className="flex items-center gap-1"><Users size={14} /> {row.customerName}</span>
+    )},
+    { key: 'amount', header: t('accounting.amount'), align: 'right' as const, render: (row: ReceiptVoucher) => row.amount.toLocaleString('ar-SA') },
+    { key: 'paymentMethod', header: t('accounting.paymentMethod'), render: (row: ReceiptVoucher) => (
+      <Badge className={
+        row.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' :
+        row.paymentMethod === 'bank' ? 'bg-blue-100 text-blue-700' :
+        'bg-amber-100 text-amber-700'
+      }>
+        {row.paymentMethod === 'cash' ? t('accounting.cash') : row.paymentMethod === 'bank' ? t('accounting.bank') : t('accounting.check')}
+      </Badge>
+    )},
+    { key: 'status', header: t('sales.status'), render: (row: ReceiptVoucher) => (
+      <StatusBadge status={row.status} size="sm" />
+    )},
+    { key: 'actions', header: t('edit'), render: (row: ReceiptVoucher) => (
+      <div className="flex items-center gap-2">
+        <ActionButtons
+          size="sm"
+          onView={() => {}}
+          onEdit={() => handleEdit(row)}
+          onDelete={() => setConfirmDelete(row)}
+          onPrint={() => handlePrint(row)}
+          showView={false}
+          showPrint
+          showExport={false}
+          disabled={row.status === 'posted'}
+        />
+        {row.status === 'draft' && (
+          <Button
+            size="sm"
+            variant="secondary"
+            leftIcon={<CheckSquare size={14} />}
+            onClick={() => handlePost(row)}
+            disabled={postingId === row.id}
+          >
+            {postingId === row.id ? 'جارٍ الترحيل...' : t('accounting.posted')}
+          </Button>
+        )}
+      </div>
+    )},
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -101,119 +171,94 @@ export const ReceiptVouchersPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Banknote size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">سندات القبض</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">سندات استلام النقدية والشيكات من العملاء - اضغط ترحيل لتوليد القيد المحاسبي</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.receiptVouchers')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.newReceiptVoucher')}</p>
           </div>
         </div>
-        <Button leftIcon={<Plus size={18} />} onClick={() => setIsOpen(true)}>سند قبض جديد</Button>
+        <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newReceiptVoucher')}</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي القبض النقدي</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalCash.toLocaleString('ar-SA')} YER</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalCash.toLocaleString('ar-SA')} {currencySymbol}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي القبض البنكي</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalBank.toLocaleString('ar-SA')} YER</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalBank.toLocaleString('ar-SA')} {currencySymbol}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">عدد السندات</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{vouchers.length}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{filteredVouchers.length}</p>
           </div>
         </Card>
       </div>
 
       <Card>
         <Table
-          data={vouchers}
-          columns={[
-            { key: 'voucherNumber', header: 'رقم السند' },
-            { key: 'date', header: 'التاريخ' },
-            { key: 'customer', header: 'العميل', render: (row) => (
-              <span className="flex items-center gap-1"><Users size={14} /> {row.customer}</span>
-            )},
-            { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => row.amount.toLocaleString('ar-SA') },
-            { key: 'paymentMethod', header: 'طريقة الدفع', render: (row) => (
-              <Badge className={
-                row.paymentMethod === 'cash' ? 'bg-emerald-100 text-emerald-700' :
-                row.paymentMethod === 'bank' ? 'bg-blue-100 text-blue-700' :
-                'bg-amber-100 text-amber-700'
-              }>
-                {row.paymentMethod === 'cash' ? 'نقدي' : row.paymentMethod === 'bank' ? 'بنكي' : 'شيك'}
-              </Badge>
-            )},
-            { key: 'checkNumber', header: 'رقم الشيك' },
-            { key: 'notes', header: 'ملاحظات' },
-            { key: 'status', header: 'الحالة', render: (row) => (
-              <Badge className={row.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                {row.status === 'posted' ? 'مرحّل' : 'مسوّد'}
-              </Badge>
-            )},
-            { key: 'actions', header: 'إجراء', render: (row: ReceiptVoucher) => (
-              <div className="flex items-center gap-2">
-                <Button size="sm" variant="ghost" leftIcon={<Printer size={14} />} onClick={() => handlePrint(row)} title="طباعة" />
-                {row.status === 'draft' ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    leftIcon={<CheckSquare size={14} />}
-                    onClick={() => handlePost(row)}
-                    disabled={postingId === row.id}
-                  >
-                    {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
-                  </Button>
-                ) : (
-                  <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
-                )}
-              </div>
-            )},
-          ]}
+          data={filteredVouchers}
+          columns={columns}
           keyExtractor={(row) => row.id}
+          isLoading={isLoading}
+          emptyMessage={t('accounting.noData')}
         />
       </Card>
 
-      {isOpen && (
-        <Modal isOpen={isOpen} title="سند قبض جديد" onClose={() => setIsOpen(false)}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">العميل</label>
-              <CustomerSelect companyId={activeCompany?.id || ''} value={form.customer || ''} onChange={v => setForm({ ...form, customer: v || '' })} />
-            </div>
-            <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
-            <div>
-              <label className="block text-sm mb-1">طريقة الدفع</label>
-              <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as any })}>
-                <option value="cash">نقدي</option>
-                <option value="bank">تحويل بنكي</option>
-                <option value="check">شيك</option>
-              </select>
-            </div>
-            {form.paymentMethod === 'bank' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الحساب البنكي</label>
-                <BankSelect companyId={activeCompany?.id || ''} value={form.bankAccount || ''} onChange={v => setForm({ ...form, bankAccount: v || '' })} />
-              </div>
-            )}
-            {form.paymentMethod === 'check' && (
-              <>
-                <Input label="رقم الشيك" value={form.checkNumber || ''} onChange={e => setForm({ ...form, checkNumber: e.target.value })} />
-                <Input label="تاريخ الشيك" type="date" value={form.checkDate || ''} onChange={e => setForm({ ...form, checkDate: e.target.value })} />
-              </>
-            )}
-            <Input label="ملاحظات" value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleAdd} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
-            </div>
+      <Modal isOpen={isOpen} title={isEditMode ? t('accounting.editVoucher') : t('accounting.newReceiptVoucher')} onClose={() => setIsOpen(false)} size="md">
+        <div className="space-y-4">
+          <Input label={t('accounting.voucherNumber')} value={form.voucherNumber || ''} onChange={e => setForm({ ...form, voucherNumber: e.target.value })} />
+          <Input label={t('accounting.date')} type="date" value={form.date || ''} onChange={e => setForm({ ...form, date: e.target.value })} />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.customer')}</label>
+            <CustomerSelect companyId={activeCompany?.id || ''} value={form.customerId || ''} onChange={v => setForm({ ...form, customerId: v || '' })} />
           </div>
-        </Modal>
-      )}
+          <Input label={t('accounting.amount')} type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+          <div>
+            <label className="block text-sm mb-1">{t('accounting.paymentMethod')}</label>
+            <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as any })}>
+              <option value="cash">{t('accounting.cash')}</option>
+              <option value="bank">{t('accounting.bank')}</option>
+              <option value="check">{t('accounting.check')}</option>
+            </select>
+          </div>
+          {form.paymentMethod === 'bank' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.bankAccount')}</label>
+              <BankSelect companyId={activeCompany?.id || ''} value={form.bankAccountId || ''} onChange={v => setForm({ ...form, bankAccountId: v || '' })} />
+            </div>
+          )}
+          {form.paymentMethod === 'check' && (
+            <>
+              <Input label={t('accounting.checkNumber')} value={form.checkNumber || ''} onChange={e => setForm({ ...form, checkNumber: e.target.value })} />
+              <Input label={t('accounting.checkDate')} type="date" value={form.checkDate || ''} onChange={e => setForm({ ...form, checkDate: e.target.value })} />
+            </>
+          )}
+          <Input label={t('accounting.notes')} value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIsOpen(false)}>{t('cancel')}</Button>
+            <Button onClick={handleSave} isLoading={isSaving} leftIcon={<CheckSquare size={16} />}>{t('save')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (confirmDelete) {
+            await remove(confirmDelete.id);
+            setConfirmDelete(null);
+          }
+        }}
+        title={t('delete')}
+        message={`هل أنت متأكد من حذف سند القبض "${confirmDelete?.voucherNumber}"؟`}
+        variant="danger"
+      />
     </div>
   );
 };

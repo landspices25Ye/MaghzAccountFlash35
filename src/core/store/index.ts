@@ -4,6 +4,14 @@ interface Company {
   id: string;
   name: string;
   currency: string;
+  nameEn?: string;
+  taxNumber?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+  stampUrl?: string;
+  fiscalYearStart?: string;
 }
 
 interface AppState {
@@ -14,6 +22,7 @@ interface AppState {
   
   // Company State
   activeCompany: Company | null;
+  selectedBranchId: string | null;
   
   // Database State
   dbStatus: 'connecting' | 'postgresql' | 'realm' | 'mock';
@@ -26,6 +35,7 @@ interface AppState {
   toggleTheme: () => void;
   setLanguage: (language: 'ar' | 'en') => void;
   setActiveCompany: (name: string, id: string, currency: string) => void;
+  setSelectedBranchId: (id: string | null) => void;
   setDbStatus: (status: 'connecting' | 'postgresql' | 'realm' | 'mock', connected: boolean) => void;
   setRealmReady: (ready: boolean) => void;
 }
@@ -35,6 +45,7 @@ export const useAppStore = create<AppState>((set) => ({
   theme: 'light',
   language: 'ar',
   activeCompany: null,
+  selectedBranchId: null,
   dbStatus: 'connecting',
   dbConnected: false,
   realmReady: false,
@@ -63,6 +74,8 @@ export const useAppStore = create<AppState>((set) => ({
   setActiveCompany: (name, id, currency) => set({
     activeCompany: { name, id, currency },
   }),
+  
+  setSelectedBranchId: (id) => set({ selectedBranchId: id }),
   
   setDbStatus: (status, connected) => set({ dbStatus: status, dbConnected: connected }),
   setRealmReady: (ready) => set({ realmReady: ready }),

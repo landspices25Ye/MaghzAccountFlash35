@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { purchasesApi } from '../api';
-import type { Supplier, PurchaseInvoice, PurchaseOrder } from '../types';
+import type {
+  Supplier,
+  PurchaseInvoice,
+  PurchaseOrder,
+  PurchaseReturn,
+  SupplierStatementItem,
+  ApAgingBucket,
+} from '../types';
 
 export function useSuppliers(companyId: string) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -22,12 +29,54 @@ export function useSuppliers(companyId: string) {
   const create = useCallback(async (data: Omit<Supplier, 'id'>) => {
     const result = await purchasesApi.createSupplier(data);
     if (result.success && result.id) {
-      setSuppliers(prev => [...prev, { ...data, id: result.id! }]);
+      setSuppliers(prev => [...prev, { ...data, id: result.id } as Supplier]);
     }
     return result;
   }, []);
 
-  return { suppliers, isLoading, create };
+  const update = useCallback(async (id: string, data: Partial<Supplier>) => {
+    const result = await purchasesApi.updateSupplier(id, data);
+    if (result.success) {
+      setSuppliers(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteSupplier(id);
+    if (result.success) {
+      setSuppliers(prev => prev.filter(s => s.id !== id));
+    }
+    return result;
+  }, []);
+
+  return { suppliers, isLoading, create, update, remove };
+}
+
+export function useSupplierDetails(companyId: string, supplierId: string | null) {
+  const [supplier, setSupplier] = useState<Supplier | null>(null);
+  const [statement, setStatement] = useState<SupplierStatementItem[]>([]);
+  const [aging, setAging] = useState<ApAgingBucket[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!supplierId || !companyId) return;
+    async function load() {
+      setIsLoading(true);
+      const [supRes, stmtRes, agingRes] = await Promise.all([
+        purchasesApi.getSupplierById(supplierId as string, companyId),
+        purchasesApi.getSupplierStatement(supplierId as string, companyId),
+        purchasesApi.getApAging(supplierId as string, companyId),
+      ]);
+      if (supRes.success && supRes.data) setSupplier(supRes.data);
+      if (stmtRes.success && stmtRes.data) setStatement(stmtRes.data);
+      if (agingRes.success && agingRes.data) setAging(agingRes.data);
+      setIsLoading(false);
+    }
+    load();
+  }, [companyId, supplierId]);
+
+  return { supplier, statement, aging, isLoading };
 }
 
 export function usePurchaseInvoices(companyId: string) {
@@ -50,12 +99,37 @@ export function usePurchaseInvoices(companyId: string) {
   const create = useCallback(async (data: Omit<PurchaseInvoice, 'id'>) => {
     const result = await purchasesApi.createInvoice(data);
     if (result.success && result.id) {
-      setInvoices(prev => [{ ...data, id: result.id! }, ...prev]);
+      const newInv = { ...data, id: result.id } as PurchaseInvoice;
+      setInvoices(prev => [newInv, ...prev]);
     }
     return result;
   }, []);
 
-  return { invoices, isLoading, create };
+  const update = useCallback(async (id: string, data: Partial<PurchaseInvoice>) => {
+    const result = await purchasesApi.updateInvoice(id, data);
+    if (result.success) {
+      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, ...data } as PurchaseInvoice : inv));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteInvoice(id);
+    if (result.success) {
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    }
+    return result;
+  }, []);
+
+  const post = useCallback(async (id: string) => {
+    const result = await purchasesApi.postInvoice(id);
+    if (result.success) {
+      setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, status: 'posted' as const } : inv));
+    }
+    return result;
+  }, []);
+
+  return { invoices, isLoading, create, update, remove, post };
 }
 
 export function usePurchaseOrders(companyId: string) {
@@ -78,10 +152,86 @@ export function usePurchaseOrders(companyId: string) {
   const create = useCallback(async (data: Omit<PurchaseOrder, 'id'>) => {
     const result = await purchasesApi.createOrder(data);
     if (result.success && result.id) {
-      setOrders(prev => [{ ...data, id: result.id! }, ...prev]);
+      setOrders(prev => [{ ...data, id: result.id } as PurchaseOrder, ...prev]);
     }
     return result;
   }, []);
 
-  return { orders, isLoading, create };
+  const update = useCallback(async (id: string, data: Partial<PurchaseOrder>) => {
+    const result = await purchasesApi.updateOrder(id, data);
+    if (result.success) {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, ...data } as PurchaseOrder : o));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteOrder(id);
+    if (result.success) {
+      setOrders(prev => prev.filter(o => o.id !== id));
+    }
+    return result;
+  }, []);
+
+  const convertToInvoice = useCallback(async (orderId: string) => {
+    const result = await purchasesApi.convertOrderToInvoice(orderId, companyId);
+    if (result.success) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'invoiced' as const } : o));
+    }
+    return result;
+  }, [companyId]);
+
+  return { orders, isLoading, create, update, remove, convertToInvoice };
+}
+
+export function usePurchaseReturns(companyId: string) {
+  const [returns, setReturns] = useState<PurchaseReturn[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    async function load() {
+      setIsLoading(true);
+      const result = await purchasesApi.getReturns(companyId);
+      if (result.success && result.data) {
+        setReturns(result.data);
+      }
+      setIsLoading(false);
+    }
+    load();
+  }, [companyId]);
+
+  const create = useCallback(async (data: Omit<PurchaseReturn, 'id'>) => {
+    const result = await purchasesApi.createReturn(data);
+    if (result.success && result.id) {
+      setReturns(prev => [{ ...data, id: result.id } as PurchaseReturn, ...prev]);
+    }
+    return result;
+  }, []);
+
+  const update = useCallback(async (id: string, data: Partial<PurchaseReturn>) => {
+    const result = await purchasesApi.updateReturn(id, data);
+    if (result.success) {
+      setReturns(prev => prev.map(r => r.id === id ? { ...r, ...data } as PurchaseReturn : r));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteReturn(id);
+    if (result.success) {
+      setReturns(prev => prev.filter(r => r.id !== id));
+    }
+    return result;
+  }, []);
+
+  const post = useCallback(async (id: string) => {
+    const result = await purchasesApi.postReturn(id);
+    if (result.success) {
+      setReturns(prev => prev.map(r => r.id === id ? { ...r, status: 'posted' as const } : r));
+    }
+    return result;
+  }, []);
+
+  return { returns, isLoading, create, update, remove, post };
 }

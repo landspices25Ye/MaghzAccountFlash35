@@ -20,10 +20,13 @@ const InventoryAnalysisReport = React.lazy(() => import('@/modules/reports/Inven
 const CustomerStatementReport = React.lazy(() => import('@/modules/reports/CustomerStatementReport'));
 const SupplierStatementReport = React.lazy(() => import('@/modules/reports/SupplierStatementReport'));
 const ProfitAnalysisReport = React.lazy(() => import('@/modules/reports/ProfitAnalysisReport'));
+const CustomReportBuilder = React.lazy(() => import('@/modules/reports/components/CustomReportBuilder'));
 
 // Auth pages
 const LoginPage = React.lazy(() => import('@/modules/auth/components/LoginPage'));
 const UsersPage = React.lazy(() => import('@/modules/auth/components/UsersPage'));
+const RolesPage = React.lazy(() => import('@/modules/auth/components/RolesPage'));
+const AuditLogPage = React.lazy(() => import('@/modules/auth/components/AuditLogPage'));
 
 // Accounting sub-pages
 const ChartOfAccounts = React.lazy(() => import('@/modules/accounting/components/ChartOfAccounts'));
@@ -34,14 +37,16 @@ const ProfitLossPage = React.lazy(() => import('@/modules/accounting/components/
 const CashFlowPage = React.lazy(() => import('@/modules/accounting/components/CashFlowPage'));
 const ReceiptVouchersPage = React.lazy(() => import('@/modules/accounting/components/ReceiptVouchersPage'));
 const PaymentVouchersPage = React.lazy(() => import('@/modules/accounting/components/PaymentVouchersPage'));
+const AccountLedgerPage = React.lazy(() => import('@/modules/accounting/components/AccountLedgerPage'));
 
 // Inventory sub-pages
 const ProductsPage = React.lazy(() => import('@/modules/inventory/components/ProductsPage'));
 const WarehousesPage = React.lazy(() => import('@/modules/inventory/components/WarehousesPage'));
-const InventoryTransactionsPage = React.lazy(() => import('@/modules/inventory/components/InventoryTransactionsPage'));
-const StockAdjustmentPage = React.lazy(() => import('@/modules/inventory/components/StockAdjustmentPage'));
+  const InventoryTransactionsPage = React.lazy(() => import('@/modules/inventory/components/InventoryTransactionsPage'));
+  const StockAdjustmentPage = React.lazy(() => import('@/modules/inventory/components/StockAdjustmentPage'));
+  const StockPage = React.lazy(() => import('@/modules/inventory/components/StockPage'));
 
-// Sales sub-pages
+  // Sales sub-pages
 const InvoicesPage = React.lazy(() => import('@/modules/sales/components/InvoicesPage'));
 const CustomersPage = React.lazy(() => import('@/modules/sales/components/CustomersPage'));
 const QuotationsPage = React.lazy(() => import('@/modules/sales/components/QuotationsPage'));
@@ -69,11 +74,12 @@ const TasksPage = React.lazy(() => import('@/modules/crm/components/TasksPage'))
 
 // Settings with nested routes
 const SettingsLayout = React.lazy(() => import('@/modules/core/components/SettingsPage'));
-const CompanySetup = React.lazy(() => import('@/modules/core/components/CompanySetup'));
-const CurrenciesPage = React.lazy(() => import('@/modules/core/components/CurrenciesPage'));
-const VatSettingsPage = React.lazy(() => import('@/modules/core/components/VatSettingsPage'));
-const BranchesPage = React.lazy(() => import('@/modules/core/components/BranchesPage'));
+const CompanySetup = React.lazy(() => import('@/modules/settings/components/CompanySetupPage'));
+const CurrenciesPage = React.lazy(() => import('@/modules/settings/components/CurrenciesPage'));
+const VatSettingsPage = React.lazy(() => import('@/modules/settings/components/VatSettingsPage'));
+const BranchesPage = React.lazy(() => import('@/modules/settings/components/BranchesPage'));
 const BackupPage = React.lazy(() => import('@/modules/core/components/BackupPage'));
+const UsersSettingsPage = React.lazy(() => import('@/modules/settings/components/UsersPage'));
 
 // New admin screens
 const DocumentSequencesPage = React.lazy(() => import('@/modules/settings/components/DocumentSequencesPage'));
@@ -98,7 +104,8 @@ const withSuspense = (Component: React.ComponentType) => (
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && location.pathname !== '/login') {
@@ -140,12 +147,14 @@ export const AppRouter: React.FC = () => {
                   <Route path="cashflow" element={withSuspense(CashFlowPage)} />
                   <Route path="receipt-vouchers" element={withSuspense(ReceiptVouchersPage)} />
                   <Route path="payment-vouchers" element={withSuspense(PaymentVouchersPage)} />
+                  <Route path="ledger" element={withSuspense(AccountLedgerPage)} />
                 </Route>
                 
                 {/* Inventory with nested routes */}
                 <Route path="/inventory" element={withSuspense(InventoryPage)}>
                   <Route path="products" element={withSuspense(ProductsPage)} />
                   <Route path="warehouses" element={withSuspense(WarehousesPage)} />
+                  <Route path="stock" element={withSuspense(StockPage)} />
                   <Route path="transactions" element={withSuspense(InventoryTransactionsPage)} />
                   <Route path="adjustments" element={withSuspense(StockAdjustmentPage)} />
                 </Route>
@@ -193,7 +202,10 @@ export const AppRouter: React.FC = () => {
                 <Route path="/reports/customer-statement" element={withSuspense(CustomerStatementReport)} />
                 <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
                 <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />
+                <Route path="/reports/custom-builder" element={withSuspense(CustomReportBuilder)} />
                 <Route path="/users" element={withSuspense(UsersPage)} />
+                <Route path="/roles" element={withSuspense(RolesPage)} />
+                <Route path="/audit-logs" element={withSuspense(AuditLogPage)} />
                 
                 {/* Settings with nested routes */}
                 <Route path="/settings" element={withSuspense(SettingsLayout)}>
@@ -207,6 +219,7 @@ export const AppRouter: React.FC = () => {
                   <Route path="product-categories" element={withSuspense(ProductCategoriesPage)} />
                   <Route path="default-accounts" element={withSuspense(DefaultAccountsPage)} />
                   <Route path="units" element={withSuspense(UnitsPage)} />
+                  <Route path="users" element={withSuspense(UsersSettingsPage)} />
                 </Route>
               </Routes>
             </AppLayout>

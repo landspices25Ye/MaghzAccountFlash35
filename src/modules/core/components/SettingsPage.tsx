@@ -1,59 +1,86 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Building2, Coins, Percent, MapPin, Database, ChevronLeft, Hash, Layers, FolderTree, Settings, Scale } from 'lucide-react';
+import {
+  Building2,
+  Coins,
+  Receipt,
+  GitBranch,
+  Hash,
+  Users,
+  Shield,
+  DatabaseBackup,
+  ChevronLeft,
+  Settings,
+} from 'lucide-react';
 import { cn } from '@/core/utils';
 
-const settingsMenu = [
+interface SettingsMenuItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<any>;
+  path: string;
+}
+
+const menuItems: SettingsMenuItem[] = [
   { id: 'company', label: 'بيانات الشركة', icon: Building2, path: '/settings/company' },
   { id: 'currencies', label: 'العملات', icon: Coins, path: '/settings/currencies' },
-  { id: 'vat', label: 'ضريبة القيمة المضافة', icon: Percent, path: '/settings/vat' },
-  { id: 'branches', label: 'الفروع', icon: MapPin, path: '/settings/branches' },
+  { id: 'vat', label: 'إعدادات الضريبة', icon: Receipt, path: '/settings/vat' },
+  { id: 'branches', label: 'الفروع', icon: GitBranch, path: '/settings/branches' },
   { id: 'document-sequences', label: 'الترقيم المتسلسل', icon: Hash, path: '/settings/document-sequences' },
-  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: FolderTree, path: '/settings/product-categories' },
-  { id: 'product-types', label: 'أنواع المنتجات', icon: Layers, path: '/settings/product-types' },
-  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: FolderTree, path: '/settings/product-categories' },
-  { id: 'units', label: 'وحدات القياس', icon: Scale, path: '/settings/units' },
-  { id: 'default-accounts', label: 'الحسابات الافتراضية', icon: Settings, path: '/settings/default-accounts' },
-  { id: 'backup', label: 'النسخ الاحتياطي', icon: Database, path: '/settings/backup' },
+  { id: 'users', label: 'المستخدمين', icon: Users, path: '/settings/users' },
+  { id: 'roles', label: 'الأدوار والصلاحيات', icon: Shield, path: '/roles' },
+  { id: 'backup', label: 'النسخ الاحتياطي', icon: DatabaseBackup, path: '/settings/backup' },
 ];
 
 export const SettingsPage: React.FC = () => {
   const location = useLocation();
-  const isRoot = location.pathname === '/settings';
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الإعدادات</h1>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة إعدادات النظام والمؤسسة</p>
+      <div className="page-header">
+        <div className="flex items-center gap-3">
+          <Settings size={28} className="text-primary-600 dark:text-primary-400" />
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الإعدادات</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة إعدادات النظام والشركة</p>
+          </div>
+        </div>
       </div>
 
-      {isRoot ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {settingsMenu.map(item => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.id}
-                to={item.path}
-                className={cn(
-                  'card flex items-center gap-4 p-5 hover:border-primary-500 dark:hover:border-primary-400 transition-colors group'
-                )}
-              >
-                <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary-200 dark:group-hover:bg-primary-800/40 transition-colors">
-                  <Icon size={24} className="text-primary-600 dark:text-primary-400" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-50">{item.label}</h3>
-                </div>
-                <ChevronLeft size={20} className="text-slate-400" />
-              </Link>
-            );
-          })}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Sidebar Menu */}
+        <div className="lg:col-span-1 space-y-2">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.id}
+                  to={item.path}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150',
+                    isActive
+                      ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  )}
+                >
+                  <Icon size={18} />
+                  <span className="text-sm">{item.label}</span>
+                  {isActive && <ChevronLeft size={16} className="mr-auto" />}
+                </Link>
+              );
+            })}
+          </div>
         </div>
-      ) : (
-        <Outlet />
-      )}
+
+        {/* Content Area */}
+        <div className="lg:col-span-3">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+            <Outlet />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

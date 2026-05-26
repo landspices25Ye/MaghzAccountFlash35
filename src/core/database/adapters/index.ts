@@ -21,32 +21,54 @@ function isElectronPg(): boolean {
 
 // Create adapters lazily
 let adapter: DbAdapter | null = null;
+let adapterType: 'pg' | 'realm' | 'mock' | null = null;
 
 export async function getDbAdapter(): Promise<DbAdapter> {
-  if (adapter) return adapter;
-  
+  // If we already have a working mock adapter, return it
+  if (adapter && adapterType === 'mock') return adapter;
+
+  // Reset if previous adapter failed (allows retry)
+  if (adapter && adapterType !== 'mock') {
+    adapter = null;
+    adapterType = null;
+  }
+
   // Layer 1: PostgreSQL via Electron IPC (best performance, multi-user)
   if (isElectronPg()) {
-    const { electronPgAdapter } = await import('./electronPgAdapter');
-    const ping = await electronPgAdapter.ping();
-    if (ping.success) {
-      console.log('[DB Adapter] Using PostgreSQL via Electron IPC');
-      adapter = electronPgAdapter;
-      return adapter;
+    try {
+      const { electronPgAdapter } = await import('./electronPgAdapter');
+      const ping = await electronPgAdapter.ping();
+      if (ping.success) {
+        console.log('[DB Adapter] Using PostgreSQL via Electron IPC');
+        adapter = electronPgAdapter;
+        adapterType = 'pg';
+        return adapter;
+      }
+    } catch (err) {
+      console.warn('[DB Adapter] Electron PG failed, falling back:', err);
     }
   }
-  
+
   // Layer 2: Realm via Electron IPC (offline mode)
   if (isElectronRealm()) {
-    console.log('[DB Adapter] Using Realm via Electron IPC');
-    // Create a Realm wrapper around IPC
-    adapter = createRealmAdapter();
-    return adapter;
+    try {
+      const realm = (window as any).electronRealm;
+      const ping = await realm.ping();
+      if (ping.success) {
+        console.log('[DB Adapter] Using Realm via Electron IPC');
+        adapter = createRealmAdapter();
+        adapterType = 'realm';
+        return adapter;
+      }
+    } catch (err) {
+      console.warn('[DB Adapter] Electron Realm failed, falling back:', err);
+    }
   }
-  
+
   // Layer 3: Mock (browser / web mode)
   console.log('[DB Adapter] Using Mock adapter (browser mode)');
   adapter = mockAdapter;
+  adapterType = 'mock';
   return adapter;
 }
 

@@ -5,14 +5,18 @@ export interface BOM {
   productName?: string;
   version: string;
   isActive: boolean;
+  totalCost?: number;
+  notes?: string;
 }
 
 export interface BOMLine {
   id: string;
   bomId: string;
   materialId: string;
+  materialName?: string;
   quantity: number;
   unitCost?: number;
+  totalCost?: number;
 }
 
 export interface WorkOrder {
@@ -20,15 +24,17 @@ export interface WorkOrder {
   companyId: string;
   orderNumber: string;
   productId: string;
+  productName?: string;
   bomId?: string;
   quantity: number;
   producedQuantity?: number;
-  status: string;
+  status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
   plannedStartDate?: string;
   plannedEndDate?: string;
   actualStartDate?: string;
   actualEndDate?: string;
-  totalCost?: number;
+  estimatedCost?: number;
+  actualCost?: number;
   notes?: string;
 }
 
@@ -36,7 +42,19 @@ export interface WorkOrderLine {
   id: string;
   workOrderId: string;
   materialId: string;
+  materialName?: string;
   plannedQuantity: number;
   actualQuantity?: number;
   unitCost?: number;
+  actualUnitCost?: number;
+}
+
+export interface WorkOrderVariance {
+  materialName: string;
+  plannedQty: number;
+  actualQty: number;
+  varianceQty: number;
+  plannedCost: number;
+  actualCost: number;
+  varianceCost: number;
 }

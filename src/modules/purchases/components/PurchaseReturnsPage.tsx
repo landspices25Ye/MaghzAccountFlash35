@@ -1,72 +1,260 @@
-import React, { useState } from 'react';
-import { Undo2, Plus, CheckSquare, FileText, BookOpen } from 'lucide-react';
-import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
-import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
-import { useAppStore } from '@/core/store';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Undo2, Plus, CheckSquare, Trash2, Printer, FileText, BookOpen } from 'lucide-react';
+import { printDocument } from '@/core/utils/printDocument';
+import { logAudit } from '@/core/utils/auditLogger';
 import { postPurchaseReturn } from '@/core/utils/journalEntryGenerator';
+import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { StatusBadge } from '@/core/ui/components/StatusBadge';
+import { ActionButtons } from '@/core/ui/components/ActionButtons';
+import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
+import { DataTablePro } from '@/core/ui/components/DataTablePro';
+import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { usePurchaseReturns, usePurchaseInvoices } from '../hooks/usePurchases';
+import { useAppStore } from '@/core/store';
+import { useAuthStore } from '@/modules/auth/store';
+import type { PurchaseReturn } from '../types';
+import type { ColumnDef } from '@tanstack/react-table';
 
-interface PurchaseReturn {
-  id: string;
-  returnNumber: string;
-  invoiceNumber: string;
-  supplier: string;
-  date: string;
-  product: string;
+interface ReturnFormLine {
+  productId: string;
+  description: string;
   quantity: number;
-  amount: number;
-  reason: string;
-  status: 'draft' | 'posted';
+  unitPrice: number;
+  lineTotal: number;
 }
 
+interface ReturnForm {
+  supplierId: string;
+  invoiceId: string;
+  date: string;
+  reason: string;
+  notes: string;
+  lines: ReturnFormLine[];
+}
+
+const initialLine = (): ReturnFormLine => ({
+  productId: '',
+  description: '',
+  quantity: 1,
+  unitPrice: 0,
+  lineTotal: 0,
+});
+
+const initialForm = (): ReturnForm => ({
+  supplierId: '',
+  invoiceId: '',
+  date: new Date().toISOString().split('T')[0],
+  reason: '',
+  notes: '',
+  lines: [initialLine()],
+});
+
 export const PurchaseReturnsPage: React.FC = () => {
-  const [returns, setReturns] = useState<PurchaseReturn[]>([
-    { id: '1', returnNumber: 'PR-2024-001', invoiceNumber: 'PINV-2024-0012', supplier: 'مصنع الريان للبلاستيك', date: '2024-06-08', product: 'خلاط كهربائي 500 واط', quantity: 5, amount: 75000, reason: 'عيب مصنعي', status: 'posted' },
-    { id: '2', returnNumber: 'PR-2024-002', invoiceNumber: 'PINV-2024-0015', supplier: 'شركة الصين للتجارة الدولية', date: '2024-06-14', product: 'مكيف سبليت 18000', quantity: 2, amount: 190000, reason: 'تلف أثناء الشحن', status: 'draft' },
-  ]);
-
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const [postingId, setPostingId] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [form, setForm] = useState<Partial<PurchaseReturn>>({});
+  const user = useAuthStore(state => state.user);
+  const { returns, isLoading, create, update, remove, post } = usePurchaseReturns(activeCompany?.id || '');
+  const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
 
-  const handlePost = async (ret: PurchaseReturn) => {
-    if (!activeCompany?.id) return;
-    setPostingId(ret.id);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ReturnForm>(initialForm());
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [confirmPost, setConfirmPost] = useState<string | null>(null);
+  const [postingId, setPostingId] = useState<string | null>(null);
+  const [selectedReturn, setSelectedReturn] = useState<PurchaseReturn | null>(null);
+
+  const calculateLine = useCallback((line: ReturnFormLine): ReturnFormLine => {
+    const total = line.quantity * line.unitPrice;
+    return { ...line, lineTotal: Number(total.toFixed(2)) };
+  }, []);
+
+  const formTotal = useMemo(() => form.lines.reduce((s, l) => s + l.lineTotal, 0), [form.lines]);
+
+  const updateLine = useCallback((idx: number, patch: Partial<ReturnFormLine>) => {
+    setForm(prev => {
+      const newLines = [...prev.lines];
+      newLines[idx] = calculateLine({ ...newLines[idx], ...patch });
+      return { ...prev, lines: newLines };
+    });
+  }, [calculateLine]);
+
+  const addLine = useCallback(() => setForm(prev => ({ ...prev, lines: [...prev.lines, initialLine()] })), []);
+  const removeLine = useCallback((idx: number) => setForm(prev => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) })), []);
+
+  const openCreate = useCallback(() => {
+    setEditingId(null);
+    setForm(initialForm());
+    setModalOpen(true);
+  }, []);
+
+  const openEdit = useCallback((ret: PurchaseReturn) => {
+    setEditingId(ret.id);
+    setForm({
+      supplierId: ret.supplierId,
+      invoiceId: ret.invoiceId || '',
+      date: ret.date,
+      reason: ret.reason || '',
+      notes: ret.notes || '',
+      lines: ret.lines.length > 0
+        ? ret.lines.map(l => ({ productId: l.productId || '', description: l.description || '', quantity: l.quantity, unitPrice: l.unitPrice, lineTotal: l.lineTotal }))
+        : [initialLine()],
+    });
+    setModalOpen(true);
+  }, []);
+
+  const openView = useCallback((ret: PurchaseReturn) => {
+    setSelectedReturn(ret);
+    setViewModalOpen(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    if (!activeCompany?.id || !form.supplierId) return;
+    const returnNumber = editingId
+      ? (returns.find(r => r.id === editingId)?.returnNumber || `PR-${Date.now()}`)
+      : `PR-${new Date().getFullYear()}-${String(returns.length + 1).padStart(4, '0')}`;
+
+    const payload = {
+      companyId: activeCompany.id,
+      returnNumber,
+      invoiceId: form.invoiceId || undefined,
+      supplierId: form.supplierId,
+      date: form.date,
+      subtotal: formTotal,
+      vatAmount: 0,
+      totalAmount: formTotal,
+      status: 'draft' as const,
+      notes: form.notes,
+      reason: form.reason,
+      lines: form.lines.map(l => ({
+        productId: l.productId,
+        description: l.description,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        lineTotal: l.lineTotal,
+      })),
+    };
+
+    if (editingId) {
+      await update(editingId, payload);
+      await logAudit({ userId: user?.id || '', action: 'update', tableName: 'purchase_returns', recordId: editingId, companyId: activeCompany.id });
+    } else {
+      const result = await create(payload);
+      if (result.success && result.id) {
+        await logAudit({ userId: user?.id || '', action: 'create', tableName: 'purchase_returns', recordId: result.id, companyId: activeCompany.id });
+      }
+    }
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(initialForm());
+  }, [activeCompany, form, formTotal, editingId, returns, create, update, user]);
+
+  const handleDelete = useCallback((id: string) => setConfirmDelete(id), []);
+  const confirmDeleteAction = useCallback(async () => {
+    if (!confirmDelete || !activeCompany?.id) return;
+    await remove(confirmDelete);
+    await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'purchase_returns', recordId: confirmDelete, companyId: activeCompany.id });
+    setConfirmDelete(null);
+  }, [confirmDelete, activeCompany, remove, user]);
+
+  const handlePost = useCallback((ret: PurchaseReturn) => setConfirmPost(ret.id), []);
+  const confirmPostAction = useCallback(async () => {
+    if (!confirmPost || !activeCompany?.id) return;
+    setPostingId(confirmPost);
+    const ret = returns.find(r => r.id === confirmPost);
+    if (!ret) { setPostingId(null); setConfirmPost(null); return; }
+
     const result = await postPurchaseReturn(activeCompany.id, {
       returnNumber: ret.returnNumber,
       date: ret.date,
-      supplier: ret.supplier,
-      amount: ret.amount,
+      supplier: ret.supplier?.name || ret.supplierId,
+      amount: ret.totalAmount,
     });
-    setPostingId(null);
+
     if (result.success) {
-      alert(`تم ترحيل مردود المشتريات ${ret.returnNumber} وتوليد القيد اليومي بنجاح!`);
-      setReturns(returns.map(r => r.id === ret.id ? { ...r, status: 'posted' as const } : r));
-    } else {
-      alert(`فشل الترحيل: ${result.error}`);
+      await post(confirmPost);
+      await logAudit({ userId: user?.id || '', action: 'post', tableName: 'purchase_returns', recordId: confirmPost, companyId: activeCompany.id });
     }
-  };
+    setPostingId(null);
+    setConfirmPost(null);
+  }, [confirmPost, activeCompany, returns, post, user]);
 
-  const handleAdd = () => {
-    if (!form.supplier || !form.invoiceNumber) return;
-    const newRet: PurchaseReturn = {
-      id: String(returns.length + 1),
-      returnNumber: `PR-2024-${String(returns.length + 1).padStart(3, '0')}`,
-      invoiceNumber: form.invoiceNumber,
-      supplier: form.supplier,
-      date: new Date().toISOString().split('T')[0],
-      product: form.product || '',
-      quantity: Number(form.quantity) || 0,
-      amount: Number(form.amount) || 0,
-      reason: form.reason || '',
-      status: 'draft',
-    };
-    setReturns([newRet, ...returns]);
-    setIsOpen(false);
-    setForm({});
-  };
+  const handlePrint = useCallback((ret: PurchaseReturn) => {
+    printDocument({
+      type: 'purchase-invoice',
+      docNumber: ret.returnNumber,
+      date: ret.date,
+      partyName: ret.supplier?.name || ret.supplierId,
+      partyLabel: t('purchases.supplier'),
+      lines: ret.lines.map(l => ({
+        description: l.description || l.productId || t('inventory.productName'),
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        total: l.lineTotal,
+      })),
+      subtotal: ret.subtotal,
+      vatAmount: ret.vatAmount,
+      totalAmount: ret.totalAmount,
+      notes: ret.notes,
+      companyName: activeCompany?.name,
+      currency: activeCompany?.currency,
+    });
+  }, [activeCompany, t]);
 
-  const totalAmount = returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.amount, 0);
+  const totalPosted = useMemo(() => returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0), [returns]);
+
+  const columns = useMemo<ColumnDef<PurchaseReturn>[]>(() => [
+    { accessorKey: 'returnNumber', header: t('purchases.return.number'), cell: ({ row }) => <span className="font-medium text-slate-900 dark:text-slate-100">{row.original.returnNumber}</span> },
+    { accessorKey: 'invoiceNumber', header: t('purchases.return.originalInvoice'), cell: ({ row }) => <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.original.invoiceNumber || '-'}</span> },
+    { accessorKey: 'supplier', header: t('purchases.supplier'), cell: ({ row }) => <span>{row.original.supplier?.name || row.original.supplierId}</span> },
+    { accessorKey: 'date', header: t('purchases.date') },
+    { accessorKey: 'totalAmount', header: t('purchases.total'), cell: ({ row }) => <span className="font-medium">{Number(row.original.totalAmount).toLocaleString('ar-SA')}</span> },
+    { accessorKey: 'status', header: t('purchases.status'), cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+    {
+      accessorKey: 'actions',
+      header: t('purchases.actions'),
+      cell: ({ row }) => {
+        const ret = row.original;
+        const isPosting = postingId === ret.id;
+        return (
+          <div className="flex items-center gap-1">
+            <ActionButtons
+              onView={() => openView(ret)}
+              onEdit={ret.status === 'draft' ? () => openEdit(ret) : undefined}
+              onDelete={ret.status === 'draft' ? () => handleDelete(ret.id) : undefined}
+              onPrint={() => handlePrint(ret)}
+              showView
+              showEdit={ret.status === 'draft'}
+              showDelete={ret.status === 'draft'}
+              showPrint
+              showExport={false}
+              disabled={isPosting}
+            />
+            {ret.status === 'draft' && (
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<CheckSquare size={14} />}
+                onClick={() => handlePost(ret)}
+                disabled={isPosting}
+              >
+                {isPosting ? t('loading') : t('accounting.post')}
+              </Button>
+            )}
+            {ret.status !== 'draft' && (
+              <span className="text-xs text-slate-400 flex items-center gap-1 mr-2">
+                <BookOpen size={12} /> {t('accounting.posted')}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+  ], [t, postingId, openView, openEdit, handleDelete, handlePrint, handlePost]);
+
+  const canSave = form.supplierId && form.lines.length > 0 && form.lines.every(l => l.productId && l.quantity > 0);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -74,97 +262,213 @@ export const PurchaseReturnsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Undo2 size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">مردودات المشتريات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة مردودات البضاعة للموردين - اضغط ترحيل لتوليد القيد المحاسبي</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('purchases.returns')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('purchases.returnsSubtitle')}</p>
           </div>
         </div>
-        <Button leftIcon={<Plus size={18} />} onClick={() => setIsOpen(true)}>مردود جديد</Button>
+        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+          {t('purchases.return.create')}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">عدد المردودات</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.return.total')}</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{returns.length}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المردودات المرحّلة</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalAmount.toLocaleString('ar-SA')} YER</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.return.postedTotal')}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalPosted.toLocaleString('ar-SA')} {activeCompany?.currency || 'YER'}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">مسودات</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.return.drafts')}</p>
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{returns.filter(r => r.status === 'draft').length}</p>
           </div>
         </Card>
       </div>
 
       <Card>
-        <Table
+        <DataTablePro<PurchaseReturn>
           data={returns}
-          columns={[
-            { key: 'returnNumber', header: 'رقم المردود' },
-            { key: 'date', header: 'التاريخ' },
-            { key: 'invoiceNumber', header: 'رقم فاتورة الشراء', render: (row) => (
-              <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.invoiceNumber}</span>
-            )},
-            { key: 'supplier', header: 'المورد' },
-            { key: 'product', header: 'المنتج' },
-            { key: 'quantity', header: 'الكمية', align: 'right' },
-            { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => row.amount.toLocaleString('ar-SA') },
-            { key: 'reason', header: 'السبب' },
-            { key: 'status', header: 'الحالة', render: (row) => (
-              <Badge className={row.status === 'posted' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}>
-                {row.status === 'posted' ? 'مرحّل' : 'مسوّد'}
-              </Badge>
-            )},
-            { key: 'actions', header: 'إجراء', render: (row) => (
-              row.status === 'draft' ? (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<CheckSquare size={14} />}
-                  onClick={() => handlePost(row)}
-                  disabled={postingId === row.id}
-                >
-                  {postingId === row.id ? 'جارٍ الترحيل...' : 'ترحيل'}
-                </Button>
-              ) : (
-                <span className="text-xs text-slate-400 flex items-center gap-1"><BookOpen size={12} /> مرحّل</span>
-              )
-            )},
-          ]}
+          columns={columns}
           keyExtractor={(row) => row.id}
+          isLoading={isLoading}
+          emptyMessage={t('purchases.return.emptyTitle')}
+          title={t('purchases.returns')}
+          searchable
+          searchPlaceholder={t('search') + '...'}
         />
       </Card>
 
-      {isOpen && (
-        <Modal isOpen={isOpen} title="مردود مشتريات جديد" onClose={() => setIsOpen(false)}>
-          <div className="space-y-4">
-            <Input label="رقم فاتورة الشراء الأصلية" value={form.invoiceNumber || ''} onChange={e => setForm({ ...form, invoiceNumber: e.target.value })} />
+      {/* Create / Edit Modal */}
+      <Modal
+        isOpen={modalOpen}
+        title={editingId ? t('purchases.return.edit') : t('purchases.return.new')}
+        onClose={() => { setModalOpen(false); setEditingId(null); setForm(initialForm()); }}
+        size="xl"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setModalOpen(false); setEditingId(null); }}>{t('cancel')}</Button>
+            <Button variant="primary" onClick={handleSave} disabled={!canSave} leftIcon={<CheckSquare size={16} />}>
+              {editingId ? t('save') : t('create')}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المورد</label>
-              <SupplierSelect companyId={activeCompany?.id || ''} value={form.supplier || ''} onChange={v => setForm({ ...form, supplier: v || '' })} />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('purchases.supplier')}</label>
+              <SupplierSelect companyId={activeCompany?.id || ''} value={form.supplierId} onChange={v => setForm(prev => ({ ...prev, supplierId: v || '' }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
-              <ProductSelect companyId={activeCompany?.id || ''} value={form.product || ''} onChange={v => setForm({ ...form, product: (Array.isArray(v) ? v[0] : v) || '' })} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="الكمية" type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
-              <Input label="المبلغ" type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
-            </div>
-            <Input label="سبب المردود" value={form.reason || ''} onChange={e => setForm({ ...form, reason: e.target.value })} />
-            <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleAdd} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('purchases.return.linkInvoice')}</label>
+              <select
+                className="form-control w-full"
+                value={form.invoiceId}
+                onChange={e => setForm(prev => ({ ...prev, invoiceId: e.target.value }))}
+              >
+                <option value="">{t('all')}</option>
+                {invoices.map(inv => (
+                  <option key={inv.id} value={inv.id}>{inv.invoiceNumber} - {inv.supplier?.name || inv.supplierId}</option>
+                ))}
+              </select>
             </div>
           </div>
-        </Modal>
-      )}
+          <Input label={t('purchases.date')} type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} />
+          <Input label={t('purchases.return.reason')} value={form.reason} onChange={e => setForm(prev => ({ ...prev, reason: e.target.value }))} />
+
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
+            <div className="flex justify-between items-center">
+              <h4 className="font-semibold text-sm">{t('purchases.return.details')}</h4>
+              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>
+                {t('purchases.invoice.addLine')}
+              </Button>
+            </div>
+            {form.lines.map((line, idx) => (
+              <div key={idx} className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-4">
+                  <label className="text-xs text-slate-500">{t('inventory.productName')}</label>
+                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" />
+                </div>
+                <div className="col-span-3">
+                  <Input type="text" placeholder={t('description')} value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} />
+                </div>
+                <div className="col-span-2">
+                  <Input type="number" placeholder={t('inventory.quantity')} value={String(line.quantity)} onChange={e => updateLine(idx, { quantity: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-2">
+                  <Input type="number" placeholder={t('inventory.unitPrice')} value={String(line.unitPrice)} onChange={e => updateLine(idx, { unitPrice: Number(e.target.value) })} />
+                </div>
+                <div className="col-span-1">
+                  <Button size="sm" variant="ghost" onClick={() => removeLine(idx)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Input label={t('notes')} value={form.notes} onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
+              <p className="text-emerald-700 dark:text-emerald-400 font-medium">{t('purchases.return.accountingEffect')}</p>
+              <p className="text-emerald-600 dark:text-emerald-300 text-xs mt-1">{t('accounting.postEntry')}: دائنون تجاريون / بضاعة</p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-blue-700 dark:text-blue-400 font-medium">{t('purchases.return.inventoryEffect')}</p>
+              <p className="text-blue-600 dark:text-blue-300 text-xs mt-1">{t('inventory.out')}: صادر مخزني</p>
+            </div>
+          </div>
+
+          <div className="flex justify-end text-lg font-bold text-primary-600">
+            {t('purchases.total')}: {formTotal.toLocaleString('ar-SA')}
+          </div>
+        </div>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal
+        isOpen={viewModalOpen}
+        title={t('purchases.return.details')}
+        onClose={() => setViewModalOpen(false)}
+        size="lg"
+      >
+        {selectedReturn && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div><span className="text-slate-500">{t('purchases.return.number')}:</span> <strong>{selectedReturn.returnNumber}</strong></div>
+              <div><span className="text-slate-500">{t('purchases.supplier')}:</span> <strong>{selectedReturn.supplier?.name || selectedReturn.supplierId}</strong></div>
+              <div><span className="text-slate-500">{t('purchases.date')}:</span> {selectedReturn.date}</div>
+              <div><span className="text-slate-500">{t('purchases.return.originalInvoice')}:</span> {selectedReturn.invoiceNumber || '-'}</div>
+              <div><span className="text-slate-500">{t('purchases.status')}:</span> <StatusBadge status={selectedReturn.status} /></div>
+            </div>
+            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-100 dark:bg-slate-800">
+                  <tr>
+                    <th className="p-2 text-right">#</th>
+                    <th className="p-2 text-right">{t('inventory.productName')}</th>
+                    <th className="p-2 text-right">{t('inventory.quantity')}</th>
+                    <th className="p-2 text-right">{t('inventory.unitPrice')}</th>
+                    <th className="p-2 text-right">{t('purchases.total')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedReturn.lines.map((line, idx) => (
+                    <tr key={idx} className="border-t border-slate-200 dark:border-slate-700">
+                      <td className="p-2">{idx + 1}</td>
+                      <td className="p-2">{line.description || line.productId}</td>
+                      <td className="p-2">{line.quantity}</td>
+                      <td className="p-2">{line.unitPrice.toLocaleString('ar-SA')}</td>
+                      <td className="p-2 font-medium">{line.lineTotal.toLocaleString('ar-SA')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex justify-end text-lg font-bold text-primary-600">
+              {t('purchases.total')}: {selectedReturn.totalAmount.toLocaleString('ar-SA')}
+            </div>
+            {selectedReturn.reason && (
+              <div className="text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">
+                {t('purchases.return.reason')}: {selectedReturn.reason}
+              </div>
+            )}
+            {selectedReturn.notes && (
+              <div className="text-sm text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">
+                {t('notes')}: {selectedReturn.notes}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setViewModalOpen(false)}>{t('close')}</Button>
+              <Button variant="primary" leftIcon={<Printer size={16} />} onClick={() => handlePrint(selectedReturn)}>{t('print')}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={confirmDeleteAction}
+        title={t('purchases.return.deleteTitle')}
+        message={t('purchases.return.deleteConfirm')}
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={!!confirmPost}
+        onClose={() => setConfirmPost(null)}
+        onConfirm={confirmPostAction}
+        title={t('purchases.return.postTitle')}
+        message={t('purchases.return.postConfirm')}
+        variant="warning"
+      />
     </div>
   );
 };

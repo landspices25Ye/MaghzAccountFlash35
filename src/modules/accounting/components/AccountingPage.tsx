@@ -1,11 +1,12 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { GitBranch, BookOpen, Scale, FileText, BarChart3, Banknote, ArrowLeftCircle, ArrowRightCircle } from 'lucide-react';
+import { GitBranch, BookOpen, Scale, FileText, BarChart3, Banknote, ArrowLeftCircle, ArrowRightCircle, BookOpenText } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const accountingMenu = [
   { id: 'chart', label: 'شجرة الحسابات', icon: GitBranch, path: '/accounting/chart' },
   { id: 'journal', label: 'القيود اليومية', icon: BookOpen, path: '/accounting/journal' },
+  { id: 'ledger', label: 'دفتر الأستاذ', icon: BookOpenText, path: '/accounting/ledger' },
   { id: 'trial', label: 'ميزان المراجعة', icon: Scale, path: '/accounting/trial' },
   { id: 'balance', label: 'الميزانية العمومية', icon: FileText, path: '/accounting/balance' },
   { id: 'profit', label: 'قائمة الدخل', icon: BarChart3, path: '/accounting/profit' },

@@ -1,11 +1,12 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Package, Warehouse, ArrowRightLeft, Scale } from 'lucide-react';
+import { Package, Warehouse, Boxes, ArrowRightLeft, Scale } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const inventoryMenu = [
   { id: 'products', label: 'المنتجات', icon: Package, path: '/inventory/products' },
   { id: 'warehouses', label: 'المستودعات', icon: Warehouse, path: '/inventory/warehouses' },
+  { id: 'stock', label: 'المخزون', icon: Boxes, path: '/inventory/stock' },
   { id: 'transactions', label: 'الحركات المخزنية', icon: ArrowRightLeft, path: '/inventory/transactions' },
   { id: 'adjustments', label: 'تسويات المخزون', icon: Scale, path: '/inventory/adjustments' },
 ];

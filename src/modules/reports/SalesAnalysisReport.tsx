@@ -1,29 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, FileDown } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { TrendingUp, FileDown, Filter, RotateCcw } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
+import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { getDbAdapter } from '@/core/database/adapters';
-import { exportToExcel, exportToPdf } from '@/core/utils/export';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { formatCurrency } from '@/core/utils';
 
-interface SalesData {
+interface SalesLine {
   month: string;
+  date: string;
+  customerName: string;
+  productName: string;
+  repName: string;
   revenue: number;
   invoiceCount: number;
-  avgInvoiceValue: number;
+  avgValue: number;
 }
 
-interface TopCustomer {
-  name: string;
-  total: number;
+interface PivotRow {
+  dimension: string;
+  revenue: number;
   invoiceCount: number;
+  avgValue: number;
 }
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export const SalesAnalysisReport: React.FC = () => {
-  const activeCompany = useAppStore(state => state.activeCompany);
-  const [salesData, setSalesData] = useState<SalesData[]>([]);
-  const [topCustomers, setTopCustomers] = useState<TopCustomer[]>([]);
+  const { t } = useTranslation();
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const [rawData, setRawData] = useState<SalesLine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Filters
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [repFilter, setRepFilter] = useState('');
+  const [pivotBy, setPivotBy] = useState<'none' | 'customer' | 'product' | 'month'>('none');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -31,59 +50,138 @@ export const SalesAnalysisReport: React.FC = () => {
     async function load() {
       setIsLoading(true);
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
-        `SELECT * FROM sales_invoices WHERE company_id = $1`,
+      const invResult = await adapter.query(
+        `SELECT i.*, c.name as customer_name FROM sales_invoices i LEFT JOIN contacts c ON i.customer_id = c.id WHERE i.company_id = $1`,
         [companyId]
       );
-      const invoices = (result.rows || []) as any[];
+      const invoices = (invResult.rows || []) as Record<string, any>[];
 
-      // Monthly breakdown
-      const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو'];
-      const monthly: Record<string, { revenue: number; count: number }> = {};
-      for (const m of months) monthly[m] = { revenue: 0, count: 0 };
+      // Fetch products for lines
+      const linesResult = await adapter.query(
+        `SELECT l.*, p.name as product_name FROM sales_invoice_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.company_id = $1`,
+        [companyId]
+      );
+      const lines = (linesResult.rows || []) as Record<string, any>[];
+
+      const rows: SalesLine[] = [];
+      const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
       for (const inv of invoices) {
-        if (inv.date) {
-          const d = new Date(inv.date);
-          const m = months[d.getMonth()] || months[0];
-          monthly[m].revenue += Number(inv.total || inv.total_amount || 0);
-          monthly[m].count += 1;
+        const d = inv.date ? new Date(inv.date) : new Date();
+        const month = months[d.getMonth()] || months[0];
+        const invLines = lines.filter((l) => l.invoice_id === inv.id);
+        if (invLines.length === 0) {
+          rows.push({
+            month,
+            date: inv.date || '',
+            customerName: inv.customer_name || 'غير معروف',
+            productName: '-',
+            repName: inv.sales_rep || '-',
+            revenue: Number(inv.total || 0),
+            invoiceCount: 1,
+            avgValue: Number(inv.total || 0),
+          });
+        } else {
+          for (const l of invLines) {
+            rows.push({
+              month,
+              date: inv.date || '',
+              customerName: inv.customer_name || 'غير معروف',
+              productName: l.product_name || '-',
+              repName: inv.sales_rep || '-',
+              revenue: Number(l.total || l.quantity * l.unit_price || 0),
+              invoiceCount: 1,
+              avgValue: Number(l.total || l.quantity * l.unit_price || 0),
+            });
+          }
         }
       }
-
-      const salesRows = months.map(m => ({
-        month: m,
-        revenue: monthly[m].revenue,
-        invoiceCount: monthly[m].count,
-        avgInvoiceValue: monthly[m].count > 0 ? Math.floor(monthly[m].revenue / monthly[m].count) : 0,
-      }));
-      setSalesData(salesRows);
-
-      // Top customers by invoice total
-      const custMap: Record<string, { name: string; total: number; count: number }> = {};
-      for (const inv of invoices) {
-        const cid = inv.customer_id;
-        if (!custMap[cid]) {
-          const cres = await adapter.query(`SELECT * FROM contacts WHERE id = $1`, [cid]);
-          const c = (cres.rows?.[0] || {}) as any;
-          custMap[cid] = { name: c.name || 'غير معروف', total: 0, count: 0 };
-        }
-        custMap[cid].total += Number(inv.total || inv.total_amount || 0);
-        custMap[cid].count += 1;
-      }
-      const top = Object.values(custMap)
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 5)
-        .map(c => ({ name: c.name, total: c.total, invoiceCount: c.count }));
-      setTopCustomers(top);
+      setRawData(rows);
       setIsLoading(false);
     }
     load();
   }, [activeCompany?.id]);
 
-  const totalRevenue = salesData.reduce((s, d) => s + d.revenue, 0);
-  const totalInvoices = salesData.reduce((s, d) => s + d.invoiceCount, 0);
+  const filteredData = useMemo(() => {
+    return rawData.filter((row) => {
+      if (fromDate && row.date) {
+        if (new Date(row.date) < new Date(fromDate)) return false;
+      }
+      if (toDate && row.date) {
+        if (new Date(row.date) > new Date(toDate)) return false;
+      }
+      if (customerFilter && !row.customerName.toLowerCase().includes(customerFilter.toLowerCase())) return false;
+      if (productFilter && !row.productName.toLowerCase().includes(productFilter.toLowerCase())) return false;
+      if (repFilter && !row.repName.toLowerCase().includes(repFilter.toLowerCase())) return false;
+      return true;
+    });
+  }, [rawData, fromDate, toDate, customerFilter, productFilter, repFilter]);
+
+  const pivotData = useMemo((): PivotRow[] => {
+    if (pivotBy === 'none') return [];
+    const map: Record<string, { revenue: number; invoiceCount: number; count: number }> = {};
+    for (const row of filteredData) {
+      const key = row[pivotBy === 'customer' ? 'customerName' : pivotBy === 'product' ? 'productName' : 'month'];
+      if (!map[key]) map[key] = { revenue: 0, invoiceCount: 0, count: 0 };
+      map[key].revenue += row.revenue;
+      map[key].invoiceCount += row.invoiceCount;
+      map[key].count += 1;
+    }
+    return Object.entries(map).map(([dimension, v]) => ({
+      dimension,
+      revenue: v.revenue,
+      invoiceCount: v.invoiceCount,
+      avgValue: v.count > 0 ? Math.floor(v.revenue / v.count) : 0,
+    })).sort((a, b) => b.revenue - a.revenue);
+  }, [filteredData, pivotBy]);
+
+  const totalRevenue = filteredData.reduce((s, d) => s + d.revenue, 0);
+  const totalInvoices = filteredData.reduce((s, d) => s + d.invoiceCount, 0);
   const avgInvoice = totalInvoices > 0 ? Math.floor(totalRevenue / totalInvoices) : 0;
+
+  const chartData = useMemo(() => {
+    if (pivotBy !== 'none') return pivotData.map((p) => ({ name: p.dimension, revenue: p.revenue }));
+    const monthMap: Record<string, number> = {};
+    for (const row of filteredData) {
+      monthMap[row.month] = (monthMap[row.month] || 0) + row.revenue;
+    }
+    return Object.entries(monthMap).map(([name, revenue]) => ({ name, revenue }));
+  }, [filteredData, pivotData, pivotBy]);
+
+  const handleExportExcel = async () => {
+    const cols = [
+      { key: 'month', header: 'الشهر' },
+      { key: 'customerName', header: 'العميل' },
+      { key: 'productName', header: 'المنتج' },
+      { key: 'repName', header: 'المندوب' },
+      { key: 'revenue', header: 'الإيرادات' },
+      { key: 'invoiceCount', header: 'عدد الفواتير' },
+    ];
+    await exportToExcel(filteredData, cols, 'Sales_Analysis');
+  };
+
+  const handleExportPDF = async () => {
+    const cols = [
+      { key: 'month', header: 'الشهر', width: 12 },
+      { key: 'customerName', header: 'العميل', width: 20 },
+      { key: 'productName', header: 'المنتج', width: 20 },
+      { key: 'revenue', header: 'الإيرادات', width: 15 },
+    ];
+    await exportToPDF(filteredData, cols, 'Sales_Analysis', {
+      title: t('reports.salesAnalysis'),
+      subtitle: activeCompany?.name,
+      rtl: true,
+    });
+  };
+
+  const clearFilters = () => {
+    setFromDate('');
+    setToDate('');
+    setCustomerFilter('');
+    setProductFilter('');
+    setRepFilter('');
+    setPivotBy('none');
+  };
 
   if (isLoading) {
     return (
@@ -93,106 +191,179 @@ export const SalesAnalysisReport: React.FC = () => {
     );
   }
 
+  if (!filteredData.length) {
+    return (
+      <EmptyState
+        icon="search"
+        title="لا توجد نتائج"
+        description="جرب تعديل الفلاتر أو إضافة بيانات"
+        action={
+          <Button variant="secondary" onClick={clearFilters} leftIcon={<RotateCcw size={16} />}>
+            مسح الفلاتر
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <TrendingUp size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">تحليل المبيعات</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.salesAnalysis')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">تقرير تحليلي شامل لأداء المبيعات</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToExcel([...salesData, ...topCustomers], 'Sales_Analysis')}>Excel</Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToPdf('sales-print', 'Sales_Analysis', 'تحليل المبيعات')}>PDF</Button>
+          <Button variant="secondary" leftIcon={<Filter size={16} />} onClick={() => setShowFilters((s) => !s)}>
+            {t('reports.filter')}
+          </Button>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
+            Excel
+          </Button>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF}>
+            PDF
+          </Button>
         </div>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <Card>
+          <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.fromDate')}</label>
+              <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.toDate')}</label>
+              <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.customer')}</label>
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم العميل..." value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.product')}</label>
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم المنتج..." value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.salesRep')}</label>
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم المندوب..." value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.pivotTable')}</label>
+              <select className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={pivotBy} onChange={(e) => setPivotBy(e.target.value as 'none' | 'customer' | 'product' | 'month')}>
+                <option value="none">بدون</option>
+                <option value="customer">حسب العميل</option>
+                <option value="product">حسب المنتج</option>
+                <option value="month">حسب الشهر</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>
+                {t('reports.clearFilter')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* KPI Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المبيعات</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalRevenue.toLocaleString('ar-SA')} YER</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.totalRevenue')}</p>
+            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalRevenue)}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">عدد الفواتير</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.invoicesCount')}</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{totalInvoices}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">متوسط قيمة الفاتورة</p>
-            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{avgInvoice.toLocaleString('ar-SA')} YER</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.avgInvoiceValue')}</p>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(avgInvoice)}</p>
           </div>
         </Card>
       </div>
 
-      {/* Monthly Chart */}
-      <Card>
-        <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">المبيعات الشهرية</h3>
-          <div style={{ height: 300 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(value: any) => Number(value).toLocaleString('ar-SA')} />
-                <Bar dataKey="revenue" fill="#3b82f6" name="المبيعات" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <div className="p-4">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.salesAnalysis')}</h3>
+            <div style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                  <Tooltip formatter={(value) => Number(value).toLocaleString('ar-SA')} />
+                  <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-      </Card>
-
-      {/* Monthly Table */}
-      <Card>
-        <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">التفاصيل الشهرية</h3>
-          <Table
-            data={salesData}
-            columns={[
-              { key: 'month', header: 'الشهر' },
-              { key: 'revenue', header: 'المبيعات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
-              { key: 'invoiceCount', header: 'عدد الفواتير', align: 'right' },
-              { key: 'avgInvoiceValue', header: 'متوسط الفاتورة', align: 'right', render: (row) => row.avgInvoiceValue.toLocaleString('ar-SA') },
-            ]}
-            keyExtractor={(row) => row.month}
-          />
-        </div>
-      </Card>
-
-      {/* Top Customers */}
-      <Card>
-        <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">أفضل 5 عملاء</h3>
-          <Table
-            data={topCustomers}
-            columns={[
-              { key: 'name', header: 'العميل' },
-              { key: 'total', header: 'إجمالي المبيعات', align: 'right', render: (row) => row.total.toLocaleString('ar-SA') },
-              { key: 'invoiceCount', header: 'عدد الفواتير', align: 'right' },
-            ]}
-            keyExtractor={(row, i) => `${row.name}-${i}`}
-          />
-        </div>
-      </Card>
-
-      {/* Hidden printable */}
-      <div id="sales-print" className="hidden">
-        <table>
-          <thead><tr><th>الشهر</th><th>المبيعات</th><th>الفواتير</th></tr></thead>
-          <tbody>
-            {salesData.map(row => (
-              <tr key={row.month}><td>{row.month}</td><td className="number">{row.revenue.toLocaleString('ar-SA')}</td><td className="number">{row.invoiceCount}</td></tr>
-            ))}
-          </tbody>
-        </table>
+        </Card>
+        <Card>
+          <div className="p-4">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">التوزيع</h3>
+            <div style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData.slice(0, 6)} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="revenue" nameKey="name">
+                    {chartData.slice(0, 6).map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => Number(value).toLocaleString('ar-SA')} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* Pivot or Detail Table */}
+      <Card>
+        <div className="p-4">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">
+            {pivotBy !== 'none' ? t('reports.pivotTable') : 'تفاصيل المبيعات'}
+          </h3>
+          {pivotBy !== 'none' ? (
+            <Table
+              data={pivotData}
+              columns={[
+                { key: 'dimension', header: pivotBy === 'customer' ? 'العميل' : pivotBy === 'product' ? 'المنتج' : 'الشهر' },
+                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
+                { key: 'invoiceCount', header: 'الفواتير', align: 'right' },
+                { key: 'avgValue', header: 'المتوسط', align: 'right', render: (row) => row.avgValue.toLocaleString('ar-SA') },
+              ]}
+              keyExtractor={(row) => row.dimension}
+            />
+          ) : (
+            <Table
+              data={filteredData.slice(0, 200)}
+              columns={[
+                { key: 'date', header: 'التاريخ' },
+                { key: 'customerName', header: 'العميل' },
+                { key: 'productName', header: 'المنتج' },
+                { key: 'repName', header: 'المندوب' },
+                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => row.revenue.toLocaleString('ar-SA') },
+              ]}
+              keyExtractor={(row, i) => `${row.customerName}-${i}`}
+            />
+          )}
+        </div>
+      </Card>
     </div>
   );
 };

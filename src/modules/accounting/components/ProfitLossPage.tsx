@@ -1,23 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, FileDown } from 'lucide-react';
-import { Card, Button } from '@/core/ui/components';
-import { exportToExcel, exportToPdf } from '@/core/utils/export';
-import { accountingApi } from '../api';
+import { BarChart3, FileDown, Calendar } from 'lucide-react';
+import { Card, Button, Input } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
+import { accountingApi } from '../api';
+import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import type { Account } from '../types';
 
 interface PnLRow {
   section: string;
   account: string;
+  accountId: string;
   amount: number;
   isHeader?: boolean;
   isTotal?: boolean;
 }
 
 export const ProfitLossReport: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const [pnlData, setPnlData] = useState<PnLRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const formatNumber = (n: number) => Number(Math.abs(n)).toLocaleString('ar-SA', { minimumFractionDigits: 2 });
 
   useEffect(() => {
@@ -25,49 +31,64 @@ export const ProfitLossReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const result = await accountingApi.getProfitLoss(companyId);
+      const result = await accountingApi.getProfitLoss(companyId, startDate || undefined, endDate || undefined);
       if (result.success && result.data) {
         const accounts = result.data as Account[];
         const rows: PnLRow[] = [];
 
-        // Revenue section
         const revenues = accounts.filter(a => a.type === 'revenue');
         if (revenues.length > 0) {
-          rows.push({ section: 'header', account: 'الإيرادات', amount: 0, isHeader: true });
+          rows.push({ section: 'header', account: 'الإيرادات', accountId: '', amount: 0, isHeader: true });
           let totalRev = 0;
           for (const acc of revenues) {
             const amt = Math.abs(acc.balance);
-            rows.push({ section: 'revenue', account: acc.nameAr, amount: amt });
+            rows.push({ section: 'revenue', account: acc.nameAr, accountId: acc.id, amount: amt });
             totalRev += amt;
           }
-          rows.push({ section: 'revenue', account: 'إجمالي الإيرادات', amount: totalRev, isTotal: true });
+          rows.push({ section: 'revenue', account: 'إجمالي الإيرادات', accountId: '', amount: totalRev, isTotal: true });
         }
 
-        // Expense section
         const expenses = accounts.filter(a => a.type === 'expense');
         if (expenses.length > 0) {
-          rows.push({ section: 'header', account: 'المصروفات', amount: 0, isHeader: true });
+          rows.push({ section: 'header', account: 'المصروفات', accountId: '', amount: 0, isHeader: true });
           let totalExp = 0;
           for (const acc of expenses) {
             const amt = Math.abs(acc.balance);
-            rows.push({ section: 'expense', account: acc.nameAr, amount: amt });
+            rows.push({ section: 'expense', account: acc.nameAr, accountId: acc.id, amount: amt });
             totalExp += amt;
           }
-          rows.push({ section: 'expense', account: 'إجمالي المصروفات', amount: totalExp, isTotal: true });
+          rows.push({ section: 'expense', account: 'إجمالي المصروفات', accountId: '', amount: totalExp, isTotal: true });
         }
 
-        // Net Profit
         const totalRevenue = revenues.reduce((s, a) => s + Math.abs(a.balance), 0);
         const totalExpense = expenses.reduce((s, a) => s + Math.abs(a.balance), 0);
         const netProfit = totalRevenue - totalExpense;
-        rows.push({ section: 'net', account: 'صافي الربح', amount: netProfit, isTotal: true });
+        rows.push({ section: 'net', account: 'صافي الربح', accountId: '', amount: netProfit, isTotal: true });
 
         setPnlData(rows);
       }
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id]);
+  }, [activeCompany?.id, startDate, endDate]);
+
+  const handleExportExcel = () => {
+    exportToExcel(pnlData.map(r => ({ البند: r.account, المبلغ: r.amount })), [
+      { key: 'البند', header: 'البند', width: 40 },
+      { key: 'المبلغ', header: 'المبلغ', width: 15 },
+    ], 'ProfitLoss');
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF(pnlData.map(r => ({ item: r.account, amount: r.amount })), [
+      { key: 'item', header: 'البند' },
+      { key: 'amount', header: 'المبلغ' },
+    ], 'ProfitLoss', {
+      title: t('accounting.profitLoss'),
+      subtitle: activeCompany?.name,
+      rtl: true,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -83,15 +104,33 @@ export const ProfitLossReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <BarChart3 size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">قائمة الدخل</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">الفترة: يناير - يونيو 2026</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.profitLoss')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {startDate && endDate ? `الفترة: ${startDate} - ${endDate}` : 'الفترة: الكل'}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToExcel(pnlData, 'ProfitLoss_Report')}>Excel</Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={() => exportToPdf('pnl-print', 'ProfitLoss_Report', 'قائمة الدخل')}>PDF</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" leftIcon={<Calendar size={14} />} onClick={() => setShowFilters(!showFilters)}>
+            {t('filter')}
+          </Button>
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={handleExportExcel}>Excel</Button>
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={handleExportPDF}>PDF</Button>
         </div>
       </div>
+
+      {showFilters && (
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <Input label={t('accounting.fromDate')} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <Input label={t('accounting.toDate')} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => { setStartDate(''); setEndDate(''); }}>{t('cancel')}</Button>
+              <Button onClick={() => setShowFilters(false)}>{t('accounting.applyFilter')}</Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <div className="space-y-2">
@@ -116,31 +155,18 @@ export const ProfitLossReport: React.FC = () => {
               );
             }
             return (
-              <div key={idx} className="flex justify-between py-1.5 px-4 text-slate-700 dark:text-slate-200">
+              <a 
+                key={idx} 
+                href={`/accounting/ledger?accountId=${row.accountId}`}
+                className="flex justify-between py-1.5 px-4 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded transition-colors"
+              >
                 <span className={row.section === 'revenue' ? 'text-emerald-600 dark:text-emerald-400' : ''}>{row.account}</span>
                 <span className="tabular-nums">{formatNumber(row.amount)}</span>
-              </div>
+              </a>
             );
           })}
         </div>
       </Card>
-
-      {/* Hidden printable table */}
-      <div id="pnl-print" className="hidden">
-        <table>
-          <thead>
-            <tr><th>البند</th><th>المبلغ</th></tr>
-          </thead>
-          <tbody>
-            {pnlData.map((row, idx) => (
-              <tr key={idx} className={row.isTotal ? 'total-row' : ''}>
-                <td>{row.account}</td>
-                <td className="number">{Number(row.amount).toLocaleString('ar-SA')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 };

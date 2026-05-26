@@ -6,7 +6,7 @@ export interface PrintLine {
 }
 
 export interface PrintDocumentData {
-  type: 'sales-invoice' | 'purchase-invoice' | 'receipt-voucher' | 'payment-voucher';
+  type: 'sales-invoice' | 'purchase-invoice' | 'receipt-voucher' | 'payment-voucher' | 'journal-entry' | 'ledger';
   docNumber: string;
   date: string;
   dueDate?: string;
