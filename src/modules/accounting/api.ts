@@ -153,9 +153,9 @@ export const accountingApi = {
   async getReceiptVouchers(companyId: string): Promise<{ success: boolean; data?: ReceiptVoucher[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.query(
-      `SELECT rv.*, c.name_ar as customer_name 
+      `SELECT rv.*, c.name as customer_name 
        FROM receipt_vouchers rv 
-       LEFT JOIN contacts c ON rv.customer_id = c.id 
+       LEFT JOIN customers c ON rv.customer_id = c.id 
        WHERE rv.company_id = $1 ORDER BY rv.date DESC`,
       [companyId]
     );
@@ -194,9 +194,9 @@ export const accountingApi = {
   async getPaymentVouchers(companyId: string): Promise<{ success: boolean; data?: PaymentVoucher[]; error?: string }> {
     const adapter = await getDbAdapter();
     const result = await adapter.query(
-      `SELECT pv.*, c.name_ar as supplier_name, a.name_ar as expense_account_name 
+      `SELECT pv.*, c.name as supplier_name, a.name_ar as expense_account_name 
        FROM payment_vouchers pv 
-       LEFT JOIN contacts c ON pv.supplier_id = c.id 
+       LEFT JOIN suppliers c ON pv.supplier_id = c.id 
        LEFT JOIN accounts a ON pv.expense_account_id = a.id 
        WHERE pv.company_id = $1 ORDER BY pv.date DESC`,
       [companyId]

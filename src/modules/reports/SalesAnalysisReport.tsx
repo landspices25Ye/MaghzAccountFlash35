@@ -52,7 +52,7 @@ export const SalesAnalysisReport: React.FC = () => {
       setIsLoading(true);
       const adapter = await getDbAdapter();
       const invResult = await adapter.query(
-        `SELECT i.*, c.name as customer_name FROM sales_invoices i LEFT JOIN contacts c ON i.customer_id = c.id WHERE i.company_id = $1`,
+        `SELECT i.*, c.name as customer_name FROM sales_invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE i.company_id = $1`,
         [companyId]
       );
       const invoices = (invResult.rows || []) as Record<string, any>[];
