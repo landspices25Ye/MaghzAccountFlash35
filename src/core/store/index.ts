@@ -29,7 +29,7 @@ interface AppState {
   selectedBranchId: string | null;
   
   // Database State
-  dbStatus: 'connecting' | 'postgresql' | 'mock';
+  dbStatus: 'connecting' | 'postgresql' | 'error';
   dbConnected: boolean;
 
   // Actions
@@ -39,7 +39,7 @@ interface AppState {
   setLanguage: (language: 'ar' | 'en') => void;
   setActiveCompany: (name: string, id: string, currency: string, extra?: Partial<Company>) => void;
   setSelectedBranchId: (id: string | null) => void;
-  setDbStatus: (status: 'connecting' | 'postgresql' | 'mock', connected: boolean) => void;
+  setDbStatus: (status: 'connecting' | 'postgresql' | 'error', connected: boolean) => void;
 }
 
 function applyTheme(theme: 'light' | 'dark') {

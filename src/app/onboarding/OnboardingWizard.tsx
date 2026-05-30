@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Database,
   Server,
-  TestTube,
   CheckCircle,
   XCircle,
   Building2,
@@ -15,6 +14,8 @@ import {
   Loader2,
   Settings,
   Globe,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useOnboardingStore } from '@/core/store/onboardingStore';
 import { useAppStore } from '@/core/store';
@@ -22,7 +23,7 @@ import { Button, Input, Card } from '@/core/ui/components';
 
 const steps = [
   { id: 0, title: 'مرحباً', description: 'تهيئة نظام محاسبة المهذب' },
-  { id: 1, title: 'قاعدة البيانات', description: 'اختيار واختبار الاتصال' },
+  { id: 1, title: 'قاعدة البيانات', description: 'إعداد اتصال PostgreSQL' },
   { id: 2, title: 'بيانات الشركة', description: 'إعداد معلومات المنشأة' },
   { id: 3, title: 'البيانات الأولية', description: 'تغذية البيانات الافتراضية' },
   { id: 4, title: 'الإنجاز', description: 'الانتهاء من التهيئة' },
@@ -47,8 +48,8 @@ export const OnboardingWizard: React.FC = () => {
         calendar: 'gregorian',
       });
 
-      // If Electron + PG selected, update config and seed
-      if (dbConfig.type === 'pg' && typeof window !== 'undefined' && (window as any).electronDB?.updateConfig) {
+      // Update Electron PG config
+      if (typeof window !== 'undefined' && (window as any).electronDB?.updateConfig) {
         await (window as any).electronDB.updateConfig({
           host: dbConfig.host,
           port: dbConfig.port,
@@ -60,7 +61,6 @@ export const OnboardingWizard: React.FC = () => {
 
       setCompleted(true);
       setProcessing(false);
-      // Reload to trigger normal app flow
       window.location.reload();
     } catch (err: any) {
       setError(err.message || 'حدث خطأ أثناء الحفظ');
@@ -125,6 +125,32 @@ export const OnboardingWizard: React.FC = () => {
 
 // ─── Step 1: Welcome ─────────────────────────────────────────────────────────
 function WelcomeStep({ onNext }: { onNext: () => void }) {
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const resetOnboarding = useOnboardingStore((state) => state.reset);
+
+  const handleResetAll = async () => {
+    setIsResetting(true);
+    setResetError('');
+    try {
+      if (typeof window !== 'undefined' && (window as any).electronDB?.clearAll) {
+        const result = await (window as any).electronDB.clearAll();
+        if (!result.success) {
+          throw new Error(result.error || 'فشل مسح البيانات');
+        }
+        resetOnboarding();
+        setIsResetting(false);
+        setShowResetConfirm(false);
+        return;
+      }
+      throw new Error('PostgreSQL غير متوفر');
+    } catch (err: any) {
+      setResetError(err.message || 'حدث خطأ أثناء مسح البيانات');
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="text-center space-y-6">
       <div className="w-20 h-20 bg-primary-100 dark:bg-primary-900/30 rounded-2xl flex items-center justify-center mx-auto">
@@ -138,13 +164,61 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         </p>
       </div>
       <div className="flex justify-center gap-4 text-sm text-slate-500 dark:text-slate-400">
-        <div className="flex items-center gap-1"><Database size={16} /> قاعدة بيانات آمنة</div>
+        <div className="flex items-center gap-1"><Database size={16} /> PostgreSQL</div>
         <div className="flex items-center gap-1"><Globe size={16} /> متعدد العملات</div>
         <div className="flex items-center gap-1"><Sparkles size={16} /> بيانات افتراضية</div>
       </div>
       <Button variant="primary" size="lg" leftIcon={<ArrowRight size={18} />} onClick={onNext}>
         ابدأ التهيئة
       </Button>
+
+      {/* Reset All Data */}
+      <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+        {!showResetConfirm ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Trash2 size={14} />}
+            onClick={() => setShowResetConfirm(true)}
+            className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+          >
+            مسح جميع البيانات والبدء من جديد
+          </Button>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
+              <AlertTriangle size={18} />
+              <span className="text-sm font-medium">سيتم حذف جميع بيانات قاعدة البيانات. هذا الإجراء لا يمكن التراجع عنه.</span>
+            </div>
+            {resetError && (
+              <div className="flex items-center gap-2 text-rose-600 bg-rose-50 dark:bg-rose-900/20 p-3 rounded-lg">
+                <XCircle size={18} />
+                <span className="text-sm">{resetError}</span>
+              </div>
+            )}
+            <div className="flex gap-2 justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setShowResetConfirm(false); setResetError(''); }}
+                disabled={isResetting}
+              >
+                إلغاء
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={isResetting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                onClick={handleResetAll}
+                isLoading={isResetting}
+                className="bg-rose-600 hover:bg-rose-700"
+              >
+                {isResetting ? 'جارٍ المسح...' : 'نعم، امسح جميع البيانات'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -159,13 +233,6 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
     setTestStatus('idle');
     setError(null);
 
-    if (dbConfig.type === 'mock') {
-      setTestStatus('success');
-      setTestMessage('وضع العرض التوضيحي جاهز (لا يتطلب اتصال)');
-      return;
-    }
-
-    // PostgreSQL test
     if (typeof window !== 'undefined' && (window as any).electronDB?.testConnection) {
       setProcessing(true, 'جارٍ اختبار اتصال PostgreSQL...');
       try {
@@ -190,7 +257,7 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       setProcessing(false);
     } else {
       setTestStatus('error');
-      setTestMessage('وحدة PostgreSQL غير متوفرة في المتصفح. استخدم Electron أو Mock.');
+      setTestMessage('PostgreSQL غير متوفر. تأكد من تشغيل Electron.');
     }
   };
 
@@ -199,41 +266,26 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       <div className="flex items-center gap-3 mb-4">
         <Database size={24} className="text-primary-600 dark:text-primary-400" />
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">اختيار قاعدة البيانات</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">اختر النظام الذي تريد تخزين بياناتك عليه</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">إعداد قاعدة البيانات</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">أدخل بيانات اتصال PostgreSQL</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <DbTypeCard
-          active={dbConfig.type === 'pg'}
-          icon={<Server size={24} />}
-          title="PostgreSQL"
-          desc="أفضل أداء للعمل المتعدد — يتطلب خادم قاعدة بيانات"
-          onClick={() => setDbConfig({ type: 'pg' })}
-        />
-        <DbTypeCard
-          active={dbConfig.type === 'mock'}
-          icon={<TestTube size={24} />}
-          title="وضع العرض (تجريبي)"
-          desc="بيانات وهمية في الذاكرة — بدون تثبيت"
-          onClick={() => setDbConfig({ type: 'mock' })}
-        />
-      </div>
-
-      {dbConfig.type === 'pg' && (
-        <div className="space-y-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="الخادم (Host)" value={dbConfig.host || ''} onChange={e => setDbConfig({ host: e.target.value })} />
-            <Input label="المنفذ (Port)" value={dbConfig.port || ''} onChange={e => setDbConfig({ port: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="اسم قاعدة البيانات" value={dbConfig.database || ''} onChange={e => setDbConfig({ database: e.target.value })} />
-            <Input label="اسم المستخدم" value={dbConfig.user || ''} onChange={e => setDbConfig({ user: e.target.value })} />
-          </div>
-          <Input label="كلمة المرور" type="password" value={dbConfig.password || ''} onChange={e => setDbConfig({ password: e.target.value })} />
+      <div className="space-y-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 text-primary-600 dark:text-primary-400 mb-2">
+          <Server size={16} />
+          <span className="text-sm font-medium">PostgreSQL</span>
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="الخادم (Host)" value={dbConfig.host || ''} onChange={e => setDbConfig({ host: e.target.value })} />
+          <Input label="المنفذ (Port)" value={dbConfig.port || ''} onChange={e => setDbConfig({ port: e.target.value })} />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input label="اسم قاعدة البيانات" value={dbConfig.database || ''} onChange={e => setDbConfig({ database: e.target.value })} />
+          <Input label="اسم المستخدم" value={dbConfig.user || ''} onChange={e => setDbConfig({ user: e.target.value })} />
+        </div>
+        <Input label="كلمة المرور" type="password" value={dbConfig.password || ''} onChange={e => setDbConfig({ password: e.target.value })} />
+      </div>
 
       {testStatus === 'success' && (
         <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-lg">
@@ -251,7 +303,7 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
         <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>رجوع</Button>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={handleTest} isLoading={isProcessing} leftIcon={<TestTube size={16} />}>
+          <Button variant="ghost" onClick={handleTest} isLoading={isProcessing} leftIcon={<Settings size={16} />}>
             اختبار الاتصال
           </Button>
           <Button variant="primary" leftIcon={<ArrowRight size={16} />} onClick={onNext}>
@@ -260,23 +312,6 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
         </div>
       </div>
     </div>
-  );
-}
-
-function DbTypeCard({ active, icon, title, desc, onClick }: { active: boolean; icon: React.ReactNode; title: string; desc: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`p-4 rounded-lg border-2 text-right transition-all ${
-        active
-          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
-      }`}
-    >
-      <div className={`mb-2 ${active ? 'text-primary-600' : 'text-slate-400'}`}>{icon}</div>
-      <p className="font-bold text-slate-900 dark:text-slate-100">{title}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{desc}</p>
-    </button>
   );
 }
 
@@ -334,7 +369,7 @@ function CompanyStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
 
 // ─── Step 4: Seed Data ───────────────────────────────────────────────────────
 function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
-  const { seedOption, setSeedOption, dbConfig, setError, setProcessing, isProcessing } = useOnboardingStore();
+  const { seedOption, setSeedOption, setError, setProcessing, isProcessing } = useOnboardingStore();
   const [seedStatus, setSeedStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [seedMessage, setSeedMessage] = useState('');
 
@@ -349,16 +384,7 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
     setProcessing(true, seedOption === 'default' ? 'جارٍ بذر البيانات الافتراضية...' : 'جارٍ بذر البيانات الوهمية...');
 
     try {
-      if (dbConfig.type === 'mock') {
-        // Mock adapter seeds automatically on first query
-        setSeedStatus('success');
-        setSeedMessage('تم تهيئة البيانات في وضع العرض التوضيحي');
-        setProcessing(false);
-        onNext();
-        return;
-      }
-
-      if (dbConfig.type === 'pg' && typeof window !== 'undefined' && (window as any).electronDB) {
+      if (typeof window !== 'undefined' && (window as any).electronDB) {
         const electronDB = (window as any).electronDB;
 
         if (seedOption === 'default') {
@@ -378,6 +404,8 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
             throw new Error(result.error || 'فشل البذر');
           }
         }
+      } else {
+        throw new Error('PostgreSQL غير متوفر');
       }
 
       setProcessing(false);
@@ -468,10 +496,9 @@ function SeedOptionCard({ active, icon, title, desc, onClick }: { active: boolea
 
 // ─── Step 5: Complete ────────────────────────────────────────────────────────
 function CompleteStep({ onFinish, onBack }: { onFinish: () => void; onBack: () => void }) {
-  const { companyConfig, dbConfig, seedOption } = useOnboardingStore();
+  const { companyConfig, seedOption } = useOnboardingStore();
 
   const seedLabel = seedOption === 'none' ? 'بدون بيانات' : seedOption === 'default' ? 'البيانات الافتراضية' : 'البيانات الوهمية';
-  const dbLabel = dbConfig.type === 'pg' ? 'PostgreSQL' : 'وضع العرض (تجريبي)';
 
   return (
     <div className="space-y-6 text-center">
@@ -487,7 +514,7 @@ function CompleteStep({ onFinish, onBack }: { onFinish: () => void; onBack: () =
       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 text-right space-y-2 border border-slate-200 dark:border-slate-800 max-w-md mx-auto">
         <SummaryRow label="الشركة" value={companyConfig.name} icon={<Building2 size={16} />} />
         <SummaryRow label="العملة" value={companyConfig.currency} icon={<Coins size={16} />} />
-        <SummaryRow label="قاعدة البيانات" value={dbLabel} icon={<Database size={16} />} />
+        <SummaryRow label="قاعدة البيانات" value="PostgreSQL" icon={<Database size={16} />} />
         <SummaryRow label="البيانات" value={seedLabel} icon={<Package size={16} />} />
       </div>
 

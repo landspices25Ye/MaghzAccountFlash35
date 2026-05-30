@@ -26,31 +26,31 @@ export function useSettings(companyId: string) {
       
       // Load VAT settings
       const vatResult = await adapter.query(
-        `SELECT * FROM vat_settings WHERE company_id = ? AND is_active = true LIMIT 1`,
+        `SELECT * FROM vat_settings WHERE company_id = $1 AND is_active = true LIMIT 1`,
         [companyId]
       );
       
       // Load currencies
       const currResult = await adapter.query(
-        `SELECT * FROM currencies WHERE company_id = ? AND is_active = true`,
+        `SELECT * FROM currencies WHERE company_id = $1 AND is_active = true`,
         [companyId]
       );
       
       // Load default accounts
       const defaultAccountsResult = await adapter.query(
-        `SELECT function_key, account_id FROM default_accounts WHERE company_id = ?`,
+        `SELECT function_key, account_id FROM default_accounts WHERE company_id = $1`,
         [companyId]
       );
 
       // Load default branch
       const branchResult = await adapter.query(
-        `SELECT id FROM branches WHERE company_id = ? AND is_active = true ORDER BY created_at ASC LIMIT 1`,
+        `SELECT id FROM branches WHERE company_id = $1 AND is_active = true ORDER BY created_at ASC LIMIT 1`,
         [companyId]
       );
 
       // Load company format settings
       const companyResult = await adapter.query(
-        `SELECT date_format, decimal_places, calendar FROM companies WHERE id = ? LIMIT 1`,
+        `SELECT date_format, decimal_places, calendar FROM companies WHERE id = $1 LIMIT 1`,
         [companyId]
       );
 

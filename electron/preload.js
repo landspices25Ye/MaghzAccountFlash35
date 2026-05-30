@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronDB', {
   updateConfig: (config) => ipcRenderer.invoke('db:update-config', config),
   seedDefault: () => ipcRenderer.invoke('db:seed-default'),
   seedDemo: () => ipcRenderer.invoke('db:seed-demo'),
+  clearAll: () => ipcRenderer.invoke('db:clear-all'),
   getDbInfo: () => ipcRenderer.invoke('db:info'),
 });
 

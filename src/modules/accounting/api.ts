@@ -236,8 +236,7 @@ export const accountingApi = {
   async getTrialBalance(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: TrialBalanceRow[]; error?: string }> {
     const adapter = await getDbAdapter();
     
-    const dateFilter = asOfDate ? `AND t.date <= '${asOfDate}'` : '';
-    const sql = `
+    let sql = `
       SELECT 
         a.id as account_id,
         a.code as account_code,
@@ -247,12 +246,17 @@ export const accountingApi = {
         a.balance as balance
       FROM accounts a
       LEFT JOIN journal_entries je ON a.id = je.account_id
-      LEFT JOIN transactions t ON je.transaction_id = t.id AND t.status = 'posted' ${dateFilter}
+      LEFT JOIN transactions t ON je.transaction_id = t.id AND t.status = 'posted'
       WHERE a.company_id = $1 AND a.is_group = false
-      GROUP BY a.id, a.code, a.name_ar, a.balance ORDER BY a.code
     `;
+    const params: unknown[] = [companyId];
+    if (asOfDate) {
+      sql += ` AND t.date <= $${params.length + 1}`;
+      params.push(asOfDate);
+    }
+    sql += ` GROUP BY a.id, a.code, a.name_ar, a.balance ORDER BY a.code`;
     
-    const result = await adapter.query(sql, [companyId]);
+    const result = await adapter.query(sql, params);
     
     if (result.success && result.rows && result.rows.length > 0) {
       const rows: TrialBalanceRow[] = result.rows.map((r: any) => ({
@@ -278,11 +282,14 @@ export const accountingApi = {
 
   async getBalanceSheet(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
     const adapter = await getDbAdapter();
-    const dateFilter = asOfDate ? `AND date <= '${asOfDate}'` : '';
-    const result = await adapter.query(
-      `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('asset', 'liability', 'equity') AND is_group = false ${dateFilter ? `AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' ${dateFilter})` : ''} ORDER BY code`,
-      [companyId]
-    );
+    let sql = `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('asset', 'liability', 'equity') AND is_group = false`;
+    const params: unknown[] = [companyId];
+    if (asOfDate) {
+      sql += ` AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' AND t.date <= $${params.length + 1})`;
+      params.push(asOfDate);
+    }
+    sql += ` ORDER BY code`;
+    const result = await adapter.query(sql, params);
     if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: mapRows<Account>(result.rows).filter(a => ['asset', 'liability', 'equity'].includes(a.type)) };
     }
@@ -296,18 +303,20 @@ export const accountingApi = {
 
   async getProfitLoss(companyId: string, startDate?: string, endDate?: string): Promise<{ success: boolean; data?: any[]; error?: string }> {
     const adapter = await getDbAdapter();
-    let dateFilter = '';
+    let sql = `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('revenue', 'expense') AND is_group = false`;
+    const params: unknown[] = [companyId];
     if (startDate && endDate) {
-      dateFilter = `AND date BETWEEN '${startDate}' AND '${endDate}'`;
+      sql += ` AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' AND t.date BETWEEN $${params.length + 1} AND $${params.length + 2})`;
+      params.push(startDate, endDate);
     } else if (startDate) {
-      dateFilter = `AND date >= '${startDate}'`;
+      sql += ` AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' AND t.date >= $${params.length + 1})`;
+      params.push(startDate);
     } else if (endDate) {
-      dateFilter = `AND date <= '${endDate}'`;
+      sql += ` AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' AND t.date <= $${params.length + 1})`;
+      params.push(endDate);
     }
-    const result = await adapter.query(
-      `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('revenue', 'expense') AND is_group = false ${dateFilter ? `AND EXISTS (SELECT 1 FROM journal_entries je JOIN transactions t ON je.transaction_id = t.id WHERE je.account_id = accounts.id AND t.status = 'posted' ${dateFilter})` : ''} ORDER BY code`,
-      [companyId]
-    );
+    sql += ` ORDER BY code`;
+    const result = await adapter.query(sql, params);
     if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: mapRows<Account>(result.rows).filter(a => ['revenue', 'expense'].includes(a.type)) };
     }

@@ -9,40 +9,41 @@ import type {
   AuditLogFilters,
 } from './types';
 
-// Mock auth for development (replace with real backend in production)
-const MOCK_USERS: User[] = [
-  { id: 'user-1', username: 'admin', email: 'admin@maghz.local', role: 'admin', isActive: true, branchId: 'branch-1' },
-  { id: 'user-2', username: 'محاسب', email: 'accountant@maghz.local', role: 'accountant', isActive: true, branchId: 'branch-1' },
-  { id: 'user-3', username: 'مبيعات', email: 'sales@maghz.local', role: 'sales_rep', isActive: true, branchId: 'branch-2' },
-  { id: 'user-4', username: 'مدير', email: 'manager@maghz.local', role: 'manager', isActive: true, branchId: 'branch-1' },
-];
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<{ success: boolean; user?: User; error?: string }> {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const adapter = await getDbAdapter();
-    // Try DB first
     const result = await adapter.query(
       'SELECT * FROM users WHERE username = $1 AND is_active = true',
       [credentials.username]
     );
 
-    let user: User | undefined;
-    if (result.success && result.rows && result.rows.length > 0) {
-      user = result.rows[0] as User;
-    } else {
-      user = MOCK_USERS.find((u) => u.username === credentials.username);
-    }
-
-    if (!user) {
+    if (!result.success || !result.rows || result.rows.length === 0) {
       return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
     }
+
+    const user = result.rows[0] as User;
+
     if (!user.isActive) {
       return { success: false, error: 'الحساب معطل' };
     }
 
-    // In production, verify password hash here
+    if (user.passwordHash) {
+      const inputHash = await hashPassword(credentials.password);
+      if (inputHash !== user.passwordHash) {
+        return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
+      }
+    }
+
     if (credentials.rememberMe) {
       localStorage.setItem('auth_remember', credentials.username);
     }
@@ -104,6 +105,8 @@ export const authApi = {
 
   async createUser(data: Omit<User, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
+    const pw = (data as any).password || '';
+    const passwordHash = pw ? await hashPassword(pw) : '';
     const result = await adapter.query(
       `INSERT INTO users (company_id, username, email, full_name, phone, role, role_id, branch_id, is_active, password_hash, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
@@ -117,7 +120,7 @@ export const authApi = {
         data.roleId,
         data.branchId,
         data.isActive,
-        '',
+        passwordHash,
         new Date().toISOString(),
       ]
     );
@@ -141,11 +144,11 @@ export const authApi = {
   },
 
   async resetPassword(id: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
-    // In production: hash the password before storing
     const adapter = await getDbAdapter();
+    const passwordHash = await hashPassword(newPassword);
     return adapter.query(
       'UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3',
-      [newPassword, new Date().toISOString(), id]
+      [passwordHash, new Date().toISOString(), id]
     );
   },
 

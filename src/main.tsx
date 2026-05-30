@@ -1,4 +1,4 @@
-import { StrictMode, useEffect } from 'react';
+import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { AppRouter } from './app/router';
@@ -6,8 +6,9 @@ import { OnboardingWizard } from './app/onboarding';
 import { useAppStore } from './core/store';
 import { useOnboardingStore } from './core/store/onboardingStore';
 import { getDbAdapter } from './core/database/adapters';
-import { mockAdapter } from './core/database/adapters/mockAdapter';
 import { initAuth } from './modules/auth/store';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { Button } from './core/ui/components';
 
 // Set RTL and Arabic as default
 document.documentElement.dir = 'rtl';
@@ -16,77 +17,93 @@ document.documentElement.lang = 'ar';
 // Initialize auth from localStorage
 initAuth();
 
+function DbErrorScreen({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4" dir="rtl">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto">
+          <AlertTriangle size={32} className="text-rose-600 dark:text-rose-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">تعذر الاتصال بقاعدة البيانات</h1>
+          <p className="text-slate-500 dark:text-slate-400">
+            النظام يتطلب اتصال PostgreSQL ليعمل. تأكد من تشغيل Electron وقاعدة البيانات.
+          </p>
+        </div>
+        <Button variant="primary" leftIcon={<RefreshCw size={16} />} onClick={onRetry}>
+          إعادة المحاولة
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const setDbStatus = useAppStore((state) => state.setDbStatus);
   const setActiveCompany = useAppStore((state) => state.setActiveCompany);
   const completed = useOnboardingStore((state) => state.completed);
+  const [dbError, setDbError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    if (!completed) return;
+
+    let cancelled = false;
+
     async function initDb() {
       try {
         setDbStatus('connecting', false);
+        setDbError(false);
+
         const adapter = await getDbAdapter();
         const ping = await adapter.ping();
 
+        if (cancelled) return;
+
         if (!ping.success) {
-          console.warn('[App] Adapter ping failed, falling back to mock');
+          setDbStatus('error', false);
+          setDbError(true);
+          return;
         }
 
-        if (ping.success) {
-          // Detect which adapter is in use via ping result
-          const isPg = ping.message?.includes('PostgreSQL') || !!ping.db;
-          setDbStatus(isPg ? 'postgresql' : 'mock', true);
+        setDbStatus('postgresql', true);
 
-          const companyResult = await adapter.getCompany();
-
-          if (companyResult.success && companyResult.data) {
-            setActiveCompany(
-              companyResult.data.name,
-              companyResult.data.id,
-              companyResult.data.currency || 'YER',
-              {
-                dateFormat: companyResult.data.date_format || companyResult.data.dateFormat,
-                decimalPlaces: Number(companyResult.data.decimal_places ?? companyResult.data.decimalPlaces ?? 2),
-                calendar: companyResult.data.calendar || 'gregorian',
-              }
-            );
-            console.log('[App] Company loaded:', companyResult.data.name);
-          } else {
-            console.error('[App] Could not load company');
-          }
+        const companyResult = await adapter.getCompany();
+        if (companyResult.success && companyResult.data) {
+          setActiveCompany(
+            companyResult.data.name,
+            companyResult.data.id,
+            companyResult.data.currency || 'YER',
+            {
+              dateFormat: companyResult.data.date_format || companyResult.data.dateFormat,
+              decimalPlaces: Number(companyResult.data.decimal_places ?? companyResult.data.decimalPlaces ?? 2),
+              calendar: companyResult.data.calendar || 'gregorian',
+            }
+          );
+          console.log('[App] Company loaded:', companyResult.data.name);
+        } else {
+          console.error('[App] Could not load company');
         }
-      } catch (err) {
-        console.warn('[App] DB init error:', err);
-        try {
-          const companyResult = await mockAdapter.getCompany();
-          if (companyResult.success && companyResult.data) {
-            setActiveCompany(
-              companyResult.data.name,
-              companyResult.data.id,
-              companyResult.data.currency || 'YER',
-              {
-                dateFormat: companyResult.data.date_format || companyResult.data.dateFormat,
-                decimalPlaces: Number(companyResult.data.decimal_places ?? companyResult.data.decimalPlaces ?? 2),
-                calendar: companyResult.data.calendar || 'gregorian',
-              }
-            );
-            console.log('[App] Recovered with mock adapter');
-            setDbStatus('mock', true);
-          }
-        } catch {
-          console.error('[App] Mock adapter also failed');
-          setDbStatus('mock', false);
+      } catch (err: any) {
+        console.error('[App] DB init error:', err);
+        if (!cancelled) {
+          setDbStatus('error', false);
+          setDbError(true);
         }
       }
     }
 
-    if (completed) {
-      initDb();
-    }
-  }, [completed, setDbStatus, setActiveCompany]);
+    initDb();
+
+    return () => { cancelled = true; };
+  }, [completed, retryKey, setDbStatus, setActiveCompany]);
 
   if (!completed) {
     return <OnboardingWizard />;
+  }
+
+  if (dbError) {
+    return <DbErrorScreen onRetry={() => setRetryKey(k => k + 1)} />;
   }
 
   return <AppRouter />;

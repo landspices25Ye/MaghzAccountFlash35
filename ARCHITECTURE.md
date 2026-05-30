@@ -19,16 +19,16 @@
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────────┐  │
 │  │   Business   │  │   Database   │  │   Reports    │  │   Electron IPC │  │
 │  │    Logic     │  │   Adapters   │  │   Engine     │  │   (Main ↔ Ren) │  │
-│  │   (Hooks)    │  │   (PG/Realm) │  │ (Recharts/   │  │                │  │
+│  │   (Hooks)    │  │   (PG/Mock)  │  │ (Recharts/   │  │                │  │
 │  └──────────────┘  └──────┬───────┘  │  Tremor/PDF) │  └────────────────┘  │
 │                           │           └──────────────┘                       │
 ├───────────────────────────┴─────────────────────────────────────────────────┤
 │                         Data Layer                                          │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────┐            │
-│  │   PostgreSQL    │  │    Realm DB     │  │   Dexie/Mock     │            │
-│  │  (Production)   │  │  (Offline Cache)│  │   (Web Dev)      │            │
-│  │   via Drizzle   │  │                 │  │                  │            │
-│  └─────────────────┘  └─────────────────┘  └──────────────────┘            │
+│  ┌─────────────────┐  ┌─────────────────┐                                  │
+│  │   PostgreSQL    │  │   Mock/Dexie    │                                  │
+│  │  (Production)   │  │   (Web Dev)     │                                  │
+│  │   via Drizzle   │  │                 │                                  │
+│  └─────────────────┘  └─────────────────┘                                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,10 +54,9 @@ src/
 │   │   ├── en.json                 ← English dictionary
 │   │   └── useTranslation.ts       ← Hook
 │   ├── database/                   ← طبقات البيانات الموحدة
-│   │   ├── adapters/               ← Interface موحد (PG, Realm, Mock)
+│   │   ├── adapters/               ← Interface موحد (PG, Mock)
 │   │   │   ├── index.ts            ← DatabaseAdapter interface
 │   │   │   ├── pgAdapter.ts        ← PostgreSQL implementation
-│   │   │   ├── realmAdapter.ts     ← Realm implementation
 │   │   │   └── mockAdapter.ts      ← Mock/Dexie implementation
 │   │   ├── schema/                 ← Drizzle schema (per module)
 │   │   │   ├── core.ts             ← companies, users, settings
@@ -70,7 +69,6 @@ src/
 │   │   │   ├── crm.ts              ← leads, opportunities, activities
 │   │   │   └── index.ts            ← Export all schemas
 │   │   ├── migrations/             ← Drizzle migrations
-│   │   └── realm/                  ← Realm schemas (mirror of Drizzle)
 │   ├── reports/                    ← محرك التقارير المركزي
 │   │   ├── engine/                 ← ReportBuilder, QueryBuilder
 │   │   ├── export/                 ← PDF, Excel, CSV exporters
@@ -151,16 +149,15 @@ modules/[name]/
 │
 ├─ هل Electron متاح؟
 │  ├─ نعم → هل PostgreSQL يستجيب؟
-│  │         ├─ نعم → Mode: PostgreSQL (Layer 1) + Realm Cache
-│  │         └─ لا  → Mode: Realm Primary (Layer 2)
-│  └─ لا → Mode: Mock/Dexie (Layer 3)
+│  │         ├─ نعم → Mode: PostgreSQL (Layer 1)
+│  │         └─ لا  → Mode: Mock (Layer 2)
+│  └─ لا → Mode: Mock/Dexie (Layer 2)
 ```
 
 | الطبقة | التقنية | البيئة | الغرض |
 |--------|---------|--------|-------|
 | **Layer 1** | PostgreSQL + Drizzle ORM | Electron + PG متاح | المصدر الوحيد للحقيقة (Source of Truth) |
-| **Layer 2** | Realm DB | Electron بدون PG | Offline-first + Read Cache |
-| **Layer 3** | Dexie / Mock | Browser | تطوير الويب + اختبار |
+| **Layer 2** | Dexie / Mock | Browser أو بدون PG | تطوير الويب + اختبار + fallback
 
 ### 3.2 Database Adapter Interface (موحد)
 
@@ -193,9 +190,6 @@ export interface DatabaseAdapter {
 export function createDatabaseAdapter(): DatabaseAdapter {
   if (isElectron() && isPgAvailable()) {
     return new PgAdapter();
-  }
-  if (isElectronRealm()) {
-    return new RealmAdapter();
   }
   return new MockAdapter();
 }
@@ -253,12 +247,12 @@ export const journalEntries = pgTable('journal_entries', {
 core/reports/
 ├── engine/
 │   ├── ReportBuilder.ts          ← Builder pattern for reports
-│   ├── QueryBuilder.ts           ← SQL/Realm query builder
+│   ├── QueryBuilder.ts           ← SQL query builder
 │   ├── Aggregator.ts             ← Data aggregation (sum, avg, groupBy)
 │   └── FilterEngine.ts           ← Filter parsing & validation
 ├── export/
 │   ├── pdf/
-│   │   ├── PdfRenderer.tsx       ← @react-pdf/renderer wrapper
+│   │   ├── PdfExporter.ts        ← jspdf wrapper (lazy-loaded)
 │   │   ├── templates/            ← InvoiceTemplate, ReportTemplate
 │   │   └── utils.ts              ← RTL support, font loading (Cairo)
 │   ├── excel/
@@ -392,8 +386,7 @@ useCreateInvoiceMutation()
     │
     ├── Validation (items total = invoice total, VAT calc)
     ├── Database Adapter (createInvoice)
-    │       ├── PostgreSQL → Drizzle insert
-    │       └── Realm → write transaction
+    │       └── PostgreSQL → Drizzle insert
     │
     ├── Update stock (inventory module)
     ├── Create journal entries (accounting module)
@@ -416,7 +409,7 @@ User opens "Sales Analysis Report"
 SalesAnalysisPage.tsx
     │
     ├── ReportBuilder
-    │       ├── QueryBuilder → generate SQL/Realm query
+    │       ├── QueryBuilder → generate SQL query
     │       ├── execute via Database Adapter
     │       └── aggregate data
     │
@@ -425,7 +418,7 @@ SalesAnalysisPage.tsx
     ├── BarChart (Recharts) → visual view
     │
     └── ExportPanel
-            ├── PDF → @react-pdf/renderer
+            ├── PDF → jspdf + jspdf-autotable (lazy-loaded)
             ├── Excel → xlsx
             └── CSV → native
 ```
@@ -455,9 +448,8 @@ auth/
 | **HR Admin** | الموظفين + الرواتب |
 | **Viewer** | قراءة فقط (لا يمكن إنشاء/تعديل) |
 
-### 7.2 البيانات المحلية (Electron + Realm)
-- **التشفير:** Realm DB مع AES-256 encryption key.
-- **تخزين المفتاح:** macOS Keychain / Windows Credential Manager / Linux Secret Service.
+### 7.2 البيانات المحلية (Electron)
+- **التشفير:** Mock adapter بدون تشفير.
 - **النسخ الاحتياطي:** تصدير تلقائي إلى JSON/SQL dump.
 
 ### 7.3 البيانات البعيدة (PostgreSQL)
@@ -473,7 +465,6 @@ auth/
 
 | الاستراتيجية | التنفيذ |
 |-------------|---------|
-| **Realm Cache** | قراءة بيانات ثابتة (accounts, products) من Realm حتى مع PostgreSQL |
 | **Zustand Selectors** | استخدام selectors دقيقة لمنع re-renders |
 | **TanStack Query** | (مستقبلي) caching و background refetch |
 | **Virtualization** | TanStack Virtual للجداول الكبيرة (>100 صف) |
@@ -577,7 +568,6 @@ Electron Main Process
     │                            ├── load i18n (ar/en)
     │                            ├── connect Database Adapter
     │                            │       ├── try PostgreSQL
-    │                            │       ├── fallback Realm
     │                            │       └── fallback Mock
     │                            ├── init Zustand Store
     │                            ├── load user session (auth)
@@ -592,9 +582,9 @@ Electron Main Process
 | البيئة | الأمر | قاعدة البيانات | Electron | Tailwind |
 |--------|-------|---------------|----------|----------|
 | **Development (Web)** | `npm run dev` | Dexie/Mock | ❌ | JIT |
-| **Development (Electron)** | `npm run electron:dev` | PostgreSQL أو Realm | ✅ | JIT |
+| **Development (Electron)** | `npm run electron:dev` | PostgreSQL أو Mock | ✅ | JIT |
 | **Staging** | `npm run build:staging` | PostgreSQL staging | ✅ | Build |
-| **Production** | `npm run build` | PostgreSQL local أو Realm | ✅ | Build + Purge |
+| **Production** | `npm run build` | PostgreSQL local | ✅ | Build + Purge |
 
 ---
 
@@ -606,7 +596,8 @@ Electron Main Process
 | **Recharts** | رسوم بيانية | recharts.org |
 | **Tremor** | مكونات Dashboard جاهزة | tremor.so |
 | **TanStack React Table** | جداول متقدمة | tanstack.com/table |
-| **@react-pdf/renderer** | تصدير PDF | react-pdf.org |
+| **jspdf** | تصدير PDF (lazy-loaded) | github.com/parallax/jsPDF |
+| **jspdf-autotable** | جداول PDF | github.com/simonbengtsson/jsPDF-AutoTable |
 | **xlsx (SheetJS)** | تصدير Excel | sheetjs.com |
 | **Zustand** | State management | github.com/pmndrs/zustand |
 | **Lucide React** | أيقونات | lucide.dev |
@@ -616,7 +607,7 @@ Electron Main Process
 ## 13. نقاط تقنية مفتوحة (Open Decisions)
 
 1. **Supabase:** هل نستخدمه لـ SaaS مستقبلي؟
-2. **Sync Engine:** مزامنة bi-directional بين Realm و PostgreSQL.
+2. **Sync Engine:** مزامنة bi-directional بين PostgreSQL والنسخ المحلية.
 3. **TanStack Query:** هل نضيفه لـ server state management؟
 4. **Real-time:** هل ندعم WebSocket لـ live updates؟
 5. **PWA:** هل نجعل النسخة Web قابلة للتثبيت كـ PWA؟

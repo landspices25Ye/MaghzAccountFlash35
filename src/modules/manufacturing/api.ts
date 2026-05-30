@@ -195,9 +195,20 @@ export const manufacturingApi = {
 
   async updateWorkOrderStatus(id: string, status: WorkOrder['status']): Promise<{ success: boolean; error?: string }> {
     const adapter = await adapterPromise;
-    const updates: Record<string, string> = { in_progress: `status = 'in_progress', actual_start_date = $1`, completed: `status = 'completed', actual_end_date = $1`, cancelled: `status = 'cancelled'` };
-    const sql = `UPDATE work_orders SET ${updates[status] || `status = '${status}'`} WHERE id = $2`;
-    const params = status === 'in_progress' ? [new Date().toISOString(), id] : status === 'completed' ? [new Date().toISOString(), id] : [id];
+    let sql: string;
+    let params: unknown[];
+
+    if (status === 'in_progress') {
+      sql = `UPDATE work_orders SET status = 'in_progress', actual_start_date = $1 WHERE id = $2`;
+      params = [new Date().toISOString(), id];
+    } else if (status === 'completed') {
+      sql = `UPDATE work_orders SET status = 'completed', actual_end_date = $1 WHERE id = $2`;
+      params = [new Date().toISOString(), id];
+    } else {
+      sql = `UPDATE work_orders SET status = $1 WHERE id = $2`;
+      params = [status, id];
+    }
+
     const result = await adapter.query(sql, params);
     return { success: result.success, error: result.error };
   },

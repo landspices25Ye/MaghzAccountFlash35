@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface DbConfig {
-  type: 'pg' | 'mock';
+  type: 'pg';
   host?: string;
   port?: string;
   database?: string;

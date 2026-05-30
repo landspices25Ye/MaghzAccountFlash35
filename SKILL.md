@@ -57,19 +57,19 @@
   - فهم Foreign Keys، Constraints، و Indexing.
   - التعامل مع Numeric types (`precision: 18, scale: 4`).
 
-#### 2.2 Realm DB (Offline-First)
-- **المستوى:** مبتدئ إلى متوسط.
+#### 2.2 Database Adapter Pattern
+- **المستوى:** متوسط إلى متقدم.
 - **المتطلبات:**
-  - فهم نموذج البيانات في Realm.
-  - مزامنة البيانات بين Realm و PostgreSQL.
-  - التعامل مع write transactions.
+  - كتابة DatabaseAdapter interface موحد.
+  - تطبيق PG Adapter و Mock Adapter.
+  - التعامل مع `convertPlaceholders()` لتحويل `?` → `$N` للـ PostgreSQL.
 
 #### 2.3 Multi-Layer Database Strategy
 - **المستوى:** متقدم.
 - **المتطلبات:**
-  - فهم 3 طبقات (PostgreSQL → Realm → Mock).
+  - فهم طبقتين (PostgreSQL → Mock fallback).
   - كتابة Adapter Pattern موحد.
-  - التعامل مع البيئات المختلفة.
+  - التعامل مع البيئات المختلفة (Electron + Browser).
 
 ### 3. Reports & Analytics
 
@@ -83,8 +83,8 @@
 #### 3.2 PDF Export
 - **المستوى:** متوسط.
 - **المتطلبات:**
-  - استخدام `@react-pdf/renderer`.
-  - تحميل خطوط عربية (Cairo) للـ PDF.
+  - استخدام `jspdf` + `jspdf-autotable` (محمّلان ديناميكياً).
+  - تحميل خطوط عربية (Cairo) عبر `doc.addFileToVFS`.
   - تصميم قوالب PDF للفواتير والتقارير.
 
 #### 3.3 Excel Export
@@ -307,7 +307,7 @@
 **Reports Stack:**
 - Recharts للرسوم البيانية.
 - TanStack Table للجداول.
-- `@react-pdf/renderer` لتصدير PDF.
+- `jspdf` + `jspdf-autotable` لتصدير PDF (محمّلان ديناميكياً).
 - `xlsx` لتصدير Excel.
 
 ---
@@ -322,10 +322,9 @@
 | **Tables** | @tanstack/react-table | الجداول المتقدمة |
 | **State** | Zustand | إدارة الحالة |
 | **Icons** | Lucide React | الأيقونات |
-| **PDF** | @react-pdf/renderer | تصدير PDF |
+| **PDF** | jspdf + jspdf-autotable | تصدير PDF (lazy-loaded) |
 | **Excel** | xlsx | تصدير Excel |
 | **ORM** | Drizzle ORM | قاعدة البيانات |
-| **Offline** | Realm DB | التخزين المحلي |
 | **Desktop** | Electron | تطبيق سطح المكتب |
 
 ---

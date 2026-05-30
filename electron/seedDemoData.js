@@ -22,7 +22,81 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 2. Currencies ─────────────────────────────────────────────────────────
+  // ─── 2. Product Types ──────────────────────────────────────────────────────
+  const productTypes = [
+    { code: 'TRADE', nameAr: 'سلعة تجارية', nameEn: 'Trading Goods' },
+    { code: 'SRV', nameAr: 'خدمة', nameEn: 'Service' },
+    { code: 'RAW', nameAr: 'مواد أولية', nameEn: 'Raw Materials' },
+    { code: 'FG', nameAr: 'سلع تامة الإنتاج', nameEn: 'Finished Goods' },
+    { code: 'CON', nameAr: 'مستهلك', nameEn: 'Consumable' },
+  ];
+  for (const pt of productTypes) {
+    await client.query(
+      `INSERT INTO product_types (company_id, code, name_ar, name_en, appears_in_sales, appears_in_purchases, appears_in_inventory, is_active)
+       VALUES ($1, $2, $3, $4, TRUE, TRUE, TRUE, TRUE) ON CONFLICT DO NOTHING;`,
+      [companyId, pt.code, pt.nameAr, pt.nameEn]
+    );
+  }
+
+  // ─── 3. Units ─────────────────────────────────────────────────────────────
+  const units = [
+    { code: 'PC', nameAr: 'قطعة', nameEn: 'Piece', conv: 1 },
+    { code: 'CTN', nameAr: 'كرتونة', nameEn: 'Carton', conv: 12 },
+    { code: 'KG', nameAr: 'كيلوغرام', nameEn: 'Kilogram', conv: 1 },
+    { code: 'LTR', nameAr: 'لتر', nameEn: 'Liter', conv: 1 },
+    { code: 'MTR', nameAr: 'متر', nameEn: 'Meter', conv: 1 },
+  ];
+  for (const u of units) {
+    await client.query(
+      `INSERT INTO units (company_id, code, name_ar, name_en, conversion_factor, is_active)
+       VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING;`,
+      [companyId, u.code, u.nameAr, u.nameEn, u.conv]
+    );
+  }
+
+  // ─── 4. Cost Centers ──────────────────────────────────────────────────────
+  const costCenters = [
+    { code: 'CC-SAL', nameAr: 'قسم المبيعات', nameEn: 'Sales Department', type: 'department', budget: 1500000 },
+    { code: 'CC-PRD', nameAr: 'قسم الإنتاج', nameEn: 'Production Department', type: 'department', budget: 2500000 },
+    { code: 'CC-EXP', nameAr: 'مشروع التوسع', nameEn: 'Expansion Project', type: 'project', budget: 8000000 },
+  ];
+  for (const cc of costCenters) {
+    await client.query(
+      `INSERT INTO cost_centers (company_id, code, name_ar, name_en, type, budget_amount, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING;`,
+      [companyId, cc.code, cc.nameAr, cc.nameEn, cc.type, cc.budget]
+    );
+  }
+
+  // ─── 5. Banks ─────────────────────────────────────────────────────────────
+  const banks = [
+    { name: 'حساب البنك اليمني الدولي', bankName: 'البنك اليمني الدولي', accountNumber: '1234567890', iban: 'YE12345678901234', balance: 5800000 },
+    { name: 'حساب بنك الكريمي', bankName: 'بنك الكريمي', accountNumber: '0987654321', iban: 'YE09876543210987', balance: 2500000 },
+  ];
+  for (const b of banks) {
+    await client.query(
+      `INSERT INTO banks (company_id, name, bank_name, account_number, iban, is_active, current_balance)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6) ON CONFLICT DO NOTHING;`,
+      [companyId, b.name, b.bankName, b.accountNumber, b.iban, b.balance]
+    );
+  }
+
+  // ─── 6. Default Accounts ──────────────────────────────────────────────────
+  const defaultAccounts = [
+    { key: 'default_discount_allowed', code: '41101', required: false },
+    { key: 'default_discount_received', code: '21101', required: false },
+    { key: 'default_purchase_returns', code: '21101', required: true },
+  ];
+  for (const da of defaultAccounts) {
+    await client.query(
+      `INSERT INTO default_accounts (company_id, function_key, account_id, is_required)
+       SELECT $1, $2, (SELECT id FROM accounts WHERE company_id = $1 AND code = $3 LIMIT 1), $4
+       WHERE NOT EXISTS (SELECT 1 FROM default_accounts WHERE company_id = $1 AND function_key = $2);`,
+      [companyId, da.key, da.code, da.required]
+    );
+  }
+
+  // ─── 7. Currencies ─────────────────────────────────────────────────────────
   const currencies = [
     { code: 'YER', name: 'الريال اليمني', symbol: 'ر.ي', rate: 1, is_default: true },
     { code: 'USD', name: 'دولار أمريكي', symbol: '$', rate: 1500, is_default: false },
@@ -35,13 +109,13 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 3. VAT Settings ───────────────────────────────────────────────────────
+  // ─── 8. VAT Settings ───────────────────────────────────────────────────────
   await client.query(
     `INSERT INTO vat_settings (company_id, vat_rate, vat_number, is_inclusive, is_active) VALUES ($1, 15, '123456789', false, true) ON CONFLICT DO NOTHING;`,
     [companyId]
   );
 
-  // ─── 4. Document Sequences ─────────────────────────────────────────────────
+  // ─── 9. Document Sequences ─────────────────────────────────────────────────
   const sequences = [
     { type: 'sales_invoice', prefix: 'INV-', start: 1, current: 6 },
     { type: 'quotation', prefix: 'QOT-', start: 1, current: 2 },
@@ -55,7 +129,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 5. Customers ──────────────────────────────────────────────────────────
+  // ─── 10. Customers ─────────────────────────────────────────────────────────
   const customers = [
     { code: 'CUST-001', name: 'شركة البحر الأحمر للتجارة', phone: '+967334455667', email: 'redsea@ye.com', address: 'الحديدة - كمران', balance: 950000 },
     { code: 'CUST-002', name: 'مؤسسة الجود للصناعات الغذائية', phone: '+967112233445', email: 'aljawd@ye.com', address: 'صنعاء - شارع الستين', balance: 1200000 },
@@ -73,7 +147,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 6. Suppliers ──────────────────────────────────────────────────────────
+  // ─── 11. Suppliers ─────────────────────────────────────────────────────────
   const suppliers = [
     { code: 'SUP-001', name: 'شركة الخليج للاستيراد', phone: '+967998877665', email: 'gulf@ye.com', address: 'جدة - السعودية', balance: 0 },
     { code: 'SUP-002', name: 'مؤسسة الوفاق التجارية', phone: '+967112233990', email: 'wefaq@ye.com', address: 'صنعاء - شارع الستين', balance: 0 },
@@ -91,7 +165,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 7. Product Category ───────────────────────────────────────────────────
+  // ─── 12. Product Category ──────────────────────────────────────────────────
   await client.query(
     `INSERT INTO product_categories (company_id, name) VALUES ($1, 'المواد الغذائية') ON CONFLICT DO NOTHING;`,
     [companyId]
@@ -99,7 +173,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const catRes = await client.query(`SELECT id FROM product_categories WHERE company_id = $1 AND name = 'المواد الغذائية'`, [companyId]);
   const categoryId = catRes.rows[0]?.id;
 
-  // ─── 8. Products ───────────────────────────────────────────────────────────
+  // ─── 13. Products ──────────────────────────────────────────────────────────
   const products = [
     { code: 'PRD-001', name_ar: 'أرز بسمتي فاخر', name_en: 'Premium Basmati Rice', barcode: '6223000123456', sku: 'RICE-BAS-5KG', unit: 'كيس', cost_price: 2800, sale_price: 3200 },
     { code: 'PRD-002', name_ar: 'زيت نباتي 3 لتر', name_en: 'Vegetable Oil 3L', barcode: '6223000123457', sku: 'OIL-VEG-3L', unit: 'علبة', cost_price: 4200, sale_price: 4800 },
@@ -124,7 +198,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 9. Warehouses ─────────────────────────────────────────────────────────
+  // ─── 14. Warehouses ────────────────────────────────────────────────────────
   const warehouses = [
     { name: 'المستودع الرئيسي - صنعاء', code: 'WH-MAIN' },
     { name: 'مستودع الحديدة', code: 'WH-HD' },
@@ -137,7 +211,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 10. Stock & Stock Movements ───────────────────────────────────────────
+  // ─── 15. Stock & Stock Movements ───────────────────────────────────────────
   const prodRes = await client.query(`SELECT id FROM products WHERE company_id = $1 ORDER BY code`, [companyId]);
   const whRes = await client.query(`SELECT id FROM warehouses WHERE company_id = $1 ORDER BY code`, [companyId]);
   const prodIds = prodRes.rows.map(r => r.id);
@@ -169,7 +243,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 11. Sales Invoices ────────────────────────────────────────────────────
+  // ─── 16. Sales Invoices ────────────────────────────────────────────────────
   const custRes = await client.query(`SELECT id FROM customers WHERE company_id = $1 ORDER BY code`, [companyId]);
   const custIds = custRes.rows.map(r => r.id);
 
@@ -212,7 +286,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 12. Quotations ────────────────────────────────────────────────────────
+  // ─── 17. Quotations ────────────────────────────────────────────────────────
   if (custIds.length > 0 && prodIds.length > 0) {
     const quotations = [
       { number: 'QOT-2024-0001', customerIdx: 2, date: '2024-06-10', total: 45000 },
@@ -226,7 +300,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 13. Purchase Orders ───────────────────────────────────────────────────
+  // ─── 18. Purchase Orders ───────────────────────────────────────────────────
   const supRes = await client.query(`SELECT id FROM suppliers WHERE company_id = $1 ORDER BY code`, [companyId]);
   const supIds = supRes.rows.map(r => r.id);
 
@@ -258,7 +332,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 14. Purchase Invoices ─────────────────────────────────────────────────
+  // ─── 19. Purchase Invoices ─────────────────────────────────────────────────
   if (supIds.length > 0 && prodIds.length > 0) {
     const purchaseInvoices = [
       { number: 'PINV-2024-0001', supplierIdx: 0, date: '2024-06-10', total: 420000 },
@@ -296,7 +370,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 15. Departments ───────────────────────────────────────────────────────
+  // ─── 20. Departments ───────────────────────────────────────────────────────
   const deptNames = ['الإدارة', 'المبيعات', 'المخازن', 'المحاسبة'];
   for (const name of deptNames) {
     await client.query(
@@ -310,7 +384,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     deptMap[row.name] = row.id;
   }
 
-  // ─── 16. Employees ─────────────────────────────────────────────────────────
+  // ─── 21. Employees ─────────────────────────────────────────────────────────
   const employees = [
     { number: 'EMP-001', name: 'أحمد علي عبدالله', phone: '+967111222333', email: 'ahmed@demo.ye', dept: 'الإدارة', position: 'مدير عام', grade: 'A', hire_date: '2020-01-15', salary: 450000 },
     { number: 'EMP-002', name: 'خالد سعيد الحسني', phone: '+967222333444', email: 'khaled@demo.ye', dept: 'المبيعات', position: 'مدير مبيعات', grade: 'A', hire_date: '2020-03-10', salary: 350000 },
@@ -330,7 +404,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const empRes = await client.query(`SELECT id, employee_number FROM employees WHERE company_id = $1 ORDER BY employee_number`, [companyId]);
   const empIds = empRes.rows.map(r => r.id);
 
-  // ─── 17. Attendance ────────────────────────────────────────────────────────
+  // ─── 22. Attendance ────────────────────────────────────────────────────────
   if (empIds.length > 0) {
     for (let i = 0; i < Math.min(5, empIds.length); i++) {
       for (let d = 1; d <= 5; d++) {
@@ -343,7 +417,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 18. Payroll Run & Lines ───────────────────────────────────────────────
+  // ─── 23. Payroll Run & Lines ───────────────────────────────────────────────
   const payrollRunRes = await client.query(
     `INSERT INTO payroll_runs (company_id, month, year, total_amount, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING RETURNING id;`,
     [companyId, currentMonth, currentYear, 2040000, 'posted']
@@ -371,7 +445,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 19. Leaves ────────────────────────────────────────────────────────────
+  // ─── 24. Leaves ────────────────────────────────────────────────────────────
   if (empIds.length > 0) {
     const leaves = [
       { empIdx: 0, type: 'annual', start: '2024-07-01', end: '2024-07-05', days: 5 },
@@ -387,7 +461,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 20. Leads ─────────────────────────────────────────────────────────────
+  // ─── 25. Leads ─────────────────────────────────────────────────────────────
   const leadsData = [
     { name: 'محمد عبدالله السقاف', phone: '+967111000111', email: 'm.saqaf@example.com', company: 'شركة السقاف التجارية', source: 'معرض', status: 'new', value: 500000 },
     { name: 'سمير علي الحميري', phone: '+967222000222', email: 's.alhamiri@example.com', company: 'مؤسسة الحميري', source: 'موقع إلكتروني', status: 'contacted', value: 350000 },
@@ -405,7 +479,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const leadsRes = await client.query(`SELECT id FROM leads WHERE company_id = $1 ORDER BY name`, [companyId]);
   const leadIds = leadsRes.rows.map(r => r.id);
 
-  // ─── 21. Opportunities ─────────────────────────────────────────────────────
+  // ─── 26. Opportunities ─────────────────────────────────────────────────────
   if (leadIds.length > 0) {
     const opportunities = [
       { leadIdx: 2, name: 'صفقة توزيع أرز بسمتي', value: 800000, stage: 'negotiation', prob: 70, close: '2024-09-30' },
@@ -425,7 +499,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const oppRes = await client.query(`SELECT id FROM opportunities WHERE company_id = $1 ORDER BY name`, [companyId]);
   const oppIds = oppRes.rows.map(r => r.id);
 
-  // ─── 22. CRM Activities ────────────────────────────────────────────────────
+  // ─── 27. CRM Activities ────────────────────────────────────────────────────
   if (oppIds.length > 0 || leadIds.length > 0) {
     const activities = [
       { title: 'متابعة عرض السعر', due: '2024-07-05', priority: 'high', status: 'pending', leadIdx: 0, oppIdx: null },
@@ -444,7 +518,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 23. Calls ─────────────────────────────────────────────────────────────
+  // ─── 28. Calls ─────────────────────────────────────────────────────────────
   if (leadIds.length > 0 || oppIds.length > 0) {
     const calls = [
       { leadIdx: 0, type: 'outbound', duration: 300, notes: 'تقديم الشركة' },
@@ -461,7 +535,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 24. BOMs ──────────────────────────────────────────────────────────────
+  // ─── 29. BOMs ──────────────────────────────────────────────────────────────
   if (prodIds.length >= 4) {
     const bom1Res = await client.query(
       `INSERT INTO boms (company_id, product_id, version, is_active) VALUES ($1, $2, '1.0', true) ON CONFLICT DO NOTHING RETURNING id;`,
@@ -496,7 +570,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 25. Work Orders ───────────────────────────────────────────────────────
+  // ─── 30. Work Orders ───────────────────────────────────────────────────────
   if (prodIds.length >= 2) {
     const bomsRes = await client.query(`SELECT id, product_id FROM boms WHERE company_id = $1`, [companyId]);
     const bomMap = {};
@@ -528,7 +602,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 26. General Accounting Transactions ───────────────────────────────────
+  // ─── 31. General Accounting Transactions ───────────────────────────────────
   const cashAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '111001'`, [companyId]);
   const salesAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '411001'`, [companyId]);
   const expenseAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '511001'`, [companyId]);
@@ -569,7 +643,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 27. Receipt & Payment Vouchers ───────────────────────────────────────
+  // ─── 32. Receipt & Payment Vouchers ───────────────────────────────────────
   const firstCustomer = await client.query(`SELECT id FROM customers WHERE company_id = $1 ORDER BY code LIMIT 1`, [companyId]);
   const firstSupplier = await client.query(`SELECT id FROM suppliers WHERE company_id = $1 ORDER BY code LIMIT 1`, [companyId]);
 
@@ -595,7 +669,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 28. Activity Log (defensive: skip if table doesn't exist) ────────────
+  // ─── 33. Activity Log (defensive: skip if table doesn't exist) ────────────
   try {
     await client.query(
       `INSERT INTO activity_logs (company_id, user_id, user_name, action, module, details) VALUES ($1, NULL, 'النظام', $2, $3, $4);`,

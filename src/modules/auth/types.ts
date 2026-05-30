@@ -10,6 +10,7 @@ export interface User {
   branchId?: string | null;
   branchName?: string;
   isActive: boolean;
+  passwordHash?: string;
   lastLoginAt?: string;
   createdAt?: string;
   updatedAt?: string;

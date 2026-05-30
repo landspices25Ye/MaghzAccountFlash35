@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FolderTree, Plus, Pencil, Trash2, ChevronRight, ChevronDown, CheckSquare } from 'lucide-react';
-import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Modal, Input, ConfirmDialog } from '@/core/ui/components';
 import { useProductCategories } from '@/modules/inventory/hooks/useInventory';
 import { useAppStore } from '@/core/store';
 
@@ -60,19 +60,33 @@ export const ProductCategoriesPage: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', parentId: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const tree = buildTree(categories);
 
   const handleSave = async () => {
     if (!form.name || !activeCompany?.id) return;
-    if (editingId) {
-      await update(editingId, { name: form.name, parentId: form.parentId || undefined });
-    } else {
-      await create({ companyId: activeCompany.id, name: form.name, parentId: form.parentId || undefined });
+    try {
+      if (editingId) {
+        await update(editingId, { name: form.name, parentId: form.parentId || undefined });
+      } else {
+        await create({ companyId: activeCompany.id, name: form.name, parentId: form.parentId || undefined });
+      }
+      setIsOpen(false);
+      setForm({ name: '', parentId: '' });
+      setEditingId(null);
+    } catch (err) {
+      console.error('Failed to save category:', err);
     }
-    setIsOpen(false);
-    setForm({ name: '', parentId: '' });
-    setEditingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await remove(id);
+      setShowDeleteConfirm(null);
+    } catch (err) {
+      console.error('Failed to delete category:', err);
+    }
   };
 
   const openEdit = (node: CategoryNode) => {
@@ -102,11 +116,21 @@ export const ProductCategoriesPage: React.FC = () => {
         ) : (
           <div className="space-y-1">
             {tree.map(node => (
-              <TreeNode key={node.id} node={node} level={0} onEdit={openEdit} onDelete={remove} />
+              <TreeNode key={node.id} node={node} level={0} onEdit={openEdit} onDelete={(id) => setShowDeleteConfirm(id)} />
             ))}
           </div>
         )}
       </Card>
+
+      <ConfirmDialog
+        isOpen={!!showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(null)}
+        onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
+        title="حذف التصنيف"
+        message="هل أنت متأكد من حذف هذا التصنيف؟ لا يمكن التراجع."
+        confirmText="حذف"
+        variant="danger"
+      />
 
       {isOpen && (
         <Modal isOpen={isOpen} title={editingId ? 'تعديل التصنيف' : 'تصنيف جديد'} onClose={() => setIsOpen(false)} size="md">

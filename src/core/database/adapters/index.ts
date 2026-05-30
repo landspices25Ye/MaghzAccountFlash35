@@ -1,10 +1,9 @@
 import type { DbAdapter } from './types';
-import { mockAdapter } from './mockAdapter';
 
 /**
  * Database Adapter Factory
- * Layers: PostgreSQL (Electron IPC) → Mock (Browser)
- * No longer supports Realm — PostgreSQL is the sole production database.
+ * PostgreSQL (Electron IPC) is the ONLY supported database.
+ * No in-memory/mock fallback — the app requires a live PostgreSQL connection.
  */
 
 function isElectron(): boolean {
@@ -16,26 +15,18 @@ function isElectronPg(): boolean {
 }
 
 let adapter: DbAdapter | null = null;
-let adapterType: 'pg' | 'mock' | null = null;
 
 export async function getDbAdapter(): Promise<DbAdapter> {
-  // Stale adapter? reset for retry
-  if (adapter && adapterType === 'pg') {
+  // Reuse existing working adapter
+  if (adapter) {
     try {
       const ping = await adapter.ping();
       if (ping.success) return adapter;
     } catch { /* stale */ }
     adapter = null;
-    adapterType = null;
   }
 
-  // Don't get stuck on mock — always retry PG if available next call
-  if (adapter && adapterType === 'mock') {
-    adapter = null;
-    adapterType = null;
-  }
-
-  // Layer 1: PostgreSQL via Electron IPC (production, multi-user)
+  // PostgreSQL via Electron IPC (production)
   if (isElectronPg()) {
     try {
       const { electronPgAdapter } = await import('./electronPgAdapter');
@@ -43,7 +34,6 @@ export async function getDbAdapter(): Promise<DbAdapter> {
       if (ping.success) {
         console.log('[DB Adapter] PostgreSQL via Electron IPC');
         adapter = electronPgAdapter;
-        adapterType = 'pg';
         return adapter;
       }
     } catch (err) {
@@ -51,11 +41,9 @@ export async function getDbAdapter(): Promise<DbAdapter> {
     }
   }
 
-  // Layer 2: Mock (browser / dev)
-  console.log('[DB Adapter] Mock adapter (browser mode)');
-  adapter = mockAdapter;
-  adapterType = 'mock';
-  return adapter;
+  throw new Error(
+    'PostgreSQL غير متوفر. تأكد من تشغيل Electron وقاعدة البيانات.'
+  );
 }
 
 export { isElectron, isElectronPg };

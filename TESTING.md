@@ -100,7 +100,7 @@ src/
 ### 4.1 التبعيات (Dependencies)
 
 ```bash
-npm install -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom msw playwright @react-pdf/renderer xlsx
+npm install -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom msw playwright jspdf jspdf-autotable xlsx
 ```
 
 ### 4.2 إعداد Vitest (`vitest.config.ts`)

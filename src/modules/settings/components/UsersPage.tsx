@@ -31,20 +31,25 @@ export const UsersPage: React.FC = () => {
   const loadData = async () => {
     if (!activeCompany?.id) return;
     setIsLoading(true);
-    const adapter = await getDbAdapter();
-    const result = await adapter.query(`SELECT * FROM users WHERE company_id = ?`, [activeCompany.id]);
-    if (result.success && result.rows) {
-      setUsers(result.rows.map((row: any) => ({
-        id: row.id,
-        username: row.username,
-        email: row.email,
-        role: row.role,
-        branchId: row.branch_id,
-        isActive: row.is_active,
-        lastLoginAt: row.last_login_at,
-      })));
+    try {
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(`SELECT * FROM users WHERE company_id = $1`, [activeCompany.id]);
+      if (result.success && result.rows) {
+        setUsers(result.rows.map((row: any) => ({
+          id: row.id,
+          username: row.username,
+          email: row.email,
+          role: row.role,
+          branchId: row.branch_id,
+          isActive: row.is_active,
+          lastLoginAt: row.last_login_at,
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load users:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => { loadData(); }, [activeCompany?.id]);
@@ -52,37 +57,60 @@ export const UsersPage: React.FC = () => {
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.username) return;
     setIsSaving(true);
-    const adapter = await getDbAdapter();
-    
-    if (editingId) {
-      await adapter.query(
-        `UPDATE users SET username = ?, email = ?, role = ?, is_active = ? WHERE id = ?`,
-        [formData.username, formData.email, formData.role, formData.isActive, editingId]
-      );
-    } else {
-      await adapter.query(
-        `INSERT INTO users (id, company_id, username, email, password_hash, role, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, '', formData.role, formData.isActive, new Date().toISOString()]
-      );
-    }
+    try {
+      const adapter = await getDbAdapter();
+      
+      if (editingId) {
+        await adapter.query(
+          `UPDATE users SET username = $1, email = $2, role = $3, is_active = $4 WHERE id = $5`,
+          [formData.username, formData.email, formData.role, formData.isActive, editingId]
+        );
+      } else {
+        await adapter.query(
+          `INSERT INTO users (id, company_id, username, email, password_hash, role, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, '', formData.role, formData.isActive, new Date().toISOString()]
+        );
+      }
 
-    await logAudit({ userId: currentUser?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'users', recordId: editingId || 'new', companyId: activeCompany.id });
-    setIsSaving(false); setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); loadData();
+      await logAudit({ userId: currentUser?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'users', recordId: editingId || 'new', companyId: activeCompany.id });
+      setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); loadData();
+    } catch (err) {
+      console.error('Failed to save user:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id || id === currentUser?.id) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`DELETE FROM users WHERE id = ?`, [id]);
-    await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
-    setShowDeleteConfirm(null); loadData();
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(`DELETE FROM users WHERE id = $1`, [id]);
+      await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
+      setShowDeleteConfirm(null); loadData();
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+    }
+  };
+
+  const hashPassword = async (password: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleResetPassword = async () => {
     if (!showResetPassword || !newPassword) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`UPDATE users SET password_hash = ? WHERE id = ?`, [newPassword, showResetPassword]);
-    setShowResetPassword(null); setNewPassword('');
+    try {
+      const adapter = await getDbAdapter();
+      const hashed = await hashPassword(newPassword);
+      await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [hashed, showResetPassword]);
+      setShowResetPassword(null); setNewPassword('');
+    } catch (err) {
+      console.error('Failed to reset password:', err);
+    }
   };
 
   const roleLabels: Record<string, string> = {

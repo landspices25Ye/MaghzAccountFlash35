@@ -17,7 +17,7 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
     
     await adapter.query(
       `INSERT INTO audit_logs (id, user_id, action, table_name, record_id, old_values, new_values, ip_address, company_id, created_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         crypto.randomUUID(),
         entry.userId,
@@ -44,27 +44,27 @@ export async function getAuditLogs(
   try {
     const adapter = await getDbAdapter();
     
-    let sql = `SELECT * FROM audit_logs WHERE company_id = ?`;
+    let sql = `SELECT * FROM audit_logs WHERE company_id = $1`;
     const params: unknown[] = [companyId];
     
     if (filters?.userId) {
-      sql += ` AND user_id = ?`;
+      sql += ` AND user_id = $${params.length + 1}`;
       params.push(filters.userId);
     }
     if (filters?.tableName) {
-      sql += ` AND table_name = ?`;
+      sql += ` AND table_name = $${params.length + 1}`;
       params.push(filters.tableName);
     }
     if (filters?.action) {
-      sql += ` AND action = ?`;
+      sql += ` AND action = $${params.length + 1}`;
       params.push(filters.action);
     }
     if (filters?.fromDate) {
-      sql += ` AND created_at >= ?`;
+      sql += ` AND created_at >= $${params.length + 1}`;
       params.push(filters.fromDate);
     }
     if (filters?.toDate) {
-      sql += ` AND created_at <= ?`;
+      sql += ` AND created_at <= $${params.length + 1}`;
       params.push(filters.toDate);
     }
     

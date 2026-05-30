@@ -77,7 +77,7 @@ export const CompanySetupPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(
-        `UPDATE companies SET name = ?, name_en = ?, tax_number = ?, address = ?, phone = ?, email = ?, logo_url = ?, fiscal_year_start = ?, currency = ?, date_format = ?, decimal_places = ?, calendar = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE companies SET name = $1, name_en = $2, tax_number = $3, address = $4, phone = $5, email = $6, logo_url = $7, fiscal_year_start = $8, currency = $9, date_format = $10, decimal_places = $11, calendar = $12, updated_at = $13 WHERE id = $14`,
         [
           formData.name,
           formData.nameEn,

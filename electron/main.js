@@ -60,7 +60,6 @@ app.whenReady().then(async () => {
     await runDrizzleMigrations();
     // Ensure base tables exist as fallback (CREATE TABLE IF NOT EXISTS)
     await initializeSchema();
-    await seedInitialData();
     console.log('[App] PostgreSQL (Drizzle) ready.');
   } catch (err) {
     console.error('[App] PostgreSQL migration failed:', err.message);

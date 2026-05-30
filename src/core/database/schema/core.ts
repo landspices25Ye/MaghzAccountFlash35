@@ -27,6 +27,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }),
   passwordHash: text('password_hash'),
   role: varchar('role', { length: 50 }).notNull().default('accountant'),
+  branchId: uuid('branch_id'),
   isActive: boolean('is_active').notNull().default(true),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -60,6 +61,8 @@ export const branches = pgTable('branches', {
   name: varchar('name', { length: 100 }).notNull(),
   code: varchar('code', { length: 20 }),
   address: text('address'),
+  city: varchar('city', { length: 100 }),
+  phone: varchar('phone', { length: 50 }),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
@@ -79,6 +82,8 @@ export const currencies = pgTable('currencies', {
 export const vatSettings = pgTable('vat_settings', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 100 }).default('ضريبة القيمة المضافة'),
+  accountId: uuid('account_id'),
   vatRate: numeric('vat_rate', { precision: 5, scale: 2 }).notNull().default('15'),
   vatNumber: varchar('vat_number', { length: 50 }),
   isInclusive: boolean('is_inclusive').notNull().default(false),

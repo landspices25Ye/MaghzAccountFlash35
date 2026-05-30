@@ -123,7 +123,7 @@
 
 | الصيغة | المكتبة | الاستخدام |
 |--------|---------|----------|
-| **PDF** | `@react-pdf/renderer` | فواتير، تقارير رسمية |
+| **PDF** | `jspdf` + `jspdf-autotable` (lazy-loaded) | فواتير، تقارير رسمية |
 | **Excel** | `xlsx` (SheetJS) | تحليلات، بيانات خام |
 | **CSV** | Native | استيراد/تصدير سريع |
 
@@ -142,11 +142,10 @@
 | **Icons** | Lucide React | أيقونات احترافية متجهة |
 | **Fonts** | Google Fonts: Cairo + Inter | خطوط عربية/إنجليزية |
 | **Database (Production)** | PostgreSQL 15+ + Drizzle ORM | البيانات الرئيسية |
-| **Database (Offline)** | Realm DB 20 | التخزين المحلي |
 | **Database (Web Dev)** | Dexie (IndexedDB) | محاكاة الويب |
 | **Desktop** | Electron 42 | تطبيق سطح المكتب |
 | **i18n** | Custom JSON + Hook | ترجمة ثنائية (ar/en) |
-| **PDF Export** | @react-pdf/renderer | تصدير فواتير وتقارير |
+| **PDF Export** | jspdf + jspdf-autotable (lazy-loaded) | تصدير فواتير وتقارير |
 | **Excel Export** | xlsx (SheetJS) | تصدير Excel |
 | **Linting** | ESLint 10 + typescript-eslint | جودة الكود |
 
@@ -216,7 +215,7 @@
 2. **Dashboard رئيسي** يجمع KPIs من كل الوحدات.
 3. **تصدير PDF/Excel** احترافي.
 4. **تصميم عربي مريح** (Cairo + RTL + Dark Mode).
-5. **Offline-first** عبر Electron + Realm.
+5. **Offline-first** عبر Electron.
 
 ---
 
@@ -238,7 +237,7 @@
 
 - **المحاسبة:** المعايير المحاسبية الدولية (IFRS) — شجرة حسابات جاهزة.
 - **الضريبة:** نظام VAT مرن (قابل للتخصيص حسب الدولة).
-- **البيانات:** تشفير قاعدة البيانات المحلية (Realm encryption).
+- **البيانات:** تشفير قاعدة البيانات المحلية (Mock adapter).
 - **النسخ الاحتياطي:** تصدير/استيراد تلقائي (JSON/SQL dump/PDF).
 - **التدقيق:** سجل عمليات كامل (Audit Trail).
 
@@ -250,7 +249,7 @@
 - تهيئة المشروع (React 19 + TypeScript + Vite + Electron + Tailwind).
 - نظام التصميم (Cairo/Inter + Light/Dark + CSS Variables).
 - نظام الترجمة (i18n ar/en + RTL).
-- طبقات البيانات (PostgreSQL + Drizzle + Realm + Mock).
+- طبقات البيانات (PostgreSQL + Drizzle + Mock).
 - إدارة الشركات والعملات المتعددة.
 
 ### المرحلة 1: الإعدادات + المستخدمين — أسبوع 3

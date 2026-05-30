@@ -47,7 +47,14 @@ export const InventoryAnalysisReport: React.FC = () => {
       const stockResult = await adapter.query(`SELECT * FROM stock WHERE company_id = $1`, [companyId]);
       const stock = (stockResult.rows || []) as Record<string, unknown>[];
 
-      // Fetch movements to calculate turnover (mock using random for now if no movement table)
+      // Fetch movements to calculate turnover from actual transaction data
+      const movResult = await adapter.query(
+        `SELECT product_id, SUM(quantity) as total_qty, MIN(date) as first_date, MAX(date) as last_date
+         FROM inventory_transactions WHERE company_id = $1 GROUP BY product_id`,
+        [companyId]
+      );
+      const movements = (movResult.rows || []) as Record<string, unknown>[];
+
       const rows: StockItem[] = [];
       for (const s of stock) {
         const prod = products.find((p) => p.id === s.product_id);
@@ -59,9 +66,19 @@ export const InventoryAnalysisReport: React.FC = () => {
           if (qty === 0) status = 'out';
           else if (qty <= min) status = 'low';
 
-          // Estimate turnover days
-          const avgDailySales = Math.max(1, Math.floor(Math.random() * 5)); // mock
-          const turnoverDays = avgDailySales > 0 ? Math.floor(qty / avgDailySales) : 999;
+          // Calculate turnover from actual movement data
+          const mov = movements.find((m) => m.product_id === s.product_id);
+          let turnoverDays = 999;
+          if (mov && mov.total_qty) {
+            const totalQty = Number(mov.total_qty);
+            const firstDate = mov.first_date ? new Date(String(mov.first_date)) : null;
+            const lastDate = mov.last_date ? new Date(String(mov.last_date)) : null;
+            if (firstDate && lastDate && totalQty > 0) {
+              const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / 86400000));
+              const avgDaily = totalQty / daysDiff;
+              turnoverDays = avgDaily > 0 ? Math.floor(qty / avgDaily) : 999;
+            }
+          }
 
           rows.push({
             product: String(prod.name || ''),

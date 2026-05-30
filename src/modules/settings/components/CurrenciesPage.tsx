@@ -31,20 +31,25 @@ export const CurrenciesPage: React.FC = () => {
   const loadData = async () => {
     if (!activeCompany?.id) return;
     setIsLoading(true);
-    const adapter = await getDbAdapter();
-    const result = await adapter.query(`SELECT * FROM currencies WHERE company_id = ?`, [activeCompany.id]);
-    if (result.success && result.rows) {
-      setCurrencies(result.rows.map((row: any) => ({
-        id: row.id,
-        code: row.code,
-        name: row.name,
-        symbol: row.symbol,
-        exchangeRate: Number(row.exchange_rate),
-        isDefault: row.is_default,
-        isActive: row.is_active,
-      })));
+    try {
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(`SELECT * FROM currencies WHERE company_id = $1`, [activeCompany.id]);
+      if (result.success && result.rows) {
+        setCurrencies(result.rows.map((row: any) => ({
+          id: row.id,
+          code: row.code,
+          name: row.name,
+          symbol: row.symbol,
+          exchangeRate: Number(row.exchange_rate),
+          isDefault: row.is_default,
+          isActive: row.is_active,
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load currencies:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => { loadData(); }, [activeCompany?.id]);
@@ -52,38 +57,52 @@ export const CurrenciesPage: React.FC = () => {
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.code || !formData.name) return;
     setIsSaving(true);
-    const adapter = await getDbAdapter();
-    
-    if (editingId) {
-      await adapter.query(
-        `UPDATE currencies SET code = ?, name = ?, symbol = ?, exchange_rate = ?, is_active = ? WHERE id = ?`,
-        [formData.code, formData.name, formData.symbol, formData.exchangeRate, formData.isActive, editingId]
-      );
-    } else {
-      await adapter.query(
-        `INSERT INTO currencies (id, company_id, code, name, symbol, exchange_rate, is_default, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [crypto.randomUUID(), activeCompany.id, formData.code, formData.name, formData.symbol, formData.exchangeRate, false, formData.isActive, new Date().toISOString()]
-      );
-    }
+    try {
+      const adapter = await getDbAdapter();
+      
+      if (editingId) {
+        await adapter.query(
+          `UPDATE currencies SET code = $1, name = $2, symbol = $3, exchange_rate = $4, is_active = $5 WHERE id = $6`,
+          [formData.code, formData.name, formData.symbol, formData.exchangeRate, formData.isActive, editingId]
+        );
+      } else {
+        await adapter.query(
+          `INSERT INTO currencies (id, company_id, code, name, symbol, exchange_rate, is_default, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [crypto.randomUUID(), activeCompany.id, formData.code, formData.name, formData.symbol, formData.exchangeRate, false, formData.isActive, new Date().toISOString()]
+        );
+      }
 
-    await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'currencies', recordId: editingId || 'new', companyId: activeCompany.id });
-    setIsSaving(false); setEditingId(null); setFormData({ code: '', name: '', symbol: '', exchangeRate: 1, isActive: true }); loadData();
+      await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'currencies', recordId: editingId || 'new', companyId: activeCompany.id });
+      setEditingId(null); setFormData({ code: '', name: '', symbol: '', exchangeRate: 1, isActive: true }); loadData();
+    } catch (err) {
+      console.error('Failed to save currency:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSetDefault = async (id: string) => {
     if (!activeCompany?.id) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`UPDATE currencies SET is_default = false WHERE company_id = ?`, [activeCompany.id]);
-    await adapter.query(`UPDATE currencies SET is_default = true WHERE id = ?`, [id]);
-    loadData();
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(`UPDATE currencies SET is_default = false WHERE company_id = $1`, [activeCompany.id]);
+      await adapter.query(`UPDATE currencies SET is_default = true WHERE id = $1`, [id]);
+      loadData();
+    } catch (err) {
+      console.error('Failed to set default currency:', err);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`DELETE FROM currencies WHERE id = ?`, [id]);
-    await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
-    setShowDeleteConfirm(null); loadData();
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(`DELETE FROM currencies WHERE id = $1`, [id]);
+      await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
+      setShowDeleteConfirm(null); loadData();
+    } catch (err) {
+      console.error('Failed to delete currency:', err);
+    }
   };
 
   const columns = [

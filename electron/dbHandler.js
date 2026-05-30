@@ -5,6 +5,24 @@ import { seedComprehensiveDemoData } from './seedDemoData.js';
 const { Pool } = pg;
 
 let pool = null;
+let querySeq = 0;
+
+/**
+ * Safe query wrapper that prevents PostgreSQL's "inconsistent types deduced
+ * for parameter $N" error caused by node-postgres skipping the Parse message
+ * when the same SQL text is reused (hasBeenParsed cache). Named prepared
+ * statements with unique names force a fresh Parse every time.
+ */
+async function execQuery(target, sql, params) {
+  const p = params || [];
+  if (p.length > 0) {
+    const name = `q${querySeq++}`;
+    const result = await target.query({ text: sql, values: p, name });
+    await target.query(`DEALLOCATE "${name}"`);
+    return result;
+  }
+  return await target.query(sql);
+}
 
 // Create database connection pool
 function createPool() {
@@ -45,10 +63,10 @@ export function registerDatabaseHandlers() {
   // Execute generic query
   ipcMain.handle('db:query', async (_event, { sql, params }) => {
     try {
-      const result = await pool.query(sql, params || []);
+      const result = await execQuery(pool, sql, params);
       return { success: true, rows: result.rows, rowCount: result.rowCount };
     } catch (err) {
-      console.error('[DB] Query error:', err.message, '\nSQL:', sql);
+      console.error('[DB] Query error:', err.message, '\nSQL:', sql, '\nParams:', JSON.stringify(params));
       return { success: false, error: err.message };
     }
   });
@@ -60,7 +78,7 @@ export function registerDatabaseHandlers() {
       await client.query('BEGIN');
       const results = [];
       for (const { sql, params } of queries) {
-        const res = await client.query(sql, params || []);
+        const res = await execQuery(client, sql, params);
         results.push({ rows: res.rows, rowCount: res.rowCount });
       }
       await client.query('COMMIT');
@@ -116,6 +134,7 @@ export async function initializeSchema() {
         username VARCHAR(100) NOT NULL,
         email VARCHAR(255),
         role VARCHAR(50) NOT NULL DEFAULT 'accountant',
+        branch_id UUID,
         password_hash TEXT,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         last_login_at TIMESTAMPTZ,
@@ -330,6 +349,8 @@ export async function initializeSchema() {
         name VARCHAR(100) NOT NULL,
         code VARCHAR(20),
         address TEXT,
+        city VARCHAR(100),
+        phone VARCHAR(50),
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
@@ -355,6 +376,8 @@ export async function initializeSchema() {
       CREATE TABLE IF NOT EXISTS vat_settings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+        name VARCHAR(100) DEFAULT 'ضريبة القيمة المضافة',
+        account_id UUID,
         vat_rate NUMERIC(5,2) NOT NULL DEFAULT 15,
         vat_number VARCHAR(50),
         is_inclusive BOOLEAN NOT NULL DEFAULT FALSE,
@@ -674,6 +697,7 @@ export async function seedInitialData() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('DEALLOCATE ALL');
 
     // 1. Seed company with YER currency
     const companyResult = await client.query(`
@@ -731,12 +755,12 @@ export async function seedInitialData() {
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '111001', 'الصندوق الرئيسي', 'Main Safe Cash', $2, 'asset', 'debit', FALSE, 5000000);
+      VALUES ($1, '11101', 'الصندوق الرئيسي', 'Main Cash', $2, 'asset', 'debit', FALSE, 5000000);
     `, [companyId, cashGroupId]);
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '111002', 'حساب بنك الكريمي', 'Al Karimi Bank', $2, 'asset', 'debit', FALSE, 12000000);
+      VALUES ($1, '11102', 'حساب بنك الكريمي', 'Yemen International Bank', $2, 'asset', 'debit', FALSE, 12000000);
     `, [companyId, cashGroupId]);
 
     // Liabilities
@@ -754,7 +778,7 @@ export async function seedInitialData() {
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '311001', 'رأس المال المدفوع', 'Paid-in Capital', $2, 'equity', 'credit', FALSE, 20000000);
+      VALUES ($1, '31101', 'رأس المال المدفوع', 'Paid-in Capital', $2, 'equity', 'credit', FALSE, 20000000);
     `, [companyId, equityId]);
 
     // Revenues
@@ -766,7 +790,7 @@ export async function seedInitialData() {
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '411001', 'مبيعات المنتجات', 'Product Sales', $2, 'revenue', 'credit', FALSE, 0);
+      VALUES ($1, '41101', 'مبيعات المنتجات', 'Product Sales', $2, 'revenue', 'credit', FALSE, 0);
     `, [companyId, revenueId]);
 
     // Expenses
@@ -778,24 +802,24 @@ export async function seedInitialData() {
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '511001', 'مصروفات الإيجار', 'Rent Expense', $2, 'expense', 'debit', FALSE, 0);
+      VALUES ($1, '52201', 'مصروفات الإيجار', 'Rent Expense', $2, 'expense', 'debit', FALSE, 0);
     `, [companyId, expenseId]);
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '511002', 'رواتب وأجور', 'Salaries & Wages', $2, 'expense', 'debit', FALSE, 0);
+      VALUES ($1, '52101', 'رواتب الموظفين', 'Employee Salaries', $2, 'expense', 'debit', FALSE, 0);
     `, [companyId, expenseId]);
 
     // Trade Debtors
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '112001', 'المدينون التجاريون', 'Trade Debtors', $2, 'asset', 'debit', FALSE, 0);
+      VALUES ($1, '11201', 'المدينون التجاريون', 'Trade Customers', $2, 'asset', 'debit', FALSE, 0);
     `, [companyId, curAssetsId]);
 
     // Inventory
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '113001', 'بضاعة أول المدة', 'Beginning Inventory', $2, 'asset', 'debit', FALSE, 0);
+      VALUES ($1, '11301', 'بضاعة أول المدة', 'Opening Inventory', $2, 'asset', 'debit', FALSE, 0);
     `, [companyId, curAssetsId]);
 
     // Liabilities sub-accounts
@@ -808,30 +832,30 @@ export async function seedInitialData() {
     // Trade Creditors
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '211001', 'الدائنون التجاريون', 'Trade Creditors', $2, 'liability', 'credit', FALSE, 0);
+      VALUES ($1, '21101', 'الدائنون التجاريون', 'Trade Suppliers', $2, 'liability', 'credit', FALSE, 0);
     `, [companyId, liabId]);
 
     // VAT Payable
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '213001', 'ضريبة القيمة المضافة', 'VAT Payable', $2, 'liability', 'credit', FALSE, 0);
+      VALUES ($1, '21301', 'ضريبة القيمة المضافة', 'VAT Payable', $2, 'liability', 'credit', FALSE, 0);
     `, [companyId, liabId]);
 
     // Additional revenue accounts
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '411002', 'مبيعات الخدمات', 'Services Sales', $2, 'revenue', 'credit', FALSE, 0);
+      VALUES ($1, '41102', 'مبيعات الخدمات', 'Services Sales', $2, 'revenue', 'credit', FALSE, 0);
     `, [companyId, revenueId]);
 
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '411003', 'مردودات المبيعات', 'Sales Returns', $2, 'revenue', 'credit', FALSE, 0);
+      VALUES ($1, '41103', 'مردودات المبيعات', 'Sales Returns', $2, 'revenue', 'credit', FALSE, 0);
     `, [companyId, revenueId]);
 
     // COGS
     await client.query(`
       INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
-      VALUES ($1, '511003', 'تكلفة بضاعة مباعة', 'Cost of Goods Sold', $2, 'expense', 'debit', FALSE, 0);
+      VALUES ($1, '51101', 'تكلفة بضاعة مباعة', 'Cost of Goods Sold', $2, 'expense', 'debit', FALSE, 0);
     `, [companyId, expenseId]);
 
     // 4. Seed basic settings
@@ -867,19 +891,36 @@ export async function seedInitialData() {
       `, [companyId, s.type, s.prefix, s.start, s.current]);
     }
 
+    // 5-extra. Additional document sequences
+    const additionalDocSeqs = [
+      { type: 'sales_return', prefix: 'SR-', start: 1, current: 1 },
+      { type: 'purchase_return', prefix: 'PR-', start: 1, current: 1 },
+      { type: 'work_order', prefix: 'WO-', start: 1, current: 1 },
+      { type: 'stock_adjustment', prefix: 'ADJ-', start: 1, current: 1 },
+      { type: 'inventory_transfer', prefix: 'TRF-', start: 1, current: 1 },
+      { type: 'payroll_run', prefix: 'PAY-', start: 1, current: 1 },
+    ];
+    for (const s of additionalDocSeqs) {
+      await client.query(`
+        INSERT INTO document_sequences (company_id, document_type, prefix, suffix, starting_number, current_number, increment_step, padding_length, year_reset, is_active)
+        SELECT $1, $2, $3, '', $4, $5, 1, 6, FALSE, TRUE
+        WHERE NOT EXISTS (SELECT 1 FROM document_sequences WHERE company_id = $1 AND document_type = $2);
+      `, [companyId, s.type, s.prefix, s.start, s.current]);
+    }
+
     // 5a. Seed default accounts
     const defaultAccountMappings = [
-      { key: 'default_cash', code: '111001' },
-      { key: 'default_bank', code: '111002' },
-      { key: 'default_sales', code: '411001' },
-      { key: 'default_cogs', code: '511003' },
-      { key: 'default_inventory', code: '113001' },
-      { key: 'default_debtors', code: '112001' },
-      { key: 'default_creditors', code: '211001' },
-      { key: 'default_vat_output', code: '213001' },
-      { key: 'default_vat_input', code: '213001' },
-      { key: 'default_salaries', code: '511002' },
-      { key: 'default_sales_returns', code: '411003' },
+      { key: 'default_cash', code: '11101' },
+      { key: 'default_bank', code: '11102' },
+      { key: 'default_sales', code: '41101' },
+      { key: 'default_cogs', code: '51101' },
+      { key: 'default_inventory', code: '11301' },
+      { key: 'default_debtors', code: '11201' },
+      { key: 'default_creditors', code: '21101' },
+      { key: 'default_vat_output', code: '21301' },
+      { key: 'default_vat_input', code: '21301' },
+      { key: 'default_salaries', code: '52101' },
+      { key: 'default_sales_returns', code: '41103' },
     ];
     for (const mapping of defaultAccountMappings) {
       const accRes = await client.query(
@@ -894,40 +935,78 @@ export async function seedInitialData() {
       }
     }
 
+    // 5a-extra. Additional default accounts
+    const additionalDefaultAccounts = [
+      { key: 'default_discount_allowed', code: '41101', required: false },
+      { key: 'default_discount_received', code: '21101', required: false },
+      { key: 'default_purchase_returns', code: '21101', required: true },
+    ];
+    for (const mapping of additionalDefaultAccounts) {
+      const accRes = await client.query(
+        `SELECT id FROM accounts WHERE company_id = $1 AND code = $2 LIMIT 1;`,
+        [companyId, mapping.code]
+      );
+      if (accRes.rows.length > 0) {
+        await client.query(`
+          INSERT INTO default_accounts (company_id, function_key, account_id, is_required)
+          SELECT $1, $2, $3, $4
+          WHERE NOT EXISTS (SELECT 1 FROM default_accounts WHERE company_id = $1 AND function_key = $2);
+        `, [companyId, mapping.key, accRes.rows[0].id, mapping.required]);
+      }
+    }
+
     // 5b. Seed product types
     await client.query(`
       INSERT INTO product_types (company_id, name_ar, name_en, code, appears_in_sales, appears_in_purchases, appears_in_inventory, has_stock_tracking)
       VALUES ($1, $2, $3, $4, true, true, true, true) ON CONFLICT DO NOTHING;
-    `, [companyId, 'منتج تجاري', 'Trading Product', 'TRD']);
+    `, [companyId, 'سلعة تجارية', 'Trading Goods', 'TRADE']);
 
     // 5c. Seed units
     await client.query(`
       INSERT INTO units (company_id, name_ar, name_en, code, conversion_factor)
       VALUES ($1, $2, $3, $4, 1) ON CONFLICT DO NOTHING;
-    `, [companyId, 'قطعة', 'Piece', 'PCS']);
+    `, [companyId, 'قطعة', 'Piece', 'PC']);
 
     // 5d. Seed cash boxes
     const cashBoxAccRes = await client.query(
       `SELECT id FROM accounts WHERE company_id = $1 AND code = $2 LIMIT 1;`,
-      [companyId, '111001']
+      [companyId, '11101']
     );
     if (cashBoxAccRes.rows.length > 0) {
       await client.query(`
         INSERT INTO cash_boxes (company_id, name, code, current_balance, account_id)
         VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;
       `, [companyId, 'الصندوق الرئيسي', 'MAIN-CB', 5000000, cashBoxAccRes.rows[0].id]);
+
+      await client.query(`
+        INSERT INTO cash_boxes (company_id, name, code, current_balance, account_id)
+        SELECT $1, $2, $3, $4, $5
+        WHERE NOT EXISTS (SELECT 1 FROM cash_boxes WHERE company_id = $1 AND code = $3);
+      `, [companyId, 'صندوق فرع الحديدة', 'CB-HOD', 200000, cashBoxAccRes.rows[0].id]);
+
+      await client.query(`
+        INSERT INTO cash_boxes (company_id, name, code, current_balance, account_id)
+        SELECT $1, $2, $3, $4, $5
+        WHERE NOT EXISTS (SELECT 1 FROM cash_boxes WHERE company_id = $1 AND code = $3);
+      `, [companyId, 'صندوق فرع عدن', 'CB-ADN', 300000, cashBoxAccRes.rows[0].id]);
     }
 
     // 5e. Seed banks
     const bankAccRes = await client.query(
       `SELECT id FROM accounts WHERE company_id = $1 AND code = $2 LIMIT 1;`,
-      [companyId, '111002']
+      [companyId, '11102']
     );
     if (bankAccRes.rows.length > 0) {
       await client.query(`
         INSERT INTO banks (company_id, name, bank_name, account_number, current_balance, account_id)
         VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING;
       `, [companyId, 'حساب بنك الكريمي', 'بنك الكريمي', 'YE123456', 12000000, bankAccRes.rows[0].id]);
+
+      await client.query(`
+        INSERT INTO banks (company_id, name, bank_name, account_number, iban, account_id, is_active, current_balance)
+        SELECT $1, $2, $3, $4, $5, $6, TRUE, $7
+        WHERE NOT EXISTS (SELECT 1 FROM banks WHERE company_id = $1 AND bank_name = $3);
+      `, [companyId, 'حساب البنك اليمني الدولي', 'البنك اليمني الدولي', '1234567890', 'YE12345678901234', bankAccRes.rows[0].id, 5800000]);
     }
 
     // 5f. Seed cost centers
@@ -935,6 +1014,18 @@ export async function seedInitialData() {
       INSERT INTO cost_centers (company_id, name_ar, name_en, code, type, budget_amount)
       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING;
     `, [companyId, 'الفرع الرئيسي', 'Main Branch', 'HQ', 'branch', 0]);
+
+    await client.query(`
+      INSERT INTO cost_centers (company_id, name_ar, name_en, code, type, budget_amount)
+      SELECT $1, $2, $3, $4, $5, $6
+      WHERE NOT EXISTS (SELECT 1 FROM cost_centers WHERE company_id = $1 AND code = $4);
+    `, [companyId, 'قسم المبيعات', 'Sales Department', 'CC-SAL', 'department', 1500000]);
+
+    await client.query(`
+      INSERT INTO cost_centers (company_id, name_ar, name_en, code, type, budget_amount)
+      SELECT $1, $2, $3, $4, $5, $6
+      WHERE NOT EXISTS (SELECT 1 FROM cost_centers WHERE company_id = $1 AND code = $4);
+    `, [companyId, 'قسم الإنتاج', 'Production Department', 'CC-PRD', 'department', 2500000]);
 
     // 5g. Seed payroll components
     const payrollComps = [
@@ -1049,6 +1140,42 @@ export function registerOnboardingHandlers() {
     }
   });
 
+  // Clear all data (factory reset)
+  ipcMain.handle('db:clear-all', async () => {
+    try {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        // Get all table names in the public schema
+        const tablesResult = await client.query(`
+          SELECT tablename FROM pg_tables
+          WHERE schemaname = 'public' AND tablename != 'pg_stat_statements'
+        `);
+
+        const tables = tablesResult.rows.map(r => r.tablename);
+
+        if (tables.length > 0) {
+          // Truncate all tables with CASCADE to handle foreign keys
+          const truncateList = tables.join(', ');
+          await client.query(`TRUNCATE ${truncateList} CASCADE`);
+        }
+
+        await client.query('COMMIT');
+        console.log('[DB] All data cleared successfully.');
+        return { success: true, tablesCleared: tables.length };
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error('[DB] Clear all failed:', err.message);
+      return { success: false, error: err.message };
+    }
+  });
+
   // Seed default data (chart of accounts, company, admin user, basic settings)
   ipcMain.handle('db:seed-default', async () => {
     try {
@@ -1074,6 +1201,7 @@ export function registerOnboardingHandlers() {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
+        await client.query('DEALLOCATE ALL');
         await seedComprehensiveDemoData(client, companyId);
         await client.query('COMMIT');
         console.log('[DB] Demo data seeded successfully.');

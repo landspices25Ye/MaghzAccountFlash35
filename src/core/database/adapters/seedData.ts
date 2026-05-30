@@ -521,7 +521,7 @@ function seedDocumentSequences(companyId: string) {
     { document_type: 'payment_voucher', prefix: 'PV-', suffix: '', starting_number: 1, current_number: 6, padding_length: 4, year_reset: false },
     { document_type: 'journal_voucher', prefix: 'JV-', suffix: '', starting_number: 1, current_number: 31, padding_length: 4, year_reset: false },
     { document_type: 'purchase_order', prefix: 'PO-', suffix: '', starting_number: 1, current_number: 1, padding_length: 4, year_reset: false },
-    { document_type: 'quotation', prefix: 'QUO-', suffix: '', starting_number: 1, current_number: 1, padding_length: 4, year_reset: false },
+    { document_type: 'quotation', prefix: 'QOT-', suffix: '', starting_number: 1, current_number: 1, padding_length: 4, year_reset: false },
     { document_type: 'work_order', prefix: 'WO-', suffix: '', starting_number: 1, current_number: 7, padding_length: 4, year_reset: false },
     { document_type: 'stock_adjustment', prefix: 'ADJ-', suffix: '', starting_number: 1, current_number: 5, padding_length: 4, year_reset: false },
     { document_type: 'inventory_transfer', prefix: 'TRF-', suffix: '', starting_number: 1, current_number: 2, padding_length: 4, year_reset: false },

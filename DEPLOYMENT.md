@@ -9,9 +9,9 @@
 | البيئة | المنصة | قاعدة البيانات | الغرض | التكرار |
 |--------|--------|---------------|-------|---------|
 | **Development (Web)** | Localhost (Vite) | Dexie/Mock | تطوير الواجهة | يومي |
-| **Development (Electron)** | Electron local | PostgreSQL أو Realm | تطوير سطح المكتب | يومي |
+| **Development (Electron)** | Electron local | PostgreSQL (Mock fallback) | تطوير سطح المكتب | يومي |
 | **Staging** | Server داخلي أو VPS | PostgreSQL staging | اختبار ما قبل الإنتاج | عند كل Release |
-| **Production (Desktop)** | Electron distributables | PostgreSQL local أو Realm | المستخدم النهائي | عند كل Release |
+| **Production (Desktop)** | Electron distributables | PostgreSQL local (Mock fallback) | المستخدم النهائي | عند كل Release |
 | **Production (Web)** | VPS / Cloud (مستقبلي) | PostgreSQL / Supabase | SaaS مستقبلي | عند كل Release |
 
 ---
@@ -62,10 +62,10 @@
 │           ▼                    ▼                            │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │              Database Layer                         │    │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐          │    │
-│  │  │PostgreSQL│  │  Realm   │  │  Dexie   │          │    │
-│  │  │(Primary) │  │ (Cache)  │  │ (Mock)   │          │    │
-│  │  └──────────┘  └──────────┘  └──────────┘          │    │
+│  │  ┌──────────┐  ┌──────────┐                         │    │
+│  │  │PostgreSQL│  │  Mock    │                         │    │
+│  │  │(Primary) │  │ (Dev)    │                         │    │
+│  │  └──────────┘  └──────────┘                         │    │
 │  └─────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -82,11 +82,11 @@
     "recharts": "^2.12.0",
     "@tremor/react": "^3.17.0",
     "@tanstack/react-table": "^8.17.0",
-    "@react-pdf/renderer": "^3.4.0",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
     "xlsx": "^0.18.5",
     "drizzle-orm": "^0.45.2",
     "pg": "^8.21.0",
-    "realm": "^20.2.0",
     "dexie": "^4.4.2"
   }
 }
@@ -356,37 +356,9 @@ pg_restore -U maghz_app -d maghzaccount_db backup_20260524.dump
 
 ---
 
-## 7. إعداد Realm DB (Offline Mode)
+## 7. النشر على الويب (Web Deployment — مستقبلي)
 
-### 7.1 تفعيل التشفير
-
-```ts
-// src/core/database/realm/index.ts
-import Realm from 'realm';
-
-const realmConfig: Realm.Configuration = {
-  path: 'maghzaccount-pro.realm',
-  schema: [CompanySchema, AccountSchema, /* ... */],
-  encryptionKey: new Int8Array(64), // يُستخرج من بيئة آمنة
-  schemaVersion: 1,
-  migration: (oldRealm, newRealm) => {
-    // منطق الترقية
-  },
-};
-
-export const realm = new Realm(realmConfig);
-```
-
-**تحذير:** لا تُخزن `encryptionKey` في الكود المصدري. استخدم:
-- macOS: Keychain
-- Windows: Credential Manager
-- Linux: Secret Service API
-
----
-
-## 8. النشر على الويب (Web Deployment — مستقبلي)
-
-### 8.1 البناء للإنتاج
+### 7.1 البناء للإنتاج
 
 ```bash
 # تعيين متغيرات البيئة
@@ -397,7 +369,7 @@ export VITE_APP_ENV=production
 npm run build
 ```
 
-### 8.2 نشر على Nginx
+### 7.2 نشر على Nginx
 
 ```nginx
 # /etc/nginx/sites-available/maghzaccount
@@ -427,7 +399,7 @@ server {
 }
 ```
 
-### 8.3 Docker (مستقبلي)
+### 7.3 Docker (مستقبلي)
 
 ```dockerfile
 # Dockerfile
@@ -447,9 +419,9 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ---
 
-## 9. CI/CD Pipeline
+## 8. CI/CD Pipeline
 
-### 9.1 GitHub Actions — Build & Test
+### 8.1 GitHub Actions — Build & Test
 
 ```yaml
 # .github/workflows/ci.yml
@@ -492,7 +464,7 @@ jobs:
           path: dist/
 ```
 
-### 9.2 GitHub Actions — Electron Build & Release
+### 8.2 GitHub Actions — Electron Build & Release
 
 ```yaml
 # .github/workflows/release.yml
@@ -542,9 +514,9 @@ jobs:
 
 ---
 
-## 10. التحديث التلقائي (Auto-updater)
+## 9. التحديث التلقائي (Auto-updater)
 
-### 10.1 إعداد Auto-updater في Electron
+### 9.1 إعداد Auto-updater في Electron
 
 ```js
 // electron/main.js
@@ -579,12 +551,12 @@ if (!isDev) {
 
 ---
 
-## 11. التحقق بعد النشر (Post-Deployment Checklist)
+## 10. التحقق بعد النشر (Post-Deployment Checklist)
 
-### 11.1 فحص Electron
+### 10.1 فحص Electron
 - [ ] التطبيق يفتح بدون أخطاء.
 - [ ] الاتصال بـ PostgreSQL يعمل (إذا كان متاحاً).
-- [ ] Realm DB يُنشأ في مجلد البيانات المحلي.
+- [ ] Mock adapter يعمل كـ fallback.
 - [ ] الترجمة تبدل بين العربية والإنجليزية.
 - [ ] Dark Mode يعمل بشكل صحيح.
 - [ ] الشعار والأيقونات تظهر.
@@ -592,7 +564,7 @@ if (!isDev) {
 - [ ] Uninstaller يعمل بدون بقايا.
 - [ ] Auto-updater يتحقق من التحديثات.
 
-### 11.2 فحص الويب (مستقبلي)
+### 10.2 فحص الويب (مستقبلي)
 - [ ] HTTPS يعمل مع شهادة صالحة.
 - [ ] API يستجيب بشكل صحيح.
 - [ ] PWA manifest صحيح.
@@ -600,24 +572,23 @@ if (!isDev) {
 
 ---
 
-## 12. استكشاف الأخطاء الشائعة (Troubleshooting)
+## 11. استكشاف الأخطاء الشائعة (Troubleshooting)
 
 | المشكلة | السبب المحتمل | الحل |
 |---------|--------------|------|
 | `electron:build` يفشل على Windows | Visual Studio Build Tools غير مثبت | ثبت VS Build Tools 2022 |
 | PostgreSQL لا يستجيب | الخدمة متوقفة أو بيانات الاعتماد خاطئة | تحقق من `pg_isready` و `.env` |
-| Realm file corruption | إغلاق غير متوقع | استخدم `realm.writeCopyTo()` للنسخ الاحتياطي |
 | Blank screen في Electron | مسار index.html خاطئ | تحقق من `loadFile()` path |
 | Icons لا تظهر | أيقونات غير موجودة في `build/` | ضع `icon.ico`, `icon.icns`, `icon.png` في `build/` |
 | `npm ci` يفشل | `package-lock.json` غير متزامن | شغّل `npm install` ثم ارفع `package-lock.json` |
 | Tailwind classes لا تعمل | المسارات غير مضافة في `tailwind.config.js` | أضف `./src/**/*.{js,ts,jsx,tsx}` |
-| PDF لا يدعم العربية | خط Cairo غير محمل | حمّل خط Cairo في `@react-pdf/renderer` |
+| PDF لا يدعم العربية | خط Cairo غير محمل | استخدم `doc.addFileToVFS` لتحميل خط Cairo في `jspdf` |
 
 ---
 
-## 13. دليل التراجع (Rollback)
+## 12. دليل التراجع (Rollback)
 
-### 13.1 إذا فشل إصدار جديد
+### 12.1 إذا فشل إصدار جديد
 
 ```bash
 # 1. استعادة قاعدة البيانات من النسخة الاحتياطية
@@ -633,7 +604,7 @@ npm run electron:build
 # 4. توزيع الإصدار السابق على المستخدمين
 ```
 
-### 13.2 إذا فشلت Migration
+### 12.2 إذا فشلت Migration
 
 ```bash
 # التحقق من حالة migrations
@@ -645,25 +616,21 @@ npx drizzle-kit drop  # احذر: هذا يحذف migration
 
 ---
 
-## 14. الأمان (Security)
+## 13. الأمان (Security)
 
-### 14.1 قاعدة البيانات
+### 13.1 قاعدة البيانات
 - استخدم SSL للاتصالات البعيدة.
 - لا تُخزن كلمات المرور في الكود.
 - استخدم متغيرات البيئة (`.env`).
 
-### 14.2 Realm
-- فعّل التشفير (AES-256).
-- خزّن مفتاح التشفير في Keychain/Credential Manager.
-
-### 14.3 Electron
+### 13.2 Electron
 - استخدم `contextIsolation: true`.
 - لا تُعرض Node.js APIs مباشرة للـ Renderer.
 - فعّل `nodeIntegration: false`.
 
 ---
 
-## 15. أوامر التشغيل والبناء
+## 14. أوامر التشغيل والبناء
 
 ```bash
 # التطوير (ويب)

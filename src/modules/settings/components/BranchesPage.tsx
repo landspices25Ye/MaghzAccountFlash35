@@ -28,19 +28,24 @@ export const BranchesPage: React.FC = () => {
   const loadData = async () => {
     if (!activeCompany?.id) return;
     setIsLoading(true);
-    const adapter = await getDbAdapter();
-    const result = await adapter.query(`SELECT * FROM branches WHERE company_id = ?`, [activeCompany.id]);
-    if (result.success && result.rows) {
-      setBranches(result.rows.map((row: any) => ({
-        id: row.id,
-        name: row.name,
-        code: row.code,
-        city: row.city,
-        phone: row.phone,
-        isActive: row.is_active,
-      })));
+    try {
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(`SELECT * FROM branches WHERE company_id = $1`, [activeCompany.id]);
+      if (result.success && result.rows) {
+        setBranches(result.rows.map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          code: row.code,
+          city: row.city,
+          phone: row.phone,
+          isActive: row.is_active,
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => { loadData(); }, [activeCompany?.id]);
@@ -48,30 +53,40 @@ export const BranchesPage: React.FC = () => {
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.name) return;
     setIsSaving(true);
-    const adapter = await getDbAdapter();
-    
-    if (editingId) {
-      await adapter.query(
-        `UPDATE branches SET name = ?, code = ?, city = ?, phone = ?, is_active = ? WHERE id = ?`,
-        [formData.name, formData.code, formData.city, formData.phone, formData.isActive, editingId]
-      );
-    } else {
-      await adapter.query(
-        `INSERT INTO branches (id, company_id, name, code, city, phone, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [crypto.randomUUID(), activeCompany.id, formData.name, formData.code, formData.city, formData.phone, formData.isActive, new Date().toISOString()]
-      );
-    }
+    try {
+      const adapter = await getDbAdapter();
+      
+      if (editingId) {
+        await adapter.query(
+          `UPDATE branches SET name = $1, code = $2, city = $3, phone = $4, is_active = $5 WHERE id = $6`,
+          [formData.name, formData.code, formData.city, formData.phone, formData.isActive, editingId]
+        );
+      } else {
+        await adapter.query(
+          `INSERT INTO branches (id, company_id, name, code, city, phone, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [crypto.randomUUID(), activeCompany.id, formData.name, formData.code, formData.city, formData.phone, formData.isActive, new Date().toISOString()]
+        );
+      }
 
-    await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'branches', recordId: editingId || 'new', companyId: activeCompany.id });
-    setIsSaving(false); setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
+      await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'branches', recordId: editingId || 'new', companyId: activeCompany.id });
+      setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
+    } catch (err) {
+      console.error('Failed to save branch:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`DELETE FROM branches WHERE id = ?`, [id]);
-    await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
-    setShowDeleteConfirm(null); loadData();
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(`DELETE FROM branches WHERE id = $1`, [id]);
+      await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
+      setShowDeleteConfirm(null); loadData();
+    } catch (err) {
+      console.error('Failed to delete branch:', err);
+    }
   };
 
   const columns = [

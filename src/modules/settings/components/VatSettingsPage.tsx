@@ -27,21 +27,26 @@ export const VatSettingsPage: React.FC = () => {
   const loadData = async () => {
     if (!activeCompany?.id) return;
     setIsLoading(true);
-    const adapter = await getDbAdapter();
-    const result = await adapter.query(
-      `SELECT * FROM vat_settings WHERE company_id = ?`,
-      [activeCompany.id]
-    );
-    if (result.success && result.rows) {
-      setVatTypes(result.rows.map((row: any) => ({
-        id: row.id,
-        name: row.name || 'ضريبة القيمة المضافة',
-        rate: Number(row.vat_rate),
-        accountId: row.account_id,
-        isActive: row.is_active,
-      })));
+    try {
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(
+        `SELECT * FROM vat_settings WHERE company_id = $1`,
+        [activeCompany.id]
+      );
+      if (result.success && result.rows) {
+        setVatTypes(result.rows.map((row: any) => ({
+          id: row.id,
+          name: row.name || 'ضريبة القيمة المضافة',
+          rate: Number(row.vat_rate),
+          accountId: row.account_id,
+          isActive: row.is_active,
+        })));
+      }
+    } catch (err) {
+      console.error('Failed to load VAT settings:', err);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => { loadData(); }, [activeCompany?.id]);
@@ -49,47 +54,56 @@ export const VatSettingsPage: React.FC = () => {
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.name) return;
     setIsSaving(true);
-    const adapter = await getDbAdapter();
-    
-    if (editingId) {
-      await adapter.query(
-        `UPDATE vat_settings SET name = ?, vat_rate = ?, account_id = ?, is_active = ?, updated_at = ? WHERE id = ?`,
-        [formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString(), editingId]
-      );
-    } else {
-      await adapter.query(
-        `INSERT INTO vat_settings (id, company_id, name, vat_rate, account_id, is_active, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [crypto.randomUUID(), activeCompany.id, formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString()]
-      );
+    try {
+      const adapter = await getDbAdapter();
+      
+      if (editingId) {
+        await adapter.query(
+          `UPDATE vat_settings SET name = $1, vat_rate = $2, account_id = $3, is_active = $4, updated_at = $5 WHERE id = $6`,
+          [formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString(), editingId]
+        );
+      } else {
+        await adapter.query(
+          `INSERT INTO vat_settings (id, company_id, name, vat_rate, account_id, is_active, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [crypto.randomUUID(), activeCompany.id, formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString()]
+        );
+      }
+
+      await logAudit({
+        userId: user?.id || 'system',
+        action: editingId ? 'update' : 'create',
+        tableName: 'vat_settings',
+        recordId: editingId || 'new',
+        companyId: activeCompany.id,
+      });
+
+      setEditingId(null);
+      setFormData({ name: '', rate: 15, isActive: true });
+      loadData();
+    } catch (err) {
+      console.error('Failed to save VAT settings:', err);
+    } finally {
+      setIsSaving(false);
     }
-
-    await logAudit({
-      userId: user?.id || 'system',
-      action: editingId ? 'update' : 'create',
-      tableName: 'vat_settings',
-      recordId: editingId || 'new',
-      companyId: activeCompany.id,
-    });
-
-    setIsSaving(false);
-    setEditingId(null);
-    setFormData({ name: '', rate: 15, isActive: true });
-    loadData();
   };
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
-    const adapter = await getDbAdapter();
-    await adapter.query(`DELETE FROM vat_settings WHERE id = ?`, [id]);
-    await logAudit({
-      userId: user?.id || 'system',
-      action: 'delete',
-      tableName: 'vat_settings',
-      recordId: id,
-      companyId: activeCompany.id,
-    });
-    setShowDeleteConfirm(null);
-    loadData();
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(`DELETE FROM vat_settings WHERE id = $1`, [id]);
+      await logAudit({
+        userId: user?.id || 'system',
+        action: 'delete',
+        tableName: 'vat_settings',
+        recordId: id,
+        companyId: activeCompany.id,
+      });
+      setShowDeleteConfirm(null);
+      loadData();
+    } catch (err) {
+      console.error('Failed to delete VAT settings:', err);
+    }
   };
 
   const columns = [
