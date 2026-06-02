@@ -7,12 +7,15 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useEndOfServices, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { EndOfService } from '../types';
 
 export const EndOfServicePage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { items, isLoading, create, updateStatus, remove } = useEndOfServices(companyId);
+  const { filtered: filteredItems, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(items, 'hr');
   const { employees } = useEmployees(companyId);
   const { formatCurrency } = useFormatters(companyId);
 
@@ -114,18 +117,21 @@ export const EndOfServicePage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">نهاية الخدمة</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">حساب وإدارة مستحقات نهاية الخدمة</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>حساب جديد</Button>
       </div>
+    </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : items.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <EmptyState icon="file" title="لا توجد سجلات" description="يمكنك إنشاء حساب نهاية خدمة جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>حساب جديد</Button>} />
         ) : (
           <Table<EndOfService>
-            data={items}
+            data={filteredItems}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا توجد سجلات"

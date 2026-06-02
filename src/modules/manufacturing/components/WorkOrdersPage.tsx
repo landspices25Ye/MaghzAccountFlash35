@@ -9,6 +9,8 @@ import { useAppStore } from '@/core/store';
 import { useWorkOrders, useWorkOrderVariance } from '../hooks/useManufacturing';
 import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { WorkOrder, WorkOrderLine } from '../types';
 
 interface WorkOrderFormLine {
@@ -23,6 +25,7 @@ export const WorkOrdersPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { workOrders, isLoading, create, update, remove, changeStatus } = useWorkOrders(companyId);
+  const { filtered: filteredWorkOrders, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(workOrders, 'manufacturing');
   const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,7 +65,7 @@ export const WorkOrdersPage: React.FC = () => {
       plannedEndDate: wo.plannedEndDate || '',
       estimatedCost: String(wo.estimatedCost || ''),
     });
-    const res = await manufacturingApi.getWorkOrderById(wo.id);
+    const res = await manufacturingApi.getWorkOrderById(wo.id, companyId);
     if (res.success && res.data) {
       setLines(res.data.lines.map((l) => ({ materialId: l.materialId, plannedQuantity: l.plannedQuantity, unitCost: l.unitCost || 0 })));
     } else {
@@ -72,7 +75,7 @@ export const WorkOrdersPage: React.FC = () => {
   };
 
   const openView = async (wo: WorkOrder) => {
-    const res = await manufacturingApi.getWorkOrderById(wo.id);
+    const res = await manufacturingApi.getWorkOrderById(wo.id, companyId);
     if (res.success && res.data) {
       setViewing(res.data);
       setIsDetailOpen(true);
@@ -169,7 +172,8 @@ export const WorkOrdersPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة أوامر التشغيل والإنتاج</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+      <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           أمر تشغيل جديد
         </Button>
       </div>
@@ -177,11 +181,11 @@ export const WorkOrdersPage: React.FC = () => {
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : workOrders.length === 0 ? (
+        ) : filteredWorkOrders.length === 0 ? (
           <EmptyState icon="file" title="لا توجد أوامر تشغيل" description="يمكنك إضافة أمر تشغيل جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>أمر تشغيل جديد</Button>} />
         ) : (
           <Table<WorkOrder>
-            data={workOrders}
+            data={filteredWorkOrders}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا توجد أوامر تشغيل"

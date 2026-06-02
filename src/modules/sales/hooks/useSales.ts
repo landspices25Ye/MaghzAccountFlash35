@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { salesApi } from '../api';
+import { useAuthStore } from '@/modules/auth/store';
 import type { Customer, SalesInvoice, Quotation, SalesReturn } from '../types';
 
 export function useCustomers(companyId: string) {
@@ -9,7 +10,9 @@ export function useCustomers(companyId: string) {
   const load = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const result = await salesApi.getCustomers(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('sales') ? auth.user?.id : undefined;
+    const result = await salesApi.getCustomers(companyId, ownedByUserId);
     if (result.success && result.data) setCustomers(result.data);
     setIsLoading(false);
   }, [companyId]);
@@ -17,22 +20,26 @@ export function useCustomers(companyId: string) {
   useEffect(() => { load(); }, [load]);
 
   const create = useCallback(async (data: Omit<Customer, 'id'>) => {
-    const result = await salesApi.createCustomer(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.createCustomer(data, userId);
     if (result.success) await load();
     return result;
   }, [load]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Customer, 'id' | 'companyId'>>) => {
-    const result = await salesApi.updateCustomer(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.updateCustomer(id, companyId, userId, data);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const result = await salesApi.deleteCustomer(id);
+    const result = await salesApi.deleteCustomer(id, companyId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   return { customers, isLoading, create, update, remove, reload: load };
 }
@@ -44,7 +51,9 @@ export function useInvoices(companyId: string) {
   const load = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const result = await salesApi.getInvoices(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('sales') ? auth.user?.id : undefined;
+    const result = await salesApi.getInvoices(companyId, ownedByUserId);
     if (result.success && result.data) setInvoices(result.data);
     setIsLoading(false);
   }, [companyId]);
@@ -52,28 +61,33 @@ export function useInvoices(companyId: string) {
   useEffect(() => { load(); }, [load]);
 
   const create = useCallback(async (data: Omit<SalesInvoice, 'id'>) => {
-    const result = await salesApi.createInvoice(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.createInvoice(data, userId);
     if (result.success) await load();
     return result;
   }, [load]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<SalesInvoice, 'id' | 'companyId'>> & { lines?: SalesInvoice['lines'] }) => {
-    const result = await salesApi.updateInvoice(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.updateInvoice(id, companyId, userId, data);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const result = await salesApi.deleteInvoice(id);
+    const result = await salesApi.deleteInvoice(id, companyId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const post = useCallback(async (id: string) => {
-    const result = await salesApi.postInvoice(id);
+    const userId = useAuthStore.getState().user?.id;
+    const result = await salesApi.postInvoice(id, companyId, userId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   return { invoices, isLoading, create, update, remove, post, reload: load };
 }
@@ -85,7 +99,9 @@ export function useQuotations(companyId: string) {
   const load = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const result = await salesApi.getQuotations(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('sales') ? auth.user?.id : undefined;
+    const result = await salesApi.getQuotations(companyId, ownedByUserId);
     if (result.success && result.data) setQuotations(result.data);
     setIsLoading(false);
   }, [companyId]);
@@ -93,28 +109,34 @@ export function useQuotations(companyId: string) {
   useEffect(() => { load(); }, [load]);
 
   const create = useCallback(async (data: Omit<Quotation, 'id'>) => {
-    const result = await salesApi.createQuotation(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.createQuotation(data, userId);
     if (result.success) await load();
     return result;
   }, [load]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Quotation, 'id' | 'companyId'>> & { lines?: Quotation['lines'] }) => {
-    const result = await salesApi.updateQuotation(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.updateQuotation(id, companyId, userId, data);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const result = await salesApi.deleteQuotation(id);
+    const result = await salesApi.deleteQuotation(id, companyId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const convertToInvoice = useCallback(async (id: string, invoiceData: Omit<SalesInvoice, 'id'>) => {
-    const result = await salesApi.convertQuotationToInvoice(id, invoiceData);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.convertQuotationToInvoice(id, companyId, userId, invoiceData);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   return { quotations, isLoading, create, update, remove, convertToInvoice, reload: load };
 }
@@ -126,7 +148,9 @@ export function useReturns(companyId: string) {
   const load = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const result = await salesApi.getReturns(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('sales') ? auth.user?.id : undefined;
+    const result = await salesApi.getReturns(companyId, ownedByUserId);
     if (result.success && result.data) setReturns(result.data);
     setIsLoading(false);
   }, [companyId]);
@@ -134,28 +158,33 @@ export function useReturns(companyId: string) {
   useEffect(() => { load(); }, [load]);
 
   const create = useCallback(async (data: Omit<SalesReturn, 'id'>) => {
-    const result = await salesApi.createReturn(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.createReturn(data, userId);
     if (result.success) await load();
     return result;
   }, [load]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<SalesReturn, 'id' | 'companyId'>> & { lines?: SalesReturn['lines'] }) => {
-    const result = await salesApi.updateReturn(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await salesApi.updateReturn(id, companyId, userId, data);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const result = await salesApi.deleteReturn(id);
+    const result = await salesApi.deleteReturn(id, companyId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   const post = useCallback(async (id: string) => {
-    const result = await salesApi.postReturn(id);
+    const userId = useAuthStore.getState().user?.id;
+    const result = await salesApi.postReturn(id, companyId, userId);
     if (result.success) await load();
     return result;
-  }, [load]);
+  }, [load, companyId]);
 
   return { returns, isLoading, create, update, remove, post, reload: load };
 }

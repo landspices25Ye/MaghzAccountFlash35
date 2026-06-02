@@ -8,6 +8,20 @@
       "when": 1779734523652,
       "tag": "0000_init_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779734523653,
+      "tag": "0001_audit_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779734523654,
+      "tag": "0002_product_type_and_categories",
+      "breakpoints": true
     }
   ]
 }

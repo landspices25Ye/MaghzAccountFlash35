@@ -14,6 +14,8 @@ export const leads = pgTable('leads', {
   estimatedValue: numeric('estimated_value', { precision: 18, scale: 4 }),
   assignedTo: uuid('assigned_to').references(() => users.id),
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -30,6 +32,8 @@ export const opportunities = pgTable('opportunities', {
   probability: integer('probability').default(50), // 0-100
   expectedCloseDate: date('expected_close_date'),
   assignedTo: uuid('assigned_to').references(() => users.id),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -46,6 +50,8 @@ export const crmActivities = pgTable('crm_activities', {
   priority: varchar('priority', { length: 20 }).default('medium').notNull(), // low, medium, high
   status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, completed, cancelled
   assignedTo: uuid('assigned_to').references(() => users.id),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -59,5 +65,7 @@ export const calls = pgTable('calls', {
   type: varchar('type', { length: 20 }).notNull(), // incoming, outgoing
   duration: integer('duration'), // seconds
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

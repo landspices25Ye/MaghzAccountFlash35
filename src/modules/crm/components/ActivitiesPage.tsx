@@ -5,6 +5,8 @@ import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useActivities } from '../hooks/useCrm';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Activity as ActivityType } from '../types';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -27,6 +29,7 @@ export const ActivitiesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { activities, isLoading, create, update, remove } = useActivities(companyId);
+  const { filtered: filteredActivities, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(activities, 'crm');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<ActivityType | null>(null);
@@ -129,20 +132,21 @@ export const ActivitiesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">سجل المكالمات والاجتماعات والبريد</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" leftIcon={<BarChart3 size={16} />} onClick={() => setShowReport(true)}>تقرير الأداء</Button>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button>
-        </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <Button variant="secondary" leftIcon={<BarChart3 size={16} />} onClick={() => setShowReport(true)}>تقرير الأداء</Button>
+        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button>
+      </div>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : activities.length === 0 ? (
+        ) : filteredActivities.length === 0 ? (
           <EmptyState icon="inbox" title="لا توجد أنشطة" description="يمكنك إضافة نشاط جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button>} />
         ) : (
           <Table<ActivityType>
-            data={activities}
+            data={filteredActivities}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا توجد أنشطة"

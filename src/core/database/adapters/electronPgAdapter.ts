@@ -192,20 +192,43 @@ export const electronPgAdapter: DbAdapter = {
 
   async getProducts(companyId) {
     const result = await getDB().query(
-      'SELECT * FROM products WHERE company_id = $1 ORDER BY name_ar',
+      `SELECT p.*, COALESCE(
+        (SELECT json_agg(ppc.category_id)
+         FROM product_product_categories ppc
+         WHERE ppc.product_id = p.id), '[]'::json
+      ) AS category_ids
+      FROM products p
+      WHERE p.company_id = $1
+      ORDER BY p.name_ar`,
       [companyId],
     );
-    return { success: result.success, data: result.rows, error: result.error };
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+    const rows = (result.rows || []).map((r) => ({
+      ...r,
+      categoryIds: Array.isArray(r.category_ids) ? r.category_ids : [],
+    }));
+    return { success: true, data: rows };
   },
 
   async createProduct(data) {
     const result = await getDB().query(
-      `INSERT INTO products (company_id, code, name_ar, name_en, barcode, sku, unit, cost_price, sale_price, stock_qty, min_stock_alert)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-      [data.companyId, data.code, data.nameAr, data.nameEn, data.barcode, data.sku, data.unit, data.costPrice, data.salePrice, data.stockQty, data.minStockAlert],
+      `INSERT INTO products (company_id, code, name_ar, name_en, barcode, sku, unit, category_id, product_type_id, cost_price, sale_price, is_active, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+      [data.companyId, data.code, data.nameAr, data.nameEn, data.barcode, data.sku, data.unit, data.categoryId ?? null, data.productTypeId ?? null, data.costPrice, data.salePrice, data.isActive ?? true, data.createdBy ?? null, data.updatedBy ?? null],
     );
     if (result.success && result.rows?.length > 0) {
-      return { success: true, id: result.rows[0].id };
+      const productId = result.rows[0].id;
+      if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
+        for (const categoryId of data.categoryIds) {
+          await getDB().query(
+            'INSERT INTO product_product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [productId, categoryId],
+          );
+        }
+      }
+      return { success: true, id: productId };
     }
     return { success: false, error: result.error };
   },

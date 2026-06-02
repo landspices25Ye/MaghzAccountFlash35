@@ -10,6 +10,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const todayStr = now.toISOString().split('T')[0];
 
   // ─── 1. Branches ───────────────────────────────────────────────────────────
+  console.log('[SEED] Inserting branches...');
   const branches = [
     { name: 'الفرع الرئيسي - صنعاء', code: 'HQ', address: 'صنعاء - شارع الستين' },
     { name: 'فرع الحديدة', code: 'HD', address: 'الحديدة - شارع صنعاء' },
@@ -31,6 +32,10 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { code: 'CON', nameAr: 'مستهلك', nameEn: 'Consumable' },
   ];
   for (const pt of productTypes) {
+    // product types
+  }
+  console.log('[SEED] Inserting product types...');
+  for (const pt of productTypes) {
     await client.query(
       `INSERT INTO product_types (company_id, code, name_ar, name_en, appears_in_sales, appears_in_purchases, appears_in_inventory, is_active)
        VALUES ($1, $2, $3, $4, TRUE, TRUE, TRUE, TRUE) ON CONFLICT DO NOTHING;`,
@@ -47,6 +52,10 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { code: 'MTR', nameAr: 'متر', nameEn: 'Meter', conv: 1 },
   ];
   for (const u of units) {
+    // units
+  }
+  console.log('[SEED] Inserting units...');
+  for (const u of units) {
     await client.query(
       `INSERT INTO units (company_id, code, name_ar, name_en, conversion_factor, is_active)
        VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING;`,
@@ -61,6 +70,10 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { code: 'CC-EXP', nameAr: 'مشروع التوسع', nameEn: 'Expansion Project', type: 'project', budget: 8000000 },
   ];
   for (const cc of costCenters) {
+    // cost centers
+  }
+  console.log('[SEED] Inserting cost centers...');
+  for (const cc of costCenters) {
     await client.query(
       `INSERT INTO cost_centers (company_id, code, name_ar, name_en, type, budget_amount, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING;`,
@@ -73,6 +86,10 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { name: 'حساب البنك اليمني الدولي', bankName: 'البنك اليمني الدولي', accountNumber: '1234567890', iban: 'YE12345678901234', balance: 5800000 },
     { name: 'حساب بنك الكريمي', bankName: 'بنك الكريمي', accountNumber: '0987654321', iban: 'YE09876543210987', balance: 2500000 },
   ];
+  for (const b of banks) {
+    // banks
+  }
+  console.log('[SEED] Inserting banks...');
   for (const b of banks) {
     await client.query(
       `INSERT INTO banks (company_id, name, bank_name, account_number, iban, is_active, current_balance)
@@ -88,12 +105,19 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { key: 'default_purchase_returns', code: '21101', required: true },
   ];
   for (const da of defaultAccounts) {
-    await client.query(
-      `INSERT INTO default_accounts (company_id, function_key, account_id, is_required)
-       SELECT $1, $2, (SELECT id FROM accounts WHERE company_id = $1 AND code = $3 LIMIT 1), $4
-       WHERE NOT EXISTS (SELECT 1 FROM default_accounts WHERE company_id = $1 AND function_key = $2);`,
-      [companyId, da.key, da.code, da.required]
-    );
+    // default accounts
+  }
+  console.log('[SEED] Inserting default accounts...');
+  for (const da of defaultAccounts) {
+    const accRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = $2 LIMIT 1`, [companyId, da.code]);
+    const accountId = accRes.rows[0]?.id || null;
+    const exists = await client.query(`SELECT 1 FROM default_accounts WHERE company_id = $1 AND function_key = $2 LIMIT 1`, [companyId, da.key]);
+    if (exists.rowCount === 0) {
+      await client.query(
+        `INSERT INTO default_accounts (company_id, function_key, account_id, is_required) VALUES ($1, $2, $3, $4);`,
+        [companyId, da.key, accountId, da.required]
+      );
+    }
   }
 
   // ─── 7. Currencies ─────────────────────────────────────────────────────────
@@ -103,6 +127,10 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { code: 'SAR', name: 'ريال سعودي', symbol: 'ر.س', rate: 400, is_default: false },
   ];
   for (const c of currencies) {
+    // currencies
+  }
+  console.log('[SEED] Inserting currencies...');
+  for (const c of currencies) {
     await client.query(
       `INSERT INTO currencies (company_id, code, name, symbol, exchange_rate, is_default, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING;`,
       [companyId, c.code, c.name, c.symbol, c.rate, c.is_default]
@@ -110,6 +138,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
   }
 
   // ─── 8. VAT Settings ───────────────────────────────────────────────────────
+  console.log('[SEED] Inserting VAT settings...');
   await client.query(
     `INSERT INTO vat_settings (company_id, vat_rate, vat_number, is_inclusive, is_active) VALUES ($1, 15, '123456789', false, true) ON CONFLICT DO NOTHING;`,
     [companyId]
@@ -128,6 +157,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
       [companyId, s.type, s.prefix, s.start, s.current]
     );
   }
+  console.log('[SEED] Inserting document sequences...');
 
   // ─── 10. Customers ─────────────────────────────────────────────────────────
   const customers = [
@@ -648,25 +678,35 @@ export async function seedComprehensiveDemoData(client, companyId) {
   const firstSupplier = await client.query(`SELECT id FROM suppliers WHERE company_id = $1 ORDER BY code LIMIT 1`, [companyId]);
 
   if (firstCustomer.rows.length > 0) {
-    await client.query(
-      `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-      [companyId, 'RV-2024-0001', '2024-06-01', firstCustomer.rows[0].id, 150000, 'cash', 'تحصيل من عميل', 'posted']
-    );
-    await client.query(
-      `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-      [companyId, 'RV-2024-0002', '2024-06-15', firstCustomer.rows[0].id, 200000, 'bank', 'تحصيل بنكي', 'posted']
-    );
+    const rvExists = await client.query(`SELECT to_regclass('public.receipt_vouchers') AS name;`);
+    if (rvExists.rows[0] && rvExists.rows[0].name) {
+      await client.query(
+        `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
+        [companyId, 'RV-2024-0001', '2024-06-01', firstCustomer.rows[0].id, 150000, 'cash', 'تحصيل من عميل', 'posted']
+      );
+      await client.query(
+        `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
+        [companyId, 'RV-2024-0002', '2024-06-15', firstCustomer.rows[0].id, 200000, 'bank', 'تحصيل بنكي', 'posted']
+      );
+    } else {
+      console.warn('[SEED] Skipping receipt_vouchers inserts: table does not exist');
+    }
   }
 
   if (firstSupplier.rows.length > 0) {
-    await client.query(
-      `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-      [companyId, 'PV-2024-0001', '2024-06-05', firstSupplier.rows[0].id, 100000, 'cash', 'دفع لمورد', 'posted']
-    );
-    await client.query(
-      `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-      [companyId, 'PV-2024-0002', '2024-06-20', firstSupplier.rows[0].id, 175000, 'bank', 'دفع بنكي', 'posted']
-    );
+    const pvExists = await client.query(`SELECT to_regclass('public.payment_vouchers') AS name;`);
+    if (pvExists.rows[0] && pvExists.rows[0].name) {
+      await client.query(
+        `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
+        [companyId, 'PV-2024-0001', '2024-06-05', firstSupplier.rows[0].id, 100000, 'cash', 'دفع لمورد', 'posted']
+      );
+      await client.query(
+        `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
+        [companyId, 'PV-2024-0002', '2024-06-20', firstSupplier.rows[0].id, 175000, 'bank', 'دفع بنكي', 'posted']
+      );
+    } else {
+      console.warn('[SEED] Skipping payment_vouchers inserts: table does not exist');
+    }
   }
 
   // ─── 33. Activity Log (defensive: skip if table doesn't exist) ────────────

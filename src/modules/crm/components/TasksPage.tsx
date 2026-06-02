@@ -5,12 +5,15 @@ import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useTasks } from '../hooks/useCrm';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Task } from '../types';
 
 export const TasksPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { tasks, isLoading, create, update, remove } = useTasks(companyId);
+  const { filtered: filteredTasks, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(tasks, 'crm');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -124,17 +127,18 @@ export const TasksPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة مهام فريق المبيعات</p>
           </div>
         </div>
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : tasks.length === 0 ? (
+        ) : filteredTasks.length === 0 ? (
           <EmptyState icon="inbox" title="لا توجد مهام" description="يمكنك إضافة مهمة جديدة" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>} />
         ) : (
           <Table<Task>
-            data={tasks}
+            data={filteredTasks}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا توجد مهام"

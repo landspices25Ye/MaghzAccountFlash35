@@ -146,7 +146,7 @@ export const StockPage: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.productName')}</label>
-            <ProductSelect companyId={activeCompany?.id || ''} value={transferForm.productId} onChange={v => setTransferForm(prev => ({ ...prev, productId: Array.isArray(v) ? (v[0] || '') : (v || '') }))} />
+            <ProductSelect companyId={activeCompany?.id || ''} value={transferForm.productId} onChange={v => setTransferForm(prev => ({ ...prev, productId: Array.isArray(v) ? (v[0] || '') : (v || '') }))} module="inventory" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

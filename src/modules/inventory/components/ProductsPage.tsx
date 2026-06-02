@@ -5,13 +5,16 @@ import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
-import { UnitSelect } from '@/core/ui/components/smart';
+import { UnitSelect, ProductTypeSelect } from '@/core/ui/components/smart';
 import { useProducts, useProductCategories } from '../hooks/useInventory';
+import { useProductTypes } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { barcodeScanner } from '@/core/utils/barcodeScanner';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { useFormatters } from '@/core/utils/useFormatters';
 import type { Product } from '../types';
 
@@ -29,13 +32,14 @@ interface FormData {
   reorderPoint: string;
   image: string;
   categoryIds: string[];
+  productTypeId: string;
   isActive: boolean;
 }
 
 const initialForm: FormData = {
   code: '', nameAr: '', nameEn: '', barcode: '', sku: '', unit: 'pcs',
   costPrice: '0', salePrice: '0', minStock: '0', maxStock: '0', reorderPoint: '0',
-  image: '', categoryIds: [], isActive: true,
+  image: '', categoryIds: [], productTypeId: '', isActive: true,
 };
 
 export const ProductsPage: React.FC = () => {
@@ -44,7 +48,9 @@ export const ProductsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const { products, isLoading, create, update, remove } = useProducts(activeCompany?.id || '');
   const { categories } = useProductCategories(activeCompany?.id || '');
+  const { productTypes } = useProductTypes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(products, 'inventory');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -54,13 +60,21 @@ export const ProductsPage: React.FC = () => {
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [scanning, setScanning] = useState(false);
   const [search, setSearch] = useState('');
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('');
+  const [filterTypeId, setFilterTypeId] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const filteredProducts = products.filter(p =>
-    (p.nameAr?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    (p.code?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    (p.barcode && p.barcode.includes(search))
-  );
+  const filteredProducts = ownerFiltered.filter(p => {
+    const matchesSearch = !search ||
+      (p.nameAr?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (p.code?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (p.barcode && p.barcode.includes(search));
+    const matchesCategory = !filterCategoryId ||
+      p.categoryId === filterCategoryId ||
+      p.categoryIds?.includes(filterCategoryId);
+    const matchesType = !filterTypeId || p.productTypeId === filterTypeId;
+    return matchesSearch && matchesCategory && matchesType;
+  });
 
   const handleOpenCreate = () => {
     setFormData(initialForm);
@@ -83,6 +97,7 @@ export const ProductsPage: React.FC = () => {
       reorderPoint: String(product.reorderPoint ?? 0),
       image: product.image || '',
       categoryIds: product.categoryIds || [],
+      productTypeId: product.productTypeId || '',
       isActive: product.isActive,
     });
     setEditingId(product.id);
@@ -112,6 +127,7 @@ export const ProductsPage: React.FC = () => {
       maxStock: Number(formData.maxStock) || undefined,
       reorderPoint: Number(formData.reorderPoint) || undefined,
       categoryIds: formData.categoryIds.length > 0 ? formData.categoryIds : undefined,
+      productTypeId: formData.productTypeId || undefined,
     };
 
     if (editingId) {
@@ -239,13 +255,36 @@ export const ProductsPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('inventory.products')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <Input
             placeholder={t('search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-64"
           />
+          <select
+            value={filterCategoryId}
+            onChange={e => setFilterCategoryId(e.target.value)}
+            className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+            aria-label="فلترة حسب التصنيف"
+          >
+            <option value="">كل التصنيفات</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          <select
+            value={filterTypeId}
+            onChange={e => setFilterTypeId(e.target.value)}
+            className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+            aria-label="فلترة حسب النوع"
+          >
+            <option value="">كل الأنواع</option>
+            {productTypes.map(t => (
+              <option key={t.id} value={t.id}>{t.nameAr}</option>
+            ))}
+          </select>
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>
             {t('inventory.newProduct')}
           </Button>
@@ -351,6 +390,15 @@ export const ProductsPage: React.FC = () => {
                 <span className="text-sm text-slate-700 dark:text-slate-200">{t('inventory.active')}</span>
               </label>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">نوع المنتج</label>
+            <ProductTypeSelect
+              companyId={activeCompany?.id || ''}
+              value={formData.productTypeId}
+              onChange={(v) => setFormData(prev => ({ ...prev, productTypeId: v || '' }))}
+              size="sm"
+            />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <Input label={t('inventory.minStock')} type="number" value={formData.minStock} onChange={e => setFormData(prev => ({ ...prev, minStock: e.target.value }))} />

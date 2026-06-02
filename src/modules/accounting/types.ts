@@ -11,6 +11,8 @@ export interface Account {
   balance: number;
   isActive: boolean;
   children?: Account[];
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface Transaction {
@@ -23,6 +25,8 @@ export interface Transaction {
   status: 'draft' | 'posted' | 'cancelled';
   entries: JournalEntry[];
   createdAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface JournalEntry {
@@ -84,6 +88,8 @@ export interface ReceiptVoucher {
   notes?: string;
   status: 'draft' | 'posted' | 'cancelled';
   createdAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface PaymentVoucher {
@@ -102,4 +108,6 @@ export interface PaymentVoucher {
   notes?: string;
   status: 'draft' | 'posted' | 'cancelled';
   createdAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }

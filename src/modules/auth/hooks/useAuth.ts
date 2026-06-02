@@ -24,6 +24,16 @@ export function useAuth() {
     const result = await authApi.login(credentials);
     if (result.success && result.user) {
       storeLogin(result.user);
+      if (result.user.roleId && result.user.companyId) {
+        try {
+          const roleResult = await authApi.getRoleById(result.user.companyId, result.user.roleId);
+          if (roleResult.success && roleResult.data?.permissions) {
+            useAuthStore.getState().setPermissions(roleResult.data.permissions);
+          }
+        } catch {
+          // Permissions will use fallback map
+        }
+      }
       return true;
     }
     setError(result.error || 'Login failed');
@@ -64,7 +74,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<User>) => {
-    const result = await authApi.updateUser(id, data);
+    const result = await authApi.updateUser(companyId, id, data);
     if (result.success) {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)));
     }
@@ -72,7 +82,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await authApi.deleteUser(id);
+    const result = await authApi.deleteUser(companyId, id);
     if (result.success) {
       setUsers((prev) => prev.filter((u) => u.id !== id));
     }
@@ -84,7 +94,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
   }, []);
 
   const toggleActive = useCallback(async (id: string, isActive: boolean) => {
-    const result = await authApi.updateUser(id, { isActive });
+    const result = await authApi.updateUser(companyId, id, { isActive });
     if (result.success) {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, isActive } : u)));
     }
@@ -120,7 +130,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Role>) => {
-    const result = await authApi.updateRole(id, data);
+    const result = await authApi.updateRole(companyId, id, data);
     if (result.success) {
       setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
     }
@@ -128,7 +138,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await authApi.deleteRole(id);
+    const result = await authApi.deleteRole(companyId, id);
     if (result.success) {
       setRoles((prev) => prev.filter((r) => r.id !== id));
     }

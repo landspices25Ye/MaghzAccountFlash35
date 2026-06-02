@@ -51,7 +51,7 @@ export const BomPage: React.FC = () => {
   const openEdit = async (bom: BOM) => {
     setEditing(bom);
     setFormData({ productId: bom.productId, productName: bom.productName || '', version: bom.version, isActive: bom.isActive });
-    const res = await manufacturingApi.getBomById(bom.id);
+    const res = await manufacturingApi.getBomById(bom.id, companyId);
     if (res.success && res.data) {
       setLines(res.data.lines.map((l) => ({
         materialId: l.materialId,
@@ -66,7 +66,7 @@ export const BomPage: React.FC = () => {
   };
 
   const openView = async (bom: BOM) => {
-    const res = await manufacturingApi.getBomById(bom.id);
+    const res = await manufacturingApi.getBomById(bom.id, companyId);
     if (res.success && res.data) {
       setViewing(res.data);
       setIsDetailOpen(true);

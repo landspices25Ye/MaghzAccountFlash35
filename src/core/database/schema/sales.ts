@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { companies, users } from './core';
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const customers = pgTable('customers', {
@@ -14,6 +14,8 @@ export const customers = pgTable('customers', {
   creditLimit: numeric('credit_limit', { precision: 18, scale: 4 }),
   balance: numeric('balance', { precision: 18, scale: 4 }).notNull().default('0'),
   isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -33,6 +35,8 @@ export const salesInvoices = pgTable('sales_invoices', {
   paidAmount: numeric('paid_amount', { precision: 18, scale: 4 }).default('0'),
   status: varchar('status', { length: 20 }).default('draft'), // draft, posted, paid, partially_paid, cancelled
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -59,5 +63,7 @@ export const quotations = pgTable('quotations', {
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
   status: varchar('status', { length: 20 }).default('open'), // open, accepted, rejected, expired
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

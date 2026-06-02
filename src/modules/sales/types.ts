@@ -10,6 +10,8 @@ export interface Customer {
   creditLimit?: number;
   balance: number;
   isActive: boolean;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface CustomerStatementRow {
@@ -38,6 +40,8 @@ export interface SalesInvoice {
   status: 'draft' | 'posted' | 'paid' | 'partially_paid' | 'cancelled';
   notes?: string;
   lines: SalesInvoiceLine[];
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface SalesInvoiceLine {
@@ -64,6 +68,8 @@ export interface Quotation {
   status: 'open' | 'accepted' | 'rejected' | 'expired' | 'converted';
   notes?: string;
   lines: QuotationLine[];
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface QuotationLine {
@@ -93,6 +99,8 @@ export interface SalesReturn {
   status: 'draft' | 'posted' | 'cancelled';
   notes?: string;
   lines: SalesReturnLine[];
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface SalesReturnLine {

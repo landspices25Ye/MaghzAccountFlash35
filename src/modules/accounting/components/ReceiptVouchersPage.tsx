@@ -12,6 +12,8 @@ import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { ReceiptVoucher } from '../types';
 
 export const ReceiptVouchersPage: React.FC = () => {
@@ -21,7 +23,8 @@ export const ReceiptVouchersPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const filteredVouchers = useBranchFilter(vouchers);
+  const branchFiltered = useBranchFilter(vouchers);
+  const { filtered: filteredVouchers, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'accounting');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [postingId, setPostingId] = useState<string | null>(null);
@@ -186,9 +189,12 @@ export const ReceiptVouchersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.receiptVouchers')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.newReceiptVoucher')}</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newReceiptVoucher')}</Button>
       </div>
+    </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

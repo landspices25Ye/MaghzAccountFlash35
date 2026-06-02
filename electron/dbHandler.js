@@ -1,6 +1,15 @@
 import { ipcMain } from 'electron';
 import pg from 'pg';
+import { randomBytes, pbkdf2Sync } from 'crypto';
 import { seedComprehensiveDemoData } from './seedDemoData.js';
+
+const SALT_LENGTH = 32;
+const PBKDF2_ITERATIONS = 100000;
+function hashPasswordNode(password) {
+  const salt = randomBytes(SALT_LENGTH).toString('hex');
+  const hash = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 32, 'sha256').toString('hex');
+  return `pbkdf2:${PBKDF2_ITERATIONS}:${salt}:${hash}`;
+}
 
 const { Pool } = pg;
 
@@ -8,30 +17,51 @@ let pool = null;
 let querySeq = 0;
 
 /**
- * Safe query wrapper that prevents PostgreSQL's "inconsistent types deduced
- * for parameter $N" error caused by node-postgres skipping the Parse message
- * when the same SQL text is reused (hasBeenParsed cache). Named prepared
- * statements with unique names force a fresh Parse every time.
+ * Unique counter to tag each SQL query.
+ * Adding a unique comment forces node-postgres to always send a fresh Parse
+ * message, preventing the "inconsistent types deduced for parameter $N" error
+ * that occurs when the same SQL text is reused with different param types.
  */
 async function execQuery(target, sql, params) {
   const p = params || [];
   if (p.length > 0) {
-    const name = `q${querySeq++}`;
-    const result = await target.query({ text: sql, values: p, name });
-    await target.query(`DEALLOCATE "${name}"`);
-    return result;
+    const taggedSql = `/*_q${querySeq++}_*/${sql}`;
+    return await target.query(taggedSql, p);
   }
   return await target.query(sql);
+}
+
+/**
+ * Wrap a pg Client to tag all parameterized queries with a unique comment,
+ * preventing type inference conflicts from node-postgres statement caching.
+ */
+function wrapClient(client) {
+  const origQuery = client.query.bind(client);
+  client.query = (sql, params) => {
+    if (params && params.length > 0) {
+      return origQuery(`/*_q${querySeq++}_*/${sql}`, params);
+    }
+    return origQuery(sql, params);
+  };
+  return client;
+}
+
+function getRequiredEnv(key) {
+  const val = process.env[key];
+  if (!val) {
+    throw new Error(`متغير البيئة ${key} غير محدد. تأكد من ملف .env.local`);
+  }
+  return val;
 }
 
 // Create database connection pool
 function createPool() {
   pool = new Pool({
-    host: process.env.VITE_DB_HOST || 'localhost',
-    port: parseInt(process.env.VITE_DB_PORT || '5432'),
-    database: process.env.VITE_DB_NAME || 'MaghzAccountFlash35',
-    user: process.env.VITE_DB_USER || 'Maghz',
-    password: process.env.VITE_DB_PASSWORD || 'Zaamla2026',
+    host: getRequiredEnv('DB_HOST'),
+    port: parseInt(getRequiredEnv('DB_PORT')),
+    database: getRequiredEnv('DB_NAME'),
+    user: getRequiredEnv('DB_USER'),
+    password: getRequiredEnv('DB_PASSWORD'),
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
@@ -60,9 +90,32 @@ export function registerDatabaseHandlers() {
     }
   });
 
+  const FORBIDDEN_SQL_PATTERNS = [
+    /\bDROP\b/i,
+    /\bALTER\b/i,
+    /\bTRUNCATE\b/i,
+    /\bGRANT\b/i,
+    /\bREVOKE\b/i,
+    /\bCREATE\b\s+(?:TABLE|INDEX|DATABASE|USER|ROLE|FUNCTION|PROCEDURE|TRIGGER|VIEW)\b/i,
+    /\bINSERT\b\s+INTO\s+(?:pg_|information_schema)\./i,
+    /\bDELETE\b\s+FROM\s+(?:pg_|information_schema)\./i,
+  ];
+
+  function isSqlAllowed(sql) {
+    const trimmed = (sql || '').trim();
+    if (!trimmed) return false;
+    for (const pattern of FORBIDDEN_SQL_PATTERNS) {
+      if (pattern.test(trimmed)) return false;
+    }
+    return true;
+  }
+
   // Execute generic query
   ipcMain.handle('db:query', async (_event, { sql, params }) => {
     try {
+      if (!isSqlAllowed(sql)) {
+        return { success: false, error: 'SQL operation not permitted' };
+      }
       const result = await execQuery(pool, sql, params);
       return { success: true, rows: result.rows, rowCount: result.rowCount };
     } catch (err) {
@@ -78,6 +131,10 @@ export function registerDatabaseHandlers() {
       await client.query('BEGIN');
       const results = [];
       for (const { sql, params } of queries) {
+        if (!isSqlAllowed(sql)) {
+          await client.query('ROLLBACK');
+          return { success: false, error: 'SQL operation not permitted in transaction' };
+        }
         const res = await execQuery(client, sql, params);
         results.push({ rows: res.rows, rowCount: res.rowCount });
       }
@@ -143,6 +200,9 @@ export async function initializeSchema() {
         UNIQUE(company_id, username)
       );
     `);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id UUID;`);
 
     // Accounts (Chart of Accounts) table
     await client.query(`
@@ -177,8 +237,9 @@ export async function initializeSchema() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
-
-    await client.query(`GRANT ALL ON roles TO maghz;`);
+    await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS description VARCHAR(255);`);
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_system BOOLEAN DEFAULT FALSE;`);
+  await client.query(`ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();`);
 
     // Activity logs table
     await client.query(`
@@ -204,15 +265,24 @@ export async function initializeSchema() {
         name_en VARCHAR(255),
         barcode VARCHAR(100),
         sku VARCHAR(100),
-        unit VARCHAR(50) NOT NULL DEFAULT 'قطعة',
+        unit VARCHAR(50) NOT NULL DEFAULT 'piece',
+        category_id UUID,
+        product_type_id UUID REFERENCES product_types(id) ON DELETE SET NULL,
         cost_price NUMERIC(18,4) NOT NULL DEFAULT 0,
         sale_price NUMERIC(18,4) NOT NULL DEFAULT 0,
-        stock_qty NUMERIC(18,4) NOT NULL DEFAULT 0,
-        min_stock_alert NUMERIC(18,4),
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by UUID,
+        updated_by UUID,
         created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(company_id, code)
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS product_product_categories (
+        product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        category_id UUID NOT NULL REFERENCES product_categories(id) ON DELETE CASCADE,
+        PRIMARY KEY (product_id, category_id)
       );
     `);
 
@@ -648,6 +718,23 @@ export async function initializeSchema() {
       );
     `);
 
+    // Add created_by / updated_by to document tables for user-level ownership tracking
+    const documentTables = [
+      'accounts', 'transactions', 'customers', 'suppliers', 'sales_invoices',
+      'quotations', 'sales_returns', 'purchase_invoices', 'purchase_orders',
+      'purchase_returns', 'products', 'warehouses', 'stock_movements',
+      'warehouse_transfers', 'departments', 'employees', 'attendance', 'leaves',
+      'payroll_runs', 'end_of_service', 'leads', 'opportunities', 'crm_activities',
+      'calls', 'boms', 'work_orders', 'receipt_vouchers', 'payment_vouchers',
+      'cash_boxes', 'banks',
+    ];
+    for (const tbl of documentTables) {
+      if (tbl !== 'transactions') {
+        await client.query(`ALTER TABLE ${tbl} ADD COLUMN IF NOT EXISTS created_by UUID;`);
+      }
+      await client.query(`ALTER TABLE ${tbl} ADD COLUMN IF NOT EXISTS updated_by UUID;`);
+    }
+
     // Create indexes for performance
     await client.query(`CREATE INDEX IF NOT EXISTS idx_accounts_company ON accounts(company_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_accounts_parent ON accounts(parent_id);`);
@@ -671,6 +758,19 @@ export async function initializeSchema() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_cost_centers_company ON cost_centers(company_id);`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_payroll_components_company ON payroll_components(company_id);`);
 
+    // Indexes for created_by on document tables
+    const createdByIndexTables = [
+      'transactions', 'customers', 'suppliers', 'sales_invoices', 'quotations',
+      'sales_returns', 'purchase_invoices', 'purchase_orders', 'purchase_returns',
+      'products', 'stock_movements', 'warehouse_transfers', 'departments',
+      'employees', 'attendance', 'leaves', 'payroll_runs', 'leads', 'opportunities',
+      'crm_activities', 'calls', 'boms', 'work_orders', 'receipt_vouchers',
+      'payment_vouchers', 'cash_boxes', 'banks',
+    ];
+    for (const tbl of createdByIndexTables) {
+      await client.query(`CREATE INDEX IF NOT EXISTS idx_${tbl}_created_by ON ${tbl}(created_by);`);
+    }
+
     await client.query('COMMIT');
     console.log('[DB] Schema initialization complete.');
     return true;
@@ -691,10 +791,12 @@ export async function seedInitialData() {
   const check = await pool.query("SELECT COUNT(*) FROM companies");
   if (parseInt(check.rows[0].count) > 0) {
     console.log('[DB] Data already seeded, skipping.');
-    return;
+    const existing = await pool.query('SELECT id FROM companies LIMIT 1');
+    return existing.rows[0]?.id;
   }
 
-  const client = await pool.connect();
+  console.log('[DB] Seeding initial data...');
+  const client = wrapClient(await pool.connect());
   try {
     await client.query('BEGIN');
     await client.query('DEALLOCATE ALL');
@@ -717,11 +819,12 @@ export async function seedInitialData() {
     const companyId = companyResult.rows[0].id;
 
     // 2. Seed admin user
+    const adminPasswordHash = hashPasswordNode('admin123');
     const userResult = await client.query(`
-      INSERT INTO users (company_id, username, email, role)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO users (company_id, username, email, full_name, role, password_hash)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id;
-    `, [companyId, 'مدير النظام', 'admin@maghz-erp.com', 'admin']);
+    `, [companyId, 'مدير النظام', 'admin@maghz-erp.com', 'مدير النظام', 'admin', adminPasswordHash]);
 
     const adminId = userResult.rows[0].id;
 
@@ -1052,6 +1155,19 @@ export async function seedInitialData() {
       VALUES ($1, 'SUP-001', 'مورد افتراضي', '+967700000002', 'demo@supplier.ye', 'جدة', 0, true) ON CONFLICT DO NOTHING;
     `, [companyId]);
 
+    // Set created_by for seeded document tables
+    await client.query(`UPDATE accounts SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]);
+    await client.query(`UPDATE customers SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]);
+    await client.query(`UPDATE suppliers SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]);
+    try { await client.query(`UPDATE products SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE leads SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE opportunities SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE employees SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE work_orders SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE sales_invoices SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE purchase_invoices SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+    try { await client.query(`UPDATE transactions SET created_by = $1 WHERE company_id = $2 AND created_by IS NULL`, [adminId, companyId]); } catch (e) { /* column may not exist yet */ }
+
     // 7. Seed activity log (defensive: skip if table doesn't exist)
     try {
       await client.query(`
@@ -1143,7 +1259,7 @@ export function registerOnboardingHandlers() {
   // Clear all data (factory reset)
   ipcMain.handle('db:clear-all', async () => {
     try {
-      const client = await pool.connect();
+      const client = wrapClient(await pool.connect());
       try {
         await client.query('BEGIN');
 
@@ -1154,10 +1270,11 @@ export function registerOnboardingHandlers() {
         `);
 
         const tables = tablesResult.rows.map(r => r.tablename);
+        console.log(`[DB] Clearing ${tables.length} tables...`);
 
         if (tables.length > 0) {
-          // Truncate all tables with CASCADE to handle foreign keys
-          const truncateList = tables.join(', ');
+          // Drop all foreign key constraints first, then truncate
+          const truncateList = tables.map(t => `"${t}"`).join(', ');
           await client.query(`TRUNCATE ${truncateList} CASCADE`);
         }
 
@@ -1165,13 +1282,14 @@ export function registerOnboardingHandlers() {
         console.log('[DB] All data cleared successfully.');
         return { success: true, tablesCleared: tables.length };
       } catch (err) {
-        await client.query('ROLLBACK');
+        console.error('[DB] Clear failed, rolling back:', err.message);
+        try { await client.query('ROLLBACK'); } catch {}
         throw err;
       } finally {
         client.release();
       }
     } catch (err) {
-      console.error('[DB] Clear all failed:', err.message);
+      console.error('[DB] Clear all error:', err.message);
       return { success: false, error: err.message };
     }
   });
@@ -1180,8 +1298,18 @@ export function registerOnboardingHandlers() {
   ipcMain.handle('db:seed-default', async () => {
     try {
       const companyId = await seedInitialData();
+      if (!companyId) {
+        // Data already exists — find the existing company
+        const check = await pool.query('SELECT id FROM companies LIMIT 1');
+        const existingId = check.rows[0]?.id;
+        if (!existingId) {
+          return { success: false, error: 'فشل البذر: لا توجد بيانات ولا يمكن إنشائها' };
+        }
+        return { success: true, companyId: existingId };
+      }
       return { success: true, companyId };
     } catch (err) {
+      console.error('[DB] Seed failed:', err.message);
       return { success: false, error: err.message };
     }
   });
@@ -1198,7 +1326,7 @@ export function registerOnboardingHandlers() {
         companyId = companyCheck.rows[0].id;
       }
 
-      const client = await pool.connect();
+      const client = wrapClient(await pool.connect());
       try {
         await client.query('BEGIN');
         await client.query('DEALLOCATE ALL');

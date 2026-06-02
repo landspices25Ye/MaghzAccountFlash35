@@ -7,6 +7,8 @@ import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useLeads, useActivities } from '../hooks/useCrm';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Lead, Activity } from '../types';
 
 export const LeadsPage: React.FC = () => {
@@ -14,6 +16,7 @@ export const LeadsPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { leads, isLoading, create, update, remove, convertToCustomer } = useLeads(companyId);
   const { create: createActivity } = useActivities(companyId);
+  const { filtered: filteredLeads, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(leads, 'crm');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
@@ -138,17 +141,18 @@ export const LeadsPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة العملاء المحتملين والمتابعات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+      <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : leads.length === 0 ? (
+        ) : filteredLeads.length === 0 ? (
           <EmptyState icon="inbox" title="لا يوجد عملاء محتملين" description="يمكنك إضافة عميل محتمل جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>} />
         ) : (
-          <Table<Lead>
-            data={leads}
+        <Table<Lead>
+          data={filteredLeads}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا يوجد عملاء محتملين"

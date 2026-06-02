@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { manufacturingApi } from '../api';
+import { useAuthStore } from '@/modules/auth/store';
 import type { BOM, WorkOrder, WorkOrderVariance } from '../types';
 
 export function useBoms(companyId: string) {
@@ -10,7 +11,9 @@ export function useBoms(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await manufacturingApi.getBoms(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('manufacturing') ? auth.user?.id : undefined;
+      const res = await manufacturingApi.getBoms(companyId, ownedByUserId);
       if (res.success && res.data) setBoms(res.data);
       setIsLoading(false);
     }
@@ -20,28 +23,34 @@ export function useBoms(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await manufacturingApi.getBoms(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('manufacturing') ? auth.user?.id : undefined;
+    const res = await manufacturingApi.getBoms(companyId, ownedByUserId);
     if (res.success && res.data) setBoms(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<BOM, 'id'> & { lines: { materialId: string; quantity: number; unitCost?: number }[] }) => {
-    const res = await manufacturingApi.createBom(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await manufacturingApi.createBom(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<BOM, 'id' | 'companyId'>> & { lines?: Partial<{ materialId: string; quantity: number; unitCost?: number }>[] }) => {
-    const res = await manufacturingApi.updateBom(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await manufacturingApi.updateBom(id, companyId, userId, data);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const res = await manufacturingApi.deleteBom(id);
+    const res = await manufacturingApi.deleteBom(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { boms, isLoading, refresh, create, update, remove };
 }
@@ -54,7 +63,9 @@ export function useWorkOrders(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await manufacturingApi.getWorkOrders(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('manufacturing') ? auth.user?.id : undefined;
+      const res = await manufacturingApi.getWorkOrders(companyId, ownedByUserId);
       if (res.success && res.data) setWorkOrders(res.data);
       setIsLoading(false);
     }
@@ -64,34 +75,40 @@ export function useWorkOrders(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await manufacturingApi.getWorkOrders(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('manufacturing') ? auth.user?.id : undefined;
+    const res = await manufacturingApi.getWorkOrders(companyId, ownedByUserId);
     if (res.success && res.data) setWorkOrders(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<WorkOrder, 'id'> & { lines: { materialId: string; plannedQuantity: number; unitCost?: number }[] }) => {
-    const res = await manufacturingApi.createWorkOrder(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await manufacturingApi.createWorkOrder(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<WorkOrder, 'id' | 'companyId'>> & { lines?: Partial<WorkOrderLine>[] }) => {
-    const res = await manufacturingApi.updateWorkOrder(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await manufacturingApi.updateWorkOrder(id, companyId, userId, data);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const res = await manufacturingApi.deleteWorkOrder(id);
+    const res = await manufacturingApi.deleteWorkOrder(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const changeStatus = useCallback(async (id: string, status: WorkOrder['status']) => {
-    const res = await manufacturingApi.updateWorkOrderStatus(id, status);
+    const res = await manufacturingApi.updateWorkOrderStatus(id, companyId, status);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { workOrders, isLoading, refresh, create, update, remove, changeStatus };
 }

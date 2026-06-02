@@ -13,6 +13,8 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { postStockAdjustment } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { StockAdjustment } from '../types';
 
 export const StockAdjustmentPage: React.FC = () => {
@@ -20,6 +22,7 @@ export const StockAdjustmentPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const { adjustments, isLoading, create, approve, remove } = useStockAdjustments(activeCompany?.id || '');
+  const { filtered: filteredAdjustments, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(adjustments, 'inventory');
 
   const [isOpen, setIsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -34,7 +37,7 @@ export const StockAdjustmentPage: React.FC = () => {
   const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filtered = adjustments.filter(a =>
+  const filtered = filteredAdjustments.filter(a =>
     a.productId?.toLowerCase().includes(search.toLowerCase()) ||
     a.reason?.toLowerCase().includes(search.toLowerCase())
   );
@@ -192,6 +195,7 @@ ${filtered.map(a => `<tr>
         </div>
         <div className="flex items-center gap-2">
           <Input placeholder={t('search')} value={search} onChange={e => setSearch(e.target.value)} className="w-48" />
+          <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
           <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>{t('print')}</Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportExcel}>Excel</Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportPDF}>PDF</Button>
@@ -276,7 +280,7 @@ ${filtered.map(a => `<tr>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.productName')}</label>
-            <ProductSelect companyId={activeCompany?.id || ''} value={form.productId || ''} onChange={v => setForm({ ...form, productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} />
+            <ProductSelect companyId={activeCompany?.id || ''} value={form.productId || ''} onChange={v => setForm({ ...form, productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} module="inventory" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.warehouse')}</label>

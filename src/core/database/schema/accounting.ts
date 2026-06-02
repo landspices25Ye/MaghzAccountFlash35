@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { companies, users } from './core';
 
 // ─── Accounts (Chart of Accounts) ─────────────────────────────────────────────
 export const accounts = pgTable('accounts', {
@@ -14,6 +14,8 @@ export const accounts = pgTable('accounts', {
   isGroup: boolean('is_group').notNull().default(false),
   balance: numeric('balance', { precision: 18, scale: 4 }).notNull().default('0'),
   isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -28,6 +30,7 @@ export const transactions = pgTable('transactions', {
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
   status: varchar('status', { length: 20 }).notNull().default('draft'), // draft, posted, cancelled
   createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

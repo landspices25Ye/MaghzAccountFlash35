@@ -16,6 +16,8 @@ import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { postSalesReturn } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { SalesReturn } from '../types';
 
 interface ReturnLineForm {
@@ -33,6 +35,7 @@ export const SalesReturnsPage: React.FC = () => {
   const { invoices } = useInvoices(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { filtered: filteredReturns, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(returns, 'sales');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -245,11 +248,11 @@ export const SalesReturnsPage: React.FC = () => {
   ];
 
   const stats = useMemo(() => {
-    const total = returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0);
-    const draftCount = returns.filter(r => r.status === 'draft').length;
-    const postedCount = returns.filter(r => r.status === 'posted').length;
+    const total = filteredReturns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0);
+    const draftCount = filteredReturns.filter(r => r.status === 'draft').length;
+    const postedCount = filteredReturns.filter(r => r.status === 'posted').length;
     return { total, draftCount, postedCount };
-  }, [returns]);
+  }, [filteredReturns]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -262,6 +265,7 @@ export const SalesReturnsPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير'}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
@@ -270,7 +274,7 @@ export const SalesReturnsPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{returns.length}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{filteredReturns.length}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.drafts') || 'مسودات'}</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p></div></Card>
       </div>
@@ -280,7 +284,7 @@ export const SalesReturnsPage: React.FC = () => {
           <div className="space-y-3 p-4">
             {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
           </div>
-        ) : returns.length === 0 ? (
+        ) : filteredReturns.length === 0 ? (
           <EmptyState
             icon="inbox"
             title={t('sales.return.emptyTitle') || 'لا توجد مردودات'}
@@ -288,7 +292,7 @@ export const SalesReturnsPage: React.FC = () => {
             action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setFormOpen(true); }}>{t('sales.return.create') || 'مردود جديد'}</Button>}
           />
         ) : (
-          <Table<SalesReturn> data={returns} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={returnsLoading} />
+          <Table<SalesReturn> data={filteredReturns} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={returnsLoading} />
         )}
       </Card>
 
@@ -337,7 +341,7 @@ export const SalesReturnsPage: React.FC = () => {
                     const lineTotal = line.quantity * line.unitPrice;
                     return (
                       <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
-                        <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" /></td>
+                        <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" module="sales" /></td>
                         <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1 text-slate-700 dark:text-slate-200 font-medium">{formatCurrency(lineTotal)}</td>

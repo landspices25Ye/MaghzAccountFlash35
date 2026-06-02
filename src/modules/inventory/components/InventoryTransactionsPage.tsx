@@ -10,6 +10,8 @@ import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 // import { printDocument } from '@/core/utils/printDocument';
 import type { InventoryTransaction } from '../types';
 
@@ -25,6 +27,7 @@ export const InventoryTransactionsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { transactions, isLoading, create, remove } = useInventoryTransactions(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(transactions, 'inventory');
 
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<Partial<InventoryTransaction>>({
@@ -34,7 +37,7 @@ export const InventoryTransactionsPage: React.FC = () => {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filtered = transactions.filter(tx =>
+  const filtered = ownerFiltered.filter(tx =>
     tx.reference?.toLowerCase().includes(search.toLowerCase()) ||
     tx.notes?.toLowerCase().includes(search.toLowerCase())
   );
@@ -150,9 +153,10 @@ ${filtered.map(tx => `<tr>
             placeholder={t('search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-48"
-          />
-          <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>
+          className="w-48"
+        />
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>
             {t('print')}
           </Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportExcel}>
@@ -235,7 +239,7 @@ ${filtered.map(tx => `<tr>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.productName')}</label>
-            <ProductSelect companyId={activeCompany?.id || ''} value={form.productId || ''} onChange={v => setForm({ ...form, productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} />
+            <ProductSelect companyId={activeCompany?.id || ''} value={form.productId || ''} onChange={v => setForm({ ...form, productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} module="inventory" />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.warehouse')}</label>

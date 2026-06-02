@@ -7,11 +7,11 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    host: process.env.VITE_DB_HOST || 'localhost',
-    port: parseInt(process.env.VITE_DB_PORT || '5432'),
-    database: process.env.VITE_DB_NAME || 'MaghzAccountFlash35',
-    user: process.env.VITE_DB_USER || 'maghz',
-    password: process.env.VITE_DB_PASSWORD || 'Zaamla2026',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'MaghzAccountFlash35',
+    user: process.env.DB_USER || 'maghz',
+    password: process.env.DB_PASSWORD || '',
     ssl: false,
   },
 });

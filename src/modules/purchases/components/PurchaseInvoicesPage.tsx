@@ -5,6 +5,7 @@ import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useUserMap } from '@/core/utils/useUserMap';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Card, Button, Modal, Input } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
@@ -19,6 +20,8 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { postPurchaseInvoice } from '@/core/utils/journalEntryGenerator';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PurchaseInvoice } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -69,7 +72,9 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
-  const filteredInvoices = useBranchFilter(invoices);
+  const branchFiltered = useBranchFilter(invoices);
+  const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'purchases');
+  const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -344,6 +349,14 @@ export const PurchaseInvoicesPage: React.FC = () => {
       cell: ({ row }) => <StatusBadge status={row.original.status} />,
     },
     {
+      accessorKey: 'createdBy',
+      header: t('common.createdBy') || 'أنشأها',
+      size: 110,
+      cell: ({ row }) => (
+        <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.original.createdBy)}</span>
+      ),
+    },
+    {
       accessorKey: 'actions',
       header: t('purchases.actions'),
       cell: ({ row }) => {
@@ -398,11 +411,14 @@ export const PurchaseInvoicesPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('purchases.invoices')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('purchases.invoicesSubtitle')}</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           {t('purchases.invoice.create')}
         </Button>
       </div>
+    </div>
 
       <Card>
         <DataTablePro<PurchaseInvoice>
@@ -473,7 +489,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-3">
                   <label className="text-xs text-slate-500">{t('inventory.productName')}</label>
-                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" />
+                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" module="purchases" />
                 </div>
                 <div className="col-span-2">
                   <Input type="text" placeholder={t('description')} value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} />

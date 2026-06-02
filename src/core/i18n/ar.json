@@ -538,7 +538,13 @@
     "previousPeriod": "الفترة السابقة",
     "currentPeriod": "الفترة الحالية",
     "noData": "لا توجد بيانات",
-    "filter": "تصفية",
+  "filter": "تصفية",
+  "filter.myDocsOnly": "مستنداتي فقط",
+  "filter.allDocs": "الكل",
+  "filter.showAll": "عرض الكل",
+  "common": {
+    "createdBy": "أنشأها"
+  },
     "applyFilter": "تطبيق",
     "clearFilter": "مسح",
     "customer": "العميل",

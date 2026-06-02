@@ -48,19 +48,19 @@ export type Permission =
   // Core
   | 'core.view' | 'core.edit'
   // Accounting
-  | 'accounting.view' | 'accounting.create' | 'accounting.edit' | 'accounting.delete' | 'accounting.post'
+  | 'accounting.view' | 'accounting.create' | 'accounting.edit' | 'accounting.delete' | 'accounting.post' | 'accounting.own'
   // Inventory
-  | 'inventory.view' | 'inventory.create' | 'inventory.edit' | 'inventory.delete'
+  | 'inventory.view' | 'inventory.create' | 'inventory.edit' | 'inventory.delete' | 'inventory.own'
   // Sales
-  | 'sales.view' | 'sales.create' | 'sales.edit' | 'sales.delete' | 'sales.post'
+  | 'sales.view' | 'sales.create' | 'sales.edit' | 'sales.delete' | 'sales.post' | 'sales.own'
   // Purchases
-  | 'purchases.view' | 'purchases.create' | 'purchases.edit' | 'purchases.delete'
+  | 'purchases.view' | 'purchases.create' | 'purchases.edit' | 'purchases.delete' | 'purchases.own'
   // Manufacturing
-  | 'manufacturing.view' | 'manufacturing.create' | 'manufacturing.edit'
+  | 'manufacturing.view' | 'manufacturing.create' | 'manufacturing.edit' | 'manufacturing.own'
   // HR
-  | 'hr.view' | 'hr.create' | 'hr.edit' | 'hr.delete'
+  | 'hr.view' | 'hr.create' | 'hr.edit' | 'hr.delete' | 'hr.own'
   // CRM
-  | 'crm.view' | 'crm.create' | 'crm.edit' | 'crm.delete'
+  | 'crm.view' | 'crm.create' | 'crm.edit' | 'crm.delete' | 'crm.own'
   // Reports
   | 'reports.view' | 'reports.export' | 'reports.custom'
   // Settings
@@ -99,13 +99,13 @@ export interface AuditLogFilters {
 
 export const ALL_PERMISSIONS: Permission[] = [
   'core.view', 'core.edit',
-  'accounting.view', 'accounting.create', 'accounting.edit', 'accounting.delete', 'accounting.post',
-  'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete',
-  'sales.view', 'sales.create', 'sales.edit', 'sales.delete', 'sales.post',
-  'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete',
-  'manufacturing.view', 'manufacturing.create', 'manufacturing.edit',
-  'hr.view', 'hr.create', 'hr.edit', 'hr.delete',
-  'crm.view', 'crm.create', 'crm.edit', 'crm.delete',
+  'accounting.view', 'accounting.create', 'accounting.edit', 'accounting.delete', 'accounting.post', 'accounting.own',
+  'inventory.view', 'inventory.create', 'inventory.edit', 'inventory.delete', 'inventory.own',
+  'sales.view', 'sales.create', 'sales.edit', 'sales.delete', 'sales.post', 'sales.own',
+  'purchases.view', 'purchases.create', 'purchases.edit', 'purchases.delete', 'purchases.own',
+  'manufacturing.view', 'manufacturing.create', 'manufacturing.edit', 'manufacturing.own',
+  'hr.view', 'hr.create', 'hr.edit', 'hr.delete', 'hr.own',
+  'crm.view', 'crm.create', 'crm.edit', 'crm.delete', 'crm.own',
   'reports.view', 'reports.export', 'reports.custom',
   'settings.view', 'settings.edit', 'settings.users', 'settings.roles', 'settings.audit_log',
 ];
@@ -126,6 +126,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'Accounting',
     permissions: [
       { key: 'accounting.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'accounting.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'accounting.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'accounting.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'accounting.delete', labelAr: 'حذف', labelEn: 'Delete' },
@@ -138,6 +139,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'Inventory',
     permissions: [
       { key: 'inventory.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'inventory.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'inventory.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'inventory.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'inventory.delete', labelAr: 'حذف', labelEn: 'Delete' },
@@ -149,6 +151,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'Sales',
     permissions: [
       { key: 'sales.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'sales.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'sales.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'sales.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'sales.delete', labelAr: 'حذف', labelEn: 'Delete' },
@@ -161,6 +164,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'Purchases',
     permissions: [
       { key: 'purchases.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'purchases.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'purchases.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'purchases.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'purchases.delete', labelAr: 'حذف', labelEn: 'Delete' },
@@ -172,6 +176,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'Manufacturing',
     permissions: [
       { key: 'manufacturing.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'manufacturing.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'manufacturing.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'manufacturing.edit', labelAr: 'تعديل', labelEn: 'Edit' },
     ],
@@ -182,6 +187,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'HR',
     permissions: [
       { key: 'hr.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'hr.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'hr.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'hr.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'hr.delete', labelAr: 'حذف', labelEn: 'Delete' },
@@ -193,6 +199,7 @@ export const PERMISSION_GROUPS = [
     labelEn: 'CRM',
     permissions: [
       { key: 'crm.view', labelAr: 'عرض', labelEn: 'View' },
+      { key: 'crm.own', labelAr: 'مستنداتي فقط', labelEn: 'Own Only' },
       { key: 'crm.create', labelAr: 'إنشاء', labelEn: 'Create' },
       { key: 'crm.edit', labelAr: 'تعديل', labelEn: 'Edit' },
       { key: 'crm.delete', labelAr: 'حذف', labelEn: 'Delete' },

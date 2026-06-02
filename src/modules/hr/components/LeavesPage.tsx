@@ -6,12 +6,15 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useLeaves, useEmployees } from '../hooks/useHr';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Leave } from '../types';
 
 export const LeavesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { leaves, isLoading, create, updateStatus, remove } = useLeaves(companyId);
+  const { filtered: filteredLeaves, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(leaves, 'hr');
   const { employees } = useEmployees(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,18 +87,21 @@ export const LeavesPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الإجازات</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة الإجازات السنوية والمرضية والطارئة</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>طلب إجازة</Button>
       </div>
+    </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : leaves.length === 0 ? (
+        ) : filteredLeaves.length === 0 ? (
           <EmptyState icon="inbox" title="لا توجد إجازات" description="يمكنك تقديم طلب إجازة جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>طلب إجازة</Button>} />
         ) : (
           <Table<Leave>
-            data={leaves}
+            data={filteredLeaves}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا توجد إجازات"

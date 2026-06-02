@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { companies, users } from './core';
 
 // ─── Bills of Materials (BOM) ─────────────────────────────────────────────────
 export const boms = pgTable('boms', {
@@ -8,6 +8,8 @@ export const boms = pgTable('boms', {
   productId: uuid('product_id').notNull(), // finished product
   version: varchar('version', { length: 20 }).default('1.0'),
   isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -35,6 +37,8 @@ export const workOrders = pgTable('work_orders', {
   actualEndDate: date('actual_end_date'),
   totalCost: numeric('total_cost', { precision: 18, scale: 4 }).default('0'),
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

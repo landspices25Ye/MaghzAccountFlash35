@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, integer } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { companies, users } from './core';
 import { accounts } from './accounting';
 
 // ─── Document Sequences (Auto Numbering) ──────────────────────────────────────
@@ -63,6 +63,8 @@ export const cashBoxes = pgTable('cash_boxes', {
   responsibleUserId: uuid('responsible_user_id'),
   isActive: boolean('is_active').notNull().default(true),
   currentBalance: numeric('current_balance', { precision: 18, scale: 4 }).notNull().default('0'),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -78,6 +80,8 @@ export const banks = pgTable('banks', {
   branchId: uuid('branch_id'),
   isActive: boolean('is_active').notNull().default(true),
   currentBalance: numeric('current_balance', { precision: 18, scale: 4 }).notNull().default('0'),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

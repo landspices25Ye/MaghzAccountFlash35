@@ -14,6 +14,8 @@ import { useFormatters } from '@/core/utils/useFormatters';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { logAudit } from '@/core/utils/auditLogger';
@@ -42,7 +44,8 @@ export const QuotationsPage: React.FC = () => {
   const { quotations, isLoading, create, update, remove, convertToInvoice } = useQuotations(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const filteredQuotations = useBranchFilter(quotations);
+  const branchFiltered = useBranchFilter(quotations);
+  const { filtered: filteredQuotations, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'sales');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
@@ -271,6 +274,7 @@ export const QuotationsPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير'}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
@@ -329,7 +333,7 @@ export const QuotationsPage: React.FC = () => {
                     const lineTotal = line.quantity * line.unitPrice * (1 - line.discountPercent / 100);
                     return (
                       <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
-                        <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" /></td>
+                        <td className="px-2 py-1"><ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" module="sales" /></td>
                         <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} max={100} value={String(line.discountPercent)} onChange={e => updateLine(idx, 'discountPercent', Number(e.target.value))} size="sm" /></td>

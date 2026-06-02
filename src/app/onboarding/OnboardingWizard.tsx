@@ -144,7 +144,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         setShowResetConfirm(false);
         return;
       }
-      throw new Error('PostgreSQL غير متوفر');
+      throw new Error('خدمة PostgreSQL غير متوفرة. تأكد من تشغيل Electron.');
     } catch (err: any) {
       setResetError(err.message || 'حدث خطأ أثناء مسح البيانات');
       setIsResetting(false);

@@ -36,7 +36,7 @@ function seedIfEmpty(companyId: string) {
     'accounts', 'contacts', 'products', 'transactions',
     'sales_invoices', 'sales_invoice_lines', 'purchase_invoices', 'purchase_invoice_lines',
     'employees', 'attendance', 'payroll', 'leads', 'opportunities', 'tasks',
-    'work_orders', 'boms', 'warehouses', 'stock', 'product_categories',
+    'work_orders', 'boms',     'warehouses', 'stock', 'product_categories', 'product_product_categories',
     'users', 'roles', 'currencies', 'vat_settings', 'branches',
     'document_sequences', 'product_types', 'units', 'cash_boxes', 'banks',
     'cost_centers', 'payroll_components', 'default_accounts'
@@ -539,12 +539,31 @@ export const mockAdapter: DbAdapter = {
   async getProducts(companyId) {
     seedIfEmpty(companyId);
     const products = getTable('products').filter(p => p.company_id === companyId).map(snakeToCamel);
-    return { success: true, data: products };
+    const links = getTable('product_product_categories');
+    return {
+      success: true,
+      data: products.map((p) => {
+        const categoryIds = links
+          .filter((l) => l.product_id === p.id)
+          .map((l) => l.category_id);
+        return { ...p, categoryIds };
+      }),
+    };
   },
 
   async createProduct(data) {
     const id = genId();
-    getTable('products').push({ id, ...data, created_at: new Date().toISOString() });
+    const { categoryIds, ...productData } = data;
+    getTable('products').push({
+      id,
+      ...productData,
+      created_at: new Date().toISOString(),
+    });
+    if (Array.isArray(categoryIds)) {
+      for (const categoryId of categoryIds) {
+        getTable('product_product_categories').push({ product_id: id, category_id: categoryId });
+      }
+    }
     return { success: true, id };
   },
 

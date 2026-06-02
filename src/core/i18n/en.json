@@ -381,7 +381,13 @@
     "previousPeriod": "Previous Period",
     "currentPeriod": "Current Period",
     "noData": "No Data",
-    "filter": "Filter",
+  "filter": "Filter",
+  "filter.myDocsOnly": "My Documents Only",
+  "filter.allDocs": "All",
+  "filter.showAll": "Show All",
+  "common": {
+    "createdBy": "Created By"
+  },
     "applyFilter": "Apply",
     "clearFilter": "Clear",
     "customer": "Customer",

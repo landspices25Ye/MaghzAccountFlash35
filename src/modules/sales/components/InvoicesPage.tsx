@@ -13,11 +13,14 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useUserMap } from '@/core/utils/useUserMap';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { SalesInvoice, SalesInvoiceLine } from '../types';
 
 interface InvoiceLineForm {
@@ -45,7 +48,9 @@ export const InvoicesPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
-  const filteredInvoices = useBranchFilter(invoices);
+  const branchFiltered = useBranchFilter(invoices);
+  const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'sales');
+  const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [formOpen, setFormOpen] = useState(false);
@@ -312,6 +317,9 @@ export const InvoicesPage: React.FC = () => {
     { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.totalAmount) },
     { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
+    { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: SalesInvoice) => (
+      <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.createdBy)}</span>
+    ) },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '180px', render: (row: SalesInvoice) => (
       <div className="flex items-center gap-1">
         <ActionButtons
@@ -359,6 +367,7 @@ export const InvoicesPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير Excel'}>
             <Download size={16} className="text-emerald-600" />
           </Button>
@@ -454,7 +463,7 @@ export const InvoicesPage: React.FC = () => {
                     return (
                       <tr key={idx} className="border-b border-slate-100 dark:border-slate-800">
                         <td className="px-2 py-1">
-                          <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" />
+                          <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, 'productId', Array.isArray(v) ? (v[0] || '') : (v || ''))} size="sm" module="sales" />
                         </td>
                         <td className="px-2 py-1"><Input type="number" min={1} value={String(line.quantity)} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} size="sm" /></td>
                         <td className="px-2 py-1"><Input type="number" min={0} value={String(line.unitPrice)} onChange={e => updateLine(idx, 'unitPrice', Number(e.target.value))} size="sm" /></td>

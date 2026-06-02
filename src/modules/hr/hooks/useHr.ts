@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { hrApi } from '../api';
+import { useAuthStore } from '@/modules/auth/store';
 import type { Employee, AttendanceRecord, PayrollRun, Leave, EndOfService } from '../types';
 
 export function useEmployees(companyId: string) {
@@ -10,7 +11,9 @@ export function useEmployees(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await hrApi.getEmployees(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+      const res = await hrApi.getEmployees(companyId, ownedByUserId);
       if (res.success && res.data) setEmployees(res.data);
       setIsLoading(false);
     }
@@ -20,28 +23,34 @@ export function useEmployees(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await hrApi.getEmployees(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+    const res = await hrApi.getEmployees(companyId, ownedByUserId);
     if (res.success && res.data) setEmployees(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Employee, 'id'>) => {
-    const res = await hrApi.createEmployee(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.createEmployee(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Employee, 'id' | 'companyId'>>) => {
-    const res = await hrApi.updateEmployee(id, data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.updateEmployee(id, companyId, userId, data);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const res = await hrApi.deleteEmployee(id);
+    const res = await hrApi.deleteEmployee(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { employees, isLoading, refresh, create, update, remove };
 }
@@ -54,7 +63,9 @@ export function useAttendance(companyId: string, month: number, year: number) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await hrApi.getAttendance(companyId, month, year);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+      const res = await hrApi.getAttendance(companyId, month, year, ownedByUserId);
       if (res.success && res.data) setRecords(res.data);
       setIsLoading(false);
     }
@@ -62,7 +73,9 @@ export function useAttendance(companyId: string, month: number, year: number) {
   }, [companyId, month, year]);
 
   const save = useCallback(async (data: Omit<AttendanceRecord, 'id'>[]) => {
-    const res = await hrApi.saveAttendance(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.saveAttendance(data, userId);
     return res;
   }, []);
 
@@ -77,7 +90,9 @@ export function usePayrollRuns(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await hrApi.getPayrollRuns(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+      const res = await hrApi.getPayrollRuns(companyId, ownedByUserId);
       if (res.success && res.data) setPayrolls(res.data);
       setIsLoading(false);
     }
@@ -87,22 +102,26 @@ export function usePayrollRuns(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await hrApi.getPayrollRuns(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+    const res = await hrApi.getPayrollRuns(companyId, ownedByUserId);
     if (res.success && res.data) setPayrolls(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<PayrollRun, 'id'>) => {
-    const res = await hrApi.createPayrollRun(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.createPayrollRun(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const post = useCallback(async (id: string) => {
-    const res = await hrApi.postPayrollRun(id);
+    const res = await hrApi.postPayrollRun(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { payrolls, isLoading, refresh, create, post };
 }
@@ -115,7 +134,9 @@ export function useLeaves(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await hrApi.getLeaves(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+      const res = await hrApi.getLeaves(companyId, ownedByUserId);
       if (res.success && res.data) setLeaves(res.data);
       setIsLoading(false);
     }
@@ -125,28 +146,32 @@ export function useLeaves(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await hrApi.getLeaves(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+    const res = await hrApi.getLeaves(companyId, ownedByUserId);
     if (res.success && res.data) setLeaves(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Leave, 'id'>) => {
-    const res = await hrApi.createLeave(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.createLeave(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const updateStatus = useCallback(async (id: string, status: Leave['status'], approvedBy?: string) => {
-    const res = await hrApi.updateLeaveStatus(id, status, approvedBy);
+    const res = await hrApi.updateLeaveStatus(id, companyId, status, approvedBy);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const res = await hrApi.deleteLeave(id);
+    const res = await hrApi.deleteLeave(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { leaves, isLoading, refresh, create, updateStatus, remove };
 }
@@ -159,7 +184,9 @@ export function useEndOfServices(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const res = await hrApi.getEndOfServices(companyId);
+      const auth = useAuthStore.getState();
+      const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+      const res = await hrApi.getEndOfServices(companyId, ownedByUserId);
       if (res.success && res.data) setItems(res.data);
       setIsLoading(false);
     }
@@ -169,28 +196,32 @@ export function useEndOfServices(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const res = await hrApi.getEndOfServices(companyId);
+    const auth = useAuthStore.getState();
+    const ownedByUserId = auth.shouldFilterByOwner('hr') ? auth.user?.id : undefined;
+    const res = await hrApi.getEndOfServices(companyId, ownedByUserId);
     if (res.success && res.data) setItems(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<EndOfService, 'id'>) => {
-    const res = await hrApi.createEndOfService(data);
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const res = await hrApi.createEndOfService(data, userId);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const updateStatus = useCallback(async (id: string, status: EndOfService['status']) => {
-    const res = await hrApi.updateEndOfServiceStatus(id, status);
+    const res = await hrApi.updateEndOfServiceStatus(id, companyId, status);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   const remove = useCallback(async (id: string) => {
-    const res = await hrApi.deleteEndOfService(id);
+    const res = await hrApi.deleteEndOfService(id, companyId);
     if (res.success) await refresh();
     return res;
-  }, [refresh]);
+  }, [refresh, companyId]);
 
   return { items, isLoading, refresh, create, updateStatus, remove };
 }

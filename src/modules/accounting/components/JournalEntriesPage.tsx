@@ -10,8 +10,11 @@ import { printDocument } from '@/core/utils/printDocument';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { cn } from '@/core/utils';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useUserMap } from '@/core/utils/useUserMap';
 import type { Transaction, JournalEntry as JournalEntryType } from '../types';
 
 interface EntryLine {
@@ -29,7 +32,9 @@ export const JournalEntriesPage: React.FC = () => {
   const { transactions, isLoading, create, update, post, remove } = useTransactions(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const filteredTransactions = useBranchFilter(transactions);
+  const branchFiltered = useBranchFilter(transactions);
+  const { filtered: filteredTransactions, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'accounting');
+  const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
@@ -160,6 +165,9 @@ export const JournalEntriesPage: React.FC = () => {
     { key: 'status', header: t('sales.status'), render: (row: Transaction) => (
       <StatusBadge status={row.status} size="sm" />
     )},
+    { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: Transaction) => (
+      <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.createdBy)}</span>
+    ) },
     { key: 'actions', header: t('edit'), render: (row: Transaction) => (
       <ActionButtons
         size="sm"
@@ -183,11 +191,14 @@ export const JournalEntriesPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.journalEntries')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.newJournalEntry')}</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
           {t('accounting.newJournalEntry')}
         </Button>
       </div>
+    </div>
 
       <Card>
         <Table<Transaction>

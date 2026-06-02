@@ -7,6 +7,8 @@ import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { useEmployees } from '../hooks/useHr';
 import type { Employee } from '../types';
 
@@ -15,6 +17,7 @@ export const EmployeesPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { employees, isLoading, create, update, remove } = useEmployees(companyId);
+  const { filtered: filteredEmployees, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(employees, 'hr');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -141,17 +144,19 @@ export const EmployeesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">سجلات الموظفين وإدارة بياناتهم</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>
+    <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>
       </div>
+      <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+    </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : employees.length === 0 ? (
+        ) : filteredEmployees.length === 0 ? (
           <EmptyState icon="inbox" title="لا يوجد موظفين" description="يمكنك إضافة موظف جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>} />
         ) : (
-          <Table<Employee>
-            data={employees}
+        <Table<Employee>
+          data={filteredEmployees}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا يوجد موظفين"

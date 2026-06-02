@@ -40,6 +40,7 @@ interface OnboardingState {
   setSeedOption: (option: SeedOption) => void;
   setProcessing: (processing: boolean, message?: string) => void;
   setError: (error: string | null) => void;
+  clearPassword: () => void;
   reset: () => void;
 }
 
@@ -80,8 +81,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       setCompanyConfig: (config) => set((state) => ({ companyConfig: { ...state.companyConfig, ...config } })),
       setSeedOption: (seedOption) => set({ seedOption }),
       setProcessing: (isProcessing, processingMessage = '') => set({ isProcessing, processingMessage }),
-      setError: (error) => set({ error }),
-      reset: () => set({
+    setError: (error) => set({ error }),
+    clearPassword: () => set((state) => ({ dbConfig: { ...state.dbConfig, password: '' } })),
+    reset: () => set({
         completed: false,
         currentStep: 0,
         dbConfig: { ...defaultDbConfig },
@@ -94,6 +96,11 @@ export const useOnboardingStore = create<OnboardingState>()(
     }),
     {
       name: 'maghzaccount-onboarding',
+      partialize: (state) => {
+        const { dbConfig, ...rest } = state;
+        const { password: _pw, ...safeDbConfig } = dbConfig;
+        return { ...rest, dbConfig: safeDbConfig };
+      },
     }
   )
 );

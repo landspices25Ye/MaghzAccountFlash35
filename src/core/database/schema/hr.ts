@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date, integer } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { companies, users } from './core';
 
 // ─── Departments ──────────────────────────────────────────────────────────────
 export const departments = pgTable('departments', {
@@ -7,6 +7,8 @@ export const departments = pgTable('departments', {
   companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 100 }).notNull(),
   managerId: uuid('manager_id'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -27,6 +29,8 @@ export const employees = pgTable('employees', {
   terminationDate: date('termination_date'),
   baseSalary: numeric('base_salary', { precision: 18, scale: 4 }).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -41,6 +45,8 @@ export const attendance = pgTable('attendance', {
   checkOut: timestamp('check_out'),
   overtimeHours: numeric('overtime_hours', { precision: 5, scale: 2 }).default('0'),
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -54,6 +60,8 @@ export const leaves = pgTable('leaves', {
   endDate: date('end_date').notNull(),
   days: numeric('days', { precision: 5, scale: 2 }).notNull(),
   status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, approved, rejected
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -65,6 +73,8 @@ export const payrollRuns = pgTable('payroll_runs', {
   year: integer('year').notNull(),
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
   status: varchar('status', { length: 20 }).default('draft').notNull(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -92,6 +102,8 @@ export const endOfService = pgTable('end_of_service', {
   reason: varchar('reason', { length: 50 }).notNull(), // resignation, termination, contract_end, retirement
   status: varchar('status', { length: 20 }).notNull().default('draft'), // draft, approved, paid
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

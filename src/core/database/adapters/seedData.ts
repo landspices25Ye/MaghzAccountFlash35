@@ -8,6 +8,8 @@ export function seedAllData(companyId: string) {
     accounts: seedAccounts(companyId),
     contacts: [...seedCustomers(companyId), ...seedSuppliers(companyId)],
     products: seedProducts(companyId),
+    product_categories: seedProductCategories(companyId),
+    product_product_categories: seedProductProductCategories(companyId),
     sales_invoices: seedInvoices(companyId),
     inventory_transactions: seedInventoryTransactions(companyId),
     stock_adjustments: seedStockAdjustments(companyId),
@@ -177,21 +179,21 @@ function seedSuppliers(companyId: string) {
 
 function seedProducts(companyId: string) {
   return [
-    { id: 'prod-1', company_id: companyId, name_ar: 'براد ماء 20 لتر', name_en: 'Water Cooler 20L', sku: 'BRD-20L', category: 'أدوات منزلية', unit: 'قطعة', cost: 15000, price: 22000, stock: 120, min_stock: 20, is_active: true },
-    { id: 'prod-2', company_id: companyId, name_ar: 'غسالة أوتوماتيك 7 كغ', name_en: 'Auto Washer 7kg', sku: 'GSL-7KG', category: 'أدوات منزلية', unit: 'قطعة', cost: 85000, price: 115000, stock: 45, min_stock: 10, is_active: true },
-    { id: 'prod-3', company_id: companyId, name_ar: 'مكيف سبليت 18000 وحدة', name_en: 'Split AC 18000', sku: 'MCF-18K', category: 'تكييف', unit: 'قطعة', cost: 95000, price: 135000, stock: 30, min_stock: 8, is_active: true },
-    { id: 'prod-4', company_id: companyId, name_ar: 'ثلاجة 16 قدم', name_en: 'Fridge 16ft', sku: 'TLG-16F', category: 'أدوات منزلية', unit: 'قطعة', cost: 120000, price: 165000, stock: 25, min_stock: 5, is_active: true },
-    { id: 'prod-5', company_id: companyId, name_ar: 'شاشة LED 55 بوصة', name_en: 'LED TV 55"', sku: 'LED-55', category: 'إلكترونيات', unit: 'قطعة', cost: 145000, price: 195000, stock: 18, min_stock: 5, is_active: true },
-    { id: 'prod-6', company_id: companyId, name_ar: 'لابتوب Dell i5', name_en: 'Dell Laptop i5', sku: 'DELL-I5', category: 'إلكترونيات', unit: 'قطعة', cost: 180000, price: 245000, stock: 35, min_stock: 8, is_active: true },
-    { id: 'prod-7', company_id: companyId, name_ar: 'خلاط كهربائي 500 واط', name_en: 'Electric Mixer 500W', sku: 'KHB-500', category: 'أدوات مطبخ', unit: 'قطعة', cost: 12000, price: 18000, stock: 200, min_stock: 30, is_active: true },
-    { id: 'prod-8', company_id: companyId, name_ar: 'مكنسة كهربائية', name_en: 'Vacuum Cleaner', sku: 'MKN-ELEC', category: 'أدوات منزلية', unit: 'قطعة', cost: 35000, price: 48000, stock: 60, min_stock: 12, is_active: true },
-    { id: 'prod-9', company_id: companyId, name_ar: 'سخان ماء 50 لتر', name_en: 'Water Heater 50L', sku: 'SKH-50L', category: 'أدوات منزلية', unit: 'قطعة', cost: 28000, price: 39000, stock: 80, min_stock: 15, is_active: true },
-    { id: 'prod-10', company_id: companyId, name_ar: 'مجفف شعر 2000 واط', name_en: 'Hair Dryer 2000W', sku: 'MGF-2000', category: 'عناية شخصية', unit: 'قطعة', cost: 8500, price: 12500, stock: 150, min_stock: 25, is_active: true },
-    { id: 'prod-11', company_id: companyId, name_ar: 'مروحة سقفية', name_en: 'Ceiling Fan', sku: 'MRF-SQF', category: 'تبريد', unit: 'قطعة', cost: 22000, price: 31000, stock: 90, min_stock: 15, is_active: true },
-    { id: 'prod-12', company_id: companyId, name_ar: 'فرن غاز 4 عيون', name_en: 'Gas Oven 4 Burner', sku: 'FRN-4AY', category: 'أدوات مطبخ', unit: 'قطعة', cost: 45000, price: 62000, stock: 40, min_stock: 8, is_active: true },
-    { id: 'prod-13', company_id: companyId, name_ar: 'مكواة بخار', name_en: 'Steam Iron', sku: 'MKW-BKH', category: 'أدوات منزلية', unit: 'قطعة', cost: 9500, price: 14000, stock: 110, min_stock: 20, is_active: true },
-    { id: 'prod-14', company_id: companyId, name_ar: 'مكبر صوت بلوتوث', name_en: 'Bluetooth Speaker', sku: 'SPK-BT', category: 'إلكترونيات', unit: 'قطعة', cost: 18000, price: 26000, stock: 75, min_stock: 15, is_active: true },
-    { id: 'prod-15', company_id: companyId, name_ar: 'كاميرا مراقبة', name_en: 'Security Camera', sku: 'CMR-WCH', category: 'إلكترونيات', unit: 'قطعة', cost: 32000, price: 45000, stock: 50, min_stock: 10, is_active: true },
+    { id: 'prod-1', company_id: companyId, code: 'P001', name_ar: 'براد ماء 20 لتر', name_en: 'Water Cooler 20L', sku: 'BRD-20L', unit: 'قطعة', category_id: 'pc-3', product_type_id: 'pt-1', cost_price: 15000, sale_price: 22000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-2', company_id: companyId, code: 'P002', name_ar: 'غسالة أوتوماتيك 7 كغ', name_en: 'Auto Washer 7kg', sku: 'GSL-7KG', unit: 'قطعة', category_id: 'pc-2', product_type_id: 'pt-1', cost_price: 85000, sale_price: 115000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-3', company_id: companyId, code: 'P003', name_ar: 'مكيف سبليت 18000 وحدة', name_en: 'Split AC 18000', sku: 'MCF-18K', unit: 'قطعة', category_id: 'pc-4', product_type_id: 'pt-1', cost_price: 95000, sale_price: 135000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-4', company_id: companyId, code: 'P004', name_ar: 'ثلاجة 16 قدم', name_en: 'Fridge 16ft', sku: 'TLG-16F', unit: 'قطعة', category_id: 'pc-2', product_type_id: 'pt-1', cost_price: 120000, sale_price: 165000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-5', company_id: companyId, code: 'P005', name_ar: 'شاشة LED 55 بوصة', name_en: 'LED TV 55"', sku: 'LED-55', unit: 'قطعة', category_id: 'pc-1', product_type_id: 'pt-1', cost_price: 145000, sale_price: 195000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-6', company_id: companyId, code: 'P006', name_ar: 'لابتوب Dell i5', name_en: 'Dell Laptop i5', sku: 'DELL-I5', unit: 'قطعة', category_id: 'pc-1', product_type_id: 'pt-1', cost_price: 180000, sale_price: 245000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-7', company_id: companyId, code: 'P007', name_ar: 'خلاط كهربائي 500 واط', name_en: 'Electric Mixer 500W', sku: 'KHB-500', unit: 'قطعة', category_id: 'pc-3', product_type_id: 'pt-1', cost_price: 12000, sale_price: 18000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-8', company_id: companyId, code: 'P008', name_ar: 'مكنسة كهربائية', name_en: 'Vacuum Cleaner', sku: 'MKN-ELEC', unit: 'قطعة', category_id: 'pc-2', product_type_id: 'pt-1', cost_price: 35000, sale_price: 48000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-9', company_id: companyId, code: 'P009', name_ar: 'سخان ماء 50 لتر', name_en: 'Water Heater 50L', sku: 'SKH-50L', unit: 'قطعة', category_id: 'pc-2', product_type_id: 'pt-1', cost_price: 28000, sale_price: 39000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-10', company_id: companyId, code: 'P010', name_ar: 'مجفف شعر 2000 واط', name_en: 'Hair Dryer 2000W', sku: 'MGF-2000', unit: 'قطعة', category_id: 'pc-5', product_type_id: 'pt-1', cost_price: 8500, sale_price: 12500, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-11', company_id: companyId, code: 'P011', name_ar: 'مروحة سقفية', name_en: 'Ceiling Fan', sku: 'MRF-SQF', unit: 'قطعة', category_id: 'pc-4', product_type_id: 'pt-1', cost_price: 22000, sale_price: 31000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-12', company_id: companyId, code: 'P012', name_ar: 'فرن غاز 4 عيون', name_en: 'Gas Oven 4 Burner', sku: 'FRN-4AY', unit: 'قطعة', category_id: 'pc-3', product_type_id: 'pt-1', cost_price: 45000, sale_price: 62000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-13', company_id: companyId, code: 'P013', name_ar: 'مكواة بخار', name_en: 'Steam Iron', sku: 'MKW-BKH', unit: 'قطعة', category_id: 'pc-2', product_type_id: 'pt-1', cost_price: 9500, sale_price: 14000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-14', company_id: companyId, code: 'P014', name_ar: 'مكبر صوت بلوتوث', name_en: 'Bluetooth Speaker', sku: 'SPK-BT', unit: 'قطعة', category_id: 'pc-1', product_type_id: 'pt-1', cost_price: 18000, sale_price: 26000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
+    { id: 'prod-15', company_id: companyId, code: 'P015', name_ar: 'كاميرا مراقبة', name_en: 'Security Camera', sku: 'CMR-WCH', unit: 'قطعة', category_id: 'pc-1', product_type_id: 'pt-1', cost_price: 32000, sale_price: 45000, is_active: true, created_by: 'user-1', updated_by: 'user-1' },
   ];
 }
 
@@ -534,6 +536,42 @@ function seedDocumentSequences(companyId: string) {
     increment_step: 1,
     is_active: true,
   }));
+}
+
+// ─── NEW: Product Categories ──────────────────────────────────────────────────
+function seedProductCategories(companyId: string) {
+  return [
+    { id: 'pc-1', company_id: companyId, name: 'إلكترونيات', parent_id: null },
+    { id: 'pc-2', company_id: companyId, name: 'أجهزة منزلية', parent_id: null },
+    { id: 'pc-3', company_id: companyId, name: 'أدوات مطبخ', parent_id: 'pc-2' },
+    { id: 'pc-4', company_id: companyId, name: 'تكييف وتبريد', parent_id: 'pc-2' },
+    { id: 'pc-5', company_id: companyId, name: 'عناية شخصية', parent_id: null },
+    { id: 'pc-6', company_id: companyId, name: 'مواد أولية', parent_id: null },
+    { id: 'pc-7', company_id: companyId, name: 'قطع غيار', parent_id: 'pc-1' },
+  ];
+}
+
+// ─── NEW: Product <-> Categories (Many-to-Many) ───────────────────────────────
+function seedProductProductCategories(companyId: string) {
+  return [
+    { product_id: 'prod-1', category_id: 'pc-2' },
+    { product_id: 'prod-1', category_id: 'pc-3' },
+    { product_id: 'prod-2', category_id: 'pc-2' },
+    { product_id: 'prod-3', category_id: 'pc-4' },
+    { product_id: 'prod-4', category_id: 'pc-2' },
+    { product_id: 'prod-5', category_id: 'pc-1' },
+    { product_id: 'prod-6', category_id: 'pc-1' },
+    { product_id: 'prod-7', category_id: 'pc-3' },
+    { product_id: 'prod-8', category_id: 'pc-2' },
+    { product_id: 'prod-9', category_id: 'pc-2' },
+    { product_id: 'prod-10', category_id: 'pc-5' },
+    { product_id: 'prod-11', category_id: 'pc-4' },
+    { product_id: 'prod-12', category_id: 'pc-3' },
+    { product_id: 'prod-13', category_id: 'pc-2' },
+    { product_id: 'prod-14', category_id: 'pc-1' },
+    { product_id: 'prod-15', category_id: 'pc-1' },
+    { product_id: 'prod-15', category_id: 'pc-7' },
+  ];
 }
 
 // ─── NEW: Product Types ───────────────────────────────────────────────────────

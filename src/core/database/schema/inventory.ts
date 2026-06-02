@@ -1,5 +1,15 @@
-import { pgTable, uuid, varchar, text, timestamp, numeric, boolean } from 'drizzle-orm/pg-core';
-import { companies } from './core';
+import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, primaryKey } from 'drizzle-orm/pg-core';
+import { companies, users } from './core';
+import { productTypes } from './settings';
+
+// ─── Product Categories ───────────────────────────────────────────────────────
+export const productCategories = pgTable('product_categories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 100 }).notNull(),
+  parentId: uuid('parent_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const products = pgTable('products', {
@@ -12,21 +22,27 @@ export const products = pgTable('products', {
   sku: varchar('sku', { length: 100 }),
   unit: varchar('unit', { length: 50 }).notNull().default('piece'),
   categoryId: uuid('category_id'),
+  productTypeId: uuid('product_type_id').references(() => productTypes.id, { onDelete: 'set null' }),
   costPrice: numeric('cost_price', { precision: 18, scale: 4 }).notNull().default('0'),
   salePrice: numeric('sale_price', { precision: 18, scale: 4 }).notNull().default('0'),
   isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── Product Categories ───────────────────────────────────────────────────────
-export const productCategories = pgTable('product_categories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 100 }).notNull(),
-  parentId: uuid('parent_id'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+// ─── Product <-> Categories (Many-to-Many) ────────────────────────────────────
+export const productProductCategories = pgTable(
+  'product_product_categories',
+  {
+    productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id').notNull().references(() => productCategories.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.productId, table.categoryId] }),
+  })
+);
 
 // ─── Warehouses ───────────────────────────────────────────────────────────────
 export const warehouses = pgTable('warehouses', {
@@ -36,6 +52,8 @@ export const warehouses = pgTable('warehouses', {
   code: varchar('code', { length: 20 }),
   branchId: uuid('branch_id'),
   isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -60,6 +78,8 @@ export const stockMovements = pgTable('stock_movements', {
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   reference: varchar('reference', { length: 100 }), // invoice_id, transfer_id, etc.
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -71,6 +91,8 @@ export const warehouseTransfers = pgTable('warehouse_transfers', {
   toWarehouseId: uuid('to_warehouse_id').notNull(),
   status: varchar('status', { length: 20 }).default('pending'), // pending, completed, cancelled
   notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

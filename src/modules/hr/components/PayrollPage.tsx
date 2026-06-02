@@ -6,12 +6,15 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { usePayrollRuns, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PayrollLine } from '../types';
 
 export const PayrollPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { payrolls, isLoading, create, post } = usePayrollRuns(companyId);
+  const { filtered: filteredPayrolls, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(payrolls, 'hr');
   const { employees } = useEmployees(companyId);
   const { formatCurrency } = useFormatters(companyId);
 
@@ -89,20 +92,23 @@ export const PayrollPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">مسير الرواتب</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">حساب وإدارة رواتب الموظفين</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>
           مسير جديد
         </Button>
       </div>
+    </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : payrolls.length === 0 ? (
+        ) : filteredPayrolls.length === 0 ? (
           <EmptyState icon="file" title="لا يوجد مسير رواتب" description="يمكنك إنشاء مسير جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>مسير جديد</Button>} />
         ) : (
           <Table
-            data={payrolls}
+            data={filteredPayrolls}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا يوجد مسير رواتب"

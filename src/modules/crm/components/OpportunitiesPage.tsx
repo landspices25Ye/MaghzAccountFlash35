@@ -7,6 +7,8 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useOpportunities } from '../hooks/useCrm';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Opportunity } from '../types';
 
 const STAGES: Opportunity['stage'][] = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
@@ -34,6 +36,7 @@ export const OpportunitiesPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
   const { opportunities, isLoading, create, update, remove } = useOpportunities(companyId);
+  const { filtered: filteredOpportunities, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(opportunities, 'crm');
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'funnel'>('kanban');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,12 +96,12 @@ export const OpportunitiesPage: React.FC = () => {
     setDraggedId(null);
   };
 
-  const totalValue = useMemo(() => opportunities.reduce((sum, o) => sum + (o.value || 0), 0), [opportunities]);
-  const weightedValue = useMemo(() => opportunities.reduce((sum, o) => sum + (o.value || 0) * ((o.probability || 0) / 100), 0), [opportunities]);
+  const totalValue = useMemo(() => filteredOpportunities.reduce((sum, o) => sum + (o.value || 0), 0), [filteredOpportunities]);
+  const weightedValue = useMemo(() => filteredOpportunities.reduce((sum, o) => sum + (o.value || 0) * ((o.probability || 0) / 100), 0), [filteredOpportunities]);
 
   const funnelData = useMemo(() => {
     return STAGES.map((stage) => {
-      const stageOpps = opportunities.filter((o) => o.stage === stage);
+      const stageOpps = filteredOpportunities.filter((o) => o.stage === stage);
       return { stage, label: STAGE_LABELS[stage], count: stageOpps.length, value: stageOpps.reduce((s, o) => s + o.value, 0) };
     });
   }, [opportunities]);
@@ -132,15 +135,16 @@ export const OpportunitiesPage: React.FC = () => {
             <button onClick={() => setViewMode('kanban')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>Kanban</button>
             <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قائمة</button>
             <button onClick={() => setViewMode('funnel')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'funnel' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قمع</button>
-          </div>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button>
+      </div>
+      <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+      <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white"><TrendingUp size={20} /></div>
-          <div><p className="text-2xl font-bold">{opportunities.length}</p><p className="text-sm text-slate-500">إجمالي الفرص</p></div>
+          <div><p className="text-2xl font-bold">{filteredOpportunities.length}</p><p className="text-sm text-slate-500">إجمالي الفرص</p></div>
         </div>
         <div className="card flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white"><CheckSquare size={20} /></div>
@@ -154,7 +158,7 @@ export const OpportunitiesPage: React.FC = () => {
 
       {isLoading ? (
         <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-      ) : opportunities.length === 0 ? (
+      ) : filteredOpportunities.length === 0 ? (
         <EmptyState icon="inbox" title="لا توجد فرص" description="يمكنك إضافة فرصة جديدة" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button>} />
       ) : viewMode === 'kanban' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
@@ -167,10 +171,10 @@ export const OpportunitiesPage: React.FC = () => {
             >
               <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <span className="font-semibold text-sm">{STAGE_LABELS[stage]}</span>
-                <span className="text-xs bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full">{opportunities.filter((o) => o.stage === stage).length}</span>
+                <span className="text-xs bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full">{filteredOpportunities.filter((o) => o.stage === stage).length}</span>
               </div>
               <div className="p-3 space-y-3">
-                {opportunities.filter((o) => o.stage === stage).map((opp) => (
+                {filteredOpportunities.filter((o) => o.stage === stage).map((opp) => (
                   <div
                     key={opp.id}
                     draggable
@@ -215,7 +219,7 @@ export const OpportunitiesPage: React.FC = () => {
                   <div className="flex-1 h-8 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
                     <div
                       className="h-full bg-primary-500 rounded-full transition-all duration-500"
-                      style={{ width: `${f.count > 0 ? Math.min(100, (f.count / Math.max(1, opportunities.length)) * 100 * STAGES.length) : 0}%` }}
+                      style={{ width: `${f.count > 0 ? Math.min(100, (f.count / Math.max(1, filteredOpportunities.length)) * 100 * STAGES.length) : 0}%` }}
                     />
                     <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-700 dark:text-slate-200">
                       {f.count} فرص ({formatCurrency(f.value)})

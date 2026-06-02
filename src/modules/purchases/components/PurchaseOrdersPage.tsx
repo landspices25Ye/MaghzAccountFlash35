@@ -5,6 +5,8 @@ import { logAudit } from '@/core/utils/auditLogger';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { Card, Button, Modal, Input } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
@@ -58,7 +60,8 @@ export const PurchaseOrdersPage: React.FC = () => {
   const { orders, isLoading, create, update, remove, convertToInvoice } = usePurchaseOrders(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const filteredOrders = useBranchFilter(orders);
+  const branchFiltered = useBranchFilter(orders);
+  const { filtered: filteredOrders, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'purchases');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -250,11 +253,14 @@ export const PurchaseOrdersPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('purchases.orders')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('purchases.ordersSubtitle')}</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           {t('purchases.order.create')}
         </Button>
       </div>
+    </div>
 
       <Card>
         <DataTablePro<PurchaseOrder>
@@ -305,7 +311,7 @@ export const PurchaseOrdersPage: React.FC = () => {
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-4">
                   <label className="text-xs text-slate-500">{t('inventory.productName')}</label>
-                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" />
+                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" module="purchases" />
                 </div>
                 <div className="col-span-3">
                   <Input type="text" placeholder={t('description')} value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} />

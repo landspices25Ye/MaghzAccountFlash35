@@ -16,6 +16,8 @@ import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseReturn } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
+import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 
 interface ReturnFormLine {
   productId: string;
@@ -58,6 +60,7 @@ export const PurchaseReturnsPage: React.FC = () => {
   const { returns, isLoading, create, update, remove, post } = usePurchaseReturns(activeCompany?.id || '');
   const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { filtered: filteredReturns, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(returns, 'purchases');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -267,11 +270,14 @@ export const PurchaseReturnsPage: React.FC = () => {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('purchases.returns')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('purchases.returnsSubtitle')}</p>
           </div>
-        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           {t('purchases.return.create')}
         </Button>
       </div>
+    </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -296,7 +302,7 @@ export const PurchaseReturnsPage: React.FC = () => {
 
       <Card>
         <DataTablePro<PurchaseReturn>
-          data={returns}
+          data={filteredReturns}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
@@ -356,7 +362,7 @@ export const PurchaseReturnsPage: React.FC = () => {
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-4">
                   <label className="text-xs text-slate-500">{t('inventory.productName')}</label>
-                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" />
+                  <ProductSelect companyId={activeCompany?.id || ''} value={line.productId} onChange={v => updateLine(idx, { productId: Array.isArray(v) ? (v[0] || '') : (v || '') })} size="sm" module="purchases" />
                 </div>
                 <div className="col-span-3">
                   <Input type="text" placeholder={t('description')} value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} />
