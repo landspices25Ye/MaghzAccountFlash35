@@ -1,6 +1,7 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createCustomerSchema, createInvoiceSchema, createQuotationSchema, createSalesReturnSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Customer, SalesInvoice, SalesInvoiceLine, Quotation, QuotationLine, SalesReturn, SalesReturnLine, CustomerStatementRow, CustomerArAging } from './types';
 
 export const salesApi = {
@@ -169,6 +170,59 @@ export const salesApi = {
       if (!result.success) return { success: false, error: result.error };
       const invoices = (result.rows || []).map((row: Record<string, unknown>) => mapInvoiceRow(row));
       return { success: true, data: invoices };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getInvoicesPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; customerId?: string }
+  ): Promise<PaginatedQueryResult<SalesInvoice>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['i.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`i.status = $${params.length}`);
+      }
+      if (filters?.customerId) {
+        params.push(filters.customerId);
+        conditions.push(`i.customer_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM sales_invoices i WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT i.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email, c.address as customer_address, c.tax_number as customer_tax_number, c.balance as customer_balance, c.is_active as customer_is_active
+         FROM sales_invoices i
+         LEFT JOIN customers c ON i.customer_id = c.id
+         WHERE ${where}
+         ORDER BY i.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((row: Record<string, unknown>) => mapInvoiceRow(row));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

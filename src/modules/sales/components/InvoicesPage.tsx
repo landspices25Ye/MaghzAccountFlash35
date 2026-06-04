@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FileText, Plus, CheckSquare, Trash2, Printer, Download } from 'lucide-react';
-import { Card, Button, Table, Input, Modal } from '@/core/ui/components';
+import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
@@ -52,6 +52,14 @@ export const InvoicesPage: React.FC = () => {
   const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'sales');
   const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const paginatedInvoices = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredInvoices.slice(start, start + pageSize);
+  }, [filteredInvoices, page, pageSize]);
+  useEffect(() => { setPage(1); }, [filteredInvoices.length]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -422,7 +430,16 @@ export const InvoicesPage: React.FC = () => {
             action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>}
           />
         ) : (
-          <Table<SalesInvoice> data={filteredInvoices} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+          <>
+            <Table<SalesInvoice> data={paginatedInvoices} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={filteredInvoices.length}
+              onPageChange={setPage}
+              onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+            />
+          </>
         )}
       </Card>
 
