@@ -2,7 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from 'dotenv';
-import { registerDatabaseHandlers, registerOnboardingHandlers, seedInitialData, initializeSchema } from './dbHandler.js';
+import { registerDatabaseHandlers, registerOnboardingHandlers } from './dbHandler.js';
 import { runDrizzleMigrations } from './migrationRunner.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,11 +55,9 @@ app.whenReady().then(async () => {
   // Register onboarding IPC handlers (connection test, seed, config)
   registerOnboardingHandlers();
 
-  // Run Drizzle migrations on PostgreSQL
+  // Run Drizzle migrations on PostgreSQL (single source of truth for schema)
   try {
     await runDrizzleMigrations();
-    // Ensure base tables exist as fallback (CREATE TABLE IF NOT EXISTS)
-    await initializeSchema();
     console.log('[App] PostgreSQL (Drizzle) ready.');
   } catch (err) {
     console.error('[App] PostgreSQL migration failed:', err.message);

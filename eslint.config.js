@@ -18,5 +18,23 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+      // React 19 experimental rules that don't understand our data-fetching patterns
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/incompatible-library': 'off',
+      'react-hooks/purity': 'off',
+      // Allow empty catch blocks when intentional
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
   },
 ])

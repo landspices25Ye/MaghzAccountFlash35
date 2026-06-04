@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.drizzle-drift-check/
 
 # Editor directories and files
 .vscode/*

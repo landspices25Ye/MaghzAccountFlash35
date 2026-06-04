@@ -13,7 +13,10 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
     "electron:build": "npm run build && electron-builder",
-    "db:reset": "node electron/resetDatabase.js"
+    "db:reset": "node electron/resetDatabase.js",
+    "db:reset:force": "node electron/resetDatabase.js --yes --force",
+    "db:check": "drizzle-kit generate --config=drizzle.check.config.ts",
+    "preflight": "npm run lint && npx tsc --noEmit && npm run test"
   },
   "build": {
     "appId": "com.maghzaccount.pro",
