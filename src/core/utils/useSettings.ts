@@ -25,31 +25,31 @@ export function useSettings(companyId: string) {
       const adapter = await getDbAdapter();
       
       // Load VAT settings
-      const vatResult = await adapter.query(
-        `SELECT * FROM vat_settings WHERE company_id = $1 AND is_active = true LIMIT 1`,
+      const vatResult = await adapter.query<{ vat_rate: number }>(
+        `SELECT vat_rate FROM vat_settings WHERE company_id = $1 AND is_active = true LIMIT 1`,
         [companyId]
       );
-      
+
       // Load currencies
-      const currResult = await adapter.query(
-        `SELECT * FROM currencies WHERE company_id = $1 AND is_active = true`,
+      const currResult = await adapter.query<{ is_default: boolean; code: string }>(
+        `SELECT is_default, code FROM currencies WHERE company_id = $1 AND is_active = true`,
         [companyId]
       );
-      
+
       // Load default accounts
-      const defaultAccountsResult = await adapter.query(
+      const defaultAccountsResult = await adapter.query<{ function_key: string; account_id: string }>(
         `SELECT function_key, account_id FROM default_accounts WHERE company_id = $1`,
         [companyId]
       );
 
       // Load default branch
-      const branchResult = await adapter.query(
+      const branchResult = await adapter.query<{ id: string }>(
         `SELECT id FROM branches WHERE company_id = $1 AND is_active = true ORDER BY created_at ASC LIMIT 1`,
         [companyId]
       );
 
       // Load company format settings
-      const companyResult = await adapter.query(
+      const companyResult = await adapter.query<{ date_format: string; decimal_places: number; calendar: string }>(
         `SELECT date_format, decimal_places, calendar FROM companies WHERE id = $1 LIMIT 1`,
         [companyId]
       );
@@ -59,7 +59,7 @@ export function useSettings(companyId: string) {
         : 15;
 
       const baseCurrency = currResult.success && currResult.rows
-        ? currResult.rows.find((c: any) => c.is_default)?.code || 'YER'
+        ? currResult.rows.find((c) => c.is_default)?.code || 'YER'
         : 'YER';
 
       const defaultAccounts: Record<string, string> = {};

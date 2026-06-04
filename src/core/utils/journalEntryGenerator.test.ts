@@ -17,7 +17,7 @@ vi.mock('@/core/database/adapters', () => ({
 
 import { getDbAdapter } from '@/core/database/adapters';
 
-function createMockAdapter(overrides?: Partial<ReturnType<typeof mockAdapter>>) {
+function createMockAdapter(overrides?: Record<string, unknown>) {
   const accounts = [
     { id: 'acc-cash', company_id: 'comp-1', code: '11101', name: 'Cash' },
     { id: 'acc-bank', company_id: 'comp-1', code: '11102', name: 'Bank' },
@@ -40,25 +40,25 @@ function createMockAdapter(overrides?: Partial<ReturnType<typeof mockAdapter>>) 
   const defaultAccounts: Record<string, string> = {};
 
   return {
-    query: vi.fn(async (sql: string, params: any[]) => {
+    query: vi.fn(async (sql: string, params: unknown[]) => {
       const lower = sql.toLowerCase();
 
       if (lower.includes('from default_accounts')) {
-        const key = params[1];
+        const key = params[1] as string;
         const accId = defaultAccounts[key];
         return { success: true, rows: accId ? [{ account_id: accId }] : [] };
       }
 
       if (lower.includes('from accounts')) {
-        const companyId = params[0];
-        const code = params[1];
+        const companyId = params[0] as string;
+        const code = params[1] as string;
         const match = accounts.find(a => a.company_id === companyId && a.code === code);
         return { success: true, rows: match ? [{ id: match.id }] : [] };
       }
 
       return { success: true, rows: [] };
     }),
-    createTransaction: vi.fn(async (data: any) => {
+    createTransaction: vi.fn(async (_data: unknown) => {
       return { success: true, id: 'tx-' + Math.random().toString(36).substring(2, 8) };
     }),
     ...overrides,
@@ -73,7 +73,7 @@ describe('journalEntryGenerator', () => {
   describe('postSalesInvoice', () => {
     it('posts a sales invoice successfully', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postSalesInvoice('comp-1', {
         invoiceNumber: 'INV-001',
@@ -98,7 +98,7 @@ describe('journalEntryGenerator', () => {
       const adapter = createMockAdapter({
         query: vi.fn(async () => ({ success: true, rows: [] })),
       });
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postSalesInvoice('comp-1', {
         invoiceNumber: 'INV-001',
@@ -117,7 +117,7 @@ describe('journalEntryGenerator', () => {
   describe('postPurchaseInvoice', () => {
     it('posts a purchase invoice successfully', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postPurchaseInvoice('comp-1', {
         invoiceNumber: 'PINV-001',
@@ -140,7 +140,7 @@ describe('journalEntryGenerator', () => {
   describe('postReceiptVoucher', () => {
     it('posts a cash receipt voucher', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postReceiptVoucher('comp-1', {
         voucherNumber: 'RV-001',
@@ -158,7 +158,7 @@ describe('journalEntryGenerator', () => {
 
     it('posts a bank receipt voucher', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postReceiptVoucher('comp-1', {
         voucherNumber: 'RV-002',
@@ -177,7 +177,7 @@ describe('journalEntryGenerator', () => {
   describe('postPaymentVoucher', () => {
     it('posts a payment to supplier', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postPaymentVoucher('comp-1', {
         voucherNumber: 'PV-001',
@@ -195,7 +195,7 @@ describe('journalEntryGenerator', () => {
 
     it('posts a rent expense payment', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postPaymentVoucher('comp-1', {
         voucherNumber: 'PV-002',
@@ -215,7 +215,7 @@ describe('journalEntryGenerator', () => {
   describe('postSalesReturn', () => {
     it('posts a sales return successfully', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postSalesReturn('comp-1', {
         returnNumber: 'SR-001',
@@ -235,7 +235,7 @@ describe('journalEntryGenerator', () => {
   describe('postPurchaseReturn', () => {
     it('posts a purchase return successfully', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postPurchaseReturn('comp-1', {
         returnNumber: 'PR-001',
@@ -254,7 +254,7 @@ describe('journalEntryGenerator', () => {
   describe('postInventoryTransaction', () => {
     it('posts inventory in transaction', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postInventoryTransaction('comp-1', {
         reference: 'IT-001',
@@ -272,7 +272,7 @@ describe('journalEntryGenerator', () => {
 
     it('posts inventory out transaction', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postInventoryTransaction('comp-1', {
         reference: 'IT-002',
@@ -290,7 +290,7 @@ describe('journalEntryGenerator', () => {
 
     it('skips adjustment type', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postInventoryTransaction('comp-1', {
         reference: 'IT-003',
@@ -308,7 +308,7 @@ describe('journalEntryGenerator', () => {
   describe('postStockAdjustment', () => {
     it('posts positive adjustment (found)', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postStockAdjustment('comp-1', {
         id: 'ADJ-001',
@@ -326,7 +326,7 @@ describe('journalEntryGenerator', () => {
 
     it('posts negative adjustment (lost)', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postStockAdjustment('comp-1', {
         id: 'ADJ-002',
@@ -344,7 +344,7 @@ describe('journalEntryGenerator', () => {
 
     it('skips zero difference', async () => {
       const adapter = createMockAdapter();
-      vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+      vi.mocked(getDbAdapter).mockResolvedValue(adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>);
 
       const result = await postStockAdjustment('comp-1', {
         id: 'ADJ-003',
@@ -359,3 +359,4 @@ describe('journalEntryGenerator', () => {
     });
   });
 });
+

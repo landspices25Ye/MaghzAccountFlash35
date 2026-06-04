@@ -46,7 +46,7 @@ const ACC = {
 
 async function findAccountByCode(companyId: string, code: string): Promise<string | null> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     `SELECT id FROM accounts WHERE company_id = $1 AND code = $2`,
     [companyId, code]
   );
@@ -67,7 +67,7 @@ async function findAccountByCode(companyId: string, code: string): Promise<strin
   };
   const pattern = nameMap[code];
   if (pattern) {
-    const fallback = await adapter.query(
+    const fallback = await adapter.query<{ id: string }>(
       `SELECT id FROM accounts WHERE company_id = $1 AND name_ar SIMILAR TO $2 LIMIT 1`,
       [companyId, pattern]
     );
@@ -78,7 +78,7 @@ async function findAccountByCode(companyId: string, code: string): Promise<strin
 
 async function getDefaultAccountId(companyId: string, functionKey: string): Promise<string | null> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ account_id: string }>(
     `SELECT account_id FROM default_accounts WHERE company_id = $1 AND function_key = $2`,
     [companyId, functionKey]
   );

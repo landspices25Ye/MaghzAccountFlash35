@@ -38,7 +38,13 @@ export function useDocumentSequences(companyId: string) {
 }
 
 // ─── Product Types ────────────────────────────────────────────────────────────
-export function useProductTypes(companyId: string) {
+export function useProductTypes(companyId: string): {
+  types: ProductType[];
+  isLoading: boolean;
+  create: (data: Omit<ProductType, 'id'>) => Promise<{ success: boolean; id?: string; error?: string }>;
+  update: (id: string, data: Partial<ProductType>) => Promise<{ success: boolean; error?: string }>;
+  remove: (id: string) => Promise<{ success: boolean; error?: string }>;
+} {
   const [types, setTypes] = useState<ProductType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 

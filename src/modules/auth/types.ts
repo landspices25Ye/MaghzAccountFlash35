@@ -36,8 +36,8 @@ export interface AuditLog {
   tableName: string;
   recordId: string;
   recordLabel?: string;
-  oldValues?: Record<string, any>;
-  newValues?: Record<string, any>;
+  oldValues?: Record<string, unknown>;
+  newValues?: Record<string, unknown>;
   ipAddress?: string;
   createdAt: string;
 }

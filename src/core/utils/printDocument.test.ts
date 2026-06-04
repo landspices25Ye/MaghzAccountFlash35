@@ -9,7 +9,7 @@ describe('printDocument', () => {
     const mockWindow = {
       document: { open: mockOpen, write: mockWrite, close: mockClose },
     };
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(mockWindow as any);
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(mockWindow as unknown as Window);
 
     printDocument({
       type: 'sales-invoice',

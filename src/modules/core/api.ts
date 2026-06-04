@@ -33,7 +33,7 @@ export const coreApi = {
 
   async createCurrency(data: Omit<Currency, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
-    const result = await adapter.query(
+    const result = await adapter.query<{ id: string }>(
       `INSERT INTO currencies (company_id, code, name, symbol, exchange_rate, is_default, is_active)
        VALUES ($1, $2, $3, $4, $5, $6, true) RETURNING id`,
       [data.companyId, data.code, data.name, data.symbol, data.exchangeRate, data.isDefault]
@@ -88,7 +88,7 @@ export const coreApi = {
 
   async createBranch(data: Omit<Branch, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     const adapter = await getDbAdapter();
-    const result = await adapter.query(
+    const result = await adapter.query<{ id: string }>(
       `INSERT INTO branches (company_id, name, code, address, is_active)
        VALUES ($1, $2, $3, $4, true) RETURNING id`,
       [data.companyId, data.name, data.code, data.address]
@@ -111,7 +111,7 @@ export const coreApi = {
   async getSettings(companyId: string, category?: string): Promise<{ success: boolean; data?: Setting[]; error?: string }> {
     const adapter = await getDbAdapter();
     let sql = 'SELECT * FROM settings WHERE company_id = $1';
-    const params: any[] = [companyId];
+    const params: unknown[] = [companyId];
     if (category) {
       sql += ' AND category = $2';
       params.push(category);

@@ -1,10 +1,31 @@
 import type { DbAdapter } from './types';
 
+export interface ElectronDB extends PreloadDB {
+  updateConfig?(config: { host?: string; port?: number | string; database?: string; user?: string; password?: string }): Promise<{ success: boolean; error?: string }>;
+  testConnection?(config: { host?: string; port?: number | string; database?: string; user?: string; password?: string }): Promise<{ success: boolean; db?: string; version?: string; error?: string }>;
+  clearAll?(): Promise<{ success: boolean; error?: string }>;
+  seedDefault?(): Promise<{ success: boolean; error?: string }>;
+  seedDemo?(): Promise<{ success: boolean; error?: string }>;
+  reset?(): Promise<{ success: boolean; error?: string }>;
+}
+
+interface PreloadDB {
+  ping(): Promise<{ success: boolean; message?: string; db?: string }>;
+  query(sql: string, params?: unknown[]): Promise<{ success: boolean; rows?: Record<string, unknown>[]; error?: string }>;
+  transaction(queries: { sql: string; params?: unknown[] }[]): Promise<{ success: boolean; results?: unknown[][]; error?: string }>;
+}
+
+declare global {
+  interface Window {
+    electronDB?: ElectronDB;
+  }
+}
+
 // Use window.electronDB exposed by preload script
 // This avoids importing 'electron' directly which breaks browser builds
-function getDB() {
-  if (typeof window !== 'undefined' && (window as any).electronDB) {
-    return (window as any).electronDB;
+function getDB(): PreloadDB {
+  if (typeof window !== 'undefined' && window.electronDB) {
+    return window.electronDB;
   }
   throw new Error('electronDB not available');
 }
@@ -39,11 +60,11 @@ function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-function normalizeResult(result: { success: boolean; rows?: Record<string, unknown>[]; error?: string }) {
+function normalizeResult<T = unknown>(result: { success: boolean; rows?: Record<string, unknown>[]; error?: string }): { success: boolean; rows?: T[]; error?: string } {
   if (result.success && result.rows) {
-    return { ...result, rows: result.rows.map(normalizeRow) };
+    return { ...result, rows: result.rows.map(normalizeRow) as unknown as T[] };
   }
-  return result;
+  return result as { success: boolean; rows?: T[]; error?: string };
 }
 
 /** Convert SQLite-style ? placeholders to PostgreSQL $1, $2... */
@@ -65,9 +86,11 @@ export const electronPgAdapter: DbAdapter = {
   async query(sql, params) {
     const pgSql = convertPlaceholders(sql);
     const raw = await getDB().query(pgSql, params);
-    const normalized = normalizeResult(raw);
-    return normalized as any;
+    return normalizeResult(raw);
   },
+
+
+
 
   async transaction(queries) {
     const pgQueries = queries.map(q => ({
@@ -101,8 +124,8 @@ export const electronPgAdapter: DbAdapter = {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [data.companyId, data.code, data.nameAr, data.nameEn, data.parentId, data.type, data.nature, data.isGroup, data.balance || 0],
     );
-    if (result.success && result.rows?.length > 0) {
-      return { success: true, id: result.rows[0].id };
+    if (result.success && result.rows?.length && result.rows[0]) {
+      return { success: true, id: String(result.rows[0].id) };
     }
     return { success: false, error: result.error };
   },
@@ -123,12 +146,12 @@ export const electronPgAdapter: DbAdapter = {
     );
     if (!txResult.success) return { success: false, error: txResult.error };
     
-    const transactions = normalizeResult(txResult).rows || [];
+    const transactions = (normalizeResult<Record<string, unknown>>(txResult).rows || []) as Record<string, unknown>[];
     if (transactions.length === 0) {
       return { success: true, data: [] };
     }
-    
-    const txIds = transactions.map((t: any) => t.id);
+
+    const txIds = transactions.map((t) => String(t.id));
     const entriesResult = await getDB().query(
       `SELECT je.*, a.name_ar as account_name, a.code as account_code 
        FROM journal_entries je 
@@ -137,8 +160,8 @@ export const electronPgAdapter: DbAdapter = {
       [txIds],
     );
     
-    const allEntries = normalizeResult(entriesResult).rows || [];
-    const entriesByTx = new Map<string, any[]>();
+    const allEntries = (normalizeResult(entriesResult).rows || []) as Record<string, unknown>[];
+    const entriesByTx = new Map<string, Record<string, unknown>[]>();
     for (const entry of allEntries) {
       const txId = String(entry.transaction_id || entry.transactionId);
       if (!entriesByTx.has(txId)) entriesByTx.set(txId, []);
@@ -148,7 +171,7 @@ export const electronPgAdapter: DbAdapter = {
     for (const tx of transactions) {
       const txId = String(tx.id);
       const txEntries = entriesByTx.get(txId) || [];
-      tx.entries = txEntries.map((row: any) => ({
+      tx.entries = txEntries.map((row: Record<string, unknown>) => ({
         id: row.id,
         transactionId: row.transaction_id || row.transactionId,
         accountId: row.account_id || row.accountId,
@@ -174,7 +197,7 @@ export const electronPgAdapter: DbAdapter = {
     ]);
 
     if (txResult.success && txResult.results?.[0]?.[0]) {
-      const txId = txResult.results[0][0].id;
+      const txId = String((txResult.results[0][0] as { id: unknown }).id);
 
       // Insert journal entries
       for (const entry of data.entries) {
@@ -205,7 +228,7 @@ export const electronPgAdapter: DbAdapter = {
     if (!result.success) {
       return { success: false, error: result.error };
     }
-    const rows = (result.rows || []).map((r) => ({
+    const rows = (result.rows || []).map((r: Record<string, unknown>) => ({
       ...r,
       categoryIds: Array.isArray(r.category_ids) ? r.category_ids : [],
     }));
@@ -218,8 +241,8 @@ export const electronPgAdapter: DbAdapter = {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [data.companyId, data.code, data.nameAr, data.nameEn, data.barcode, data.sku, data.unit, data.categoryId ?? null, data.productTypeId ?? null, data.costPrice, data.salePrice, data.isActive ?? true, data.createdBy ?? null, data.updatedBy ?? null],
     );
-    if (result.success && result.rows?.length > 0) {
-      const productId = result.rows[0].id;
+    if (result.success && result.rows?.length && result.rows[0]) {
+      const productId = String(result.rows[0].id);
       if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
         for (const categoryId of data.categoryIds) {
           await getDB().query(
@@ -234,27 +257,43 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async getContacts(companyId, type) {
-    let sql = 'SELECT * FROM contacts WHERE company_id = $1';
+    // customers and suppliers are separate tables in the Drizzle schema.
+    // The legacy `contacts` table does not exist; we route to the correct table.
     const params: unknown[] = [companyId];
-    if (type) {
-      sql += ' AND type = $2';
-      params.push(type);
+    let finalSql: string;
+    if (!type || type === 'customer') {
+      finalSql = `SELECT id, company_id, 'customer' AS type, name, phone, email, address,
+                  tax_number, balance, is_active, created_at, updated_at
+                  FROM customers WHERE company_id = $1 ORDER BY name`;
+    } else {
+      finalSql = `SELECT id, company_id, 'supplier' AS type, name, phone, email, address,
+                  tax_number, balance, is_active, created_at, updated_at
+                  FROM suppliers WHERE company_id = $1 ORDER BY name`;
     }
-    sql += ' ORDER BY name';
-
-    const result = await getDB().query(sql, params);
+    const result = await getDB().query(finalSql, params);
     return { success: result.success, data: result.rows, error: result.error };
   },
 
   async createContact(data) {
-    const result = await getDB().query(
-      `INSERT INTO contacts (company_id, type, name, phone, email, address, tax_number, balance)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [data.companyId, data.type, data.name, data.phone, data.email, data.address, data.taxNumber, data.balance || 0],
-    );
-    if (result.success && result.rows?.length > 0) {
-      return { success: true, id: result.rows[0].id };
+    // Route to the correct table based on type
+    if (data.type === 'supplier') {
+      const result = await getDB().query(
+        `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],
+      );
+      return result.success && result.rows?.length && result.rows[0]
+        ? { success: true, id: String(result.rows[0].id) }
+        : { success: false, error: result.error };
     }
-    return { success: false, error: result.error };
+    // default to customer
+    const result = await getDB().query(
+      `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, balance)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],
+    );
+    return result.success && result.rows?.length && result.rows[0]
+      ? { success: true, id: String(result.rows[0].id) }
+      : { success: false, error: result.error };
   },
 };

@@ -37,6 +37,7 @@ export function useUserMap(): { getUserName: (id?: string) => string; refresh: (
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   return {

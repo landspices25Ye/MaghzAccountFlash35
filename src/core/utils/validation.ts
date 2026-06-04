@@ -24,7 +24,7 @@ export const phoneSchema = z.string().max(50).optional().or(z.literal(''));
 export function validateInput<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {
   const result = schema.safeParse(data);
   if (result.success) return { success: true, data: result.data };
-  const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+  const errors = result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
   return { success: false, error: errors };
 }
 

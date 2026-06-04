@@ -7,11 +7,11 @@ import type { DbAdapter } from './types';
  */
 
 function isElectron(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).electronEnv?.isElectron;
+  return typeof window !== 'undefined' && !!(window as { electronEnv?: { isElectron?: boolean } }).electronEnv?.isElectron;
 }
 
 function isElectronPg(): boolean {
-  return typeof window !== 'undefined' && !!(window as any).electronDB?.ping;
+  return typeof window !== 'undefined' && !!(window as { electronDB?: { ping?: unknown } }).electronDB?.ping;
 }
 
 let adapter: DbAdapter | null = null;

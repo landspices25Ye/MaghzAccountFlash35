@@ -1,5 +1,5 @@
 import type { Product } from '@/modules/inventory/types';
-import type { ProductType } from './types';
+import type { ProductType } from '@/core/types';
 
 export type ProductModule = 'sales' | 'purchases' | 'inventory' | 'manufacturing';
 
@@ -11,7 +11,7 @@ const MODULE_TO_FLAG: Record<ProductModule, keyof Pick<ProductType, 'appearsInSa
 };
 
 export function isProductAvailableInModule(
-  product: Product,
+  _product: Product,
   productType: ProductType | undefined | null,
   module: ProductModule
 ): boolean {

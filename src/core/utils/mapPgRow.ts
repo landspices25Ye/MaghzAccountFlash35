@@ -28,6 +28,6 @@ export function snakeToCamel(obj: Record<string, unknown>): Record<string, unkno
   return out;
 }
 
-export function mapRows<T = any>(rows: any[] | undefined): T[] {
+export function mapRows<T = unknown>(rows: Record<string, unknown>[] | undefined): T[] {
   return (rows || []).map((r) => snakeToCamel(r) as T);
 }

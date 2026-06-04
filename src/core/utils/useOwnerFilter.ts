@@ -8,12 +8,10 @@ export function useOwnerFilter<T extends { createdBy?: string }>(
   const user = useAuthStore((state) => state.user);
   const shouldFilter = useAuthStore((state) => state.shouldFilterByOwner);
   const canAccessOwned = useAuthStore((state) => state.canAccessOwned);
-  const hasPermission = useAuthStore((state) => state.hasPermission);
 
   const isForcedOwnOnly = shouldFilter(module);
   const isAdmin = user?.role === 'super_admin' || user?.role === 'admin';
   const hasOwnPerm = canAccessOwned(`${module}.own`);
-  const hasViewPerm = hasPermission(`${module}.view`);
   const showToggle = !isForcedOwnOnly && !isAdmin && hasOwnPerm;
 
   const [manualOwnOnly, setManualOwnOnly] = useState(() => {

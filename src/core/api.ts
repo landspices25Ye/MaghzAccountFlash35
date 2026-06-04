@@ -61,7 +61,7 @@ export async function getProductTypes(companyId: string): Promise<{ success: boo
 
 export async function createProductType(data: Omit<ProductType, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     `INSERT INTO product_types (company_id, name_ar, name_en, code, appears_in_sales, appears_in_purchases, appears_in_inventory, appears_in_manufacturing, has_stock_tracking, has_bom, default_sales_account_id, default_cogs_account_id, default_inventory_account_id, is_active)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`,
     [data.companyId, data.nameAr, data.nameEn, data.code, data.appearsInSales, data.appearsInPurchases, data.appearsInInventory, data.appearsInManufacturing, data.hasStockTracking, data.hasBOM, data.defaultSalesAccountId, data.defaultCOGSAccountId, data.defaultInventoryAccountId, data.isActive]
@@ -93,7 +93,7 @@ export async function getUnits(companyId: string): Promise<{ success: boolean; d
 
 export async function createUnit(data: Omit<Unit, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     'INSERT INTO units (company_id, name_ar, name_en, code, conversion_factor, base_unit_id, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
     [data.companyId, data.nameAr, data.nameEn, data.code, data.conversionFactor, data.baseUnitId, data.isActive]
   );
@@ -124,7 +124,7 @@ export async function getCashBoxes(companyId: string): Promise<{ success: boolea
 
 export async function createCashBox(data: Omit<CashBox, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     'INSERT INTO cash_boxes (company_id, name, code, account_id, branch_id, responsible_user_id, is_active, current_balance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
     [data.companyId, data.name, data.code, data.accountId, data.branchId, data.responsibleUserId, data.isActive, data.currentBalance]
   );
@@ -149,7 +149,7 @@ export async function getBanks(companyId: string): Promise<{ success: boolean; d
 
 export async function createBank(data: Omit<Bank, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     'INSERT INTO banks (company_id, name, bank_name, account_number, iban, account_id, branch_id, is_active, current_balance) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
     [data.companyId, data.name, data.bankName, data.accountNumber, data.iban, data.accountId, data.branchId, data.isActive, data.currentBalance]
   );
@@ -187,7 +187,7 @@ export async function getCostCenters(companyId: string): Promise<{ success: bool
 
 export async function createCostCenter(data: Omit<CostCenter, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     'INSERT INTO cost_centers (company_id, name_ar, name_en, code, parent_id, type, budget_amount, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
     [data.companyId, data.nameAr, data.nameEn, data.code, data.parentId, data.type, data.budgetAmount, data.isActive]
   );
@@ -218,7 +218,7 @@ export async function getPayrollComponents(companyId: string): Promise<{ success
 
 export async function createPayrollComponent(data: Omit<PayrollComponent, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query(
+  const result = await adapter.query<{ id: string }>(
     `INSERT INTO payroll_components (company_id, name_ar, name_en, code, type, calculation_method, default_amount, affects_gross_salary, affects_tax, affects_social_insurance, default_account_id, is_active)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
     [data.companyId, data.nameAr, data.nameEn, data.code, data.type, data.calculationMethod, data.defaultAmount, data.affectsGrossSalary, data.affectsTax, data.affectsSocialInsurance, data.defaultAccountId, data.isActive]
@@ -274,7 +274,7 @@ export async function applyDefaultTemplate(companyId: string, template: 'trading
   const t = templates[template];
   for (const [functionKey, code] of Object.entries(t)) {
     // Find account id by code
-    const accResult = await adapter.query('SELECT id FROM accounts WHERE company_id = $1 AND code = $2', [companyId, code]);
+    const accResult = await adapter.query<{ id: string }>('SELECT id FROM accounts WHERE company_id = $1 AND code = $2', [companyId, code]);
     if (accResult.success && accResult.rows?.[0]) {
       await adapter.query(
         'UPDATE default_accounts SET account_id = $1 WHERE company_id = $2 AND function_key = $3',

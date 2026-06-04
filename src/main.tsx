@@ -14,6 +14,8 @@ import { Button } from './core/ui/components';
 document.documentElement.dir = 'rtl';
 document.documentElement.lang = 'ar';
 
+/* eslint-disable react-refresh/only-export-components */
+
 // Initialize auth from localStorage
 initAuth();
 
@@ -84,7 +86,7 @@ function App() {
         } else {
           console.error('[App] Could not load company');
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[App] DB init error:', err);
         if (!cancelled) {
           setDbStatus('error', false);

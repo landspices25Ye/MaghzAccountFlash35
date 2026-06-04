@@ -82,7 +82,9 @@ class BarcodeScanner {
 
       // Check if Barcode Detection API is available
       if ('BarcodeDetector' in window) {
-        const detector = new (window as any).BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'qr_code'] });
+        interface BarcodeDetectorCtor { new(opts: { formats: string[] }): { detect(video: HTMLVideoElement): Promise<Array<{ rawValue: string; format: string }>> } }
+        const DetectorCtor = (window as unknown as { BarcodeDetector: BarcodeDetectorCtor }).BarcodeDetector;
+        const detector = new DetectorCtor({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'qr_code'] });
         
         const scanFrame = async () => {
           if (!this.mediaStream || videoElement.paused) return;
@@ -95,7 +97,7 @@ class BarcodeScanner {
                 timestamp: Date.now(),
               });
             }
-          } catch (e) {
+          } catch {
             // Ignore detection errors
           }
           requestAnimationFrame(scanFrame);

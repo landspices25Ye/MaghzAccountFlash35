@@ -14,9 +14,10 @@ export function useBranchFilter<T>(items: T[]): T[] {
     const effectiveBranch = selectedBranchId || user?.branchId;
     if (!effectiveBranch) return items;
 
-    return items.filter((item: any) => {
-      if (!item.branchId) return true;
-      return item.branchId === effectiveBranch;
+    return items.filter((item) => {
+      const branchId = (item as { branchId?: string }).branchId;
+      if (!branchId) return true;
+      return branchId === effectiveBranch;
     });
   }, [items, selectedBranchId, isAdmin, user?.branchId]);
 }

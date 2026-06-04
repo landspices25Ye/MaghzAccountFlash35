@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { useAuthStore } from '@/modules/auth/store';
+import type { User } from '@/modules/auth/types';
 
 const initialState = useAuthStore.getState();
 
@@ -27,7 +28,7 @@ describe('useOwnerFilter', () => {
 
   it('admin sees all documents (no filter)', () => {
     useAuthStore.setState({
-      user: { id: 'admin-1', role: 'admin', username: 'admin', isActive: true } as any,
+      user: { id: 'admin-1', role: 'admin', username: 'admin', isActive: true } as User,
       permissions: ['sales.view'],
     });
 
@@ -39,7 +40,7 @@ describe('useOwnerFilter', () => {
 
   it('user with .own only sees their documents (forced filter)', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'sales_rep', username: 'rep', isActive: true } as any,
+      user: { id: 'user-1', role: 'sales_rep', username: 'rep', isActive: true } as User,
       permissions: ['sales.own', 'sales.create'],
     });
 
@@ -52,7 +53,7 @@ describe('useOwnerFilter', () => {
 
   it('user with .view gets toggle option', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as any,
+      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as User,
       permissions: ['sales.view', 'sales.own', 'sales.create'],
     });
 
@@ -64,7 +65,7 @@ describe('useOwnerFilter', () => {
 
   it('toggle switches between all and own-only', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as any,
+      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as User,
       permissions: ['sales.view', 'sales.own'],
     });
 
@@ -88,7 +89,7 @@ describe('useOwnerFilter', () => {
 
   it('persists toggle state in localStorage', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as any,
+      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as User,
       permissions: ['sales.view', 'sales.own'],
     });
 
@@ -103,7 +104,7 @@ describe('useOwnerFilter', () => {
 
   it('restores toggle state from localStorage on remount', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as any,
+      user: { id: 'user-1', role: 'manager', username: 'mgr', isActive: true } as User,
       permissions: ['sales.view', 'sales.own'],
     });
     localStorage.setItem('owner_filter_sales', 'true');
@@ -115,7 +116,7 @@ describe('useOwnerFilter', () => {
 
   it('handles empty data', () => {
     useAuthStore.setState({
-      user: { id: 'user-1', role: 'sales_rep', username: 'rep', isActive: true } as any,
+      user: { id: 'user-1', role: 'sales_rep', username: 'rep', isActive: true } as User,
       permissions: ['sales.own'],
     });
 
@@ -123,3 +124,4 @@ describe('useOwnerFilter', () => {
     expect(result.current.filtered).toHaveLength(0);
   });
 });
+
