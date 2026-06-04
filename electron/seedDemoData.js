@@ -1,723 +1,907 @@
 /**
  * Comprehensive demo data seeder for PostgreSQL
- * Called from renderer via IPC after onboarding
+ * Populates a freshly-created (or empty) company with realistic demo data
+ * for all 11 ERP modules. Safe to re-run: every insert is guarded by
+ * either a UNIQUE constraint or an explicit WHERE NOT EXISTS.
+ *
+ * Conventions:
+ *   - Account codes mirror those created by seedInitialData (5 digits, e.g. 11101)
+ *   - All multi-tenant tables filter on company_id
+ *   - All created_by/updated_by are set to the admin user if available
  */
+
+const VAT_RATE = 0.15;
+
+const ACCOUNTS = [
+  // Assets
+  { code: '1', name_ar: 'الأصول', name_en: 'Assets', type: 'asset', nature: 'debit', is_group: true, parent_code: null },
+  { code: '11', name_ar: 'الأصول المتداولة', name_en: 'Current Assets', type: 'asset', nature: 'debit', is_group: true, parent_code: '1' },
+  { code: '111', name_ar: 'الصندوق والبنوك', name_en: 'Cash & Banks', type: 'asset', nature: 'debit', is_group: true, parent_code: '11' },
+  { code: '11101', name_ar: 'الصندوق الرئيسي', name_en: 'Main Cash', type: 'asset', nature: 'debit', is_group: false, balance: 5000000, parent_code: '111' },
+  { code: '11102', name_ar: 'البنك اليمني الدولي', name_en: 'Yemen International Bank', type: 'asset', nature: 'debit', is_group: false, balance: 12000000, parent_code: '111' },
+  { code: '112', name_ar: 'المدينون', name_en: 'Receivables', type: 'asset', nature: 'debit', is_group: true, parent_code: '11' },
+  { code: '11201', name_ar: 'المدينون التجاريون', name_en: 'Trade Customers', type: 'asset', nature: 'debit', is_group: false, parent_code: '112' },
+  { code: '113', name_ar: 'المخزون', name_en: 'Inventory', type: 'asset', nature: 'debit', is_group: true, parent_code: '11' },
+  { code: '11301', name_ar: 'بضاعة أول المدة', name_en: 'Opening Inventory', type: 'asset', nature: 'debit', is_group: false, parent_code: '113' },
+  // Liabilities
+  { code: '2', name_ar: 'الالتزامات', name_en: 'Liabilities', type: 'liability', nature: 'credit', is_group: true, parent_code: null },
+  { code: '21', name_ar: 'الالتزامات المتداولة', name_en: 'Current Liabilities', type: 'liability', nature: 'credit', is_group: true, parent_code: '2' },
+  { code: '211', name_ar: 'الدائنون', name_en: 'Payables', type: 'liability', nature: 'credit', is_group: true, parent_code: '21' },
+  { code: '21101', name_ar: 'الدائنون التجاريون', name_en: 'Trade Suppliers', type: 'liability', nature: 'credit', is_group: false, parent_code: '211' },
+  { code: '213', name_ar: 'الضرائب', name_en: 'Taxes', type: 'liability', nature: 'credit', is_group: true, parent_code: '21' },
+  { code: '21301', name_ar: 'ضريبة القيمة المضافة', name_en: 'VAT Payable', type: 'liability', nature: 'credit', is_group: false, parent_code: '213' },
+  // Equity
+  { code: '3', name_ar: 'حقوق الملكية', name_en: 'Equity', type: 'equity', nature: 'credit', is_group: true, parent_code: null },
+  { code: '311', name_ar: 'رأس المال', name_en: 'Capital', type: 'equity', nature: 'credit', is_group: true, parent_code: '3' },
+  { code: '31101', name_ar: 'رأس المال المدفوع', name_en: 'Paid-in Capital', type: 'equity', nature: 'credit', is_group: false, balance: 20000000, parent_code: '311' },
+  // Revenues
+  { code: '4', name_ar: 'الإيرادات', name_en: 'Revenues', type: 'revenue', nature: 'credit', is_group: true, parent_code: null },
+  { code: '41', name_ar: 'إيرادات المبيعات', name_en: 'Sales Revenue', type: 'revenue', nature: 'credit', is_group: true, parent_code: '4' },
+  { code: '411', name_ar: 'المبيعات', name_en: 'Sales', type: 'revenue', nature: 'credit', is_group: true, parent_code: '41' },
+  { code: '41101', name_ar: 'مبيعات المنتجات', name_en: 'Product Sales', type: 'revenue', nature: 'credit', is_group: false, parent_code: '411' },
+  { code: '41102', name_ar: 'مبيعات الخدمات', name_en: 'Services Sales', type: 'revenue', nature: 'credit', is_group: false, parent_code: '411' },
+  { code: '41103', name_ar: 'مردودات المبيعات', name_en: 'Sales Returns', type: 'revenue', nature: 'credit', is_group: false, parent_code: '411' },
+  // Expenses
+  { code: '5', name_ar: 'المصروفات', name_en: 'Expenses', type: 'expense', nature: 'debit', is_group: true, parent_code: null },
+  { code: '51', name_ar: 'تكلفة المبيعات', name_en: 'Cost of Sales', type: 'expense', nature: 'debit', is_group: true, parent_code: '5' },
+  { code: '511', name_ar: 'تكلفة البضاعة', name_en: 'COGS', type: 'expense', nature: 'debit', is_group: true, parent_code: '51' },
+  { code: '51101', name_ar: 'تكلفة بضاعة مباعة', name_en: 'Cost of Goods Sold', type: 'expense', nature: 'debit', is_group: false, parent_code: '511' },
+  { code: '52', name_ar: 'مصاريف تشغيلية', name_en: 'Operating Expenses', type: 'expense', nature: 'debit', is_group: true, parent_code: '5' },
+  { code: '52101', name_ar: 'رواتب الموظفين', name_en: 'Employee Salaries', type: 'expense', nature: 'debit', is_group: false, parent_code: '52' },
+  { code: '52201', name_ar: 'مصروفات الإيجار', name_en: 'Rent Expense', type: 'expense', nature: 'debit', is_group: false, parent_code: '52' },
+];
+
+const PRODUCT_TYPES = [
+  { code: 'TRADE', name_ar: 'سلعة تجارية', name_en: 'Trading Goods', appears_in_sales: true, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: false, has_stock_tracking: true, has_bom: false, sales: '41101', cogs: '51101', inv: '11301' },
+  { code: 'SRV',   name_ar: 'خدمة',           name_en: 'Service',          appears_in_sales: true, appears_in_purchases: false, appears_in_inventory: false, appears_in_manufacturing: false, has_stock_tracking: false, has_bom: false, sales: '41102', cogs: null, inv: null },
+  { code: 'RAW',   name_ar: 'مواد أولية',     name_en: 'Raw Materials',    appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: true, has_stock_tracking: true, has_bom: true, sales: null, cogs: '51101', inv: '11301' },
+  { code: 'FG',    name_ar: 'سلع تامة الإنتاج', name_en: 'Finished Goods',  appears_in_sales: true, appears_in_purchases: false, appears_in_inventory: true, appears_in_manufacturing: true, has_stock_tracking: true, has_bom: true, sales: '41101', cogs: '51101', inv: '11301' },
+  { code: 'CON',   name_ar: 'مستهلك',         name_en: 'Consumable',       appears_in_sales: false, appears_in_purchases: true, appears_in_inventory: true, appears_in_manufacturing: false, has_stock_tracking: true, has_bom: false, sales: null, cogs: null, inv: '11301' },
+];
+
+const UNITS = [
+  { code: 'PC',  name_ar: 'قطعة',       name_en: 'Piece',    conv: 1 },
+  { code: 'CTN', name_ar: 'كرتونة',     name_en: 'Carton',   conv: 12 },
+  { code: 'KG',  name_ar: 'كيلوغرام',   name_en: 'Kilogram', conv: 1 },
+  { code: 'LTR', name_ar: 'لتر',         name_en: 'Liter',    conv: 1 },
+  { code: 'MTR', name_ar: 'متر',         name_en: 'Meter',    conv: 1 },
+];
+
+const CURRENCIES = [
+  { code: 'YER', name: 'الريال اليمني', symbol: 'ر.ي', rate: 1,    is_default: true },
+  { code: 'USD', name: 'دولار أمريكي',  symbol: '$',   rate: 1500, is_default: false },
+  { code: 'SAR', name: 'ريال سعودي',    symbol: 'ر.س', rate: 400,  is_default: false },
+];
+
+const DEFAULT_ACCOUNTS = [
+  { key: 'default_cash', code: '11101', required: true,  desc: 'الحساب الافتراضي للصناديق النقدية' },
+  { key: 'default_bank', code: '11102', required: false, desc: 'الحساب الافتراضي للبنوك' },
+  { key: 'default_sales', code: '41101', required: true,  desc: 'حساب المبيعات الافتراضي' },
+  { key: 'default_cogs', code: '51101', required: true,  desc: 'حساب تكلفة البضاعة المباعة' },
+  { key: 'default_inventory', code: '11301', required: true, desc: 'حساب المخزون الافتراضي' },
+  { key: 'default_debtors', code: '11201', required: true, desc: 'حساب المدينون التجاريون' },
+  { key: 'default_creditors', code: '21101', required: true, desc: 'حساب الدائنون التجاريون' },
+  { key: 'default_vat_output', code: '21301', required: true, desc: 'ضريبة القيمة المضافة على المبيعات' },
+  { key: 'default_vat_input', code: '21301', required: true, desc: 'ضريبة القيمة المضافة على المشتريات' },
+  { key: 'default_salaries', code: '52101', required: false, desc: 'حساب الرواتب' },
+  { key: 'default_sales_returns', code: '41103', required: false, desc: 'حساب مردودات المبيعات' },
+  { key: 'default_discount_allowed', code: '41101', required: false, desc: 'خصم مسموح به' },
+  { key: 'default_discount_received', code: '21101', required: false, desc: 'خصم مكتسب' },
+  { key: 'default_purchase_returns', code: '21101', required: true, desc: 'مردودات المشتريات' },
+];
+
+const BRANCHES = [
+  { code: 'HQ',  name: 'الفرع الرئيسي - صنعاء', address: 'صنعاء - شارع الستين' },
+  { code: 'HD',  name: 'فرع الحديدة',           address: 'الحديدة - شارع صنعاء' },
+  { code: 'AD',  name: 'فرع عدن',                address: 'عدن - المنصورة' },
+];
+
+const COST_CENTERS = [
+  { code: 'HQ',      name_ar: 'الفرع الرئيسي',  name_en: 'Main Branch',         type: 'branch',     budget: 0 },
+  { code: 'CC-SAL',  name_ar: 'قسم المبيعات',   name_en: 'Sales Department',    type: 'department', budget: 1500000 },
+  { code: 'CC-PRD',  name_ar: 'قسم الإنتاج',    name_en: 'Production Department', type: 'department', budget: 2500000 },
+  { code: 'CC-EXP',  name_ar: 'مشروع التوسع',   name_en: 'Expansion Project',   type: 'project',    budget: 8000000 },
+];
+
+const PAYROLL_COMPONENTS = [
+  { code: 'BAS', name_ar: 'الراتب الأساسي',      name_en: 'Base Salary',          type: 'earning',    method: 'fixed',      amount: 0,     gross: true,  tax: true,  ins: false },
+  { code: 'HOU', name_ar: 'بدل سكن',             name_en: 'Housing Allowance',    type: 'earning',    method: 'fixed',      amount: 150000, gross: true,  tax: false, ins: false },
+  { code: 'TRN', name_ar: 'بدل نقل',             name_en: 'Transport Allowance',  type: 'earning',    method: 'fixed',      amount: 50000,  gross: true,  tax: false, ins: false },
+  { code: 'TAX', name_ar: 'ضريبة دخل',           name_en: 'Income Tax',           type: 'tax',        method: 'formula',    amount: 0,     gross: false, tax: true,  ins: false },
+  { code: 'INS', name_ar: 'تأمينات اجتماعية',     name_en: 'Social Insurance',     type: 'deduction',  method: 'percentage', amount: 9,     gross: false, tax: false, ins: true },
+];
+
+const BANKS = [
+  { name: 'حساب البنك اليمني الدولي', bank_name: 'البنك اليمني الدولي', account_number: '1234567890', iban: 'YE12345678901234', balance: 5800000, account_code: '11102' },
+  { name: 'حساب بنك الكريمي',         bank_name: 'بنك الكريمي',         account_number: '0987654321', iban: 'YE09876543210987', balance: 2500000, account_code: '11102' },
+];
+
+const PRODUCT_CATEGORIES = [
+  { name: 'المواد الغذائية' },
+  { name: 'مواد التنظيف' },
+  { name: 'العناية الشخصية' },
+];
+
+const PRODUCTS = [
+  { code: 'PRD-001', name_ar: 'أرز بسمتي فاخر',         name_en: 'Premium Basmati Rice',   barcode: '6223000123456', sku: 'RICE-BAS-5KG',  unit: 'كيس',  cost: 2800,  price: 3200,  type: 'TRADE' },
+  { code: 'PRD-002', name_ar: 'زيت نباتي 3 لتر',        name_en: 'Vegetable Oil 3L',       barcode: '6223000123457', sku: 'OIL-VEG-3L',   unit: 'علبة', cost: 4200,  price: 4800,  type: 'TRADE' },
+  { code: 'PRD-003', name_ar: 'سكر أبيض 50 كغ',         name_en: 'White Sugar 50kg',       barcode: '6223000123458', sku: 'SUG-WHT-50KG', unit: 'كيس',  cost: 15000, price: 16500, type: 'TRADE' },
+  { code: 'PRD-004', name_ar: 'دقيق فاخر 50 كغ',        name_en: 'Premium Flour 50kg',     barcode: '6223000123459', sku: 'FLR-PRM-50KG', unit: 'كيس',  cost: 9500,  price: 10500, type: 'TRADE' },
+  { code: 'PRD-005', name_ar: 'معجون طماطم 400غ',       name_en: 'Tomato Paste 400g',      barcode: '6223000123460', sku: 'TOM-PST-400G', unit: 'علبة', cost: 380,   price: 450,   type: 'TRADE' },
+  { code: 'PRD-006', name_ar: 'شاي ليبتون 200غ',        name_en: 'Lipton Tea 200g',        barcode: '6223000123461', sku: 'TEA-LIP-200G', unit: 'علبة', cost: 1200,  price: 1400,  type: 'TRADE' },
+  { code: 'PRD-007', name_ar: 'حليب مجفف 2.5 كغ',       name_en: 'Milk Powder 2.5kg',      barcode: '6223000123462', sku: 'MLK-PWD-2.5K', unit: 'علبة', cost: 8500,  price: 9500,  type: 'TRADE' },
+  { code: 'PRD-008', name_ar: 'تونة معلبة 185غ',        name_en: 'Canned Tuna 185g',       barcode: '6223000123463', sku: 'TUN-CAN-185G', unit: 'علبة', cost: 650,   price: 750,   type: 'TRADE' },
+  { code: 'PRD-009', name_ar: 'صابون لوكس 125غ',        name_en: 'Lux Soap 125g',          barcode: '6223000123464', sku: 'SOAP-LUX-125G',unit: 'قطعة', cost: 280,   price: 330,   type: 'CON' },
+  { code: 'PRD-010', name_ar: 'شامبو هيد آند شولدرز 400مل', name_en: 'Head & Shoulders 400ml', barcode: '6223000123465', sku: 'SHP-HNS-400M', unit: 'علبة', cost: 1800,  price: 2100,  type: 'CON' },
+  { code: 'PRD-011', name_ar: 'معجون أسنان كولجيت 100مل', name_en: 'Colgate Toothpaste 100ml', barcode: '6223000123466', sku: 'PAS-COL-100M', unit: 'علبة', cost: 420,   price: 500,   type: 'CON' },
+  { code: 'PRD-012', name_ar: 'منظف جليكسون 1 لتر',    name_en: 'Gleason Cleaner 1L',     barcode: '6223000123467', sku: 'CLN-GLX-1L',   unit: 'علبة', cost: 1100,  price: 1300,  type: 'CON' },
+  { code: 'PRD-013', name_ar: 'مناديل فاين 200 منديل',  name_en: 'Fine Tissues 200',       barcode: '6223000123468', sku: 'TIS-FIN-200',  unit: 'علبة', cost: 350,   price: 420,   type: 'CON' },
+  { code: 'PRD-014', name_ar: 'قهوة العربية 250غ',      name_en: 'Arabian Coffee 250g',    barcode: '6223000123469', sku: 'COF-ARA-250G', unit: 'علبة', cost: 2200,  price: 2600,  type: 'TRADE' },
+  { code: 'PRD-015', name_ar: 'بسكويت أوريو 154غ',      name_en: 'Oreo Biscuits 154g',     barcode: '6223000123470', sku: 'BIS-ORE-154G', unit: 'علبة', cost: 550,   price: 650,   type: 'TRADE' },
+];
+
+const WAREHOUSES = [
+  { code: 'WH-MAIN', name: 'المستودع الرئيسي - صنعاء' },
+  { code: 'WH-HD',   name: 'مستودع الحديدة' },
+  { code: 'WH-AD',   name: 'مستودع عدن' },
+];
+
+const CUSTOMERS = [
+  { code: 'CUST-001', name: 'شركة البحر الأحمر للتجارة',     phone: '+967334455667', email: 'redsea@ye.com',     address: 'الحديدة - كمران',       balance: 950000 },
+  { code: 'CUST-002', name: 'مؤسسة الجود للصناعات الغذائية',  phone: '+967112233445', email: 'aljawd@ye.com',    address: 'صنعاء - شارع الستين',   balance: 1200000 },
+  { code: 'CUST-003', name: 'مؤسسة الصافي للمواد الغذائية',   phone: '+967778899001', email: 'alsafi@ye.com',    address: 'صنعاء - شارع الستين',   balance: 650000 },
+  { code: 'CUST-004', name: 'شركة اليمن الدولية للاستيراد',  phone: '+967223344556', email: 'yemenintl@ye.com', address: 'صنعاء - شارع تعز',     balance: 1800000 },
+  { code: 'CUST-005', name: 'مؤسسة الحديدة التجارية',         phone: '+967556677889', email: 'hodeidah@ye.com',  address: 'الحديدة - شارع صنعاء',  balance: 320000 },
+  { code: 'CUST-006', name: 'مؤسسة عدن التجارية',             phone: '+967667788990', email: 'aden@ye.com',      address: 'عدن - المنصورة',        balance: 450000 },
+  { code: 'CUST-007', name: 'مؤسسة إب للصناعات',             phone: '+967778899112', email: 'ibb@ye.com',       address: 'إب - الجمهورية',        balance: 280000 },
+  { code: 'CUST-008', name: 'مؤسسة تعز التجارية',             phone: '+967889900223', email: 'taiz@ye.com',      address: 'تعز - المطار القديم',    balance: 510000 },
+];
+
+const SUPPLIERS = [
+  { code: 'SUP-001', name: 'شركة الخليج للاستيراد', phone: '+967998877665', email: 'gulf@ye.com',   address: 'جدة - السعودية',  balance: 0 },
+  { code: 'SUP-002', name: 'مؤسسة الوفاق التجارية', phone: '+967112233990', email: 'wefaq@ye.com',  address: 'صنعاء - شارع الستين', balance: 0 },
+  { code: 'SUP-003', name: 'شركة الإمارات للتجارة',  phone: '+97144223311',  email: 'uae@em.com',    address: 'دبي - الإمارات',  balance: 0 },
+  { code: 'SUP-004', name: 'مؤسسة السعيد للتجارة',   phone: '+967334455112', email: 'alsaeed@ye.com', address: 'صنعاء - شارع تعز', balance: 0 },
+  { code: 'SUP-005', name: 'شركة البركة للاستيراد',  phone: '+967556677334', email: 'baraka@ye.com', address: 'الحديدة - شارع صنعاء', balance: 0 },
+  { code: 'SUP-006', name: 'مؤسسة الرشيد التجارية',  phone: '+967778899445', email: 'rashid@ye.com', address: 'عدن - المنصورة',  balance: 0 },
+  { code: 'SUP-007', name: 'شركة الصقر الدولية',     phone: '+967889900556', email: 'saqr@ye.com',   address: 'إب - الجمهورية',  balance: 0 },
+  { code: 'SUP-008', name: 'مؤسسة النجاح للتجارة',   phone: '+967990011667', email: 'najah@ye.com',  address: 'تعز - المطار القديم', balance: 0 },
+];
+
+const DEPARTMENTS = ['الإدارة', 'المبيعات', 'المخازن', 'المحاسبة'];
+
+const EMPLOYEES = [
+  { number: 'EMP-001', name: 'أحمد علي عبدالله',         phone: '+967111222333', email: 'ahmed@demo.ye',     dept: 'الإدارة',   position: 'مدير عام',         grade: 'A', hire_date: '2020-01-15', salary: 450000 },
+  { number: 'EMP-002', name: 'خالد سعيد الحسني',         phone: '+967222333444', email: 'khaled@demo.ye',    dept: 'المبيعات',  position: 'مدير مبيعات',      grade: 'A', hire_date: '2020-03-10', salary: 350000 },
+  { number: 'EMP-003', name: 'محمد صالح القاضي',         phone: '+967333444555', email: 'mohammed@demo.ye',  dept: 'المخازن',   position: 'مدير مخازن',       grade: 'B', hire_date: '2021-02-01', salary: 280000 },
+  { number: 'EMP-004', name: 'فاطمة عبدالرحمن',         phone: '+967444555666', email: 'fatima@demo.ye',    dept: 'المحاسبة',  position: 'رئيسة محاسبين',    grade: 'A', hire_date: '2020-06-20', salary: 320000 },
+  { number: 'EMP-005', name: 'عبدالله يحيى المخلافي',     phone: '+967555666777', email: 'abdullah@demo.ye',  dept: 'المبيعات',  position: 'مندوب مبيعات',     grade: 'C', hire_date: '2022-01-10', salary: 180000 },
+  { number: 'EMP-006', name: 'سميرة علي الأحمدي',         phone: '+967666777888', email: 'samira@demo.ye',    dept: 'المحاسبة',  position: 'محاسبة',           grade: 'C', hire_date: '2022-04-15', salary: 170000 },
+  { number: 'EMP-007', name: 'ياسر محمود الكبسي',         phone: '+967777888999', email: 'yaser@demo.ye',     dept: 'المخازن',   position: 'أمين مخزن',        grade: 'C', hire_date: '2023-01-05', salary: 150000 },
+  { number: 'EMP-008', name: 'هند صالح البركاني',         phone: '+967888999000', email: 'hind@demo.ye',      dept: 'الإدارة',   position: 'سكرتيرة',          grade: 'C', hire_date: '2023-03-12', salary: 140000 },
+];
+
+const LEADS = [
+  { name: 'محمد عبدالله السقاف',  phone: '+967111000111', email: 'm.saqaf@example.com',    company: 'شركة السقاف التجارية',  source: 'معرض',           status: 'new',        value: 500000 },
+  { name: 'سمير علي الحميري',     phone: '+967222000222', email: 's.alhamiri@example.com',  company: 'مؤسسة الحميري',        source: 'موقع إلكتروني', status: 'contacted',   value: 350000 },
+  { name: 'ليلى محمود الأصبحي',    phone: '+967333000333', email: 'l.ashbah@example.com',    company: 'شركة الأصبحي',         source: 'توصية',         status: 'qualified',   value: 800000 },
+  { name: 'عمر فاروق بامطرف',     phone: '+967444000444', email: 'o.bamtraf@example.com',   company: 'مؤسسة بامطرف',         source: 'إعلان',         status: 'new',        value: 200000 },
+  { name: 'نادية صالح الكحلاني',  phone: '+967555000555', email: 'n.kahlan@example.com',    company: 'شركة الكحلاني',        source: 'معرض',           status: 'contacted',   value: 600000 },
+  { name: 'هشام أحمد الجندي',     phone: '+967666000666', email: 'h.aljundi@example.com',   company: 'مؤسسة الجندي',         source: 'اتصال وارد',   status: 'qualified',   value: 450000 },
+];
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+async function ensureRow(client, sql, params, label) {
+  const res = await client.query(sql, params);
+  return res.rows[0]?.id;
+}
+
+async function getAdminUser(client, companyId) {
+  const r = await client.query(
+    `SELECT id FROM users WHERE company_id = $1 AND role = 'admin' ORDER BY created_at ASC LIMIT 1`,
+    [companyId]
+  );
+  return r.rows[0]?.id || null;
+}
 
 export async function seedComprehensiveDemoData(client, companyId) {
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
-  const todayStr = now.toISOString().split('T')[0];
+  let adminId = await getAdminUser(client, companyId);
+  if (!adminId) {
+    // Create the default admin user for the demo company
+    const r = await client.query(
+      `INSERT INTO users (company_id, username, email, full_name, password_hash, role, is_active)
+       VALUES ($1::uuid, 'admin', 'admin@demo.ye', 'مدير النظام',
+               '$2b$10$Q7HWYxVRnvNQ6I6fO8w6tu5CZ5Y6Y8uK5K5K5K5K5K5K5K5K5K5K5K', 'admin', TRUE)
+       RETURNING id`,
+      [companyId]
+    );
+    adminId = r.rows[0]?.id;
+    if (adminId) {
+      console.log('[SEED] Created default admin user (admin / admin)');
+    }
+  }
 
-  // ─── 1. Branches ───────────────────────────────────────────────────────────
+  // ─── 1. Branches ──────────────────────────────────────────────────────────
   console.log('[SEED] Inserting branches...');
-  const branches = [
-    { name: 'الفرع الرئيسي - صنعاء', code: 'HQ', address: 'صنعاء - شارع الستين' },
-    { name: 'فرع الحديدة', code: 'HD', address: 'الحديدة - شارع صنعاء' },
-    { name: 'فرع عدن', code: 'AD', address: 'عدن - المنصورة' },
-  ];
-  for (const b of branches) {
+  for (const b of BRANCHES) {
     await client.query(
-      `INSERT INTO branches (company_id, name, code, address, is_active) VALUES ($1, $2, $3, $4, TRUE) ON CONFLICT DO NOTHING;`,
+      `INSERT INTO branches (company_id, name, code, address, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM branches WHERE company_id = $1::uuid AND code = $3::text);`,
       [companyId, b.name, b.code, b.address]
     );
   }
 
-  // ─── 2. Product Types ──────────────────────────────────────────────────────
-  const productTypes = [
-    { code: 'TRADE', nameAr: 'سلعة تجارية', nameEn: 'Trading Goods' },
-    { code: 'SRV', nameAr: 'خدمة', nameEn: 'Service' },
-    { code: 'RAW', nameAr: 'مواد أولية', nameEn: 'Raw Materials' },
-    { code: 'FG', nameAr: 'سلع تامة الإنتاج', nameEn: 'Finished Goods' },
-    { code: 'CON', nameAr: 'مستهلك', nameEn: 'Consumable' },
-  ];
-  for (const pt of productTypes) {
-    // product types
-  }
-  console.log('[SEED] Inserting product types...');
-  for (const pt of productTypes) {
-    await client.query(
-      `INSERT INTO product_types (company_id, code, name_ar, name_en, appears_in_sales, appears_in_purchases, appears_in_inventory, is_active)
-       VALUES ($1, $2, $3, $4, TRUE, TRUE, TRUE, TRUE) ON CONFLICT DO NOTHING;`,
-      [companyId, pt.code, pt.nameAr, pt.nameEn]
+  // ─── 2. Chart of Accounts ────────────────────────────────────────────────
+  console.log('[SEED] Inserting chart of accounts...');
+  const codeToId = new Map();
+  for (const acc of ACCOUNTS) {
+    const parentId = acc.parent_code ? codeToId.get(acc.parent_code) : null;
+    const r = await client.query(
+      `INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::uuid, $6::text, $7::text, $8::bool, COALESCE($9::numeric, 0), TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM accounts WHERE company_id = $1::uuid AND code = $2::text)
+       RETURNING id;`,
+      [companyId, acc.code, acc.name_ar, acc.name_en, parentId, acc.type, acc.nature, acc.is_group, acc.balance ?? null]
     );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM accounts WHERE company_id = $1::uuid AND code = $2::text`, [companyId, acc.code]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) codeToId.set(acc.code, id);
   }
 
-  // ─── 3. Units ─────────────────────────────────────────────────────────────
-  const units = [
-    { code: 'PC', nameAr: 'قطعة', nameEn: 'Piece', conv: 1 },
-    { code: 'CTN', nameAr: 'كرتونة', nameEn: 'Carton', conv: 12 },
-    { code: 'KG', nameAr: 'كيلوغرام', nameEn: 'Kilogram', conv: 1 },
-    { code: 'LTR', nameAr: 'لتر', nameEn: 'Liter', conv: 1 },
-    { code: 'MTR', nameAr: 'متر', nameEn: 'Meter', conv: 1 },
-  ];
-  for (const u of units) {
-    // units
+  // ─── 3. Product Types ────────────────────────────────────────────────────
+  console.log('[SEED] Inserting product types...');
+  const typeCodeToId = new Map();
+  for (const pt of PRODUCT_TYPES) {
+    const salesId = pt.sales ? codeToId.get(pt.sales) : null;
+    const cogsId = pt.cogs ? codeToId.get(pt.cogs) : null;
+    const invId = pt.inv ? codeToId.get(pt.inv) : null;
+    const r = await client.query(
+      `INSERT INTO product_types (company_id, code, name_ar, name_en, appears_in_sales, appears_in_purchases, appears_in_inventory, appears_in_manufacturing, has_stock_tracking, has_bom, default_sales_account_id, default_cogs_account_id, default_inventory_account_id, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::bool, $6::bool, $7::bool, $8::bool, $9::bool, $10::bool, $11::uuid, $12::uuid, $13::uuid, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM product_types WHERE company_id = $1::uuid AND code = $2::text)
+       RETURNING id;`,
+      [companyId, pt.code, pt.name_ar, pt.name_en, pt.appears_in_sales, pt.appears_in_purchases, pt.appears_in_inventory, pt.appears_in_manufacturing, pt.has_stock_tracking, pt.has_bom, salesId, cogsId, invId]
+    );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM product_types WHERE company_id = $1::uuid AND code = $2::text`, [companyId, pt.code]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) typeCodeToId.set(pt.code, id);
   }
+
+  // ─── 4. Units ────────────────────────────────────────────────────────────
   console.log('[SEED] Inserting units...');
-  for (const u of units) {
+  for (const u of UNITS) {
     await client.query(
       `INSERT INTO units (company_id, code, name_ar, name_en, conversion_factor, is_active)
-       VALUES ($1, $2, $3, $4, $5, TRUE) ON CONFLICT DO NOTHING;`,
-      [companyId, u.code, u.nameAr, u.nameEn, u.conv]
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::numeric, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM units WHERE company_id = $1::uuid AND code = $2::text);`,
+      [companyId, u.code, u.name_ar, u.name_en, u.conv]
     );
   }
 
-  // ─── 4. Cost Centers ──────────────────────────────────────────────────────
-  const costCenters = [
-    { code: 'CC-SAL', nameAr: 'قسم المبيعات', nameEn: 'Sales Department', type: 'department', budget: 1500000 },
-    { code: 'CC-PRD', nameAr: 'قسم الإنتاج', nameEn: 'Production Department', type: 'department', budget: 2500000 },
-    { code: 'CC-EXP', nameAr: 'مشروع التوسع', nameEn: 'Expansion Project', type: 'project', budget: 8000000 },
-  ];
-  for (const cc of costCenters) {
-    // cost centers
-  }
+  // ─── 5. Cost Centers ─────────────────────────────────────────────────────
   console.log('[SEED] Inserting cost centers...');
-  for (const cc of costCenters) {
+  for (const cc of COST_CENTERS) {
     await client.query(
       `INSERT INTO cost_centers (company_id, code, name_ar, name_en, type, budget_amount, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING;`,
-      [companyId, cc.code, cc.nameAr, cc.nameEn, cc.type, cc.budget]
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::numeric, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM cost_centers WHERE company_id = $1::uuid AND code = $2::text);`,
+      [companyId, cc.code, cc.name_ar, cc.name_en, cc.type, cc.budget]
     );
   }
 
-  // ─── 5. Banks ─────────────────────────────────────────────────────────────
-  const banks = [
-    { name: 'حساب البنك اليمني الدولي', bankName: 'البنك اليمني الدولي', accountNumber: '1234567890', iban: 'YE12345678901234', balance: 5800000 },
-    { name: 'حساب بنك الكريمي', bankName: 'بنك الكريمي', accountNumber: '0987654321', iban: 'YE09876543210987', balance: 2500000 },
-  ];
-  for (const b of banks) {
-    // banks
-  }
+  // ─── 6. Banks ───────────────────────────────────────────────────────────
   console.log('[SEED] Inserting banks...');
-  for (const b of banks) {
+  for (const b of BANKS) {
+    const accountId = codeToId.get(b.account_code);
     await client.query(
-      `INSERT INTO banks (company_id, name, bank_name, account_number, iban, is_active, current_balance)
-       VALUES ($1, $2, $3, $4, $5, TRUE, $6) ON CONFLICT DO NOTHING;`,
-      [companyId, b.name, b.bankName, b.accountNumber, b.iban, b.balance]
+      `INSERT INTO banks (company_id, name, bank_name, account_number, iban, is_active, current_balance, account_id)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, TRUE, $6::numeric, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM banks WHERE company_id = $1::uuid AND bank_name = $3::text);`,
+      [companyId, b.name, b.bank_name, b.account_number, b.iban, b.balance, accountId]
     );
   }
 
-  // ─── 6. Default Accounts ──────────────────────────────────────────────────
-  const defaultAccounts = [
-    { key: 'default_discount_allowed', code: '41101', required: false },
-    { key: 'default_discount_received', code: '21101', required: false },
-    { key: 'default_purchase_returns', code: '21101', required: true },
-  ];
-  for (const da of defaultAccounts) {
-    // default accounts
-  }
-  console.log('[SEED] Inserting default accounts...');
-  for (const da of defaultAccounts) {
-    const accRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = $2 LIMIT 1`, [companyId, da.code]);
-    const accountId = accRes.rows[0]?.id || null;
-    const exists = await client.query(`SELECT 1 FROM default_accounts WHERE company_id = $1 AND function_key = $2 LIMIT 1`, [companyId, da.key]);
-    if (exists.rowCount === 0) {
-      await client.query(
-        `INSERT INTO default_accounts (company_id, function_key, account_id, is_required) VALUES ($1, $2, $3, $4);`,
-        [companyId, da.key, accountId, da.required]
-      );
-    }
+  // ─── 7. Default Accounts ─────────────────────────────────────────────────
+  console.log('[SEED] Linking default accounts...');
+  for (const da of DEFAULT_ACCOUNTS) {
+    const accountId = codeToId.get(da.code);
+    if (!accountId) continue;
+    await client.query(
+      `INSERT INTO default_accounts (company_id, function_key, account_id, is_required, description)
+       SELECT $1::uuid, $2::text, $3::uuid, $4::bool, $5::text
+       WHERE NOT EXISTS (SELECT 1 FROM default_accounts WHERE company_id = $1::uuid AND function_key = $2::text);`,
+      [companyId, da.key, accountId, da.required, da.desc]
+    );
   }
 
-  // ─── 7. Currencies ─────────────────────────────────────────────────────────
-  const currencies = [
-    { code: 'YER', name: 'الريال اليمني', symbol: 'ر.ي', rate: 1, is_default: true },
-    { code: 'USD', name: 'دولار أمريكي', symbol: '$', rate: 1500, is_default: false },
-    { code: 'SAR', name: 'ريال سعودي', symbol: 'ر.س', rate: 400, is_default: false },
-  ];
-  for (const c of currencies) {
-    // currencies
-  }
+  // ─── 8. Currencies ───────────────────────────────────────────────────────
   console.log('[SEED] Inserting currencies...');
-  for (const c of currencies) {
+  for (const c of CURRENCIES) {
     await client.query(
-      `INSERT INTO currencies (company_id, code, name, symbol, exchange_rate, is_default, is_active) VALUES ($1, $2, $3, $4, $5, $6, TRUE) ON CONFLICT DO NOTHING;`,
+      `INSERT INTO currencies (company_id, code, name, symbol, exchange_rate, is_default, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::numeric, $6::bool, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM currencies WHERE company_id = $1::uuid AND code = $2::text);`,
       [companyId, c.code, c.name, c.symbol, c.rate, c.is_default]
     );
   }
 
-  // ─── 8. VAT Settings ───────────────────────────────────────────────────────
+  // ─── 9. VAT Settings ────────────────────────────────────────────────────
   console.log('[SEED] Inserting VAT settings...');
   await client.query(
-    `INSERT INTO vat_settings (company_id, vat_rate, vat_number, is_inclusive, is_active) VALUES ($1, 15, '123456789', false, true) ON CONFLICT DO NOTHING;`,
-    [companyId]
+    `INSERT INTO vat_settings (company_id, vat_rate, vat_number, is_inclusive, is_active)
+     SELECT $1::uuid, 15, $2::text, FALSE, TRUE
+     WHERE NOT EXISTS (SELECT 1 FROM vat_settings WHERE company_id = $1::uuid);`,
+    [companyId, '3100123456']
   );
 
-  // ─── 9. Document Sequences ─────────────────────────────────────────────────
+  // ─── 10. Document Sequences ──────────────────────────────────────────────
+  console.log('[SEED] Inserting document sequences...');
   const sequences = [
-    { type: 'sales_invoice', prefix: 'INV-', start: 1, current: 6 },
-    { type: 'quotation', prefix: 'QOT-', start: 1, current: 2 },
-    { type: 'purchase_order', prefix: 'PO-', start: 1, current: 4 },
-    { type: 'purchase_invoice', prefix: 'PINV-', start: 1, current: 4 },
+    { type: 'sales_invoice',     prefix: 'INV-', start: 1, current: 6,  pad: 4 },
+    { type: 'quotation',         prefix: 'QOT-', start: 1, current: 3,  pad: 4 },
+    { type: 'purchase_order',    prefix: 'PO-',  start: 1, current: 4,  pad: 4 },
+    { type: 'purchase_invoice',  prefix: 'PINV-',start: 1, current: 4,  pad: 4 },
+    { type: 'journal_voucher',   prefix: 'JV-',  start: 1, current: 1,  pad: 4 },
+    { type: 'work_order',        prefix: 'WO-',  start: 1, current: 4,  pad: 6 },
+    { type: 'payroll_run',       prefix: 'PAY-', start: 1, current: 2,  pad: 6 },
   ];
   for (const s of sequences) {
     await client.query(
-      `INSERT INTO document_sequences (company_id, document_type, prefix, suffix, starting_number, current_number, increment_step, padding_length, year_reset, is_active) VALUES ($1, $2, $3, '', $4, $5, 1, 4, false, true) ON CONFLICT DO NOTHING;`,
-      [companyId, s.type, s.prefix, s.start, s.current]
+      `INSERT INTO document_sequences (company_id, document_type, prefix, suffix, starting_number, current_number, increment_step, padding_length, year_reset, is_active)
+       SELECT $1::uuid, $2::text, $3::text, '', $4::int, $5::int, 1, $6::int, FALSE, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM document_sequences WHERE company_id = $1::uuid AND document_type = $2::text);`,
+      [companyId, s.type, s.prefix, s.start, s.current, s.pad]
     );
   }
-  console.log('[SEED] Inserting document sequences...');
 
-  // ─── 10. Customers ─────────────────────────────────────────────────────────
-  const customers = [
-    { code: 'CUST-001', name: 'شركة البحر الأحمر للتجارة', phone: '+967334455667', email: 'redsea@ye.com', address: 'الحديدة - كمران', balance: 950000 },
-    { code: 'CUST-002', name: 'مؤسسة الجود للصناعات الغذائية', phone: '+967112233445', email: 'aljawd@ye.com', address: 'صنعاء - شارع الستين', balance: 1200000 },
-    { code: 'CUST-003', name: 'مؤسسة الصافي للمواد الغذائية', phone: '+967778899001', email: 'alsafi@ye.com', address: 'صنعاء - شارع الستين', balance: 650000 },
-    { code: 'CUST-004', name: 'شركة اليمن الدولية للاستيراد', phone: '+967223344556', email: 'yemenintl@ye.com', address: 'صنعاء - شارع تعز', balance: 1800000 },
-    { code: 'CUST-005', name: 'مؤسسة الحديدة التجارية', phone: '+967556677889', email: 'hodeidah@ye.com', address: 'الحديدة - شارع صنعاء', balance: 320000 },
-    { code: 'CUST-006', name: 'مؤسسة عدن التجارية', phone: '+967667788990', email: 'aden@ye.com', address: 'عدن - المنصورة', balance: 450000 },
-    { code: 'CUST-007', name: 'مؤسسة إب للصناعات', phone: '+967778899112', email: 'ibb@ye.com', address: 'إب - الجمهورية', balance: 280000 },
-    { code: 'CUST-008', name: 'مؤسسة تعز التجارية', phone: '+967889900223', email: 'taiz@ye.com', address: 'تعز - المطار القديم', balance: 510000 },
-  ];
-  for (const c of customers) {
+  // ─── 11. Customers ───────────────────────────────────────────────────────
+  console.log('[SEED] Inserting customers...');
+  for (const c of CUSTOMERS) {
     await client.query(
-      `INSERT INTO customers (company_id, code, name, phone, email, address, balance, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) ON CONFLICT DO NOTHING;`,
+      `INSERT INTO customers (company_id, code, name, phone, email, address, balance, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::numeric, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM customers WHERE company_id = $1::uuid AND code = $2::text);`,
       [companyId, c.code, c.name, c.phone, c.email, c.address, c.balance]
     );
   }
 
-  // ─── 11. Suppliers ─────────────────────────────────────────────────────────
-  const suppliers = [
-    { code: 'SUP-001', name: 'شركة الخليج للاستيراد', phone: '+967998877665', email: 'gulf@ye.com', address: 'جدة - السعودية', balance: 0 },
-    { code: 'SUP-002', name: 'مؤسسة الوفاق التجارية', phone: '+967112233990', email: 'wefaq@ye.com', address: 'صنعاء - شارع الستين', balance: 0 },
-    { code: 'SUP-003', name: 'شركة الإمارات للتجارة', phone: '+97144223311', email: 'uae@em.com', address: 'دبي - الإمارات', balance: 0 },
-    { code: 'SUP-004', name: 'مؤسسة السعيد للتجارة', phone: '+967334455112', email: 'alsaeed@ye.com', address: 'صنعاء - شارع تعز', balance: 0 },
-    { code: 'SUP-005', name: 'شركة البركة للاستيراد', phone: '+967556677334', email: 'baraka@ye.com', address: 'الحديدة - شارع صنعاء', balance: 0 },
-    { code: 'SUP-006', name: 'مؤسسة الرشيد التجارية', phone: '+967778899445', email: 'rashid@ye.com', address: 'عدن - المنصورة', balance: 0 },
-    { code: 'SUP-007', name: 'شركة الصقر الدولية', phone: '+967889900556', email: 'saqr@ye.com', address: 'إب - الجمهورية', balance: 0 },
-    { code: 'SUP-008', name: 'مؤسسة النجاح للتجارة', phone: '+967990011667', email: 'najah@ye.com', address: 'تعز - المطار القديم', balance: 0 },
-  ];
-  for (const s of suppliers) {
+  // ─── 12. Suppliers ───────────────────────────────────────────────────────
+  console.log('[SEED] Inserting suppliers...');
+  for (const s of SUPPLIERS) {
     await client.query(
-      `INSERT INTO suppliers (company_id, code, name, phone, email, address, balance, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE) ON CONFLICT DO NOTHING;`,
+      `INSERT INTO suppliers (company_id, code, name, phone, email, address, balance, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::numeric, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM suppliers WHERE company_id = $1::uuid AND code = $2::text);`,
       [companyId, s.code, s.name, s.phone, s.email, s.address, s.balance]
     );
   }
 
-  // ─── 12. Product Category ──────────────────────────────────────────────────
-  await client.query(
-    `INSERT INTO product_categories (company_id, name) VALUES ($1, 'المواد الغذائية') ON CONFLICT DO NOTHING;`,
-    [companyId]
-  );
-  const catRes = await client.query(`SELECT id FROM product_categories WHERE company_id = $1 AND name = 'المواد الغذائية'`, [companyId]);
-  const categoryId = catRes.rows[0]?.id;
-
-  // ─── 13. Products ──────────────────────────────────────────────────────────
-  const products = [
-    { code: 'PRD-001', name_ar: 'أرز بسمتي فاخر', name_en: 'Premium Basmati Rice', barcode: '6223000123456', sku: 'RICE-BAS-5KG', unit: 'كيس', cost_price: 2800, sale_price: 3200 },
-    { code: 'PRD-002', name_ar: 'زيت نباتي 3 لتر', name_en: 'Vegetable Oil 3L', barcode: '6223000123457', sku: 'OIL-VEG-3L', unit: 'علبة', cost_price: 4200, sale_price: 4800 },
-    { code: 'PRD-003', name_ar: 'سكر أبيض 50 كغ', name_en: 'White Sugar 50kg', barcode: '6223000123458', sku: 'SUG-WHT-50KG', unit: 'كيس', cost_price: 15000, sale_price: 16500 },
-    { code: 'PRD-004', name_ar: 'دقيق فاخر 50 كغ', name_en: 'Premium Flour 50kg', barcode: '6223000123459', sku: 'FLR-PRM-50KG', unit: 'كيس', cost_price: 9500, sale_price: 10500 },
-    { code: 'PRD-005', name_ar: 'معجون طماطم 400غ', name_en: 'Tomato Paste 400g', barcode: '6223000123460', sku: 'TOM-PST-400G', unit: 'علبة', cost_price: 380, sale_price: 450 },
-    { code: 'PRD-006', name_ar: 'شاي ليبتون 200غ', name_en: 'Lipton Tea 200g', barcode: '6223000123461', sku: 'TEA-LIP-200G', unit: 'علبة', cost_price: 1200, sale_price: 1400 },
-    { code: 'PRD-007', name_ar: 'حليب مجفف 2.5 كغ', name_en: 'Milk Powder 2.5kg', barcode: '6223000123462', sku: 'MLK-PWD-2.5K', unit: 'علبة', cost_price: 8500, sale_price: 9500 },
-    { code: 'PRD-008', name_ar: 'تونة معلبة 185غ', name_en: 'Canned Tuna 185g', barcode: '6223000123463', sku: 'TUN-CAN-185G', unit: 'علبة', cost_price: 650, sale_price: 750 },
-    { code: 'PRD-009', name_ar: 'صابون لوكس 125غ', name_en: 'Lux Soap 125g', barcode: '6223000123464', sku: 'SOAP-LUX-125G', unit: 'قطعة', cost_price: 280, sale_price: 330 },
-    { code: 'PRD-010', name_ar: 'شامبو هيد آند شولدرز 400مل', name_en: 'Head & Shoulders 400ml', barcode: '6223000123465', sku: 'SHP-HNS-400M', unit: 'علبة', cost_price: 1800, sale_price: 2100 },
-    { code: 'PRD-011', name_ar: 'معجون أسنان كولجيت 100مل', name_en: 'Colgate Toothpaste 100ml', barcode: '6223000123466', sku: 'PAS-COL-100M', unit: 'علبة', cost_price: 420, sale_price: 500 },
-    { code: 'PRD-012', name_ar: 'منظف جليكسون 1 لتر', name_en: 'Gleason Cleaner 1L', barcode: '6223000123467', sku: 'CLN-GLX-1L', unit: 'علبة', cost_price: 1100, sale_price: 1300 },
-    { code: 'PRD-013', name_ar: 'مناديل فاين 200 منديل', name_en: 'Fine Tissues 200', barcode: '6223000123468', sku: 'TIS-FIN-200', unit: 'علبة', cost_price: 350, sale_price: 420 },
-    { code: 'PRD-014', name_ar: 'قهوة العربية 250غ', name_en: 'Arabian Coffee 250g', barcode: '6223000123469', sku: 'COF-ARA-250G', unit: 'علبة', cost_price: 2200, sale_price: 2600 },
-    { code: 'PRD-015', name_ar: 'بسكويت أوريو 154غ', name_en: 'Oreo Biscuits 154g', barcode: '6223000123470', sku: 'BIS-ORE-154G', unit: 'علبة', cost_price: 550, sale_price: 650 },
-  ];
-  for (const p of products) {
-    await client.query(
-      `INSERT INTO products (company_id, code, name_ar, name_en, barcode, sku, unit, category_id, cost_price, sale_price, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE) ON CONFLICT DO NOTHING;`,
-      [companyId, p.code, p.name_ar, p.name_en, p.barcode, p.sku, p.unit, categoryId, p.cost_price, p.sale_price]
+  // ─── 13. Product Categories ──────────────────────────────────────────────
+  console.log('[SEED] Inserting product categories...');
+  const catIdByName = new Map();
+  for (const c of PRODUCT_CATEGORIES) {
+    const r = await client.query(
+      `INSERT INTO product_categories (company_id, name)
+       SELECT $1::uuid, $2::text
+       WHERE NOT EXISTS (SELECT 1 FROM product_categories WHERE company_id = $1::uuid AND name = $2::text)
+       RETURNING id;`,
+      [companyId, c.name]
     );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM product_categories WHERE company_id = $1::uuid AND name = $2::text`, [companyId, c.name]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) catIdByName.set(c.name, id);
+  }
+  const foodCatId = catIdByName.get('المواد الغذائية');
+
+  // ─── 14. Products + category links ───────────────────────────────────────
+  console.log('[SEED] Inserting products...');
+  const productIdByCode = new Map();
+  for (const p of PRODUCTS) {
+    const typeId = typeCodeToId.get(p.type) || null;
+    const r = await client.query(
+      `INSERT INTO products (company_id, code, name_ar, name_en, barcode, sku, unit, category_id, product_type_id, cost_price, sale_price, is_active, created_by, updated_by)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::text, $8::uuid, $9::uuid, $10::numeric, $11::numeric, TRUE, $12::uuid, $12::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM products WHERE company_id = $1::uuid AND code = $2::text)
+       RETURNING id;`,
+      [companyId, p.code, p.name_ar, p.name_en, p.barcode, p.sku, p.unit, foodCatId, typeId, p.cost, p.price, adminId]
+    );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM products WHERE company_id = $1::uuid AND code = $2::text`, [companyId, p.code]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) {
+      productIdByCode.set(p.code, id);
+      if (foodCatId) {
+        await client.query(
+          `INSERT INTO product_product_categories (product_id, category_id)
+           SELECT $1::uuid, $2::uuid
+           WHERE NOT EXISTS (SELECT 1 FROM product_product_categories WHERE product_id = $1::uuid AND category_id = $2::uuid);`,
+          [id, foodCatId]
+        );
+      }
+    }
   }
 
-  // ─── 14. Warehouses ────────────────────────────────────────────────────────
-  const warehouses = [
-    { name: 'المستودع الرئيسي - صنعاء', code: 'WH-MAIN' },
-    { name: 'مستودع الحديدة', code: 'WH-HD' },
-    { name: 'مستودع عدن', code: 'WH-AD' },
-  ];
-  for (const w of warehouses) {
-    await client.query(
-      `INSERT INTO warehouses (company_id, name, code, is_active) VALUES ($1, $2, $3, TRUE) ON CONFLICT DO NOTHING;`,
+  // ─── 15. Warehouses ──────────────────────────────────────────────────────
+  console.log('[SEED] Inserting warehouses...');
+  const whIdByCode = new Map();
+  for (const w of WAREHOUSES) {
+    const r = await client.query(
+      `INSERT INTO warehouses (company_id, name, code, is_active)
+       SELECT $1::uuid, $2::text, $3::text, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM warehouses WHERE company_id = $1::uuid AND code = $3::text)
+       RETURNING id;`,
       [companyId, w.name, w.code]
     );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM warehouses WHERE company_id = $1::uuid AND code = $2::text`, [companyId, w.code]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) whIdByCode.set(w.code, id);
   }
+  const mainWhId = whIdByCode.get('WH-MAIN');
 
-  // ─── 15. Stock & Stock Movements ───────────────────────────────────────────
-  const prodRes = await client.query(`SELECT id FROM products WHERE company_id = $1 ORDER BY code`, [companyId]);
-  const whRes = await client.query(`SELECT id FROM warehouses WHERE company_id = $1 ORDER BY code`, [companyId]);
-  const prodIds = prodRes.rows.map(r => r.id);
-  const whIds = whRes.rows.map(r => r.id);
-
-  if (prodIds.length > 0 && whIds.length > 0) {
+  // ─── 16. Stock ────────────────────────────────────────────────────────────
+  console.log('[SEED] Inserting stock...');
+  if (mainWhId) {
     const stockQtys = [500, 300, 200, 350, 1000, 600, 150, 800, 1200, 250, 900, 400, 700, 180, 500];
-    for (let i = 0; i < prodIds.length; i++) {
+    let i = 0;
+    for (const [, productId] of productIdByCode) {
       const qty = stockQtys[i] !== undefined ? stockQtys[i] : 0;
-      const minAlert = stockQtys[i] !== undefined ? Math.max(10, Math.round(stockQtys[i] * 0.1)) : 10;
+      const minAlert = Math.max(10, Math.round(qty * 0.1));
       await client.query(
-        `INSERT INTO stock (company_id, product_id, warehouse_id, quantity, min_stock_alert) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [companyId, prodIds[i], whIds[0], qty, minAlert]
+        `INSERT INTO stock (company_id, product_id, warehouse_id, quantity, min_stock_alert)
+         SELECT $1::uuid, $2::uuid, $3::uuid, $4::numeric, $5::numeric
+         WHERE NOT EXISTS (SELECT 1 FROM stock WHERE company_id = $1::uuid AND product_id = $2::uuid AND warehouse_id = $3::uuid);`,
+        [companyId, productId, mainWhId, qty, minAlert]
       );
-    }
-    for (let i = 0; i < Math.min(5, prodIds.length); i++) {
-      const qty = stockQtys[i] !== undefined ? Math.round(stockQtys[i] * 0.2) : 0;
-      const minAlert = stockQtys[i] !== undefined ? Math.max(5, Math.round(stockQtys[i] * 0.05)) : 5;
+      // Also create a corresponding stock_movement record
       await client.query(
-        `INSERT INTO stock (company_id, product_id, warehouse_id, quantity, min_stock_alert) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [companyId, prodIds[i], whIds[1], qty, minAlert]
+        `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::uuid, $3::uuid, 'in', $4::numeric, 'OPENING-BALANCE', 'رصيد افتتاحي', $5::uuid, $5::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM stock_movements WHERE company_id = $1::uuid AND reference = 'OPENING-BALANCE' AND product_id = $2::uuid);`,
+        [companyId, productId, mainWhId, qty, adminId]
       );
-    }
-    for (let i = 0; i < Math.min(3, prodIds.length); i++) {
-      await client.query(
-        `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes) VALUES ($1, $2, $3, 'inbound', $4, $5, $6) ON CONFLICT DO NOTHING;`,
-        [companyId, prodIds[i], whIds[0], 100 + i * 50, `GRN-2024-${1001 + i}`, 'إضافة مخزون أولي']
-      );
+      i++;
     }
   }
 
-  // ─── 16. Sales Invoices ────────────────────────────────────────────────────
-  const custRes = await client.query(`SELECT id FROM customers WHERE company_id = $1 ORDER BY code`, [companyId]);
-  const custIds = custRes.rows.map(r => r.id);
-
-  if (custIds.length > 0 && prodIds.length > 0) {
-    const salesInvoices = [
-      { number: 'INV-2024-0001', customerIdx: 0, date: '2024-06-15', total: 233174 },
-      { number: 'INV-2024-0002', customerIdx: 1, date: '2024-06-18', total: 156800 },
-      { number: 'INV-2024-0003', customerIdx: 2, date: '2024-06-20', total: 89200 },
-      { number: 'INV-2024-0004', customerIdx: 3, date: '2024-06-22', total: 342100 },
-      { number: 'INV-2024-0005', customerIdx: 0, date: '2024-06-25', total: 124500 },
-    ];
-    for (let i = 0; i < salesInvoices.length; i++) {
-      const inv = salesInvoices[i];
-      const lineCount = 2 + (i % 2);
-      let subtotal = 0;
-      const lines = [];
-      for (let j = 0; j < lineCount && j < prodIds.length; j++) {
-        const qty = 2 + j * 3;
-        const price = Math.round(inv.total / lineCount / qty);
-        const lineTotal = qty * price;
-        lines.push({ productId: prodIds[(i + j) % prodIds.length], qty, price, lineTotal });
-        subtotal += lineTotal;
-      }
-      const vatAmount = Math.round(subtotal * 0.15);
-      const totalAmount = subtotal + vatAmount;
-
-      const invRes = await client.query(
-        `INSERT INTO sales_invoices (company_id, invoice_number, customer_id, date, due_date, subtotal, vat_amount, total_amount, paid_amount, status, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT DO NOTHING RETURNING id;`,
-        [companyId, inv.number, custIds[inv.customerIdx], inv.date, inv.date, subtotal, vatAmount, totalAmount, totalAmount, 'posted', `فاتورة مبيعات ${inv.number}`]
-      );
-      const invoiceId = invRes.rows[0]?.id;
-      if (invoiceId) {
-        for (const line of lines) {
-          await client.query(
-            `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING;`,
-            [invoiceId, line.productId, line.qty, line.price, 0, 15, line.lineTotal]
-          );
-        }
-      }
+  // ─── 17. Employees + Departments ─────────────────────────────────────────
+  console.log('[SEED] Inserting departments and employees...');
+  const deptIdByName = new Map();
+  for (const deptName of DEPARTMENTS) {
+    const r = await client.query(
+      `INSERT INTO departments (company_id, name)
+       SELECT $1::uuid, $2::text
+       WHERE NOT EXISTS (SELECT 1 FROM departments WHERE company_id = $1::uuid AND name = $2::text)
+       RETURNING id;`,
+      [companyId, deptName]
+    );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM departments WHERE company_id = $1::uuid AND name = $2::text`, [companyId, deptName]);
+      id = sel.rows[0]?.id;
     }
+    if (id) deptIdByName.set(deptName, id);
+  }
+  const empIdByNumber = new Map();
+  for (const emp of EMPLOYEES) {
+    const deptId = deptIdByName.get(emp.dept);
+    const r = await client.query(
+      `INSERT INTO employees (company_id, employee_number, full_name, phone, email, department_id, position, grade, hire_date, base_salary, is_active, created_by, updated_by)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::uuid, $7::text, $8::text, $9::date, $10::numeric, TRUE, $11::uuid, $11::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM employees WHERE company_id = $1::uuid AND employee_number = $2::text)
+       RETURNING id;`,
+      [companyId, emp.number, emp.name, emp.phone, emp.email, deptId, emp.position, emp.grade, emp.hire_date, emp.salary, adminId]
+    );
+    let id = r.rows[0]?.id;
+    if (!id) {
+      const sel = await client.query(`SELECT id FROM employees WHERE company_id = $1::uuid AND employee_number = $2::text`, [companyId, emp.number]);
+      id = sel.rows[0]?.id;
+    }
+    if (id) empIdByNumber.set(emp.number, id);
   }
 
-  // ─── 17. Quotations ────────────────────────────────────────────────────────
-  if (custIds.length > 0 && prodIds.length > 0) {
-    const quotations = [
-      { number: 'QOT-2024-0001', customerIdx: 2, date: '2024-06-10', total: 45000 },
-      { number: 'QOT-2024-0002', customerIdx: 4, date: '2024-06-12', total: 78000 },
-    ];
-    for (const q of quotations) {
-      await client.query(
-        `INSERT INTO quotations (company_id, quotation_number, customer_id, date, expiry_date, total_amount, status, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, q.number, custIds[q.customerIdx], q.date, '2024-07-10', q.total, 'open', 'عرض سعر تجريبي']
-      );
-    }
-  }
-
-  // ─── 18. Purchase Orders ───────────────────────────────────────────────────
-  const supRes = await client.query(`SELECT id FROM suppliers WHERE company_id = $1 ORDER BY code`, [companyId]);
-  const supIds = supRes.rows.map(r => r.id);
-
-  if (supIds.length > 0 && prodIds.length > 0) {
-    const purchaseOrders = [
-      { number: 'PO-2024-0001', supplierIdx: 0, date: '2024-06-01', total: 850000 },
-      { number: 'PO-2024-0002', supplierIdx: 1, date: '2024-06-05', total: 420000 },
-      { number: 'PO-2024-0003', supplierIdx: 2, date: '2024-06-08', total: 650000 },
-    ];
-    for (let i = 0; i < purchaseOrders.length; i++) {
-      const po = purchaseOrders[i];
-      const poRes = await client.query(
-        `INSERT INTO purchase_orders (company_id, order_number, supplier_id, date, expected_date, total_amount, status, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING RETURNING id;`,
-        [companyId, po.number, supIds[po.supplierIdx], po.date, '2024-07-15', po.total, 'approved', 'أمر شراء تجريبي']
-      );
-      const orderId = poRes.rows[0]?.id;
-      if (orderId) {
-        const lineCount = 2 + (i % 2);
-        for (let j = 0; j < lineCount && j < prodIds.length; j++) {
-          const qty = 10 + j * 5;
-          const price = Math.round(po.total / lineCount / qty);
-          const lineTotal = qty * price;
-          await client.query(
-            `INSERT INTO purchase_order_lines (order_id, product_id, quantity, unit_price, line_total) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-            [orderId, prodIds[(i + j) % prodIds.length], qty, price, lineTotal]
-          );
-        }
-      }
-    }
-  }
-
-  // ─── 19. Purchase Invoices ─────────────────────────────────────────────────
-  if (supIds.length > 0 && prodIds.length > 0) {
-    const purchaseInvoices = [
-      { number: 'PINV-2024-0001', supplierIdx: 0, date: '2024-06-10', total: 420000 },
-      { number: 'PINV-2024-0002', supplierIdx: 1, date: '2024-06-12', total: 280000 },
-      { number: 'PINV-2024-0003', supplierIdx: 3, date: '2024-06-15', total: 510000 },
-    ];
-    for (let i = 0; i < purchaseInvoices.length; i++) {
-      const inv = purchaseInvoices[i];
-      const lineCount = 2 + (i % 2);
-      let subtotal = 0;
-      const lines = [];
-      for (let j = 0; j < lineCount && j < prodIds.length; j++) {
-        const qty = 8 + j * 4;
-        const price = Math.round(inv.total / lineCount / qty);
-        const lineTotal = qty * price;
-        lines.push({ productId: prodIds[(i + j) % prodIds.length], qty, price, lineTotal });
-        subtotal += lineTotal;
-      }
-      const vatAmount = Math.round(subtotal * 0.15);
-      const totalAmount = subtotal + vatAmount;
-
-      const invRes = await client.query(
-        `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, date, due_date, subtotal, vat_amount, total_amount, paid_amount, status, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT DO NOTHING RETURNING id;`,
-        [companyId, inv.number, supIds[inv.supplierIdx], inv.date, '2024-07-10', subtotal, vatAmount, totalAmount, 0, 'posted', `فاتورة شراء ${inv.number}`]
-      );
-      const invoiceId = invRes.rows[0]?.id;
-      if (invoiceId) {
-        for (const line of lines) {
-          await client.query(
-            `INSERT INTO purchase_invoice_lines (invoice_id, product_id, description, quantity, unit_price, line_total) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING;`,
-            [invoiceId, line.productId, 'شراء بضاعة', line.qty, line.price, line.lineTotal]
-          );
-        }
-      }
-    }
-  }
-
-  // ─── 20. Departments ───────────────────────────────────────────────────────
-  const deptNames = ['الإدارة', 'المبيعات', 'المخازن', 'المحاسبة'];
-  for (const name of deptNames) {
+  // ─── 18. Payroll Components + Payroll Run ────────────────────────────────
+  console.log('[SEED] Inserting payroll components...');
+  for (const pc of PAYROLL_COMPONENTS) {
     await client.query(
-      `INSERT INTO departments (company_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING;`,
-      [companyId, name]
+      `INSERT INTO payroll_components (company_id, code, name_ar, name_en, type, calculation_method, default_amount, affects_gross_salary, affects_tax, affects_social_insurance, is_active)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::numeric, $8::bool, $9::bool, $10::bool, TRUE
+       WHERE NOT EXISTS (SELECT 1 FROM payroll_components WHERE company_id = $1::uuid AND code = $2::text);`,
+      [companyId, pc.code, pc.name_ar, pc.name_en, pc.type, pc.method, pc.amount, pc.gross, pc.tax, pc.ins]
     );
   }
-  const deptRes = await client.query(`SELECT id, name FROM departments WHERE company_id = $1 ORDER BY name`, [companyId]);
-  const deptMap = {};
-  for (const row of deptRes.rows) {
-    deptMap[row.name] = row.id;
-  }
 
-  // ─── 21. Employees ─────────────────────────────────────────────────────────
-  const employees = [
-    { number: 'EMP-001', name: 'أحمد علي عبدالله', phone: '+967111222333', email: 'ahmed@demo.ye', dept: 'الإدارة', position: 'مدير عام', grade: 'A', hire_date: '2020-01-15', salary: 450000 },
-    { number: 'EMP-002', name: 'خالد سعيد الحسني', phone: '+967222333444', email: 'khaled@demo.ye', dept: 'المبيعات', position: 'مدير مبيعات', grade: 'A', hire_date: '2020-03-10', salary: 350000 },
-    { number: 'EMP-003', name: 'محمد صالح القاضي', phone: '+967333444555', email: 'mohammed@demo.ye', dept: 'المخازن', position: 'مدير مخازن', grade: 'B', hire_date: '2021-02-01', salary: 280000 },
-    { number: 'EMP-004', name: 'فاطمة عبدالرحمن', phone: '+967444555666', email: 'fatima@demo.ye', dept: 'المحاسبة', position: 'رئيسة محاسبين', grade: 'A', hire_date: '2020-06-20', salary: 320000 },
-    { number: 'EMP-005', name: 'عبدالله يحيى المخلافي', phone: '+967555666777', email: 'abdullah@demo.ye', dept: 'المبيعات', position: 'مندوب مبيعات', grade: 'C', hire_date: '2022-01-10', salary: 180000 },
-    { number: 'EMP-006', name: 'سميرة علي الأحمدي', phone: '+967666777888', email: 'samira@demo.ye', dept: 'المحاسبة', position: 'محاسبة', grade: 'C', hire_date: '2022-04-15', salary: 170000 },
-    { number: 'EMP-007', name: 'ياسر محمود الكبسي', phone: '+967777888999', email: 'yaser@demo.ye', dept: 'المخازن', position: 'أمين مخزن', grade: 'C', hire_date: '2023-01-05', salary: 150000 },
-    { number: 'EMP-008', name: 'هند صالح البركاني', phone: '+967888999000', email: 'hind@demo.ye', dept: 'الإدارة', position: 'سكرتيرة', grade: 'C', hire_date: '2023-03-12', salary: 140000 },
-  ];
-  for (const emp of employees) {
-    await client.query(
-      `INSERT INTO employees (company_id, employee_number, full_name, phone, email, department_id, position, grade, hire_date, base_salary, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE) ON CONFLICT DO NOTHING;`,
-      [companyId, emp.number, emp.name, emp.phone, emp.email, deptMap[emp.dept], emp.position, emp.grade, emp.hire_date, emp.salary]
+  // Create a draft payroll run for the current month
+  if (empIdByNumber.size > 0) {
+    console.log('[SEED] Inserting payroll run...');
+    const payrollRunId = await client.query(
+      `INSERT INTO payroll_runs (company_id, month, year, total_amount, status, created_by, updated_by)
+       SELECT $1::uuid, $2::int, $3::int, 0, 'draft', $4::uuid, $4::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM payroll_runs WHERE company_id = $1::uuid AND month = $2::int AND year = $3::int)
+       RETURNING id;`,
+      [companyId, currentMonth, currentYear, adminId]
     );
-  }
-  const empRes = await client.query(`SELECT id, employee_number FROM employees WHERE company_id = $1 ORDER BY employee_number`, [companyId]);
-  const empIds = empRes.rows.map(r => r.id);
-
-  // ─── 22. Attendance ────────────────────────────────────────────────────────
-  if (empIds.length > 0) {
-    for (let i = 0; i < Math.min(5, empIds.length); i++) {
-      for (let d = 1; d <= 5; d++) {
-        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    let prId = payrollRunId.rows[0]?.id;
+    if (!prId) {
+      const sel = await client.query(`SELECT id FROM payroll_runs WHERE company_id = $1::uuid AND month = $2::int AND year = $3::int`, [companyId, currentMonth, currentYear]);
+      prId = sel.rows[0]?.id;
+    }
+    if (prId) {
+      let total = 0;
+      for (const [, empId] of empIdByNumber) {
+        const empRes = await client.query(`SELECT base_salary FROM employees WHERE id = $1::uuid`, [empId]);
+        const baseSalary = parseFloat(empRes.rows[0]?.base_salary || 0);
+        const allowances = 200000;
+        const deductions = Math.round(baseSalary * 0.09);
+        const net = baseSalary + allowances - deductions;
+        total += net;
         await client.query(
-          `INSERT INTO attendance (company_id, employee_id, date, check_in, check_out, overtime_hours, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING;`,
-          [companyId, empIds[i], dateStr, `${dateStr} 08:00:00`, `${dateStr} 17:00:00`, i === 0 ? 2 : 0, 'حضور عادي']
+          `INSERT INTO payroll_lines (payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary)
+           SELECT $1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric, 0, $6::numeric
+           WHERE NOT EXISTS (SELECT 1 FROM payroll_lines WHERE payroll_run_id = $1::uuid AND employee_id = $2::uuid);`,
+          [prId, empId, baseSalary, allowances, deductions, net]
         );
       }
-    }
-  }
-
-  // ─── 23. Payroll Run & Lines ───────────────────────────────────────────────
-  const payrollRunRes = await client.query(
-    `INSERT INTO payroll_runs (company_id, month, year, total_amount, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING RETURNING id;`,
-    [companyId, currentMonth, currentYear, 2040000, 'posted']
-  );
-  const payrollRunId = payrollRunRes.rows[0]?.id;
-
-  if (payrollRunId && empIds.length > 0) {
-    const allowances = [50000, 40000, 30000, 35000, 20000, 18000, 15000, 14000];
-    const deductions = [10000, 8000, 6000, 7000, 5000, 4500, 3000, 2500];
-    // Build map from employee_number to id for safe lookup
-    const empIdMap = new Map(empRes.rows.map((r) => [r.employee_number, r.id]));
-    for (let i = 0; i < employees.length; i++) {
-      const emp = employees[i];
-      const empId = empIdMap.get(emp.number);
-      if (!empId) continue; // skip if employee wasn't inserted
-      const baseSalary = emp.salary;
-      const allow = allowances[i] || 0;
-      const deduct = deductions[i] || 0;
-      const overtime = i === 0 ? 30000 : 0;
-      const net = baseSalary + allow + overtime - deduct;
-      await client.query(
-        `INSERT INTO payroll_lines (payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING;`,
-        [payrollRunId, empId, baseSalary, allow, deduct, overtime, net]
-      );
-    }
-  }
-
-  // ─── 24. Leaves ────────────────────────────────────────────────────────────
-  if (empIds.length > 0) {
-    const leaves = [
-      { empIdx: 0, type: 'annual', start: '2024-07-01', end: '2024-07-05', days: 5 },
-      { empIdx: 1, type: 'sick', start: '2024-06-10', end: '2024-06-12', days: 3 },
-      { empIdx: 3, type: 'annual', start: '2024-08-15', end: '2024-08-20', days: 6 },
-      { empIdx: 4, type: 'emergency', start: '2024-06-18', end: '2024-06-18', days: 1 },
-    ];
-    for (const l of leaves) {
-      await client.query(
-        `INSERT INTO leaves (company_id, employee_id, type, start_date, end_date, days, status) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING;`,
-        [companyId, empIds[l.empIdx], l.type, l.start, l.end, l.days, l.type === 'emergency' ? 'approved' : 'pending']
-      );
-    }
-  }
-
-  // ─── 25. Leads ─────────────────────────────────────────────────────────────
-  const leadsData = [
-    { name: 'محمد عبدالله السقاف', phone: '+967111000111', email: 'm.saqaf@example.com', company: 'شركة السقاف التجارية', source: 'معرض', status: 'new', value: 500000 },
-    { name: 'سمير علي الحميري', phone: '+967222000222', email: 's.alhamiri@example.com', company: 'مؤسسة الحميري', source: 'موقع إلكتروني', status: 'contacted', value: 350000 },
-    { name: 'ليلى محمود الأصبحي', phone: '+967333000333', email: 'l.ashbah@example.com', company: 'شركة الأصبحي', source: 'توصية', status: 'qualified', value: 800000 },
-    { name: 'عمر فاروق بامطرف', phone: '+967444000444', email: 'o.bamtraf@example.com', company: 'مؤسسة بامطرف', source: 'إعلان', status: 'new', value: 200000 },
-    { name: 'نادية صالح الكحلاني', phone: '+967555000555', email: 'n.kahlan@example.com', company: 'شركة الكحلاني', source: 'معرض', status: 'contacted', value: 600000 },
-    { name: 'هشام أحمد الجندي', phone: '+967666000666', email: 'h.aljundi@example.com', company: 'مؤسسة الجندي', source: 'اتصال وارد', status: 'qualified', value: 450000 },
-  ];
-  for (const l of leadsData) {
-    await client.query(
-      `INSERT INTO leads (company_id, name, phone, email, company, source, status, estimated_value, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING;`,
-      [companyId, l.name, l.phone, l.email, l.company, l.source, l.status, l.value, 'عميل محتمل']
-    );
-  }
-  const leadsRes = await client.query(`SELECT id FROM leads WHERE company_id = $1 ORDER BY name`, [companyId]);
-  const leadIds = leadsRes.rows.map(r => r.id);
-
-  // ─── 26. Opportunities ─────────────────────────────────────────────────────
-  if (leadIds.length > 0) {
-    const opportunities = [
-      { leadIdx: 2, name: 'صفقة توزيع أرز بسمتي', value: 800000, stage: 'negotiation', prob: 70, close: '2024-09-30' },
-      { leadIdx: 0, name: 'عقد توريد زيوت نباتية', value: 500000, stage: 'prospecting', prob: 40, close: '2024-10-15' },
-      { leadIdx: 4, name: 'مشروع توريد مواد تنظيف', value: 600000, stage: 'proposal', prob: 55, close: '2024-08-20' },
-      { leadIdx: 5, name: 'اتفاقية بيع سكر بالجملة', value: 450000, stage: 'prospecting', prob: 30, close: '2024-11-01' },
-    ];
-    for (const o of opportunities) {
-      if (o.leadIdx < leadIds.length) {
-        await client.query(
-          `INSERT INTO opportunities (company_id, lead_id, name, value, stage, probability, expected_close_date) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING;`,
-          [companyId, leadIds[o.leadIdx], o.name, o.value, o.stage, o.prob, o.close]
-        );
+      if (total > 0) {
+        await client.query(`UPDATE payroll_runs SET total_amount = $1::numeric WHERE id = $2::uuid`, [total, prId]);
       }
     }
   }
-  const oppRes = await client.query(`SELECT id FROM opportunities WHERE company_id = $1 ORDER BY name`, [companyId]);
-  const oppIds = oppRes.rows.map(r => r.id);
 
-  // ─── 27. CRM Activities ────────────────────────────────────────────────────
-  if (oppIds.length > 0 || leadIds.length > 0) {
-    const activities = [
-      { title: 'متابعة عرض السعر', due: '2024-07-05', priority: 'high', status: 'pending', leadIdx: 0, oppIdx: null },
-      { title: 'إرسال العينة', due: '2024-07-10', priority: 'medium', status: 'in_progress', leadIdx: null, oppIdx: 0 },
-      { title: 'اجتماع تفاوضي', due: '2024-07-15', priority: 'high', status: 'pending', leadIdx: null, oppIdx: 1 },
-      { title: 'اتصال تأكيدي', due: '2024-07-08', priority: 'low', status: 'completed', leadIdx: 1, oppIdx: null },
-      { title: 'تحديث عرض', due: '2024-07-20', priority: 'medium', status: 'pending', leadIdx: null, oppIdx: 2 },
-    ];
-    for (const a of activities) {
-      const leadId = a.leadIdx !== null && a.leadIdx < leadIds.length ? leadIds[a.leadIdx] : null;
-      const oppId = a.oppIdx !== null && a.oppIdx < oppIds.length ? oppIds[a.oppIdx] : null;
-      await client.query(
-        `INSERT INTO crm_activities (company_id, lead_id, opportunity_id, title, description, due_date, priority, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, leadId, oppId, a.title, a.title, a.due, a.priority, a.status]
-      );
-    }
+  // ─── 19. Sales Invoices (with lines) ─────────────────────────────────────
+  console.log('[SEED] Inserting sales invoices...');
+  // Helper: look up a customer or product id by code (mock-friendly pattern)
+  async function lookupIdByCode(table, code) {
+    const r = await client.query(`SELECT id FROM ${table} WHERE company_id = $1::uuid AND code = $2::text LIMIT 1`, [companyId, code]);
+    return r.rows[0]?.id;
   }
-
-  // ─── 28. Calls ─────────────────────────────────────────────────────────────
-  if (leadIds.length > 0 || oppIds.length > 0) {
-    const calls = [
-      { leadIdx: 0, type: 'outbound', duration: 300, notes: 'تقديم الشركة' },
-      { leadIdx: 1, type: 'inbound', duration: 180, notes: 'استفسار عن منتج' },
-      { oppIdx: 0, type: 'outbound', duration: 420, notes: 'مناقشة الشروط' },
-    ];
-    for (const c of calls) {
-      const leadId = c.leadIdx !== null && c.leadIdx < leadIds.length ? leadIds[c.leadIdx] : null;
-      const oppId = c.oppIdx !== null && c.oppIdx < oppIds.length ? oppIds[c.oppIdx] : null;
-      await client.query(
-        `INSERT INTO calls (company_id, lead_id, opportunity_id, type, duration, notes) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING;`,
-        [companyId, leadId, oppId, c.type, c.duration, c.notes]
-      );
-    }
+  const customerCodes = ['CUST-001', 'CUST-002', 'CUST-003', 'CUST-004', 'CUST-005'];
+  const productCodes = ['PRD-001', 'PRD-002', 'PRD-003', 'PRD-004', 'PRD-005', 'PRD-006', 'PRD-007', 'PRD-008', 'PRD-009'];
+  const custIds = [];
+  for (const c of customerCodes) { const id = await lookupIdByCode('customers', c); if (id) custIds.push({ code: c, id }); }
+  const prodInfos = [];
+  for (const c of productCodes) {
+    const r = await client.query(`SELECT id, sale_price FROM products WHERE company_id = $1::uuid AND code = $2::text`, [companyId, c]);
+    if (r.rows[0]) prodInfos.push({ code: c, id: r.rows[0].id, price: r.rows[0].sale_price });
   }
-
-  // ─── 29. BOMs ──────────────────────────────────────────────────────────────
-  if (prodIds.length >= 4) {
-    const bom1Res = await client.query(
-      `INSERT INTO boms (company_id, product_id, version, is_active) VALUES ($1, $2, '1.0', true) ON CONFLICT DO NOTHING RETURNING id;`,
-      [companyId, prodIds[0]]
-    );
-    const bom1Id = bom1Res.rows[0]?.id;
-    if (bom1Id) {
-      await client.query(
-        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`,
-        [bom1Id, prodIds[4], 2, 380]
-      );
-      await client.query(
-        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`,
-        [bom1Id, prodIds[5], 1, 1200]
-      );
-    }
-
-    const bom2Res = await client.query(
-      `INSERT INTO boms (company_id, product_id, version, is_active) VALUES ($1, $2, '1.0', true) ON CONFLICT DO NOTHING RETURNING id;`,
-      [companyId, prodIds[1]]
-    );
-    const bom2Id = bom2Res.rows[0]?.id;
-    if (bom2Id) {
-      await client.query(
-        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`,
-        [bom2Id, prodIds[6], 1, 8500]
-      );
-      await client.query(
-        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`,
-        [bom2Id, prodIds[7], 2, 650]
-      );
-    }
-  }
-
-  // ─── 30. Work Orders ───────────────────────────────────────────────────────
-  if (prodIds.length >= 2) {
-    const bomsRes = await client.query(`SELECT id, product_id FROM boms WHERE company_id = $1`, [companyId]);
-    const bomMap = {};
-    for (const row of bomsRes.rows) {
-      bomMap[row.product_id] = row.id;
-    }
-
-    const workOrders = [
-      { number: 'WO-2024-0001', productIdx: 0, qty: 100, status: 'in_progress', start: '2024-06-01', end: '2024-06-30' },
-      { number: 'WO-2024-0002', productIdx: 1, qty: 200, status: 'pending', start: '2024-07-01', end: '2024-07-31' },
-      { number: 'WO-2024-0003', productIdx: 0, qty: 150, status: 'completed', start: '2024-05-01', end: '2024-05-31' },
+  if (custIds.length >= 5 && prodInfos.length >= 9) {
+    const sampleInvoices = [
+      { number: 'INV-0001', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-05`, custIdx: 0, lines: [{ prodIdx: 0, qty: 10 }, { prodIdx: 1, qty: 5 }] },
+      { number: 'INV-0002', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-12`, custIdx: 1, lines: [{ prodIdx: 2, qty: 20 }] },
+      { number: 'INV-0003', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-18`, custIdx: 2, lines: [{ prodIdx: 3, qty: 8 }, { prodIdx: 4, qty: 12 }] },
+      { number: 'INV-0004', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-22`, custIdx: 3, lines: [{ prodIdx: 5, qty: 30 }] },
+      { number: 'INV-0005', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-28`, custIdx: 4, lines: [{ prodIdx: 6, qty: 15 }, { prodIdx: 7, qty: 25 }, { prodIdx: 8, qty: 6 }] },
     ];
-    for (const wo of workOrders) {
-      const bomId = bomMap[prodIds[wo.productIdx]] || null;
-      const woRes = await client.query(
-        `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, produced_quantity, status, planned_start_date, planned_end_date, actual_start_date, actual_end_date, total_cost, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT DO NOTHING RETURNING id;`,
-        [companyId, wo.number, prodIds[wo.productIdx], bomId, wo.qty, wo.status === 'completed' ? wo.qty : 0, wo.status, wo.start, wo.end, wo.status !== 'pending' ? wo.start : null, wo.status === 'completed' ? wo.end : null, wo.qty * 5000, 'أمر تشغيل تجريبي']
+    for (const inv of sampleInvoices) {
+      const subtotal = inv.lines.reduce((s, l) => s + (parseFloat(prodInfos[l.prodIdx].price) * l.qty), 0);
+      const vatAmount = Math.round(subtotal * VAT_RATE);
+      const totalAmount = subtotal + vatAmount;
+      const insRes = await client.query(
+        `INSERT INTO sales_invoices (company_id, invoice_number, customer_id, date, subtotal, vat_amount, total_amount, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::uuid, $4::date, $5::numeric, $6::numeric, $7::numeric, 'posted', 'فاتورة تجريبية', $8::uuid, $8::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM sales_invoices WHERE company_id = $1::uuid AND invoice_number = $2::text)
+         RETURNING id;`,
+        [companyId, inv.number, custIds[inv.custIdx].id, inv.date, subtotal, vatAmount, totalAmount, adminId]
       );
-      const woId = woRes.rows[0]?.id;
-      if (woId && bomId) {
-        const bomLinesRes = await client.query(`SELECT material_id, quantity, unit_cost FROM bom_lines WHERE bom_id = $1`, [bomId]);
-        for (const line of bomLinesRes.rows) {
+      let invId = insRes.rows[0]?.id;
+      if (!invId) {
+        const sel = await client.query(`SELECT id FROM sales_invoices WHERE company_id = $1::uuid AND invoice_number = $2::text`, [companyId, inv.number]);
+        invId = sel.rows[0]?.id;
+      }
+      if (invId) {
+        for (const line of inv.lines) {
+          const p = prodInfos[line.prodIdx];
+          const lineTotal = parseFloat(p.price) * line.qty;
           await client.query(
-            `INSERT INTO work_order_consumptions (work_order_id, material_id, planned_quantity, actual_quantity, unit_cost) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-            [woId, line.material_id, line.quantity * wo.qty, wo.status === 'completed' ? line.quantity * wo.qty : 0, line.unit_cost || 0]
+            `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total)
+             VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, 0, 15, $5::numeric);`,
+            [invId, p.id, line.qty, p.price, lineTotal]
           );
         }
       }
     }
   }
 
-  // ─── 31. General Accounting Transactions ───────────────────────────────────
-  const cashAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '111001'`, [companyId]);
-  const salesAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '411001'`, [companyId]);
-  const expenseAccountRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1 AND code = '511001'`, [companyId]);
+  // ─── 20. Purchase Orders (with lines) ────────────────────────────────────
+  console.log('[SEED] Inserting purchase orders...');
+  const supplierCodes = ['SUP-001', 'SUP-002', 'SUP-003'];
+  const supIds = [];
+  for (const c of supplierCodes) { const id = await lookupIdByCode('suppliers', c); if (id) supIds.push({ code: c, id }); }
+  if (supIds.length >= 3 && prodInfos.length >= 5) {
+    const samplePOs = [
+      { number: 'PO-0001', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-03`, supIdx: 0, lines: [{ prodIdx: 0, qty: 100, price: 2800 }, { prodIdx: 1, qty: 50, price: 4200 }] },
+      { number: 'PO-0002', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-10`, supIdx: 1, lines: [{ prodIdx: 2, qty: 200, price: 15000 }] },
+      { number: 'PO-0003', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-20`, supIdx: 2, lines: [{ prodIdx: 3, qty: 80, price: 9500 }, { prodIdx: 4, qty: 150, price: 380 }] },
+    ];
+    for (const po of samplePOs) {
+      const total = po.lines.reduce((s, l) => s + (l.qty * l.price), 0);
+      const insRes = await client.query(
+        `INSERT INTO purchase_orders (company_id, order_number, supplier_id, date, total_amount, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::uuid, $4::date, $5::numeric, 'sent', 'طلب شراء تجريبي', $6::uuid, $6::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM purchase_orders WHERE company_id = $1::uuid AND order_number = $2::text)
+         RETURNING id;`,
+        [companyId, po.number, supIds[po.supIdx].id, po.date, total, adminId]
+      );
+      let poId = insRes.rows[0]?.id;
+      if (!poId) {
+        const sel = await client.query(`SELECT id FROM purchase_orders WHERE company_id = $1::uuid AND order_number = $2::text`, [companyId, po.number]);
+        poId = sel.rows[0]?.id;
+      }
+      if (poId) {
+        for (const line of po.lines) {
+          await client.query(
+            `INSERT INTO purchase_order_lines (order_id, product_id, quantity, unit_price, line_total)
+             VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric);`,
+            [poId, prodInfos[line.prodIdx].id, line.qty, line.price, line.qty * line.price]
+          );
+        }
+      }
+    }
+  }
 
-  if (cashAccountRes.rows.length > 0 && salesAccountRes.rows.length > 0) {
-    const txRes = await client.query(
-      `INSERT INTO transactions (company_id, date, reference, description, total_amount, status) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING RETURNING id;`,
-      [companyId, '2024-06-01', 'TXN-001', 'إيرادات شهر يونيو', 500000, 'posted']
+  // ─── 21. Purchase Invoices (with lines) ──────────────────────────────────
+  console.log('[SEED] Inserting purchase invoices...');
+  if (supIds.length >= 3 && prodInfos.length >= 5) {
+    const samplePIs = [
+      { number: 'PINV-0001', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-06`, supIdx: 0, lines: [{ prodIdx: 0, qty: 100, price: 2800 }, { prodIdx: 1, qty: 50, price: 4200 }] },
+      { number: 'PINV-0002', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-14`, supIdx: 1, lines: [{ prodIdx: 2, qty: 200, price: 15000 }] },
+      { number: 'PINV-0003', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-24`, supIdx: 2, lines: [{ prodIdx: 3, qty: 80, price: 9500 }] },
+    ];
+    for (const pi of samplePIs) {
+      const subtotal = pi.lines.reduce((s, l) => s + (l.qty * l.price), 0);
+      const vatAmount = Math.round(subtotal * VAT_RATE);
+      const total = subtotal + vatAmount;
+      const insRes = await client.query(
+        `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, date, subtotal, vat_amount, total_amount, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::uuid, $4::date, $5::numeric, $6::numeric, $7::numeric, 'posted', 'فاتورة مشتريات تجريبية', $8::uuid, $8::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM purchase_invoices WHERE company_id = $1::uuid AND invoice_number = $2::text)
+         RETURNING id;`,
+        [companyId, pi.number, supIds[pi.supIdx].id, pi.date, subtotal, vatAmount, total, adminId]
+      );
+      let piId = insRes.rows[0]?.id;
+      if (!piId) {
+        const sel = await client.query(`SELECT id FROM purchase_invoices WHERE company_id = $1::uuid AND invoice_number = $2::text`, [companyId, pi.number]);
+        piId = sel.rows[0]?.id;
+      }
+      if (piId) {
+        for (const line of pi.lines) {
+          await client.query(
+            `INSERT INTO purchase_invoice_lines (invoice_id, product_id, quantity, unit_price, line_total)
+             VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric);`,
+            [piId, prodInfos[line.prodIdx].id, line.qty, line.price, line.qty * line.price]
+          );
+        }
+      }
+    }
+  }
+
+  // ─── 22. Quotations (with lines) ─────────────────────────────────────────
+  console.log('[SEED] Inserting quotations...');
+  if (custIds.length >= 2 && prodInfos.length >= 3) {
+    const sampleQuotes = [
+      { number: 'QOT-0001', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-02`, custIdx: 0, lines: [{ prodIdx: 0, qty: 15, disc: 5 }, { prodIdx: 1, qty: 8, disc: 0 }] },
+      { number: 'QOT-0002', date: `${currentYear}-${String(currentMonth).padStart(2,'0')}-15`, custIdx: 1, lines: [{ prodIdx: 2, qty: 25, disc: 3 }] },
+    ];
+    for (const q of sampleQuotes) {
+      const total = q.lines.reduce((s, l) => {
+        const p = prodInfos[l.prodIdx];
+        return s + (l.qty * parseFloat(p.price) * (1 - l.disc / 100));
+      }, 0);
+      const insRes = await client.query(
+        `INSERT INTO quotations (company_id, quotation_number, customer_id, date, total_amount, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::uuid, $4::date, $5::numeric, 'open', 'عرض سعر تجريبي', $6::uuid, $6::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM quotations WHERE company_id = $1::uuid AND quotation_number = $2::text)
+         RETURNING id;`,
+        [companyId, q.number, custIds[q.custIdx].id, q.date, Math.round(total), adminId]
+      );
+      let qId = insRes.rows[0]?.id;
+      if (!qId) {
+        const sel = await client.query(`SELECT id FROM quotations WHERE company_id = $1::uuid AND quotation_number = $2::text`, [companyId, q.number]);
+        qId = sel.rows[0]?.id;
+      }
+      if (qId) {
+        for (const line of q.lines) {
+          const p = prodInfos[line.prodIdx];
+          const lineTotal = line.qty * parseFloat(p.price) * (1 - line.disc / 100);
+          await client.query(
+            `INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, line_total)
+             VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric, $6::numeric);`,
+            [qId, p.id, line.qty, p.price, line.disc, Math.round(lineTotal)]
+          );
+        }
+      }
+    }
+  }
+
+  // ─── 23. Sales Returns (with lines) ──────────────────────────────────────
+  console.log('[SEED] Inserting sales returns...');
+  const recentInvoice = (await client.query(`SELECT id, customer_id FROM sales_invoices WHERE company_id = $1::uuid AND invoice_number = 'INV-0001' LIMIT 1`, [companyId])).rows[0];
+  if (recentInvoice && prodInfos.length > 0) {
+    const returnQty = 2;
+    const p = prodInfos[0];
+    const subtotal = parseFloat(p.price) * returnQty;
+    const vatAmount = Math.round(subtotal * VAT_RATE);
+    const totalAmount = subtotal + vatAmount;
+    const insRes = await client.query(
+      `INSERT INTO sales_returns (company_id, return_number, invoice_id, customer_id, date, subtotal, vat_amount, total_amount, reason, status, notes, created_by, updated_by)
+       SELECT $1::uuid, 'RET-0001', $2::uuid, $3::uuid, CURRENT_DATE, $4::numeric, $5::numeric, $6::numeric, 'منتج معيب', 'posted', 'مردود مبيعات تجريبي', $7::uuid, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM sales_returns WHERE company_id = $1::uuid AND return_number = 'RET-0001')
+       RETURNING id;`,
+      [companyId, recentInvoice.id, recentInvoice.customer_id, subtotal, vatAmount, totalAmount, adminId]
     );
-    const txId = txRes.rows[0]?.id;
-    if (txId) {
+    const retId = insRes.rows[0]?.id;
+    if (retId) {
       await client.query(
-        `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [txId, cashAccountRes.rows[0].id, 500000, 0, 'تحصيل نقدي']
-      );
-      await client.query(
-        `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [txId, salesAccountRes.rows[0].id, 0, 500000, 'إيرادات المبيعات']
+        `INSERT INTO sales_return_lines (return_id, product_id, quantity, unit_price, line_total)
+         VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric);`,
+        [retId, p.id, returnQty, p.price, subtotal]
       );
     }
   }
 
-  if (cashAccountRes.rows.length > 0 && expenseAccountRes.rows.length > 0) {
-    const txRes = await client.query(
-      `INSERT INTO transactions (company_id, date, reference, description, total_amount, status) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING RETURNING id;`,
-      [companyId, '2024-06-05', 'TXN-002', 'مصاريف تشغيل', 120000, 'posted']
+  // ─── 24. Purchase Returns (with lines) ───────────────────────────────────
+  console.log('[SEED] Inserting purchase returns...');
+  const recentPI = (await client.query(`SELECT id, supplier_id FROM purchase_invoices WHERE company_id = $1::uuid AND invoice_number = 'PINV-0001' LIMIT 1`, [companyId])).rows[0];
+  if (recentPI && prodInfos.length > 0) {
+    const returnQty = 5;
+    const p = prodInfos[0];
+    const unitPrice = parseFloat(p.price) * 0.85;
+    const subtotal = unitPrice * returnQty;
+    const vatAmount = Math.round(subtotal * VAT_RATE);
+    const totalAmount = subtotal + vatAmount;
+    const insRes = await client.query(
+      `INSERT INTO purchase_returns (company_id, return_number, invoice_id, supplier_id, date, subtotal, vat_amount, total_amount, reason, status, notes, created_by, updated_by)
+       SELECT $1::uuid, 'PRET-0001', $2::uuid, $3::uuid, CURRENT_DATE, $4::numeric, $5::numeric, $6::numeric, 'منتج معيب', 'posted', 'مردود مشتريات تجريبي', $7::uuid, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM purchase_returns WHERE company_id = $1::uuid AND return_number = 'PRET-0001')
+       RETURNING id;`,
+      [companyId, recentPI.id, recentPI.supplier_id, subtotal, vatAmount, totalAmount, adminId]
     );
-    const txId = txRes.rows[0]?.id;
-    if (txId) {
+    const retId = insRes.rows[0]?.id;
+    if (retId) {
       await client.query(
-        `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [txId, expenseAccountRes.rows[0].id, 120000, 0, 'مصاريف تشغيل']
-      );
-      await client.query(
-        `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING;`,
-        [txId, cashAccountRes.rows[0].id, 0, 120000, 'دفع نقدي']
+        `INSERT INTO purchase_return_lines (return_id, product_id, quantity, unit_price, line_total)
+         VALUES ($1::uuid, $2::uuid, $3::numeric, $4::numeric, $5::numeric);`,
+        [retId, p.id, returnQty, unitPrice, subtotal]
       );
     }
   }
 
-  // ─── 32. Receipt & Payment Vouchers ───────────────────────────────────────
-  const firstCustomer = await client.query(`SELECT id FROM customers WHERE company_id = $1 ORDER BY code LIMIT 1`, [companyId]);
-  const firstSupplier = await client.query(`SELECT id FROM suppliers WHERE company_id = $1 ORDER BY code LIMIT 1`, [companyId]);
-
-  if (firstCustomer.rows.length > 0) {
-    const rvExists = await client.query(`SELECT to_regclass('public.receipt_vouchers') AS name;`);
-    if (rvExists.rows[0] && rvExists.rows[0].name) {
+  // ─── 25. Receipt Vouchers (سند قبض) ──────────────────────────────────────
+  console.log('[SEED] Inserting receipt vouchers...');
+  if (custIds.length > 0) {
+    const bankRes = await client.query(`SELECT id FROM banks WHERE company_id = $1::uuid LIMIT 1`, [companyId]);
+    const bankId = bankRes.rows[0]?.id;
+    for (let i = 0; i < 3; i++) {
+      const amount = 500000 + (i * 250000);
+      const number = `RV-${String(i + 1).padStart(4, '0')}`;
+      const date = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(10 + i * 5).padStart(2,'0')}`;
       await client.query(
-        `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, 'RV-2024-0001', '2024-06-01', firstCustomer.rows[0].id, 150000, 'cash', 'تحصيل من عميل', 'posted']
+        `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, bank_account_id, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::date, $4::uuid, $5::numeric, $6::text, $7::uuid, 'posted', 'سند قبض تجريبي', $8::uuid, $8::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM receipt_vouchers WHERE company_id = $1::uuid AND voucher_number = $2::text);`,
+        [companyId, number, date, custIds[i % custIds.length].id, amount, i === 0 ? 'cash' : 'bank', bankId, adminId]
       );
-      await client.query(
-        `INSERT INTO receipt_vouchers (company_id, voucher_number, date, customer_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, 'RV-2024-0002', '2024-06-15', firstCustomer.rows[0].id, 200000, 'bank', 'تحصيل بنكي', 'posted']
-      );
-    } else {
-      console.warn('[SEED] Skipping receipt_vouchers inserts: table does not exist');
     }
   }
 
-  if (firstSupplier.rows.length > 0) {
-    const pvExists = await client.query(`SELECT to_regclass('public.payment_vouchers') AS name;`);
-    if (pvExists.rows[0] && pvExists.rows[0].name) {
+  // ─── 26. Payment Vouchers (سند صرف) ──────────────────────────────────────
+  console.log('[SEED] Inserting payment vouchers...');
+  if (supIds.length > 0) {
+    const bankRes = await client.query(`SELECT id FROM banks WHERE company_id = $1::uuid LIMIT 1`, [companyId]);
+    const bankId = bankRes.rows[0]?.id;
+    const expRes = await client.query(`SELECT id FROM accounts WHERE company_id = $1::uuid AND code = '52101' LIMIT 1`, [companyId]);
+    const expId = expRes.rows[0]?.id;
+    for (let i = 0; i < 3; i++) {
+      const amount = 300000 + (i * 200000);
+      const number = `PV-${String(i + 1).padStart(4, '0')}`;
+      const date = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(12 + i * 5).padStart(2,'0')}`;
       await client.query(
-        `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, 'PV-2024-0001', '2024-06-05', firstSupplier.rows[0].id, 100000, 'cash', 'دفع لمورد', 'posted']
+        `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, expense_account_id, amount, payment_method, bank_account_id, status, notes, created_by, updated_by)
+         SELECT $1::uuid, $2::text, $3::date, $4::uuid, $5::uuid, $6::numeric, $7::text, $8::uuid, 'posted', 'سند صرف تجريبي', $9::uuid, $9::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM payment_vouchers WHERE company_id = $1::uuid AND voucher_number = $2::text);`,
+        [companyId, number, date, supIds[i % supIds.length].id, expId, amount, i === 0 ? 'cash' : 'bank', bankId, adminId]
       );
-      await client.query(
-        `INSERT INTO payment_vouchers (company_id, voucher_number, date, supplier_id, amount, payment_method, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING;`,
-        [companyId, 'PV-2024-0002', '2024-06-20', firstSupplier.rows[0].id, 175000, 'bank', 'دفع بنكي', 'posted']
-      );
-    } else {
-      console.warn('[SEED] Skipping payment_vouchers inserts: table does not exist');
     }
   }
 
-  // ─── 33. Activity Log (defensive: skip if table doesn't exist) ────────────
-  try {
+  // ─── 27. Leads, Opportunities, CRM Activities ───────────────────────────
+  console.log('[SEED] Inserting CRM data...');
+  for (const lead of LEADS) {
     await client.query(
-      `INSERT INTO activity_logs (company_id, user_id, user_name, action, module, details) VALUES ($1, NULL, 'النظام', $2, $3, $4);`,
-      [companyId, 'بذر البيانات الوهمية', 'الأساس (Core)', 'تم إدخال بيانات وهمية شاملة لجميع وحدات النظام: العملاء والموردين والمنتجات والمستودعات والمخزون والفواتير وأوامر الشراء والموظفين والرواتب والحضور والإجازات والعملاء المحتملين والفرص والأنشطة وقوائم المواد وأوامر التشغيل والفروع والعملات وضريبة القيمة المضافة والترقيم والقيود المحاسبية']
+      `INSERT INTO leads (company_id, name, phone, email, company, source, status, estimated_value, notes, created_by, updated_by)
+       SELECT $1::uuid, $2::text, $3::text, $4::text, $5::text, $6::text, $7::text, $8::numeric, $9::text, $10::uuid, $10::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM leads WHERE company_id = $1::uuid AND phone = $3::text);`,
+      [companyId, lead.name, lead.phone, lead.email, lead.company, lead.source, lead.status, lead.value, lead.notes || '', adminId]
     );
-  } catch (logErr) {
-    console.warn('[DB] Could not write demo activity log:', logErr.message);
   }
 
-  return { success: true, companyId };
+  // ─── 28. Manufacturing: BOMs + Work Orders ───────────────────────────────
+  console.log('[SEED] Inserting BOMs and work orders...');
+  if (prodInfos.length >= 2) {
+    const bomRes = await client.query(
+      `INSERT INTO boms (company_id, product_id, version, is_active, created_by, updated_by)
+       SELECT $1::uuid, $2::uuid, '1.0', TRUE, $3::uuid, $3::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM boms WHERE company_id = $1::uuid AND product_id = $2::uuid)
+       RETURNING id;`,
+      [companyId, prodInfos[0].id, adminId]
+    );
+    const bomId = bomRes.rows[0]?.id;
+    if (bomId) {
+      await client.query(
+        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost)
+         VALUES ($1::uuid, $2::uuid, 2, 2800);`,
+        [bomId, prodInfos[1].id]
+      );
+      await client.query(
+        `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, created_by, updated_by)
+         SELECT $1::uuid, 'WO-0001', $2::uuid, $3::uuid, 50, 'pending', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', $4::uuid, $4::uuid
+         WHERE NOT EXISTS (SELECT 1 FROM work_orders WHERE company_id = $1::uuid AND order_number = 'WO-0001');`,
+        [companyId, prodInfos[0].id, bomId, adminId]
+      );
+    }
+  }
+
+  // ─── 29. CRM Tasks & Activities ──────────────────────────────────────────
+  console.log('[SEED] Inserting tasks and activities...');
+  const leadRes = await client.query(`SELECT id FROM leads WHERE company_id = $1::uuid ORDER BY created_at ASC LIMIT 1`, [companyId]);
+  const leadId = leadRes.rows[0]?.id;
+  if (leadId) {
+    await client.query(
+      `INSERT INTO tasks (company_id, lead_id, title, description, due_date, priority, status, assigned_to)
+       SELECT $1::uuid, $2::uuid, $3::text, $4::text, CURRENT_DATE + INTERVAL '7 days', $5::text, $6::text, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE company_id = $1::uuid AND title = $3::text);`,
+      [companyId, leadId, 'متابعة عرض السعر', 'إرسال عرض سعر محدث للعميل المحتمل', 'high', 'pending', adminId]
+    );
+    await client.query(
+      `INSERT INTO tasks (company_id, lead_id, title, description, due_date, priority, status, assigned_to)
+       SELECT $1::uuid, $2::uuid, $3::text, $4::text, CURRENT_DATE + INTERVAL '14 days', $5::text, $6::text, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM tasks WHERE company_id = $1::uuid AND title = $3::text);`,
+      [companyId, leadId, 'ترتيب اجتماع', 'تنسيق اجتماع لعرض المنتجات', 'medium', 'pending', adminId]
+    );
+    await client.query(
+      `INSERT INTO activities (company_id, lead_id, type, subject, description, activity_date, duration_minutes, assigned_to)
+       SELECT $1::uuid, $2::uuid, $3::text, $4::text, $5::text, NOW() - INTERVAL '2 days', $6::int, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM activities WHERE company_id = $1::uuid AND subject = $4::text);`,
+      [companyId, leadId, 'call', 'متابعة هاتفية', 'تم الاتصال بالعميل لمناقشة العرض', 15, adminId]
+    );
+    await client.query(
+      `INSERT INTO activities (company_id, lead_id, type, subject, description, activity_date, duration_minutes, assigned_to)
+       SELECT $1::uuid, $2::uuid, $3::text, $4::text, $5::text, NOW() - INTERVAL '1 day', $6::int, $7::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM activities WHERE company_id = $1::uuid AND subject = $4::text);`,
+      [companyId, leadId, 'email', 'إرسال عرض', 'تم إرسال عرض السعر عبر البريد الإلكتروني', 5, adminId]
+    );
+  }
+
+  // ─── 30. Stock Adjustments ────────────────────────────────────────────────
+  console.log('[SEED] Inserting stock adjustments...');
+  const whRes = await client.query(`SELECT id FROM warehouses WHERE company_id = $1::uuid ORDER BY created_at ASC LIMIT 1`, [companyId]);
+  const warehouseId = whRes.rows[0]?.id;
+  if (prodInfos.length > 0 && warehouseId) {
+    const today = new Date().toISOString().split('T')[0];
+    await client.query(
+      `INSERT INTO stock_adjustments (company_id, date, product_id, warehouse_id, system_qty, actual_qty, difference, unit_cost, reason, status, created_by, updated_by)
+       SELECT $1::uuid, $2::date, $3::uuid, $4::uuid, $5::numeric, $6::numeric, $7::numeric, 0, $8::text, $9::text, $10::uuid, $10::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM stock_adjustments WHERE company_id = $1::uuid AND product_id = $3::uuid AND date = $2::date);`,
+      [companyId, today, prodInfos[0].id, warehouseId, 100, 98, -2, 'جرد دوري', 'posted', adminId]
+    );
+  }
+
+  return { success: true, companyId, masterDataOnly: false };
 }
