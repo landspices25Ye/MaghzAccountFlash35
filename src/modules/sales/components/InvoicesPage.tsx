@@ -248,7 +248,7 @@ export const InvoicesPage: React.FC = () => {
       date: invoice.date,
       dueDate: invoice.dueDate,
       partyName: invoice.customer?.name || invoice.customerId,
-      partyLabel: t('sales.customer') || 'العميل',
+      partyLabel: t('sales.customer.title') || 'العميل',
       lines: invoice.lines.map(l => ({
         description: l.productName || l.productId,
         quantity: l.quantity,
@@ -267,7 +267,7 @@ export const InvoicesPage: React.FC = () => {
   const handleExportExcel = () => {
     const exportColumns = [
       { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة' },
-      { key: 'customerName', header: t('sales.customer') || 'العميل' },
+      { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
       { key: 'date', header: t('sales.date') || 'التاريخ' },
       { key: 'status', header: t('sales.status') || 'الحالة' },
       { key: 'subtotal', header: t('sales.subtotal') || 'المجموع' },
@@ -289,7 +289,7 @@ export const InvoicesPage: React.FC = () => {
   const handleExportPDF = () => {
     const exportColumns = [
       { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: 30 },
-      { key: 'customerName', header: t('sales.customer') || 'العميل', width: 40 },
+      { key: 'customerName', header: t('sales.customer.title') || 'العميل', width: 40 },
       { key: 'date', header: t('sales.date') || 'التاريخ', width: 20 },
       { key: 'status', header: t('sales.status') || 'الحالة', width: 20 },
       { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', width: 20 },
@@ -309,7 +309,7 @@ export const InvoicesPage: React.FC = () => {
 
   const tableColumns = [
     { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: '130px' },
-    { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: SalesInvoice) => row.customer?.name || row.customerId },
+    { key: 'customerName', header: t('sales.customer.title') || 'العميل', render: (row: SalesInvoice) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px', render: (row: SalesInvoice) => formatDate(row.date) },
     { key: 'dueDate', header: t('sales.dueDate') || 'الاستحقاق', width: '110px', render: (row: SalesInvoice) => row.dueDate ? formatDate(row.dueDate) : '-' },
     { key: 'subtotal', header: t('sales.subtotal') || 'المجموع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.subtotal) },
@@ -431,7 +431,7 @@ export const InvoicesPage: React.FC = () => {
         <div className="space-y-4 p-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer') || 'العميل'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title') || 'العميل'}</label>
               <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(prev => ({ ...prev, customerId: v || '' }))} />
             </div>
             <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(prev => ({ ...prev, date: e.target.value }))} />
@@ -505,7 +505,7 @@ export const InvoicesPage: React.FC = () => {
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.customer') || 'العميل'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.customer?.name || viewing.customerId}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">

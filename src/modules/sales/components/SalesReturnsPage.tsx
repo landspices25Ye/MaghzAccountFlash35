@@ -183,7 +183,7 @@ export const SalesReturnsPage: React.FC = () => {
       docNumber: ret.returnNumber,
       date: ret.date,
       partyName: ret.customer?.name || ret.customerId,
-      partyLabel: t('sales.customer') || 'العميل',
+      partyLabel: t('sales.customer.title') || 'العميل',
       lines: ret.lines.map(l => ({
         description: l.productName || l.productId,
         quantity: l.quantity,
@@ -203,7 +203,7 @@ export const SalesReturnsPage: React.FC = () => {
     const cols = [
       { key: 'returnNumber', header: t('sales.return.number') || 'رقم المردود' },
       { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'الفاتورة الأصلية' },
-      { key: 'customerName', header: t('sales.customer') || 'العميل' },
+      { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
       { key: 'date', header: t('sales.date') || 'التاريخ' },
       { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
       { key: 'status', header: t('sales.status') || 'الحالة' },
@@ -216,7 +216,7 @@ export const SalesReturnsPage: React.FC = () => {
     { key: 'invoiceNumber', header: t('sales.return.originalInvoice') || 'الفاتورة الأصلية', width: '140px', render: (row: SalesReturn) => (
       <span className="flex items-center gap-1 text-blue-600"><FileText size={14} /> {row.invoice?.invoiceNumber || row.invoiceId}</span>
     )},
-    { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: SalesReturn) => row.customer?.name || row.customerId },
+    { key: 'customerName', header: t('sales.customer.title') || 'العميل', render: (row: SalesReturn) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
     { key: 'reason', header: t('sales.return.reason') || 'السبب' },
     { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: SalesReturn) => formatCurrency(row.totalAmount) },
@@ -314,7 +314,7 @@ export const SalesReturnsPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer') || 'العميل'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title') || 'العميل'}</label>
               <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(p => ({ ...p, customerId: v || '' }))} />
             </div>
             <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(p => ({ ...p, date: e.target.value }))} />
@@ -375,7 +375,7 @@ export const SalesReturnsPage: React.FC = () => {
         {viewing && (
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.originalInvoice') || 'الفاتورة الأصلية'}</p><p className="font-semibold flex items-center gap-1"><FileText size={14} /> {viewing.invoice?.invoiceNumber || viewing.invoiceId}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.reason') || 'السبب'}</p><p className="font-semibold">{viewing.reason}</p></div>

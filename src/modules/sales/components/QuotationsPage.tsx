@@ -207,7 +207,7 @@ export const QuotationsPage: React.FC = () => {
       date: q.date,
       dueDate: q.expiryDate,
       partyName: q.customer?.name || q.customerId,
-      partyLabel: t('sales.customer') || 'العميل',
+      partyLabel: t('sales.customer.title') || 'العميل',
       lines: q.lines.map(l => ({
         description: l.productName || l.productId,
         quantity: l.quantity,
@@ -226,7 +226,7 @@ export const QuotationsPage: React.FC = () => {
   const handleExportExcel = () => {
     const cols = [
       { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم' },
-      { key: 'customerName', header: t('sales.customer') || 'العميل' },
+      { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
       { key: 'date', header: t('sales.date') || 'التاريخ' },
       { key: 'expiryDate', header: t('sales.quotation.expiry') || 'تاريخ الانتهاء' },
       { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
@@ -237,7 +237,7 @@ export const QuotationsPage: React.FC = () => {
 
   const tableColumns = [
     { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم', width: '120px' },
-    { key: 'customerName', header: t('sales.customer') || 'العميل', render: (row: Quotation) => row.customer?.name || row.customerId },
+    { key: 'customerName', header: t('sales.customer.title') || 'العميل', render: (row: Quotation) => row.customer?.name || row.customerId },
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
     { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? formatDate(row.expiryDate) : '-' },
     { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
@@ -304,7 +304,7 @@ export const QuotationsPage: React.FC = () => {
         <div className="space-y-4 p-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer') || 'العميل'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title') || 'العميل'}</label>
               <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(p => ({ ...p, customerId: v || '' }))} />
             </div>
             <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(p => ({ ...p, date: e.target.value }))} />
@@ -367,7 +367,7 @@ export const QuotationsPage: React.FC = () => {
         {viewing && (
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.quotation.expiry') || 'الانتهاء'}</p><p className="font-semibold">{viewing.expiryDate || '-'}</p></div>
