@@ -49,8 +49,8 @@ export const OnboardingWizard: React.FC = () => {
       });
 
       // Update Electron PG config
-      if (typeof window !== 'undefined' && (window as any).electronDB?.updateConfig) {
-        await (window as any).electronDB.updateConfig({
+      if (typeof window !== 'undefined' && window.electronDB?.updateConfig) {
+        await window.electronDB.updateConfig({
           host: dbConfig.host,
           port: dbConfig.port,
           database: dbConfig.database,
@@ -62,8 +62,8 @@ export const OnboardingWizard: React.FC = () => {
       setCompleted(true);
       setProcessing(false);
       window.location.reload();
-    } catch (err: any) {
-      setError(err.message || 'حدث خطأ أثناء الحفظ');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ أثناء الحفظ');
       setProcessing(false);
     }
   };
@@ -134,8 +134,8 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
     setIsResetting(true);
     setResetError('');
     try {
-      if (typeof window !== 'undefined' && (window as any).electronDB?.clearAll) {
-        const result = await (window as any).electronDB.clearAll();
+      if (typeof window !== 'undefined' && window.electronDB?.clearAll) {
+        const result = await window.electronDB.clearAll();
         if (!result.success) {
           throw new Error(result.error || 'فشل مسح البيانات');
         }
@@ -145,8 +145,8 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         return;
       }
       throw new Error('خدمة PostgreSQL غير متوفرة. تأكد من تشغيل Electron.');
-    } catch (err: any) {
-      setResetError(err.message || 'حدث خطأ أثناء مسح البيانات');
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'حدث خطأ أثناء مسح البيانات');
       setIsResetting(false);
     }
   };
@@ -233,10 +233,10 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
     setTestStatus('idle');
     setError(null);
 
-    if (typeof window !== 'undefined' && (window as any).electronDB?.testConnection) {
+    if (typeof window !== 'undefined' && window.electronDB?.testConnection) {
       setProcessing(true, 'جارٍ اختبار اتصال PostgreSQL...');
       try {
-        const result = await (window as any).electronDB.testConnection({
+        const result = await window.electronDB.testConnection({
           host: dbConfig.host,
           port: dbConfig.port,
           database: dbConfig.database,
@@ -250,9 +250,9 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
           setTestStatus('error');
           setTestMessage(result.error || 'فشل الاتصال');
         }
-      } catch (err: any) {
+      } catch (err) {
         setTestStatus('error');
-        setTestMessage(err.message || 'فشل الاتصال');
+        setTestMessage(err instanceof Error ? err.message : 'فشل الاتصال');
       }
       setProcessing(false);
     } else {
@@ -384,10 +384,13 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
     setProcessing(true, seedOption === 'default' ? 'جارٍ بذر البيانات الافتراضية...' : 'جارٍ بذر البيانات الوهمية...');
 
     try {
-      if (typeof window !== 'undefined' && (window as any).electronDB) {
-        const electronDB = (window as any).electronDB;
+      if (typeof window !== 'undefined' && window.electronDB) {
+        const electronDB = window.electronDB;
 
         if (seedOption === 'default') {
+          if (!electronDB.seedDefault) {
+            throw new Error('seedDefault غير متوفر');
+          }
           const result = await electronDB.seedDefault();
           if (result.success) {
             setSeedStatus('success');
@@ -396,6 +399,9 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
             throw new Error(result.error || 'فشل البذر');
           }
         } else if (seedOption === 'demo') {
+          if (!electronDB.seedDemo) {
+            throw new Error('seedDemo غير متوفر');
+          }
           const result = await electronDB.seedDemo();
           if (result.success) {
             setSeedStatus('success');
@@ -410,10 +416,11 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
 
       setProcessing(false);
       onNext();
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء البذر';
       setSeedStatus('error');
-      setSeedMessage(err.message || 'حدث خطأ أثناء البذر');
-      setError(err.message);
+      setSeedMessage(msg);
+      setError(msg);
       setProcessing(false);
     }
   };
@@ -541,3 +548,5 @@ function SummaryRow({ label, value, icon }: { label: string; value: string; icon
 }
 
 export default OnboardingWizard;
+
+

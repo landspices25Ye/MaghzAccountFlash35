@@ -28,7 +28,7 @@ import { cn } from '@/core/utils';
 interface MenuItem {
   id: string;
   label: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
   permission: string;
   children?: { label: string; path: string }[];
