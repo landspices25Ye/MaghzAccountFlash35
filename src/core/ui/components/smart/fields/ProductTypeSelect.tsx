@@ -28,7 +28,7 @@ export const ProductTypeSelect: React.FC<ProductTypeSelectProps> = ({
         inventory: 'appearsInInventory',
         manufacturing: 'appearsInManufacturing',
       };
-      filtered = filtered.filter(t => (t as any)[map[filterModule]]);
+      filtered = filtered.filter(t => t[map[filterModule] as keyof ProductType] as boolean);
     }
     return filtered.map(t => ({
       label: t.nameAr,
@@ -41,7 +41,7 @@ export const ProductTypeSelect: React.FC<ProductTypeSelectProps> = ({
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

@@ -11,7 +11,7 @@ export interface SmartSelectItem {
 
 export interface SmartSelectProps<T extends SmartSelectItem> {
   value?: string | string[];
-  onChange: (value: any) => void;
+  onChange: (value: string | string[] | null) => void;
   options: T[];
   isLoading?: boolean;
   placeholder?: string;

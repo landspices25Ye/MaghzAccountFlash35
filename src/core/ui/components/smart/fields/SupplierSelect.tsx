@@ -29,12 +29,12 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
       disabled: !s.isActive,
       ...s,
     })) as SmartSelectItem[];
-  }, [suppliers, showBalance]);
+  }, [suppliers, showBalance, formatCurrency]);
 
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

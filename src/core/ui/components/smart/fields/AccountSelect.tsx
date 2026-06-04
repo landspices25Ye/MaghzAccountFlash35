@@ -39,7 +39,7 @@ export const AccountSelect: React.FC<AccountSelectProps> = ({
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

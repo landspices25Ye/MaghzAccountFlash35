@@ -24,7 +24,7 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
   companyId, value, onChange, placeholder = 'اختر المنتج...', disabled, size, className, multiple = false, showPrice = true, module, categoryId,
 }) => {
   const { products, isLoading } = useProducts(companyId);
-  const { productTypes } = useProductTypes(companyId);
+  const { types: productTypes } = useProductTypes(companyId);
   const { activeCompany } = useAppStore();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
@@ -46,12 +46,12 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
         ...p,
       } as SmartSelectItem;
     });
-  }, [products, productTypes, showPrice, module, categoryId]);
+  }, [products, productTypes, showPrice, module, categoryId, formatCurrency]);
 
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

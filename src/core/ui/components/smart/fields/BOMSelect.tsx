@@ -29,7 +29,7 @@ export const BOMSelect: React.FC<BOMSelectProps> = ({
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

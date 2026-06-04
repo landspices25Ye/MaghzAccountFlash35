@@ -27,12 +27,12 @@ export const WorkOrderSelect: React.FC<WorkOrderSelectProps> = ({
       sublabel: `${w.status} | ${formatCurrency(w.quantity)}`,
       ...w,
     })) as SmartSelectItem[];
-  }, [workOrders]);
+  }, [workOrders, formatCurrency]);
 
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}

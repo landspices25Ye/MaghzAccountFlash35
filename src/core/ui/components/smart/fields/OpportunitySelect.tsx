@@ -27,12 +27,12 @@ export const OpportunitySelect: React.FC<OpportunitySelectProps> = ({
       sublabel: `${formatCurrency(o.value)} | ${o.stage}`,
       ...o,
     })) as SmartSelectItem[];
-  }, [opportunities]);
+  }, [opportunities, formatCurrency]);
 
   return (
     <SmartSelect
       value={value}
-      onChange={onChange}
+      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}
