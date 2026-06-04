@@ -69,3 +69,35 @@ export const calls = pgTable('calls', {
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+export const tasks = pgTable('tasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  opportunityId: uuid('opportunity_id'),
+  leadId: uuid('lead_id'),
+  customerId: uuid('customer_id'),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: text('description'),
+  dueDate: date('due_date').notNull(),
+  priority: varchar('priority', { length: 20 }).default('medium').notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  assignedTo: uuid('assigned_to').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── Activities ───────────────────────────────────────────────────────────────
+export const activities = pgTable('activities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  leadId: uuid('lead_id'),
+  opportunityId: uuid('opportunity_id'),
+  customerId: uuid('customer_id'),
+  type: varchar('type', { length: 50 }).notNull(),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  description: text('description'),
+  activityDate: timestamp('activity_date', { withTimezone: true }).notNull(),
+  durationMinutes: integer('duration_minutes'),
+  assignedTo: uuid('assigned_to').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});

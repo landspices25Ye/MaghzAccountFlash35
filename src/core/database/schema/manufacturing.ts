@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date } from 'drizzle-orm/pg-core';
-import { companies, users } from './core';
+import { companies } from './core';
 
 // ─── Bills of Materials (BOM) ─────────────────────────────────────────────────
 export const boms = pgTable('boms', {

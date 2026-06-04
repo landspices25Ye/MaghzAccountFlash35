@@ -25,6 +25,8 @@ export const users = pgTable('users', {
   companyId: uuid('company_id').references(() => companies.id, { onDelete: 'cascade' }),
   username: varchar('username', { length: 100 }).notNull(),
   email: varchar('email', { length: 255 }),
+  fullName: varchar('full_name', { length: 255 }),
+  phone: varchar('phone', { length: 50 }),
   passwordHash: text('password_hash'),
   role: varchar('role', { length: 50 }).notNull().default('accountant'),
   branchId: uuid('branch_id'),

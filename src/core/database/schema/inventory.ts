@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, primaryKey } from 'drizzle-orm/pg-core';
-import { companies, users } from './core';
+import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date, primaryKey } from 'drizzle-orm/pg-core';
+import { companies } from './core';
 import { productTypes } from './settings';
 
 // ─── Product Categories ───────────────────────────────────────────────────────
@@ -101,4 +101,26 @@ export const warehouseTransferLines = pgTable('warehouse_transfer_lines', {
   transferId: uuid('transfer_id').notNull().references(() => warehouseTransfers.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull(),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
+});
+
+// ─── Stock Adjustments ────────────────────────────────────────────────────────
+export const stockAdjustments = pgTable('stock_adjustments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  date: date('date').notNull(),
+  productId: uuid('product_id').notNull(),
+  warehouseId: uuid('warehouse_id'),
+  systemQty: numeric('system_qty', { precision: 18, scale: 4 }).notNull().default('0'),
+  actualQty: numeric('actual_qty', { precision: 18, scale: 4 }).notNull().default('0'),
+  difference: numeric('difference', { precision: 18, scale: 4 }).notNull().default('0'),
+  unitCost: numeric('unit_cost', { precision: 18, scale: 4 }),
+  reason: text('reason'),
+  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  postedAt: timestamp('posted_at', { withTimezone: true }),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

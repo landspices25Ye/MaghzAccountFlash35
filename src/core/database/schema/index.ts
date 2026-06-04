@@ -26,6 +26,9 @@ export * from './hr';
 // CRM (Leads, Opportunities, Tasks)
 export * from './crm';
 
+// Vouchers (Receipts and Payments)
+export * from './vouchers';
+
 // Settings (Document Sequences, Product Types, Units, Default Accounts)
 export * from './settings';
 

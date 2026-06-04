@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date } from 'drizzle-orm/pg-core';
-import { companies, users } from './core';
+import { companies } from './core';
+import { products } from './inventory';
 
 // ─── Suppliers ────────────────────────────────────────────────────────────────
 export const suppliers = pgTable('suppliers', {
@@ -37,6 +38,7 @@ export const purchaseInvoices = pgTable('purchase_invoices', {
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // ─── Purchase Invoice Lines ───────────────────────────────────────────────────
@@ -59,17 +61,47 @@ export const purchaseOrders = pgTable('purchase_orders', {
   date: date('date').notNull(),
   expectedDate: date('expected_date'),
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
-  status: varchar('status', { length: 20 }).default('draft'), // draft, sent, partially_received, received, cancelled
+  status: varchar('status', { length: 20 }).default('draft'),
   notes: text('notes'),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 export const purchaseOrderLines = pgTable('purchase_order_lines', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
-  productId: uuid('product_id').notNull(),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
+  unitPrice: numeric('unit_price', { precision: 18, scale: 4 }).notNull(),
+  lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),
+});
+
+// ─── Purchase Returns ─────────────────────────────────────────────────────────
+export const purchaseReturns = pgTable('purchase_returns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  returnNumber: varchar('return_number', { length: 50 }).notNull(),
+  invoiceId: uuid('invoice_id'),
+  supplierId: uuid('supplier_id').notNull(),
+  date: date('date').notNull(),
+  subtotal: numeric('subtotal', { precision: 18, scale: 4 }).notNull().default('0'),
+  vatAmount: numeric('vat_amount', { precision: 18, scale: 4 }).default('0'),
+  totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
+  reason: text('reason'),
+  status: varchar('status', { length: 20 }).default('draft'),
+  notes: text('notes'),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const purchaseReturnLines = pgTable('purchase_return_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  returnId: uuid('return_id').notNull().references(() => purchaseReturns.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitPrice: numeric('unit_price', { precision: 18, scale: 4 }).notNull(),
   lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),

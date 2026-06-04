@@ -1,5 +1,5 @@
 import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, integer } from 'drizzle-orm/pg-core';
-import { companies, users } from './core';
+import { companies } from './core';
 import { accounts } from './accounting';
 
 // ─── Document Sequences (Auto Numbering) ──────────────────────────────────────
