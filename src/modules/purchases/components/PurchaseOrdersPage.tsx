@@ -119,7 +119,7 @@ export const PurchaseOrdersPage: React.FC = () => {
 
   const handleSave = useCallback(async () => {
     if (!activeCompany?.id || !form.supplierId) return;
-    let orderNumber = '';
+    let orderNumber: string;
     if (editingId) {
       orderNumber = orders.find(o => o.id === editingId)?.orderNumber || '';
     } else {
@@ -240,7 +240,7 @@ export const PurchaseOrdersPage: React.FC = () => {
         );
       },
     },
-  ], [t, openView, openEdit, handleDelete, handlePrint, handleConvert, convertingId]);
+  ], [t, openView, openEdit, handleDelete, handlePrint, handleConvert, convertingId, formatCurrency, formatDate]);
 
   const canSave = form.supplierId && form.lines.length > 0 && form.lines.every(l => l.productId && l.quantity > 0);
 

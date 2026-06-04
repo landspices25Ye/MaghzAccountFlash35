@@ -112,7 +112,7 @@ export const SalesReturnsPage: React.FC = () => {
   const handleSave = async () => {
     if (!header.customerId || !header.invoiceId || lines.length === 0 || !activeCompany?.id) return;
     setSaving(true);
-    let returnNumber = '';
+    let returnNumber: string;
     if (editingId) {
       const existing = returns.find(r => r.id === editingId);
       returnNumber = existing?.returnNumber || '';

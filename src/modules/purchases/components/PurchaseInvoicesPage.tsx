@@ -305,7 +305,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
       { key: 'totalAmount', header: t('purchases.total'), width: 15 },
       { key: 'status', header: t('purchases.status'), width: 15 },
     ], 'purchase_invoices');
-  }, [invoices, t]);
+  }, [t, filteredInvoices]);
 
   const handleExportPdf = useCallback(() => {
     exportToPDF(filteredInvoices, [
@@ -320,7 +320,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
       rtl: true,
       companyName: activeCompany?.name,
     });
-  }, [invoices, t, activeCompany]);
+  }, [t, activeCompany, filteredInvoices]);
 
   const columns = useMemo<ColumnDef<PurchaseInvoice>[]>(() => [
     {
@@ -398,7 +398,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
         );
       },
     },
-  ], [t, postingId, openView, openEdit, handleDelete, handlePrint, handlePost]);
+  ], [t, postingId, openView, openEdit, handleDelete, handlePrint, handlePost, formatCurrency, formatDate, getUserName]);
 
   const canSave = form.supplierId && form.lines.length > 0 && form.lines.every(l => l.productId && l.quantity > 0);
 

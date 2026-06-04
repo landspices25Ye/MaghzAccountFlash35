@@ -30,14 +30,14 @@ export const BranchesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const adapter = await getDbAdapter();
-      const result = await adapter.query(`SELECT * FROM branches WHERE company_id = $1`, [activeCompany.id]);
+      const result = await adapter.query<{ id: string; name: string; code?: string; city?: string; phone?: string; is_active: boolean }>(`SELECT * FROM branches WHERE company_id = $1`, [activeCompany.id]);
       if (result.success && result.rows) {
-        setBranches(result.rows.map((row: any) => ({
+        setBranches(result.rows.map((row) => ({
           id: row.id,
           name: row.name,
-          code: row.code,
-          city: row.city,
-          phone: row.phone,
+          code: row.code ?? '',
+          city: row.city ?? '',
+          phone: row.phone ?? '',
           isActive: row.is_active,
         })));
       }
@@ -48,7 +48,7 @@ export const BranchesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeCompany?.id]);
+  useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.name) return;
@@ -155,3 +155,5 @@ export const BranchesPage: React.FC = () => {
 };
 
 export default BranchesPage;
+
+

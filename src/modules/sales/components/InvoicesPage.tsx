@@ -64,9 +64,9 @@ export const InvoicesPage: React.FC = () => {
   const [postingId, setPostingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const defaultLine = (): InvoiceLineForm => ({
+  const defaultLine = useCallback((): InvoiceLineForm => ({
     productId: '', productName: '', quantity: 1, unitPrice: 0, discountPercent: 0, vatPercent: settings?.vatRate || 15,
-  });
+  }), [settings?.vatRate]);
 
   const [header, setHeader] = useState({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
   const [lines, setLines] = useState<InvoiceLineForm[]>([defaultLine()]);
@@ -75,7 +75,7 @@ export const InvoicesPage: React.FC = () => {
     setHeader({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
     setLines([defaultLine()]);
     setEditingId(null);
-  }, []);
+  }, [defaultLine]);
 
   const openCreate = useCallback(async () => {
     resetForm();
@@ -167,7 +167,7 @@ export const InvoicesPage: React.FC = () => {
   const handleSave = async () => {
     if (!header.customerId || lines.length === 0 || !activeCompany?.id) return;
     setSaving(true);
-    let invoiceNumber = '';
+    let invoiceNumber: string;
     if (editingId) {
       const existing = invoices.find(i => i.id === editingId);
       invoiceNumber = existing?.invoiceNumber || '';

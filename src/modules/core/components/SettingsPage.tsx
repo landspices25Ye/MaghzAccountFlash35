@@ -25,7 +25,7 @@ import { cn } from '@/core/utils';
 interface SettingsMenuItem {
   id: string;
   label: string;
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
 }
 

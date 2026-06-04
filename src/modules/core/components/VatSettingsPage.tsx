@@ -64,21 +64,21 @@ export const VatSettingsPage: React.FC = () => {
           <Input
             label="الرقم الضريبي"
             value={formData?.vatNumber || ''}
-            onChange={e => setFormData((prev: any) => ({ ...prev, vatNumber: e.target.value }))}
+            onChange={e => setFormData((prev) => ({ ...prev, vatNumber: e.target.value }))}
             disabled={!isEditing}
           />
           <Input
             label="نسبة الضريبة (%)"
             type="number"
             value={formData?.vatRate || '15'}
-            onChange={e => setFormData((prev: any) => ({ ...prev, vatRate: Number(e.target.value) }))}
+            onChange={e => setFormData((prev) => ({ ...prev, vatRate: Number(e.target.value) }))}
             disabled={!isEditing}
           />
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
             <input
               type="checkbox"
               checked={formData?.isInclusive || false}
-              onChange={e => setFormData((prev: any) => ({ ...prev, isInclusive: e.target.checked }))}
+              onChange={e => setFormData((prev) => ({ ...prev, isInclusive: e.target.checked }))}
               disabled={!isEditing}
               className="rounded border-slate-300"
             />

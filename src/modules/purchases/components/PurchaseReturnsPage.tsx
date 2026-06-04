@@ -257,7 +257,7 @@ export const PurchaseReturnsPage: React.FC = () => {
         );
       },
     },
-  ], [t, postingId, openView, openEdit, handleDelete, handlePrint, handlePost]);
+  ], [t, postingId, openView, openEdit, handleDelete, handlePrint, handlePost, formatCurrency]);
 
   const canSave = form.supplierId && form.lines.length > 0 && form.lines.every(l => l.productId && l.quantity > 0);
 

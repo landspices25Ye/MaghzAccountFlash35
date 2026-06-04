@@ -33,16 +33,16 @@ export const UsersPage: React.FC = () => {
     setIsLoading(true);
     try {
       const adapter = await getDbAdapter();
-      const result = await adapter.query(`SELECT * FROM users WHERE company_id = $1`, [activeCompany.id]);
+      const result = await adapter.query<{ id: string; username: string; email?: string; role: string; branch_id?: string; is_active: boolean; last_login_at?: string }>(`SELECT * FROM users WHERE company_id = $1`, [activeCompany.id]);
       if (result.success && result.rows) {
-        setUsers(result.rows.map((row: any) => ({
+        setUsers(result.rows.map((row) => ({
           id: row.id,
           username: row.username,
-          email: row.email,
+          email: row.email ?? '',
           role: row.role,
-          branchId: row.branch_id,
+          branchId: row.branch_id ?? undefined,
           isActive: row.is_active,
-          lastLoginAt: row.last_login_at,
+          lastLoginAt: row.last_login_at ?? '',
         })));
       }
     } catch (err) {
@@ -52,7 +52,7 @@ export const UsersPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeCompany?.id]);
+  useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.username) return;
@@ -202,3 +202,5 @@ export const UsersPage: React.FC = () => {
 };
 
 export default UsersPage;
+
+

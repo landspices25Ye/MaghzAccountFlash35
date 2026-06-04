@@ -120,11 +120,11 @@ export const ProductTypesPage: React.FC = () => {
                   { key: 'appearsInManufacturing', label: 'يظهر في التصنيع' },
                   { key: 'hasStockTracking', label: 'يتبع المخزون' },
                   { key: 'hasBOM', label: 'يدعم BOM' },
-                ].map((field: any) => (
+                ].map((field: { key: string; label: string }) => (
                   <label key={field.key} className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={(form as any)[field.key] ?? false}
+                      checked={(form as Record<string, unknown>)[field.key] as boolean ?? false}
                       onChange={e => setForm({ ...form, [field.key]: e.target.checked })}
                       className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                     />

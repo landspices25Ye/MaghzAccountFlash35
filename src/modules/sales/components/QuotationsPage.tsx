@@ -120,7 +120,7 @@ export const QuotationsPage: React.FC = () => {
   const handleSave = async () => {
     if (!header.customerId || lines.length === 0 || !activeCompany?.id) return;
     setSaving(true);
-    let quotationNumber = '';
+    let quotationNumber: string;
     if (editingId) {
       const existing = quotations.find(q => q.id === editingId);
       quotationNumber = existing?.quotationNumber || '';

@@ -33,9 +33,9 @@ export const CurrenciesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const adapter = await getDbAdapter();
-      const result = await adapter.query(`SELECT * FROM currencies WHERE company_id = $1`, [activeCompany.id]);
+      const result = await adapter.query<{ id: string; code: string; name: string; symbol: string; exchange_rate: string | number; is_default: boolean; is_active: boolean }>(`SELECT * FROM currencies WHERE company_id = $1`, [activeCompany.id]);
       if (result.success && result.rows) {
-        setCurrencies(result.rows.map((row: any) => ({
+        setCurrencies(result.rows.map((row) => ({
           id: row.id,
           code: row.code,
           name: row.name,
@@ -52,7 +52,7 @@ export const CurrenciesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeCompany?.id]);
+  useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.code || !formData.name) return;
@@ -174,3 +174,5 @@ export const CurrenciesPage: React.FC = () => {
 };
 
 export default CurrenciesPage;
+
+

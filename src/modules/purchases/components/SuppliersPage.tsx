@@ -158,7 +158,7 @@ export const SuppliersPage: React.FC = () => {
         />
       ),
     },
-  ], [t, openCard, openEdit, handleDelete]);
+  ], [t, openCard, openEdit, handleDelete, formatCurrency]);
 
   const totalBalance = useMemo(() => suppliers.reduce((s, sup) => s + Number(sup.balance), 0), [suppliers]);
 
@@ -169,7 +169,7 @@ export const SuppliersPage: React.FC = () => {
     { accessorKey: 'debit', header: t('accounting.debit'), cell: ({ row }) => <span className="text-rose-600">{Number(row.original.debit || 0) > 0 ? formatCurrency(row.original.debit || 0) : '-'}</span> },
     { accessorKey: 'credit', header: t('accounting.credit'), cell: ({ row }) => <span className="text-emerald-600">{Number(row.original.credit || 0) > 0 ? formatCurrency(row.original.credit || 0) : '-'}</span> },
     { accessorKey: 'balance', header: t('balance'), cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.balance || 0)}</span> },
-  ], [t]);
+  ], [t, formatCurrency]);
 
   return (
     <div className="space-y-6 animate-fade-in">

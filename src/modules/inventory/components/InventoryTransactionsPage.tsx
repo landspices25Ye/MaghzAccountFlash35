@@ -9,7 +9,6 @@ import { useInventoryTransactions } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
-import { useFormatters } from '@/core/utils/useFormatters';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 // import { printDocument } from '@/core/utils/printDocument';
@@ -26,7 +25,6 @@ export const InventoryTransactionsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { transactions, isLoading, create, remove } = useInventoryTransactions(activeCompany?.id || '');
-  const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(transactions, 'inventory');
 
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +51,6 @@ export const InventoryTransactionsPage: React.FC = () => {
       quantity: Number(form.quantity) || 0,
       reference: form.reference || '',
       notes: form.notes || '',
-      unitCost: Number(form.unitCost) || 0,
     });
     setIsOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], type: 'in' });
@@ -186,7 +183,6 @@ ${filtered.map(tx => `<tr>
               { key: 'productId', header: t('inventory.productName') },
               { key: 'warehouseId', header: t('inventory.warehouse') },
               { key: 'quantity', header: t('inventory.quantity'), align: 'right' as const },
-              { key: 'unitCost', header: t('inventory.costPrice'), align: 'right' as const, render: (row) => row.unitCost !== undefined ? formatCurrency(row.unitCost) : '-' },
               { key: 'reference', header: t('inventory.reference') },
               { key: 'actions', header: '', width: '80px', render: (row) => (
                 <ActionButtons
@@ -247,7 +243,6 @@ ${filtered.map(tx => `<tr>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('inventory.quantity')} type="number" value={String(form.quantity || '')} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} />
-            <Input label={t('inventory.costPrice')} type="number" value={String(form.unitCost || '')} onChange={e => setForm({ ...form, unitCost: Number(e.target.value) })} />
           </div>
           <Input label={t('inventory.reference')} value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} />
           <Input label={t('inventory.notes')} value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} />

@@ -28,7 +28,7 @@ export const DocumentSequencesPage: React.FC = () => {
   const [previewNumber, setPreviewNumber] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const handleEdit = (id: string, field: keyof DocumentSequence, value: any) => {
+  const handleEdit = (id: string, field: keyof DocumentSequence, value: string | number | boolean) => {
     setEditing(prev => ({
       ...prev,
       [id]: { ...prev[id], [field]: value },

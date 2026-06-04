@@ -53,9 +53,9 @@ export const CompanySetupPage: React.FC = () => {
         logoUrl: activeCompany.logoUrl || '',
         fiscalYearStart: activeCompany.fiscalYearStart || '',
         currency: activeCompany.currency || 'YER',
-        dateFormat: (activeCompany as any).dateFormat || 'yyyy-MM-dd',
-        decimalPlaces: Number((activeCompany as any).decimalPlaces) || 2,
-        calendar: (activeCompany as any).calendar || 'gregorian',
+        dateFormat: activeCompany.dateFormat || 'yyyy-MM-dd',
+        decimalPlaces: activeCompany.decimalPlaces || 2,
+        calendar: activeCompany.calendar || 'gregorian',
       });
     }
   }, [activeCompany]);

@@ -147,7 +147,6 @@ export const EmployeesPage: React.FC = () => {
     <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>
       </div>
       <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-    </div>
 
       <Card>
         {isLoading ? (

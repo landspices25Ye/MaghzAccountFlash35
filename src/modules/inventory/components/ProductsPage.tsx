@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { UnitSelect, ProductTypeSelect } from '@/core/ui/components/smart';
 import { useProducts, useProductCategories } from '../hooks/useInventory';
 import { useProductTypes } from '@/core/hooks/useSettings';
+import type { ProductType } from '@/core/types';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -48,7 +49,7 @@ export const ProductsPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const { products, isLoading, create, update, remove } = useProducts(activeCompany?.id || '');
   const { categories } = useProductCategories(activeCompany?.id || '');
-  const { productTypes } = useProductTypes(activeCompany?.id || '');
+  const { types: productTypes } = useProductTypes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(products, 'inventory');
 
@@ -195,7 +196,7 @@ export const ProductsPage: React.FC = () => {
           barcodeScanner.stopCamera();
         }
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error('Barcode scan error:', error);
       setScanning(false);
     }
@@ -281,7 +282,7 @@ export const ProductsPage: React.FC = () => {
             aria-label="فلترة حسب النوع"
           >
             <option value="">كل الأنواع</option>
-            {productTypes.map(t => (
+            {productTypes.map((t: ProductType) => (
               <option key={t.id} value={t.id}>{t.nameAr}</option>
             ))}
           </select>

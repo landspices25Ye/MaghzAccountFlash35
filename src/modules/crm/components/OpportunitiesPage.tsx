@@ -104,7 +104,7 @@ export const OpportunitiesPage: React.FC = () => {
       const stageOpps = filteredOpportunities.filter((o) => o.stage === stage);
       return { stage, label: STAGE_LABELS[stage], count: stageOpps.length, value: stageOpps.reduce((s, o) => s + o.value, 0) };
     });
-  }, [opportunities]);
+  }, [filteredOpportunities]);
 
   const listColumns = [
     { key: 'name', header: 'الفرصة' },

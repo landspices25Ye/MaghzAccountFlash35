@@ -29,12 +29,12 @@ export const VatSettingsPage: React.FC = () => {
     setIsLoading(true);
     try {
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
+      const result = await adapter.query<{ id: string; name?: string; vat_rate: string | number; account_id: string; is_active: boolean }>(
         `SELECT * FROM vat_settings WHERE company_id = $1`,
         [activeCompany.id]
       );
       if (result.success && result.rows) {
-        setVatTypes(result.rows.map((row: any) => ({
+        setVatTypes(result.rows.map((row) => ({
           id: row.id,
           name: row.name || 'ضريبة القيمة المضافة',
           rate: Number(row.vat_rate),
@@ -49,7 +49,7 @@ export const VatSettingsPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeCompany?.id]);
+  useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!activeCompany?.id || !formData.name) return;
@@ -184,3 +184,5 @@ export const VatSettingsPage: React.FC = () => {
 };
 
 export default VatSettingsPage;
+
+
