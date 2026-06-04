@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.3 (Lint clean: 0 errors, 0 warnings | Tables: 60)
+- **الإصدار الحالي:** v0.3.4 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 162 ✓)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -742,5 +742,113 @@ npx drizzle-kit migrate
 - **SQL `COALESCE(..., 0)` للـ aggregates**: يحول `NULL` (لما لا توجد صفوف) إلى `0`، يمنع `Number(null) = 0` vs `Number(undefined) = NaN` في الـ JS side
 - **N+1 fix = new method, not new loop**: لا تضع "fetch all rows then aggregate in JS" — ضع `GROUP BY` أو `SUM` في DB. أنشئ method مخصص إذا الـ API الموجود single-row
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.3*
+### المرحلة 16a: i18n Balance + إصلاح [object Object] Bug
+- **الهدف**: موازنة EN/AR keys (590=590) + إصلاح silent rendering bug في `t('sales.customer')`
+- **الاكتشاف الجذري**: `ar.json` كان يحوي duplicate keys: `sales.customer` كان موجود مرتين (string ثم object). الـ JSON parser استخدم الـ object → `t('sales.customer')` رجع `Object` → React حاول render object → نُسخ نص Object → `[object Object]` في column header في InvoicesPage/QuotationsPage/SalesReturnsPage
+- **الإصلاحات**:
+  - `ar.json` و `en.json`: `sales.customer` = object بـ `title` property في BOTH files (مطابقة لنمط `purchases.supplier` الموجود)
+  - `en.json`: re-structured `sales` section كاملاً ليعكس nested pattern (customer/invoice/quotation/return)
+  - `en.json`: +62 `accounting.*` keys (searchAccounts, addAccount, journalEntryDetails, receiptVouchers, voucherNumber, إلخ)
+  - 6 code lines: `t('sales.customer')` → `t('sales.customer.title')` في InvoicesPage/QuotationsPage/SalesReturnsPage
+- **اختبارات جديدة** (6):
+  - `src/core/i18n/i18n.test.ts`: balance enforcement (EN count === AR count، missing keys detection، `sales.customer` is object، `sales.customer.title` exists، `accounting.*` >= 60 keys)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **140/140 passed** ✓ (6 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - i18n: **590 keys متوازنة** (EN === AR)
+
+### المرحلة 16b: ErrorBoundary + Locale Centralization
+- **الهدف**: إضافة fail-safe للـ render errors + central locale utility لإزالة الـ hardcoded locales
+- **`ErrorBoundary.tsx`** (class component، 90 سطر):
+  - يمسك React render errors في الـ whole tree
+  - Fallback UI عربي مع 3 أزرار: retry، home (انتقل للـ /)، reload (F5)
+  - يدعم custom fallback prop
+  - `componentDidCatch` للـ logging (`console.error` حالياً)
+  - يعيد set state عند retry
+- **`locale.ts`** (38 سطر، 4 functions):
+  - `DEFAULT_LOCALE = 'ar-YE'` (Arabic Yemen، الأرقام Arabic-Indic)
+  - `formatNumber(value, options?)` — Intl.NumberFormat wrapper
+  - `formatCurrencyValue(value, currency?)` — currency-aware
+  - `formatDateValue(date)` — date-only
+  - `formatDateTime(date)` — date + time
+- **7 hardcoded locales أُزيلت**:
+  - `export.ts`: 1 (`toLocaleString('ar-SA')` → `new Intl.NumberFormat('ar-YE')`)
+  - `printDocument.ts`: 3 (نفس النمط)
+  - `AuditLogPage.tsx`: 3 (`formatDateTime(l.createdAt)`)
+- **`main.tsx`**: `<App>` مغلف بـ `<ErrorBoundary>` (أعلى مستوى)
+- **`auth/api.ts` (bonus)**: `mapRows<User>(result.rows)` لتحويل snake_case → camelCase (3 مواضع)، إزالة `is_active = true` filter في login (check after fetch)
+- **اختبارات جديدة** (11):
+  - `locale.test.ts`: 7 (DEFAULT_LOCALE، formatNumber، formatCurrency، formatDate)
+  - `ErrorBoundary.test.tsx`: 4 (catches error، custom fallback، retry reset، 3 buttons)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **151/151 passed** ✓ (11 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### المرحلة 16c: Pagination Foundation
+- **الهدف**: إضافة pagination للـ queries الكبيرة (Invoices، Products، Customers، إلخ) لتجنب تحميل آلاف الـ rows في الذاكرة
+- **`pagination.ts`** (50 سطر، 4 utilities):
+  - `clampPageArgs(page, pageSize, maxPageSize=500)`: coerce invalid args (NaN/-1/0 → 1/25)، cap at maxPageSize، return `{ page, pageSize, offset }`
+  - `buildPaginationParams(page, pageSize)`: returns `{ limit, offset, page, pageSize }`
+  - `appendLimitOffset(sql, page, pageSize)`: helper لإضافة LIMIT/OFFSET إلى SQL
+  - `paginatedResult<T>(items, total, page, pageSize)`: build `PaginatedData<T>` from raw arrays
+- **`usePaginatedList.ts`** (83 سطر، generic hook):
+  - `usePaginatedList<T>(fetchFn, deps, options?)` حيث:
+    - `fetchFn: (page, pageSize) => Promise<PaginatedQueryResult<T>>`
+    - `deps: ReadonlyArray<unknown>` (تتبع companyId/activeCompany/... )
+    - `options?: { autoLoad?: boolean, initialPageSize?: number }`
+  - Manages state: `items, total, page, pageSize, totalPages, isLoading, error`
+  - Methods: `goToPage(p)` (clamps to [1, totalPages])، `changePageSize(n)` (resets to page 1)، `reload()`
+- **`Pagination.tsx`** (100 سطر، UI component):
+  - 4 navigation buttons (first/prev/next/last) + page indicator + range indicator
+  - Optional page size changer (10/25/50/100)
+  - RTL support + ARIA labels
+  - Empty state message
+- **`salesApi.getInvoicesPaginated(companyId, page, pageSize, filters?)`**:
+  - COUNT query منفصل + data query مع `LIMIT $n OFFSET $m`
+  - Optional filters: `status`, `customerId`
+  - Returns `{ success, data: { items, total, page, pageSize, totalPages } }`
+- **`InvoicesPage.tsx` (POC wiring)**:
+  - Page state + `useMemo` لـ `paginatedInvoices = filteredInvoices.slice(start, end)`
+  - Reset page لما filtered count يتغير
+  - `<Pagination />` تحت الجدول
+- **اختبارات جديدة** (11):
+  - `pagination.test.ts`: 6 (clampPageArgs، buildPaginationParams، appendLimitOffset، paginatedResult)
+  - `usePaginatedList.test.ts`: 5 (load، page change، clamping، page size change، error handling)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **162/162 passed** ✓ (11 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 13.44s** ✓
+
+### قواعد ذهبية مضافة (Phase 16a)
+- **JSON duplicate keys = silent bug**: لو الـ file يحوي `key: value` ثم `key: { ... }`، الـ parser يستخدم الـ LAST. `t('key')` يرجع object → React يصدر `[object Object]`. **القاعدة**: لا duplicate keys، تحقق من `key instanceof Object` إذا شككت
+- **i18n structure mirroring across files**: `purchases.supplier` كان object بـ `title` field، `sales.customer` كان string → mismatch. **القاعدة**: BOTH files يجب أن يحتويا نفس الـ structure (object or string)
+- **i18n balance as enforced test**: لا تثق بـ "تبدو متوازنة" — اكتب test يفحص `Object.keys(en).length === Object.keys(ar).length` ويكشف missing keys
+- **nested i18n keys**: `module.section.element` (مثل `sales.customer.title`). تكرار الـ structure بين files يقلل الـ bugs
+- **column header translation = string not object**: `t('sales.customer.title')` يجب أن يكون string. لو Object → rendering bug
+
+### قواعد ذهبية مضافة (Phase 16b)
+- **Class component للـ ErrorBoundary**: React 19 hooks-based approach (try/catch في component body) still experimental. Class component مع `componentDidCatch` هو الـ standard الموثوق
+- **`<ErrorBoundary>` في أعلى مستوى**: في `main.tsx` خارج `<App>` ليلتقط كل render errors في الـ tree
+- **`DEFAULT_LOCALE` constant not hardcoded**: `ar-YE` في module واحد فقط (`locale.ts`). الباقي يستورد
+- **`ar-YE` (Yemen) vs `ar-SA` (Saudi)**: الفرق في الأرقام (Arabic-Indic vs Latin) + calendar. `ar-YE` = Arabic-Indic numerals `٠١٢٣٤٥٦٧٨٩`
+- **pure functions > hooks للـ utilities**: `formatNumber(value)` not `useFormatNumber()`. الـ print/export code ليس في React context — pure functions only
+- **`mapRows<T>(rows)` لتحويل snake_case → camelCase**: استبدل `as User` casts في الـ API methods. helper واحد يحقق consistency
+- **`is_active` filter في login**: الأفضل fetch أول، ثم check `isActive` بعد الـ fetch للـ better error messages ("account inactive" vs "invalid credentials")
+
+### قواعد ذهبية مضافة (Phase 16c)
+- **Server-side pagination للـ datasets الكبيرة**: > 100 rows؟ استخدم `LIMIT/OFFSET`. Client-side slice = memory waste + slow first render
+- **COUNT query منفصل**: `SELECT COUNT(*) ... ; SELECT * ... LIMIT $n OFFSET $m` (2 queries) أبسط من `COUNT(*) OVER()` window function وأسرع في بعض الـ planners
+- **Server-side filter = `AND i.company_id = $1 AND i.status = $2`**: client-side filter بعد pagination = bug (الـ total لا يطابق الـ filtered count)
+- **`clampPageArgs` defensive**: المستخدم قد يحقن NaN/0/-1/999999. `clampPageArgs` يحوّل بصمت → safer SQL
+- **`usePaginatedList<T>` generic**: `usePaginatedList<Invoice>(...)` يضمن type safety. لا تكرر `useState<PaginatedData<Invoice>>` في كل page
+- **`goToPage` clamps to [1, totalPages]**: الـ user قد يستدعي `goToPage(999)` — clamp بصمت بدل throw
+- **`changePageSize` resets to page 1**: تغيير page size من 25 → 10 يجعل page 5 خارج الـ range → reset للسلامة
+- **`deps: ReadonlyArray<unknown>` للـ effect**: spread في deps array (`[load, ...deps]`) يعطي "static verify failed" warning → eslint-disable مع `ReadonlyArray<unknown>` يحافظ على type safety
+- **POC = client-side slice first**: `InvoicesPage` يستخدم `filteredInvoices.slice()` (client-side) كـ POC. Future pages تستخدم `getXxxPaginated` (server-side) مباشرة
+- **Page reset on filter change**: `useEffect(() => setPage(1), [filteredInvoices.length])` يمنع `page=5` خارج الـ range الجديد
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.4*
 
