@@ -51,48 +51,93 @@ export const SalesAnalysisReport: React.FC = () => {
     async function load() {
       setIsLoading(true);
       const adapter = await getDbAdapter();
-      const invResult = await adapter.query(
-        `SELECT i.*, c.name as customer_name FROM sales_invoices i LEFT JOIN customers c ON i.customer_id = c.id WHERE i.company_id = $1`,
+      // Single SQL with JOINs: filter by sales_invoices.company_id (lines do not carry it).
+      // Expose invoice date + customer + product + line revenue.
+      const result = await adapter.query(
+        `SELECT i.id AS invoice_id,
+                i.date,
+                i.status,
+                i.total_amount,
+                i.paid_amount,
+                c.name_ar AS customer_name,
+                l.id AS line_id,
+                l.product_id,
+                l.quantity,
+                l.unit_price,
+                l.line_total,
+                l.discount_percent,
+                l.vat_percent,
+                p.name_ar AS product_name,
+                p.name_en AS product_name_en
+           FROM sales_invoices i
+           LEFT JOIN customers c ON c.id = i.customer_id
+           LEFT JOIN sales_invoice_lines l ON l.invoice_id = i.id
+           LEFT JOIN products p ON p.id = l.product_id
+          WHERE i.company_id = $1
+            AND i.status != 'cancelled'
+          ORDER BY i.date DESC, i.id DESC, l.id ASC`,
         [companyId]
       );
-      const invoices = (invResult.rows || []) as Record<string, any>[];
-
-      // Fetch products for lines
-      const linesResult = await adapter.query(
-        `SELECT l.*, p.name as product_name FROM sales_invoice_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.company_id = $1`,
-        [companyId]
-      );
-      const lines = (linesResult.rows || []) as Record<string, any>[];
-
-      const rows: SalesLine[] = [];
+      const dbRows = (result.rows || []) as Record<string, unknown>[];
       const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
-      for (const inv of invoices) {
-        const d = inv.date ? new Date(inv.date) : new Date();
-        const month = months[d.getMonth()] || months[0];
-        const invLines = lines.filter((l) => l.invoice_id === inv.id);
-        if (invLines.length === 0) {
+      // Group lines by invoice so invoices with no lines still appear with productName='-'.
+      const invoiceMap = new Map<string, {
+        invoiceId: string;
+        date: string;
+        customerName: string;
+        lines: { productName: string; lineTotal: number; quantity: number; unitPrice: number }[];
+      }>();
+      for (const r of dbRows) {
+        const invId = String(r.invoice_id || '');
+        if (!invId) continue;
+        let entry = invoiceMap.get(invId);
+        if (!entry) {
+          entry = {
+            invoiceId: invId,
+            date: String(r.date || ''),
+            customerName: String(r.customer_name || 'غير معروف'),
+            lines: [],
+          };
+          invoiceMap.set(invId, entry);
+        }
+        if (r.line_id != null) {
+          const lineTotal = Number(r.line_total ?? 0);
+          entry.lines.push({
+            productName: String(r.product_name || r.product_name_en || '-'),
+            lineTotal,
+            quantity: Number(r.quantity ?? 0),
+            unitPrice: Number(r.unit_price ?? 0),
+          });
+        }
+      }
+
+      const rows: SalesLine[] = [];
+      for (const entry of invoiceMap.values()) {
+        const d = entry.date ? new Date(entry.date) : new Date();
+        const month = Number.isFinite(d.getTime()) ? months[d.getMonth()] || months[0] : months[0];
+        if (entry.lines.length === 0) {
           rows.push({
             month,
-            date: inv.date || '',
-            customerName: inv.customer_name || 'غير معروف',
+            date: entry.date,
+            customerName: entry.customerName,
             productName: '-',
-            repName: inv.sales_rep || '-',
-            revenue: Number(inv.total || 0),
+            repName: '-',
+            revenue: 0,
             invoiceCount: 1,
-            avgValue: Number(inv.total || 0),
+            avgValue: 0,
           });
         } else {
-          for (const l of invLines) {
+          for (const l of entry.lines) {
             rows.push({
               month,
-              date: inv.date || '',
-              customerName: inv.customer_name || 'غير معروف',
-              productName: l.product_name || '-',
-              repName: inv.sales_rep || '-',
-              revenue: Number(l.total || l.quantity * l.unit_price || 0),
+              date: entry.date,
+              customerName: entry.customerName,
+              productName: l.productName,
+              repName: '-',
+              revenue: l.lineTotal,
               invoiceCount: 1,
-              avgValue: Number(l.total || l.quantity * l.unit_price || 0),
+              avgValue: l.lineTotal,
             });
           }
         }

@@ -164,11 +164,11 @@ async function fetchDashboardData(adapter: any, companyId: string, range: { from
   const purchInvoices = (purchResult.rows || []) as Record<string, unknown>[];
   const filteredPurchInvoices = purchInvoices.filter((i) => i.date && isDateInRange(String(i.date), range.from, range.to));
 
-  // Contacts
-  const contactsResult = await adapter.getContacts(companyId);
-  const contacts = (contactsResult.data || []) as Record<string, unknown>[];
-  const customersCount = contacts.filter((c) => c.type === 'customer').length;
-  const suppliersCount = contacts.filter((c) => c.type === 'supplier').length;
+  // Contacts (customers + suppliers are separate tables)
+  const customersResult = await adapter.getContacts(companyId, 'customer');
+  const suppliersResult = await adapter.getContacts(companyId, 'supplier');
+  const customersCount = (customersResult.data || []).length;
+  const suppliersCount = (suppliersResult.data || []).length;
 
   // Employees
   const empResult = await adapter.query(`SELECT * FROM employees WHERE company_id = $1`, [companyId]);
@@ -198,12 +198,12 @@ async function fetchDashboardData(adapter: any, companyId: string, range: { from
 
   // Top products
   const topProducts = products
-    .sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))
+    .sort((a, b) => (Number(b.sale_price ?? b.salePrice) || 0) - (Number(a.sale_price ?? a.salePrice) || 0))
     .slice(0, 5)
-    .map((p) => ({ name: String(p.name || ''), value: Number(p.price) || 0 }));
+    .map((p) => ({ name: String(p.name_ar ?? p.nameAr ?? ''), value: Number(p.sale_price ?? p.salePrice) || 0 }));
 
   // AR Aging
-  const customers = contacts.filter((c) => c.type === 'customer');
+  const customers = (customersResult.data || []) as Record<string, unknown>[];
   const arAging = [
     { range: '0-30', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.4 : 0), 0) },
     { range: '31-60', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.3 : 0), 0) },

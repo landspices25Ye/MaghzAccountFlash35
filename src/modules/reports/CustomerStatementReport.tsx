@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Users, FileDown, Filter, RotateCcw } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
@@ -7,25 +7,17 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { formatCurrency } from '@/core/utils';
-
-interface CustomerLine {
-  customerId: string;
-  customer: string;
-  phone: string;
-  balance: number;
-  invoiceCount: number;
-  totalSales: number;
-  lastInvoice: string;
-}
+import { aggregateCustomerAging, computeAgingTotals, todayIso, AGING_BUCKETS } from '@/core/utils/aging';
 
 export const CustomerStatementReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
-  const [customers, setCustomers] = useState<CustomerLine[]>([]);
+  const [customers, setCustomers] = useState<ReturnType<typeof aggregateCustomerAging>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [asOfDate, setAsOfDate] = useState<string>(todayIso());
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -34,63 +26,54 @@ export const CustomerStatementReport: React.FC = () => {
       setIsLoading(true);
       const adapter = await getDbAdapter();
       const contactsResult = await adapter.getContacts(companyId, 'customer');
-      const contacts = (contactsResult.data || []) as Record<string, unknown>[];
+      const contacts = (contactsResult.data || []) as Array<{ id: string; name: string; phone?: string; balance?: number }>;
 
-      const rows: CustomerLine[] = [];
-      for (const c of contacts) {
-        let query = `SELECT * FROM sales_invoices WHERE customer_id = $1`;
-        const params: unknown[] = [c.id];
-        if (fromDate) {
-          query += ` AND date >= $${params.length + 1}`;
-          params.push(fromDate);
-        }
-        if (toDate) {
-          query += ` AND date <= $${params.length + 1}`;
-          params.push(toDate);
-        }
-        query += ` ORDER BY date DESC`;
-        const invResult = await adapter.query(query, params);
-        const invoices = (invResult.rows || []) as Record<string, unknown>[];
-        const totalSales = invoices.reduce((s, i) => s + Number(i.total || i.total_amount || 0), 0);
-        rows.push({
-          customerId: String(c.id || ''),
-          customer: String(c.name || ''),
-          phone: String(c.phone || ''),
-          balance: Number(c.balance || 0),
-          invoiceCount: invoices.length,
-          totalSales,
-          lastInvoice: String(invoices[0]?.date || '-'),
-        });
-      }
-      setCustomers(rows.sort((a, b) => b.balance - a.balance));
+      const params: unknown[] = [companyId];
+      let invQuery = `SELECT customer_id, invoice_number, date, due_date,
+                              (total_amount - COALESCE(paid_amount, 0)) AS outstanding
+                         FROM sales_invoices
+                        WHERE company_id = $1
+                          AND status != 'cancelled'
+                          AND (total_amount - COALESCE(paid_amount, 0)) > 0`;
+      if (fromDate) { invQuery += ` AND date >= $${params.length + 1}`; params.push(fromDate); }
+      if (toDate) { invQuery += ` AND date <= $${params.length + 1}`; params.push(toDate); }
+      const invResult = await adapter.query(invQuery, params);
+      const rows = (invResult.rows || []) as Array<{ customer_id: string; invoice_number: string; date: string; due_date: string | null; outstanding: number }>;
+      const aged = aggregateCustomerAging(
+        rows.map((r) => ({ customer_id: r.customer_id, date: r.date, due_date: r.due_date, outstanding: r.outstanding, invoice_number: r.invoice_number })),
+        asOfDate,
+        contacts.map((c) => ({ id: c.id, name: c.name, phone: c.phone || '', balance: c.balance || 0 })),
+      );
+      setCustomers(aged);
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id, fromDate, toDate]);
+  }, [activeCompany?.id, fromDate, toDate, asOfDate]);
 
-  const totalBalance = customers.reduce((s, c) => s + c.balance, 0);
-  const totalSales = customers.reduce((s, c) => s + c.totalSales, 0);
+  const totals = useMemo(() => computeAgingTotals(customers), [customers]);
+  const totalInvoiced = customers.reduce((s, c) => s + (c.invoiceCount > 0 ? c.totalOutstanding : 0), 0);
 
   const handleExportExcel = async () => {
     const cols = [
       { key: 'customer', header: 'العميل' },
       { key: 'phone', header: 'الهاتف' },
-      { key: 'balance', header: 'الرصيد' },
+      { key: 'bucket0to30', header: '0-30 يوم' },
+      { key: 'bucket31to60', header: '31-60 يوم' },
+      { key: 'bucket61to90', header: '61-90 يوم' },
+      { key: 'bucket90plus', header: '+90 يوم' },
+      { key: 'totalOutstanding', header: 'الإجمالي' },
       { key: 'invoiceCount', header: 'الفواتير' },
-      { key: 'totalSales', header: 'إجمالي المبيعات' },
-      { key: 'lastInvoice', header: 'آخر فاتورة' },
     ];
-    await exportToExcel(customers, cols, 'Customer_Statement');
+    await exportToExcel(customers, cols, 'Customer_Aging');
   };
 
   const handleExportPDF = async () => {
     const cols = [
       { key: 'customer', header: 'العميل', width: 25 },
       { key: 'phone', header: 'الهاتف', width: 15 },
-      { key: 'balance', header: 'الرصيد', width: 15 },
-      { key: 'totalSales', header: 'المبيعات', width: 15 },
+      { key: 'totalOutstanding', header: 'الإجمالي', width: 15 },
     ];
-    await exportToPDF(customers, cols, 'Customer_Statement', {
+    await exportToPDF(customers, cols, 'Customer_Aging', {
       title: t('reports.customerStatement'),
       subtitle: activeCompany?.name,
       rtl: true,
@@ -132,7 +115,7 @@ export const CustomerStatementReport: React.FC = () => {
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.customerStatement')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">أرصدة العملاء والمبيعات</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">أرصدة العملاء وتوزيع أعمار الديون</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -150,7 +133,7 @@ export const CustomerStatementReport: React.FC = () => {
 
       {showFilters && (
         <Card>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.fromDate')}</label>
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -158,6 +141,10 @@ export const CustomerStatementReport: React.FC = () => {
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.toDate')}</label>
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">تاريخ الاستحقاق المرجعي</label>
+              <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value || todayIso())} />
             </div>
             <div className="flex items-end">
               <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>
@@ -168,32 +155,44 @@ export const CustomerStatementReport: React.FC = () => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance')}</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المستحق</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totals.totalOutstanding)}</p>
+            <p className="text-xs text-slate-400 mt-1">{totalInvoiced > 0 ? '' : ''}</p>
           </div>
         </Card>
-        <Card>
-          <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.totalSales')}</p>
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totalSales)}</p>
-          </div>
-        </Card>
+        {AGING_BUCKETS.map((bucket, i) => {
+          const total = i === 0 ? totals.total0to30 : i === 1 ? totals.total31to60 : i === 2 ? totals.total61to90 : totals.total90plus;
+          const count = i === 0 ? totals.count0to30 : i === 1 ? totals.count31to60 : i === 2 ? totals.count61to90 : totals.count90plus;
+          const color = i === 0 ? 'emerald' : i === 1 ? 'amber' : i === 2 ? 'orange' : 'rose';
+          return (
+            <Card key={bucket.label}>
+              <div className="p-4 text-center">
+                <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} يوم</p>
+                <p className={`text-xl font-bold text-${color}-600 dark:text-${color}-400`}>{formatCurrency(total)}</p>
+                <p className="text-xs text-slate-400 mt-1">{count} عميل</p>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <Card>
         <div className="p-4">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">توزيع أعمار الديون لكل عميل</h3>
           <Table
             data={customers}
             columns={[
               { key: 'customer', header: 'العميل' },
               { key: 'phone', header: 'الهاتف' },
-              { key: 'balance', header: 'الرصيد', align: 'right', render: (row) => formatCurrency(row.balance) },
-              { key: 'invoiceCount', header: 'الفواتير', align: 'right' },
-              { key: 'totalSales', header: 'إجمالي المبيعات', align: 'right', render: (row) => formatCurrency(row.totalSales) },
-              { key: 'lastInvoice', header: 'آخر فاتورة' },
+              { key: 'bucket0to30', header: '0-30', align: 'right', render: (row) => formatCurrency(row.bucket0to30) },
+              { key: 'bucket31to60', header: '31-60', align: 'right', render: (row) => formatCurrency(row.bucket31to60) },
+              { key: 'bucket61to90', header: '61-90', align: 'right', render: (row) => formatCurrency(row.bucket61to90) },
+              { key: 'bucket90plus', header: '90+', align: 'right', render: (row) => formatCurrency(row.bucket90plus) },
+              { key: 'totalOutstanding', header: 'الإجمالي', align: 'right', render: (row) => <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(row.totalOutstanding)}</span> },
+              { key: 'invoiceCount', header: 'فواتير', align: 'right' },
             ]}
             keyExtractor={(row) => row.customerId}
           />

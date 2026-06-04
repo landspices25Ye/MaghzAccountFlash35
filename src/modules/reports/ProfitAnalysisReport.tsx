@@ -13,6 +13,7 @@ interface ExpenseBreakdown {
   category: string;
   amount: number;
   percent: number;
+  accountId?: string;
 }
 
 interface ProductProfit {
@@ -27,12 +28,34 @@ interface PeriodData {
   expenses: ExpenseBreakdown[];
   products: ProductProfit[];
   totalRevenue: number;
+  totalCogs: number;
   totalExpenses: number;
   totalProfit: number;
   monthlyProfit: Array<{ month: string; profit: number }>;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+
+function defaultFromDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-01-01`;
+}
+
+function defaultToDate(): string {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function toNumber(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return Number(v);
+  return 0;
+}
+
+function buildDateRange(from?: string, to?: string): { from: string; to: string } {
+  return { from: from || defaultFromDate(), to: to || defaultToDate() };
+}
 
 export const ProfitAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
@@ -53,62 +76,183 @@ export const ProfitAnalysisReport: React.FC = () => {
       setIsLoading(true);
       const adapter = await getDbAdapter();
 
-      // Helper to compute period data
       const computePeriod = async (from?: string, to?: string): Promise<PeriodData> => {
-        let query = `SELECT * FROM sales_invoices WHERE company_id = $1`;
-        const params: unknown[] = [companyId];
-        if (from) { query += ` AND date >= $${params.length + 1}`; params.push(from); }
-        if (to) { query += ` AND date <= $${params.length + 1}`; params.push(to); }
-        const salesInvResult = await adapter.query(query, params);
-        const salesInvoices = (salesInvResult.rows || []) as Record<string, unknown>[];
-        const totalRevenue = salesInvoices.reduce((s, i) => s + Number(i.total || i.total_amount || 0), 0);
+        const range = buildDateRange(from, to);
+        const { from: fromD, to: toD } = range;
 
-        let pQuery = `SELECT * FROM purchase_invoices WHERE company_id = $1`;
-        const pParams: unknown[] = [companyId];
-        if (from) { pQuery += ` AND date >= $${pParams.length + 1}`; pParams.push(from); }
-        if (to) { pQuery += ` AND date <= $${pParams.length + 1}`; pParams.push(to); }
-        const purchResult = await adapter.query(pQuery, pParams);
-        const purchInvoices = (purchResult.rows || []) as Record<string, unknown>[];
-        const totalPurchases = purchInvoices.reduce((s, i) => s + Number(i.total || i.total_amount || 0), 0);
+        const revResult = await adapter.query(
+          `SELECT COALESCE(SUM(total_amount), 0) AS revenue,
+                  COALESCE(SUM(vat_amount), 0) AS vat,
+                  COUNT(*) AS invoice_count
+             FROM sales_invoices
+            WHERE company_id = $1 AND date >= $2 AND date <= $3`,
+          [companyId, fromD, toD],
+        );
+        const revRow = (revResult.rows?.[0] || {}) as Record<string, unknown>;
+        const totalRevenue = toNumber(revRow.revenue);
+
+        const cogsResult = await adapter.query(
+          `SELECT COALESCE(SUM(pil.line_total), 0) AS cogs,
+                  COALESCE(SUM(pil.quantity * COALESCE(pil.unit_price, 0)), 0) AS cogs_qty_cost
+             FROM purchase_invoice_lines pil
+             JOIN purchase_invoices pi ON pi.id = pil.invoice_id
+            WHERE pi.company_id = $1 AND pi.date >= $2 AND pi.date <= $3`,
+          [companyId, fromD, toD],
+        );
+        const cogsRow = (cogsResult.rows?.[0] || {}) as Record<string, unknown>;
+        const totalCogs = toNumber(cogsRow.cogs);
 
         const accResult = await adapter.getAccounts(companyId);
         const accounts = (accResult.data || []) as Record<string, unknown>[];
-        const expenseAccs = accounts.filter((a) => (a as Record<string, unknown>).type === 'expense');
-        const totalExp = expenseAccs.reduce((s: number, a) => s + Math.abs(Number((a as Record<string, unknown>).balance)), 0);
+        const expenseAccs = accounts.filter((a) => a.type === 'expense');
+        const expenseMovementsResult = await adapter.query(
+          `SELECT je.account_id, COALESCE(SUM(je.debit), 0) AS debits, COALESCE(SUM(je.credit), 0) AS credits
+             FROM journal_entries je
+             JOIN accounts a ON a.id = je.account_id
+            WHERE a.company_id = $1
+              AND a.type = 'expense'
+              AND je.date >= $2
+              AND je.date <= $3
+            GROUP BY je.account_id`,
+          [companyId, fromD, toD],
+        );
+        const movementByAccount = new Map<string, { debits: number; credits: number }>();
+        for (const r of (expenseMovementsResult.rows || []) as Record<string, unknown>[]) {
+          movementByAccount.set(String(r.account_id), {
+            debits: toNumber(r.debits),
+            credits: toNumber(r.credits),
+          });
+        }
         const expenses: ExpenseBreakdown[] = expenseAccs
-          .filter((a) => Math.abs(Number((a as Record<string, unknown>).balance)) > 0)
-          .map((a) => ({
-            category: String((a as Record<string, unknown>).name_ar || (a as Record<string, unknown>).name),
-            amount: Math.abs(Number((a as Record<string, unknown>).balance)),
-            percent: totalExp > 0 ? Math.round((Math.abs(Number((a as Record<string, unknown>).balance)) / totalExp) * 100) : 0,
-          }))
-          .sort((a, b) => b.amount - a.amount);
-
-        const prodResult = await adapter.getProducts(companyId);
-        const prods = (prodResult.data || []) as Record<string, unknown>[];
-        const products: ProductProfit[] = prods
-          .filter((p) => Number(p.price) > 0 && Number(p.cost) > 0)
-          .map((p) => {
-            const revenue = (Number(p.price) || 0) * (Number(p.stock) || 0);
-            const cost = (Number(p.cost) || 0) * (Number(p.stock) || 0);
-            const profit = revenue - cost;
-            return { product: String(p.name), revenue, cost, profit, margin: revenue > 0 ? Math.round((profit / revenue) * 100) : 0 };
+          .map((a) => {
+            const id = String(a.id || '');
+            const mov = movementByAccount.get(id) || { debits: 0, credits: 0 };
+            const amount = mov.debits - mov.credits;
+            return {
+              category: String(a.name_ar || a.name || ''),
+              amount: Math.max(0, amount),
+              percent: 0,
+              accountId: id,
+            };
           })
-          .sort((a, b) => b.profit - a.profit)
-          .slice(0, 10);
+          .filter((e) => e.amount > 0)
+          .sort((a, b) => b.amount - a.amount);
+        const totalExp = expenses.reduce((s, e) => s + e.amount, 0);
+        expenses.forEach((e) => {
+          e.percent = totalExp > 0 ? Math.round((e.amount / totalExp) * 100) : 0;
+        });
 
-        const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-        const monthlyProfit = months.map((m) => ({
-          month: m,
-          profit: Math.floor((totalRevenue - totalPurchases - totalExp) / 12 + (Math.random() - 0.5) * 50000),
-        }));
+        const prodResult = await adapter.query(
+          `SELECT p.id, p.name_ar,
+                  COALESCE(SUM(sil.line_total), 0) AS revenue,
+                  COALESCE(SUM(sil.quantity), 0) AS qty_sold
+             FROM products p
+             JOIN sales_invoice_lines sil ON sil.product_id = p.id
+             JOIN sales_invoices si ON si.id = sil.invoice_id
+            WHERE p.company_id = $1
+              AND si.date >= $2
+              AND si.date <= $3
+            GROUP BY p.id, p.name_ar
+            HAVING SUM(sil.line_total) > 0
+            ORDER BY revenue DESC
+            LIMIT 10`,
+          [companyId, fromD, toD],
+        );
+        const prodsRaw = (prodResult.rows || []) as Record<string, unknown>[];
+        const productIds = prodsRaw.map((p) => String(p.id));
+        const costByProduct = new Map<string, number>();
+        if (productIds.length > 0) {
+          const placeholders = productIds.map((_, i) => `$${i + 3}`).join(', ');
+          const costResult = await adapter.query(
+            `SELECT pil.product_id, COALESCE(SUM(pil.line_total), 0) AS cost
+               FROM purchase_invoice_lines pil
+               JOIN purchase_invoices pi ON pi.id = pil.invoice_id
+              WHERE pi.company_id = $1
+                AND pi.date >= $2
+                AND pil.product_id IN (${placeholders})
+              GROUP BY pil.product_id`,
+            [companyId, fromD, ...productIds],
+          );
+          for (const r of (costResult.rows || []) as Record<string, unknown>[]) {
+            costByProduct.set(String(r.product_id), toNumber(r.cost));
+          }
+        }
+        const products: ProductProfit[] = prodsRaw.map((p) => {
+          const revenue = toNumber(p.revenue);
+          const qty = toNumber(p.qty_sold);
+          const productCost = costByProduct.get(String(p.id)) || 0;
+          const cost = qty > 0 && productCost > 0 ? (productCost / Math.max(qty, 1)) * qty : productCost;
+          const profit = revenue - cost;
+          return {
+            product: String(p.name_ar || ''),
+            revenue,
+            cost,
+            profit,
+            margin: revenue > 0 ? Math.round((profit / revenue) * 100) : 0,
+          };
+        });
+
+        const monthlyResult = await adapter.query(
+          `WITH months AS (
+             SELECT generate_series(1, 12) AS m
+           ),
+           rev AS (
+             SELECT EXTRACT(MONTH FROM date)::int AS m,
+                    COALESCE(SUM(total_amount), 0) AS revenue
+               FROM sales_invoices
+              WHERE company_id = $1 AND date >= $2 AND date <= $3
+              GROUP BY 1
+           ),
+           cogs AS (
+             SELECT EXTRACT(MONTH FROM pi.date)::int AS m,
+                    COALESCE(SUM(pil.line_total), 0) AS cogs
+               FROM purchase_invoice_lines pil
+               JOIN purchase_invoices pi ON pi.id = pil.invoice_id
+              WHERE pi.company_id = $1 AND pi.date >= $2 AND pi.date <= $3
+              GROUP BY 1
+           ),
+           exp AS (
+             SELECT EXTRACT(MONTH FROM je.date)::int AS m,
+                    COALESCE(SUM(je.debit - je.credit), 0) AS exp
+               FROM journal_entries je
+               JOIN accounts a ON a.id = je.account_id
+              WHERE a.company_id = $1
+                AND a.type = 'expense'
+                AND je.date >= $2
+                AND je.date <= $3
+              GROUP BY 1
+           )
+           SELECT months.m,
+                  COALESCE(rev.revenue, 0) AS revenue,
+                  COALESCE(cogs.cogs, 0) AS cogs,
+                  COALESCE(exp.exp, 0) AS exp
+             FROM months
+             LEFT JOIN rev ON rev.m = months.m
+             LEFT JOIN cogs ON cogs.m = months.m
+             LEFT JOIN exp ON exp.m = months.m
+            ORDER BY months.m`,
+          [companyId, fromD, toD],
+        );
+        const monthlyRows = (monthlyResult.rows || []) as Record<string, unknown>[];
+        const monthlyProfit = monthlyRows.map((r, i) => {
+          const revenue = toNumber(r.revenue);
+          const cogs = toNumber(r.cogs);
+          const exp = toNumber(r.exp);
+          return {
+            month: MONTHS_AR[i] || String(i + 1),
+            profit: revenue - cogs - exp,
+          };
+        });
+
+        const totalExpenses = totalCogs + totalExp;
 
         return {
           expenses,
           products,
           totalRevenue,
-          totalExpenses: totalExp + totalPurchases,
-          totalProfit: totalRevenue - totalExp - totalPurchases,
+          totalCogs,
+          totalExpenses,
+          totalProfit: totalRevenue - totalExpenses,
           monthlyProfit,
         };
       };
@@ -117,9 +261,11 @@ export const ProfitAnalysisReport: React.FC = () => {
       setCurrentPeriod(current);
 
       if (compareMode) {
-        // Previous period of same length
-        const duration = fromDate && toDate ? new Date(toDate).getTime() - new Date(fromDate).getTime() : 30 * 24 * 60 * 60 * 1000;
-        const prevTo = fromDate ? new Date(new Date(fromDate).getTime() - 1) : new Date();
+        const range = buildDateRange(fromDate || undefined, toDate || undefined);
+        const fromMs = new Date(range.from).getTime();
+        const toMs = new Date(range.to).getTime();
+        const duration = Math.max(toMs - fromMs, 24 * 60 * 60 * 1000);
+        const prevTo = new Date(fromMs - 24 * 60 * 60 * 1000);
         const prevFrom = new Date(prevTo.getTime() - duration);
         const prev = await computePeriod(prevFrom.toISOString().split('T')[0], prevTo.toISOString().split('T')[0]);
         setPreviousPeriod(prev);
@@ -236,13 +382,22 @@ export const ProfitAnalysisReport: React.FC = () => {
       )}
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.totalRevenue')}</p>
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(currentPeriod.totalRevenue)}</p>
             {compareMode && previousPeriod && (
               <p className="text-xs text-slate-400 mt-1">{t('reports.previousPeriod')}: {formatCurrency(previousPeriod.totalRevenue)}</p>
+            )}
+          </div>
+        </Card>
+        <Card>
+          <div className="p-4 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400">تكلفة المبيعات</p>
+            <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(currentPeriod.totalCogs)}</p>
+            {compareMode && previousPeriod && (
+              <p className="text-xs text-slate-400 mt-1">{t('reports.previousPeriod')}: {formatCurrency(previousPeriod.totalCogs)}</p>
             )}
           </div>
         </Card>
@@ -258,7 +413,9 @@ export const ProfitAnalysisReport: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.netProfit')}</p>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(currentPeriod.totalProfit)}</p>
+            <p className={`text-2xl font-bold ${currentPeriod.totalProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-rose-600 dark:text-rose-400'}`}>
+              {formatCurrency(currentPeriod.totalProfit)}
+            </p>
             {compareMode && previousPeriod && (
               <p className="text-xs text-slate-400 mt-1">{t('reports.previousPeriod')}: {formatCurrency(previousPeriod.totalProfit)}</p>
             )}
@@ -333,7 +490,7 @@ export const ProfitAnalysisReport: React.FC = () => {
 
       <Card>
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">أعلى 10 منتجات ربحية</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">أعلى 10 منتجات مبيعاً (للإيرادات)</h3>
           <Table
             data={currentPeriod.products}
             columns={[

@@ -40,61 +40,73 @@ export const InventoryAnalysisReport: React.FC = () => {
     async function load() {
       setIsLoading(true);
       const adapter = await getDbAdapter();
-      const prodResult = await adapter.getProducts(companyId);
-      const products = (prodResult.data || []) as Record<string, unknown>[];
-      const whResult = await adapter.query(`SELECT * FROM warehouses WHERE company_id = $1`, [companyId]);
-      const warehouses = (whResult.rows || []) as Record<string, unknown>[];
-      const stockResult = await adapter.query(`SELECT * FROM stock WHERE company_id = $1`, [companyId]);
-      const stock = (stockResult.rows || []) as Record<string, unknown>[];
-
-      // Fetch movements to calculate turnover from actual transaction data
-      const movResult = await adapter.query(
-        `SELECT product_id, SUM(quantity) as total_qty, MIN(date) as first_date, MAX(date) as last_date
-         FROM inventory_transactions WHERE company_id = $1 GROUP BY product_id`,
-        [companyId]
+      const stockResult = await adapter.query(
+        `SELECT s.id AS stock_id,
+                s.product_id,
+                s.warehouse_id,
+                s.quantity,
+                s.min_stock_alert,
+                p.name_ar AS product_name,
+                p.name_en AS product_name_en,
+                p.sku,
+                p.cost_price,
+                p.sale_price,
+                w.name AS warehouse_name,
+                COALESCE(mov.total_out, 0) AS total_out,
+                mov.first_out,
+                mov.last_out
+           FROM stock s
+           JOIN products p ON p.id = s.product_id
+           JOIN warehouses w ON w.id = s.warehouse_id
+           LEFT JOIN (
+             SELECT product_id,
+                    SUM(quantity) AS total_out,
+                    MIN(created_at) AS first_out,
+                    MAX(created_at) AS last_out
+               FROM stock_movements
+              WHERE company_id = $1 AND type = 'out'
+              GROUP BY product_id
+           ) mov ON mov.product_id = s.product_id
+          WHERE s.company_id = $1`,
+        [companyId],
       );
-      const movements = (movResult.rows || []) as Record<string, unknown>[];
+      const stockRows = (stockResult.rows || []) as Record<string, unknown>[];
 
-      const rows: StockItem[] = [];
-      for (const s of stock) {
-        const prod = products.find((p) => p.id === s.product_id);
-        const wh = warehouses.find((w) => w.id === s.warehouse_id);
-        if (prod && wh) {
-          const qty = Number(s.quantity || 0);
-          const min = Number(prod.min_stock || 0);
-          let status: 'good' | 'low' | 'out' = 'good';
-          if (qty === 0) status = 'out';
-          else if (qty <= min) status = 'low';
+      const rows: StockItem[] = stockRows.map((r) => {
+        const qty = Number(r.quantity || 0);
+        const min = Number(r.min_stock_alert || 0);
+        const cost = Number(r.cost_price || 0);
+        const price = Number(r.sale_price || 0);
+        let status: 'good' | 'low' | 'out' = 'good';
+        if (qty === 0) status = 'out';
+        else if (qty <= min) status = 'low';
 
-          // Calculate turnover from actual movement data
-          const mov = movements.find((m) => m.product_id === s.product_id);
-          let turnoverDays = 999;
-          if (mov && mov.total_qty) {
-            const totalQty = Number(mov.total_qty);
-            const firstDate = mov.first_date ? new Date(String(mov.first_date)) : null;
-            const lastDate = mov.last_date ? new Date(String(mov.last_date)) : null;
-            if (firstDate && lastDate && totalQty > 0) {
-              const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / 86400000));
-              const avgDaily = totalQty / daysDiff;
-              turnoverDays = avgDaily > 0 ? Math.floor(qty / avgDaily) : 999;
-            }
+        let turnoverDays = 999;
+        const totalOut = Number(r.total_out || 0);
+        if (totalOut > 0) {
+          const firstDate = r.first_out ? new Date(String(r.first_out)) : null;
+          const lastDate = r.last_out ? new Date(String(r.last_out)) : null;
+          if (firstDate && lastDate) {
+            const daysDiff = Math.max(1, Math.ceil((lastDate.getTime() - firstDate.getTime()) / 86400000));
+            const avgDaily = totalOut / daysDiff;
+            turnoverDays = avgDaily > 0 ? Math.floor(qty / avgDaily) : 999;
           }
-
-          rows.push({
-            product: String(prod.name || ''),
-            sku: String(prod.sku || ''),
-            warehouse: String(wh.name || ''),
-            quantity: qty,
-            minStock: min,
-            status,
-            value: qty * Number(prod.cost || 0),
-            cost: Number(prod.cost || 0),
-            price: Number(prod.price || 0),
-            stockValue: qty * Number(prod.cost || 0),
-            turnoverDays,
-          });
         }
-      }
+
+        return {
+          product: String(r.product_name || r.product_name_en || ''),
+          sku: String(r.sku || ''),
+          warehouse: String(r.warehouse_name || ''),
+          quantity: qty,
+          minStock: min,
+          status,
+          value: qty * cost,
+          cost,
+          price,
+          stockValue: qty * cost,
+          turnoverDays,
+        };
+      });
       setItems(rows);
       setIsLoading(false);
     }
