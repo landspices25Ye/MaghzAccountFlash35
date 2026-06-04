@@ -97,7 +97,7 @@ export function dataToHtmlTable(data: Record<string, unknown>[], columns: { key:
     for (const col of columns) {
       const val = row[col.key];
       const display = val === null || val === undefined ? '-' :
-        typeof val === 'number' ? `<span class="number">${val.toLocaleString('ar-SA')}</span>` :
+        typeof val === 'number' ? `<span class="number">${new Intl.NumberFormat('ar-YE').format(val)}</span>` :
         String(val);
       html += `<td>${display}</td>`;
     }

@@ -36,7 +36,7 @@ const typeColors: Record<string, string> = {
 };
 
 function formatCurrency(amount: number, currency = 'YER'): string {
-  return `${amount.toLocaleString('ar-SA')} ${currency === 'YER' ? 'ريال' : currency}`;
+  return `${new Intl.NumberFormat('ar-YE').format(amount)} ${currency === 'YER' ? 'ريال' : currency}`;
 }
 
 function generateHtml(data: PrintDocumentData): string {
@@ -50,9 +50,9 @@ function generateHtml(data: PrintDocumentData): string {
       <td style="padding:10px 12px;border:1px solid #e2e8f0">${line.description}</td>
       ${isInvoice ? `
         <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center">${line.quantity || '-'}</td>
-        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr">${line.unitPrice ? line.unitPrice.toLocaleString('ar-SA') : '-'}</td>
+        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr">${line.unitPrice ? new Intl.NumberFormat('ar-YE').format(line.unitPrice) : '-'}</td>
       ` : ''}
-      <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr;font-weight:600">${line.total.toLocaleString('ar-SA')}</td>
+      <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr;font-weight:600">${new Intl.NumberFormat('ar-YE').format(line.total)}</td>
     </tr>
   `).join('');
 

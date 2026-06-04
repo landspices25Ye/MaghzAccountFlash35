@@ -8,6 +8,7 @@ import { useAuthStore } from '../store';
 import { useAuditLogs } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
+import { formatDateTime } from '@/core/utils/locale';
 import type { AuditLog } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -82,7 +83,7 @@ export const AuditLogPage: React.FC = () => {
         tableName: TABLE_LABELS[l.tableName] || l.tableName,
         recordId: l.recordId,
         recordLabel: l.recordLabel || '',
-        createdAt: new Date(l.createdAt).toLocaleString('ar-YE'),
+        createdAt: formatDateTime(l.createdAt),
       })),
       [
         { key: 'username', header: 'المستخدم', width: 20 },
@@ -103,7 +104,7 @@ export const AuditLogPage: React.FC = () => {
         action: ACTION_LABELS[l.action] || l.action,
         tableName: TABLE_LABELS[l.tableName] || l.tableName,
         recordId: l.recordId,
-        createdAt: new Date(l.createdAt).toLocaleString('ar-YE'),
+        createdAt: formatDateTime(l.createdAt),
       })),
       [
         { key: 'username', header: 'المستخدم', width: 20 },
@@ -170,7 +171,7 @@ export const AuditLogPage: React.FC = () => {
       header: 'التاريخ والوقت',
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 tabular-nums">
-          {new Date(row.original.createdAt).toLocaleString('ar-YE')}
+          {formatDateTime(row.original.createdAt)}
         </span>
       ),
     },

@@ -8,7 +8,7 @@ import { useOnboardingStore } from './core/store/onboardingStore';
 import { getDbAdapter } from './core/database/adapters';
 import { initAuth } from './modules/auth/store';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button } from './core/ui/components';
+import { Button, ErrorBoundary } from './core/ui/components';
 
 // Set RTL and Arabic as default
 document.documentElement.dir = 'rtl';
@@ -113,6 +113,8 @@ function App() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );
