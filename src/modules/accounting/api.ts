@@ -1,5 +1,6 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
+import { validateInput, idCompanySchema, companyIdSchema, createTransactionSchema, createReceiptVoucherSchema, createPaymentVoucherSchema } from '@/core/utils/validation';
 import type { Account, Transaction, JournalEntry, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from './types';
 
 export const accountingApi = {
@@ -82,11 +83,11 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const checkResult = await adapter.query(
+      const checkResult = await adapter.query<{ count: number }>(
         `SELECT COUNT(*) as count FROM journal_entries WHERE account_id = $1`,
         [id]
       );
-      const count = checkResult.rows?.[0]?.count || 0;
+      const count = Number(checkResult.rows?.[0]?.count) || 0;
       if (count > 0) {
         return { success: false, error: 'لا يمكن حذف حساب له قيود يومية' };
       }
@@ -331,6 +332,10 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      return await adapter.query(
+        `DELETE FROM receipt_vouchers WHERE id = $1 AND company_id = $2`,
+        [id, companyId]
+      );
     } catch (e) {
       return { success: false, error: String(e) };
     }

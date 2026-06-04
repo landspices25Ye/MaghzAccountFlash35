@@ -240,7 +240,7 @@ export const PaymentVouchersPage: React.FC = () => {
           <Input label={t('accounting.amount')} type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
           <div>
             <label className="block text-sm mb-1">{t('accounting.paymentMethod')}</label>
-            <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as any })}>
+            <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as PaymentVoucher['paymentMethod'] })}>
               <option value="cash">{t('accounting.cash')}</option>
               <option value="bank">{t('accounting.bank')}</option>
               <option value="check">{t('accounting.check')}</option>

@@ -39,22 +39,14 @@ export const CashFlowReport: React.FC = () => {
     async function load() {
       setIsLoading(true);
       const companyId = activeCompany!.id;
-      
+
       // Get profit/loss data
       const plResult = await accountingApi.getProfitLoss(companyId, startDate || undefined, endDate || undefined);
       const bsResult = await accountingApi.getBalanceSheet(companyId, endDate || undefined);
       const arResult = await salesApi.getCustomerArAging(companyId);
-      // Get all suppliers for AP aging
-      const suppliersResult = await purchasesApi.getSuppliers(companyId);
-      let apTotal = 0;
-      if (suppliersResult.success && suppliersResult.data) {
-        for (const s of suppliersResult.data) {
-          const apResult = await purchasesApi.getApAging(s.id, companyId);
-          if (apResult.data) {
-            apTotal += apResult.data.reduce((sum, b) => sum + b.amount, 0);
-          }
-        }
-      }
+      // AP total: single query instead of N+1 (was looping over suppliers)
+      const apTotalResult = await purchasesApi.getApAgingTotal(companyId);
+      const apTotal = apTotalResult.success ? (apTotalResult.total || 0) : 0;
       
       // Calculate net profit
       let netProfit = 0;
@@ -128,6 +120,7 @@ export const CashFlowReport: React.FC = () => {
     }
     
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompany?.id, startDate, endDate]);
 
   const allRows = [...operating, ...investing, ...financing];
