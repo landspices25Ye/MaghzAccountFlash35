@@ -1,6 +1,5 @@
-import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
-import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createLeadSchema } from '@/core/utils/validation';
+import { validateInput, idCompanySchema, companyIdSchema, createLeadSchema } from '@/core/utils/validation';
 import type { Lead, Opportunity, Task, Activity } from './types';
 
 export const crmApi = {
@@ -10,12 +9,12 @@ export const crmApi = {
       const cidValidation = validateInput(companyIdSchema, companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
-        `SELECT l.*, u.name as assigned_name FROM leads l LEFT JOIN users u ON l.assigned_to = u.id WHERE l.company_id = $1 ORDER BY l.created_at DESC`,
+      const result = await adapter.query<Record<string, unknown>>(
+        `SELECT l.*, u.full_name as assigned_name FROM leads l LEFT JOIN users u ON l.assigned_to = u.id WHERE l.company_id = $1 ORDER BY l.created_at DESC`,
         [companyId]
       );
       if (result.success) {
-        const rows = (result.rows || []).map((r: Record<string, unknown>) => mapLeadRow(r));
+        const rows = (result.rows || []).map((r) => mapLeadRow(r));
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
@@ -29,7 +28,7 @@ export const crmApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const result = await adapter.query('SELECT * FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
+      const result = await adapter.query<Record<string, unknown>>('SELECT * FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
       if (result.success && result.rows?.[0]) return { success: true, data: mapLeadRow(result.rows[0]) };
       return { success: false, error: result.error || 'Not found' };
     } catch (e) {
@@ -42,7 +41,7 @@ export const crmApi = {
       const validation = validateInput(createLeadSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
+      const result = await adapter.query<{ id: string }>(
         `INSERT INTO leads (company_id, name, phone, email, company, source, status, rating, estimated_value, assigned_to, notes, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
         [data.companyId, data.name, data.phone, data.email, data.company, data.source, data.status, data.rating, data.estimatedValue, data.assignedTo, data.notes, new Date().toISOString()]
       );
@@ -98,7 +97,7 @@ export const crmApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const leadRes = await adapter.query('SELECT * FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
+      const leadRes = await adapter.query<Record<string, unknown>>('SELECT * FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
       if (!leadRes.success || !leadRes.rows?.[0]) return { success: false, error: 'Lead not found' };
       const lead = leadRes.rows[0];
       const custResult = await adapter.query(
@@ -122,7 +121,7 @@ export const crmApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT o.*, u.name as assigned_name FROM opportunities o LEFT JOIN users u ON o.assigned_to = u.id WHERE o.company_id = $1 ORDER BY o.created_at DESC`,
+        `SELECT o.*, u.full_name as assigned_name FROM opportunities o LEFT JOIN users u ON o.assigned_to = u.id WHERE o.company_id = $1 ORDER BY o.created_at DESC`,
         [companyId]
       );
       if (result.success) {
@@ -195,7 +194,7 @@ export const crmApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT t.*, u.name as assigned_name FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.company_id = $1 ORDER BY t.due_date ASC`,
+        `SELECT t.*, u.full_name as assigned_name FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id WHERE t.company_id = $1 ORDER BY t.due_date ASC`,
         [companyId]
       );
       if (result.success) {
@@ -267,7 +266,7 @@ export const crmApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT a.*, u.name as assigned_name FROM activities a LEFT JOIN users u ON a.assigned_to = u.id WHERE a.company_id = $1 ORDER BY a.activity_date DESC`,
+        `SELECT a.*, u.full_name as assigned_name FROM activities a LEFT JOIN users u ON a.assigned_to = u.id WHERE a.company_id = $1 ORDER BY a.activity_date DESC`,
         [companyId]
       );
       if (result.success) {

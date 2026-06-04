@@ -52,7 +52,7 @@ function mapInvoice(row: Record<string, unknown>): PurchaseInvoice {
     vatAmount: toNum(row.vat_amount || row.vatAmount),
     totalAmount: toNum(row.total_amount || row.totalAmount),
     paidAmount: toNum(row.paid_amount || row.paidAmount),
-    status: (row.status as any) || 'draft',
+    status: (row.status as PurchaseInvoice["status"]) || 'draft',
     notes: row.notes ? String(row.notes) : undefined,
     createdAt: row.created_at ? String(row.created_at) : undefined,
     updatedAt: row.updated_at ? String(row.updated_at) : undefined,
@@ -86,7 +86,7 @@ function mapOrder(row: Record<string, unknown>): PurchaseOrder {
     date: row.date ? String(row.date).split('T')[0] : '',
     expectedDate: row.expected_date ? String(row.expected_date).split('T')[0] : undefined,
     totalAmount: toNum(row.total_amount || row.totalAmount),
-    status: (row.status as any) || 'draft',
+    status: (row.status as PurchaseOrder["status"]) || 'draft',
     notes: row.notes ? String(row.notes) : undefined,
     createdAt: row.created_at ? String(row.created_at) : undefined,
     updatedAt: row.updated_at ? String(row.updated_at) : undefined,
@@ -122,7 +122,7 @@ function mapReturn(row: Record<string, unknown>): PurchaseReturn {
     subtotal: toNum(row.subtotal),
     vatAmount: toNum(row.vat_amount || row.vatAmount),
     totalAmount: toNum(row.total_amount || row.totalAmount),
-    status: (row.status as any) || 'draft',
+    status: (row.status as PurchaseReturn["status"]) || 'draft',
     notes: row.notes ? String(row.notes) : undefined,
     reason: row.reason ? String(row.reason) : undefined,
     createdAt: row.created_at ? String(row.created_at) : undefined,
@@ -259,8 +259,8 @@ export const purchasesApi = {
         [supplierId, companyId]
       );
       const payments = await adapter.query(
-        `SELECT id, date, reference as doc_number, amount
-        FROM payment_vouchers WHERE beneficiary_id = $1 AND company_id = $2
+        `SELECT id, date, voucher_number as doc_number, amount
+        FROM payment_vouchers WHERE supplier_id = $1 AND company_id = $2
         ORDER BY date`,
         [supplierId, companyId]
       );
@@ -355,6 +355,24 @@ export const purchasesApi = {
       }));
 
       return { success: true, data };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getApAgingTotal(companyId: string): Promise<{ success: boolean; total?: number; error?: string }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(
+        `SELECT COALESCE(SUM(total_amount - paid_amount), 0) AS outstanding
+           FROM purchase_invoices
+          WHERE company_id = $1 AND status IN ('posted', 'partially_paid')`,
+        [companyId]
+      );
+      if (!result.success) return { success: false, error: result.error };
+      return { success: true, total: Number(result.rows?.[0]?.outstanding || 0) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -814,3 +832,4 @@ export const purchasesApi = {
     }
   },
 };
+

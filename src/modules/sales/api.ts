@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createCustomerSchema, createInvoiceSchema, createQuotationSchema, createSalesReturnSchema } from '@/core/utils/validation';
@@ -189,7 +188,7 @@ export const salesApi = {
       if (!invResult.success || !invResult.rows?.[0]) return { success: false, error: invResult.error || 'Not found' };
       const invoice = mapInvoiceRow(invResult.rows[0]);
       const linesResult = await adapter.query(
-        `SELECT l.*, p.name as product_name FROM sales_invoice_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.invoice_id = $1`, [id]
+        `SELECT l.*, p.name_ar as product_name FROM sales_invoice_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.invoice_id = $1`, [id]
       );
       invoice.lines = (linesResult.rows || []).map((r: Record<string, unknown>) => mapInvoiceLineRow(r));
       return { success: true, data: invoice };
@@ -317,7 +316,7 @@ export const salesApi = {
       const res = await adapter.query(`SELECT q.*, c.name as customer_name FROM quotations q LEFT JOIN customers c ON q.customer_id = c.id WHERE q.id = $1 AND q.company_id = $2 LIMIT 1`, [id, companyId]);
       if (!res.success || !res.rows?.[0]) return { success: false, error: res.error || 'Not found' };
       const q = mapQuotationRow(res.rows[0]);
-      const linesRes = await adapter.query(`SELECT l.*, p.name as product_name FROM quotation_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.quotation_id = $1`, [id]);
+      const linesRes = await adapter.query(`SELECT l.*, p.name_ar as product_name FROM quotation_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.quotation_id = $1`, [id]);
       q.lines = (linesRes.rows || []).map((r: Record<string, unknown>) => mapQuotationLineRow(r));
       return { success: true, data: q };
     } catch (e) {
@@ -436,7 +435,7 @@ export const salesApi = {
       );
       if (!res.success || !res.rows?.[0]) return { success: false, error: res.error || 'Not found' };
       const ret = mapReturnRow(res.rows[0]);
-      const linesRes = await adapter.query(`SELECT l.*, p.name as product_name FROM sales_return_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.return_id = $1`, [id]);
+      const linesRes = await adapter.query(`SELECT l.*, p.name_ar as product_name FROM sales_return_lines l LEFT JOIN products p ON l.product_id = p.id WHERE l.return_id = $1`, [id]);
       ret.lines = (linesRes.rows || []).map((r: Record<string, unknown>) => mapReturnLineRow(r));
       return { success: true, data: ret };
     } catch (e) {

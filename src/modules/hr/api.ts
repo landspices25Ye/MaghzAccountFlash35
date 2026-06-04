@@ -1,6 +1,5 @@
-import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
-import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createEmployeeSchema } from '@/core/utils/validation';
+import { validateInput, idCompanySchema, companyIdSchema, createEmployeeSchema } from '@/core/utils/validation';
 import type { Employee, AttendanceRecord, PayrollRun, PayrollLine, Leave, EndOfService } from './types';
 
 export const hrApi = {
@@ -171,14 +170,14 @@ export const hrApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const tx = await adapter.transaction([
-        { sql: `INSERT INTO payroll_runs (company_id, month, year, total_amount, status, notes) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`, params: [data.companyId, data.month, data.year, data.totalAmount, data.status, data.notes] },
+        { sql: `INSERT INTO payroll_runs (company_id, month, year, total_amount, status) VALUES ($1,$2,$3,$4,$5) RETURNING id`, params: [data.companyId, data.month, data.year, data.totalAmount, data.status] },
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const runId = tx.results[0][0].id as string;
         for (const line of data.lines) {
           await adapter.query(
-            `INSERT INTO payroll_lines (payroll_run_id, employee_id, employee_name, base_salary, allowances, deductions, overtime, net_salary) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-            [runId, line.employeeId, line.employeeName, line.baseSalary, line.allowances, line.deductions, line.overtime, line.netSalary]
+            `INSERT INTO payroll_lines (payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [runId, line.employeeId, line.baseSalary, line.allowances, line.deductions, line.overtime, line.netSalary]
           );
         }
         return { success: true, id: runId };

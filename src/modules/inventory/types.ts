@@ -90,7 +90,6 @@ warehouseId: string;
 quantity: number;
 reference: string;
 notes?: string;
-unitCost?: number;
 createdAt?: string;
 createdBy?: string;
 updatedBy?: string;

@@ -12,7 +12,7 @@ export const manufacturingApi = {
       const cidValidation = validateInput(companyIdSchema, companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      let sql = `SELECT b.*, p.name as product_name FROM bills_of_materials b LEFT JOIN products p ON b.product_id = p.id WHERE b.company_id = $1`;
+      let sql = `SELECT b.*, p.name_ar as product_name FROM bills_of_materials b LEFT JOIN products p ON b.product_id = p.id WHERE b.company_id = $1`;
       const params: unknown[] = [companyId];
       if (ownedByUserId) {
         const uidValidation = validateInput(uuidSchema, ownedByUserId);
@@ -62,7 +62,7 @@ export const manufacturingApi = {
         createdBy: row.created_by ? String(row.created_by) : undefined,
         updatedBy: row.updated_by ? String(row.updated_by) : undefined,
       };
-      const linesRes = await adapter.query('SELECT l.*, p.name as material_name FROM bom_lines l LEFT JOIN products p ON l.material_id = p.id WHERE l.bom_id = $1', [id]);
+      const linesRes = await adapter.query('SELECT l.*, p.name_ar as material_name FROM bom_lines l LEFT JOIN products p ON l.material_id = p.id WHERE l.bom_id = $1', [id]);
       const lines = (linesRes.rows || []).map((r: Record<string, unknown>) => ({
         id: String(r.id),
         bomId: String(r.bom_id),
@@ -78,15 +78,13 @@ export const manufacturingApi = {
     }
   },
 
-  async createBom(data: Omit<BOM, 'id'> & { lines: Omit<BOMLine, 'id' | 'bomId'>[] }, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
+  async createBom(data: Omit<BOM, 'id'> & { lines: Omit<BOMLine, 'id' | 'bomId'>[] }, _userId?: string): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const validation = validateInput(createBomSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
-      const uidValidation = validateInput(uuidSchema, userId);
-      if (!uidValidation.success) return { success: false, error: uidValidation.error };
       const adapter = await getDbAdapter();
       const tx = await adapter.transaction([
-        { sql: `INSERT INTO bills_of_materials (company_id, product_id, version, is_active, total_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, params: [data.companyId, data.productId, data.version, data.isActive, data.totalCost, data.notes, userId] },
+        { sql: `INSERT INTO bills_of_materials (company_id, product_id, version, is_active, total_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, params: [data.companyId, data.productId, data.version, data.isActive, data.totalCost, data.notes, _userId ?? null] },
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const bomId = tx.results[0][0].id as string;
@@ -104,12 +102,10 @@ export const manufacturingApi = {
     }
   },
 
-  async updateBom(id: string, companyId: string, userId: string, data: Partial<Omit<BOM, 'id' | 'companyId'>> & { lines?: Partial<BOMLine>[] }): Promise<{ success: boolean; error?: string }> {
+  async updateBom(id: string, companyId: string, _userId?: string, data: Partial<Omit<BOM, 'id' | 'companyId'>> & { lines?: Partial<BOMLine>[] } = {}): Promise<{ success: boolean; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
-      const uidValidation = validateInput(uuidSchema, userId);
-      if (!uidValidation.success) return { success: false, error: uidValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -121,7 +117,7 @@ export const manufacturingApi = {
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 
       fields.push(`updated_by = $${idx++}`);
-      values.push(userId);
+      values.push(_userId ?? null);
 
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE bills_of_materials SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
@@ -158,7 +154,7 @@ export const manufacturingApi = {
       const cidValidation = validateInput(companyIdSchema, companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      let sql = `SELECT w.*, p.name as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.company_id = $1`;
+      let sql = `SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.company_id = $1`;
       const params: unknown[] = [companyId];
       if (ownedByUserId) {
         const uidValidation = validateInput(uuidSchema, ownedByUserId);
@@ -178,15 +174,21 @@ export const manufacturingApi = {
     }
   },
 
-  async getWorkOrderById(id: string, companyId: string): Promise<{ success: boolean; data?: { workOrder: WorkOrder; lines: WorkOrderLine[] }; error?: string }> {
+  async getWorkOrderById(id: string, companyId?: string): Promise<{ success: boolean; data?: { workOrder: WorkOrder; lines: WorkOrderLine[] }; error?: string }> {
     try {
-      const idValidation = validateInput(idCompanySchema, { id, companyId });
-      if (!idValidation.success) return { success: false, error: idValidation.error };
+      if (companyId) {
+        const idValidation = validateInput(idCompanySchema, { id, companyId });
+        if (!idValidation.success) return { success: false, error: idValidation.error };
+      }
       const adapter = await getDbAdapter();
-      const res = await adapter.query('SELECT w.*, p.name as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 AND w.company_id = $2 LIMIT 1', [id, companyId]);
+      const sql = companyId
+        ? 'SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 AND w.company_id = $2 LIMIT 1'
+        : 'SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 LIMIT 1';
+      const params = companyId ? [id, companyId] : [id];
+      const res = await adapter.query(sql, params);
       if (!res.success || !res.rows?.[0]) return { success: false, error: res.error || 'Not found' };
       const workOrder = mapWorkOrderRow(res.rows[0]);
-      const linesRes = await adapter.query('SELECT l.*, p.name as material_name FROM work_order_lines l LEFT JOIN products p ON l.material_id = p.id WHERE l.work_order_id = $1', [id]);
+      const linesRes = await adapter.query('SELECT l.*, p.name_ar as material_name FROM work_order_consumptions l LEFT JOIN products p ON l.material_id = p.id WHERE l.work_order_id = $1', [id]);
       const lines = (linesRes.rows || []).map((r: Record<string, unknown>) => ({
         id: String(r.id),
         workOrderId: String(r.work_order_id),
@@ -203,15 +205,13 @@ export const manufacturingApi = {
     }
   },
 
-  async createWorkOrder(data: Omit<WorkOrder, 'id'> & { lines: Omit<WorkOrderLine, 'id' | 'workOrderId'>[] }, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
+  async createWorkOrder(data: Omit<WorkOrder, 'id'> & { lines: Omit<WorkOrderLine, 'id' | 'workOrderId'>[] }, _userId?: string): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const validation = validateInput(createWorkOrderSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
-      const uidValidation = validateInput(uuidSchema, userId);
-      if (!uidValidation.success) return { success: false, error: uidValidation.error };
       const adapter = await getDbAdapter();
       const tx = await adapter.transaction([
-        { sql: `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, estimated_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, params: [data.companyId, data.orderNumber, data.productId, data.bomId, data.quantity, data.status, data.plannedStartDate, data.plannedEndDate, data.estimatedCost, data.notes, userId] },
+        { sql: `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, estimated_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, params: [data.companyId, data.orderNumber, data.productId, data.bomId, data.quantity, data.status, data.plannedStartDate, data.plannedEndDate, data.estimatedCost, data.notes, _userId ?? null] },
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const woId = tx.results[0][0].id as string;
@@ -229,12 +229,10 @@ export const manufacturingApi = {
     }
   },
 
-  async updateWorkOrder(id: string, companyId: string, userId: string, data: Partial<Omit<WorkOrder, 'id' | 'companyId'>> & { lines?: Partial<WorkOrderLine>[] }): Promise<{ success: boolean; error?: string }> {
+  async updateWorkOrder(id: string, companyId: string, _userId?: string, data: Partial<Omit<WorkOrder, 'id' | 'companyId'>> & { lines?: Partial<WorkOrderLine>[] } = {}): Promise<{ success: boolean; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
-      const uidValidation = validateInput(uuidSchema, userId);
-      if (!uidValidation.success) return { success: false, error: uidValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -254,7 +252,7 @@ export const manufacturingApi = {
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 
       fields.push(`updated_by = $${idx++}`);
-      values.push(userId);
+      values.push(_userId ?? null);
 
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE work_orders SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
@@ -285,14 +283,14 @@ export const manufacturingApi = {
     }
   },
 
-  async updateWorkOrderStatus(id: string, companyId: string, status: WorkOrder['status'], userId?: string): Promise<{ success: boolean; error?: string }> {
+  async updateWorkOrderStatus(id: string, companyId: string, status: WorkOrder['status'], _userId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const statusValidation = validateInput(workOrderStatusSchema, status);
       if (!statusValidation.success) return { success: false, error: statusValidation.error };
-      if (userId) {
-        const uidValidation = validateInput(uuidSchema, userId);
+      if (_userId) {
+        const uidValidation = validateInput(uuidSchema, _userId);
         if (!uidValidation.success) return { success: false, error: uidValidation.error };
       }
       const adapter = await getDbAdapter();
@@ -302,19 +300,19 @@ export const manufacturingApi = {
       if (status === 'in_progress') {
         sql = `UPDATE work_orders SET status = 'in_progress', actual_start_date = $1`;
         params = [new Date().toISOString()];
-        if (userId) { sql += `, updated_by = $${params.length + 1}`; params.push(userId); }
+        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
         sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
         params.push(id, companyId);
       } else if (status === 'completed') {
         sql = `UPDATE work_orders SET status = 'completed', actual_end_date = $1`;
         params = [new Date().toISOString()];
-        if (userId) { sql += `, updated_by = $${params.length + 1}`; params.push(userId); }
+        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
         sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
         params.push(id, companyId);
       } else {
         sql = `UPDATE work_orders SET status = $1`;
         params = [status];
-        if (userId) { sql += `, updated_by = $${params.length + 1}`; params.push(userId); }
+        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
         sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
         params.push(id, companyId);
       }
@@ -349,3 +347,4 @@ function mapWorkOrderRow(r: Record<string, unknown>): WorkOrder {
     updatedBy: r.updated_by ? String(r.updated_by) : undefined,
   };
 }
+
