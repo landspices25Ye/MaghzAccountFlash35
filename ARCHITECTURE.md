@@ -54,10 +54,10 @@ src/
 │   │   ├── en.json                 ← English dictionary
 │   │   └── useTranslation.ts       ← Hook
 │   ├── database/                   ← طبقات البيانات الموحدة
-│   │   ├── adapters/               ← Interface موحد (PG, Mock)
-│   │   │   ├── index.ts            ← DatabaseAdapter interface
-│   │   │   ├── pgAdapter.ts        ← PostgreSQL implementation
-│   │   │   └── mockAdapter.ts      ← Mock/Dexie implementation
+│   │   ├── adapters/               ← Database adapter (PG only)
+│   │   │   ├── index.ts            ← Adapter factory
+│   │   │   ├── electronPgAdapter.ts ← PostgreSQL via Electron IPC
+│   │   │   └── types.ts            ← DbAdapter interface
 │   │   ├── schema/                 ← Drizzle schema (per module)
 │   │   │   ├── core.ts             ← companies, users, settings
 │   │   │   ├── accounting.ts       ← accounts, transactions, journalEntries

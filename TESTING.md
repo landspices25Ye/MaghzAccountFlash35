@@ -597,36 +597,57 @@ describe('Database Schema', () => {
 });
 ```
 
-### 9.2 اختبار Database Adapter
+### 9.2 اختبار Database Adapter (mock الـ adapter)
+
+نظراً لأن `getDbAdapter` يعتمد على `electronPgAdapter` فقط ولا يوجد mock adapter،
+نستخدم `vi.mock` لحقن mock adapter في الاختبارات:
 
 ```ts
-// src/core/database/adapters/__tests__/mockAdapter.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
-import { MockAdapter } from '../mockAdapter';
+// src/core/utils/journalEntryGenerator.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { getDbAdapter } from '@/core/database/adapters';
 
-describe('MockAdapter', () => {
-  let adapter: MockAdapter;
+vi.mock('@/core/database/adapters', () => ({
+  getDbAdapter: vi.fn(),
+}));
 
-  beforeEach(() => {
-    adapter = new MockAdapter();
-    adapter.reset();
-  });
+function createMockAdapter() {
+  const accounts = [
+    { id: 'acc-cash', company_id: 'comp-1', code: '11101', name: 'Cash' },
+    { id: 'acc-sales', company_id: 'comp-1', code: '41101', name: 'Sales' },
+  ];
 
-  it('getCompany يجب أن يعيد null عند عدم وجود شركة', async () => {
-    const result = await adapter.getCompany();
-    expect(result).toBeNull();
-  });
+  return {
+    query: vi.fn(async (sql: string, params: unknown[]) => {
+      const lower = sql.toLowerCase();
+      if (lower.includes('from accounts')) {
+        const match = accounts.find(a => a.company_id === params[0] && a.code === params[1]);
+        return { success: true, rows: match ? [{ id: match.id }] : [] };
+      }
+      return { success: true, rows: [] };
+    }),
+    createTransaction: vi.fn(async () => ({ success: true, id: 'tx-1' })),
+  };
+}
 
-  it('saveCompany و getCompany يجب أن يعملا معاً', async () => {
-    const company = {
-      id: 'test-uuid',
-      name: 'شركة الاختبار',
-      currency: 'YER',
-    };
+describe('journalEntryGenerator', () => {
+  beforeEach(() => vi.clearAllMocks());
 
-    await adapter.saveCompany(company);
-    const result = await adapter.getCompany();
-    expect(result).toEqual(company);
+  it('posts a sales invoice successfully', async () => {
+    const adapter = createMockAdapter();
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as any);
+
+    const result = await postSalesInvoice('comp-1', {
+      invoiceNumber: 'INV-001',
+      date: '2024-06-01',
+      customerId: 'cust-1',
+      subtotal: 1000,
+      vatAmount: 50,
+      totalAmount: 1050,
+    });
+
+    expect(result.success).toBe(true);
+    expect(adapter.createTransaction).toHaveBeenCalled();
   });
 });
 ```

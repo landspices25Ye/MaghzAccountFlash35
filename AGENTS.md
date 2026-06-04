@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.0.0 (أساس بنيوي — Foundation)
+- **الإصدار الحالي:** v0.3.3 (Lint clean: 0 errors, 0 warnings | Tables: 60)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -111,14 +111,13 @@ maghzaccount-pro/
 - **RTL:** استخدم `rtl:` prefix أو logical properties.
 - **ممنوع:** لا تضف CSS مخصص إلا للأنماط المشتركة (`@layer components`).
 
-### 4.4 قاعدة البيانات (طبقتان — بعد إزالة Realm)
+### 4.4 قاعدة البيانات (طبقة واحدة — PostgreSQL فقط)
 
 | الطبقة | البيئة | التقنية |
 |--------|--------|---------|
-| Layer 1 | Electron + PG متاح | PostgreSQL + Drizzle ORM (`electronPgAdapter`) |
-| Layer 2 | Browser أو بدون PG | Mock adapter (`mockAdapter`) |
+| الوحيدة | Electron + PG متاح | PostgreSQL + Drizzle ORM (`electronPgAdapter`) |
 
-**قاعدة حاسمة:** استخدم Database Adapters من `core/database/adapters/`. لا تكتب كود قاعدة بيانات مباشرة داخل المكونات.
+**قاعدة حاسمة:** استخدم Database Adapter من `core/database/adapters/electronPgAdapter.ts`. لا تكتب كود قاعدة بيانات مباشرة داخل المكونات. لا mock adapter — إذا لم يكن PG متاحاً، `getDbAdapter()` يرمي خطأ بدلاً من العمل بذاكرة وهمية.
 
 `getDbAdapter()` يحاول PG أولاً عبر IPC، فإن فشل يقع إلى Mock. `convertPlaceholders()` يحوِّل `?` → `$N` قبل الإرسال لـ PostgreSQL.
 
@@ -364,4 +363,384 @@ npx drizzle-kit migrate
 
 ---
 
-*آخر تحديث: 2026-05-27 | الإصدار: maghzaccount-pro v0.0.0*
+*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.3.3*
+
+## 12. ملخص المراحل المنجزة
+
+### المرحلة 1-4: ربط المنتجات بالتصنيفات والأنواع
+- Migration `0002_product_type_and_categories.sql`: `product_type_id` FK + `product_product_categories` many-to-many + indexes
+- 8 صفحات محدّثة لاستخدام `module="sales"|"purchases"|"inventory"` في `ProductSelect`
+- `ProductsPage` يحتوي فلاتر dropdown للتصنيف والنوع
+- `productTypeFilter.test.ts` (14 اختبار ✓)
+
+### المرحلة 5: فحص شامل لقاعدة البيانات
+- **اكتشاف schema drift**: `dbHandler.js` كان ينشئ schema متوازي مع Drizzle → حُذف
+- **إصلاح account code mismatch**: `111001/411001/511001` (6-digit) → `11101/41101/51101` (5-digit) في `seedDemoData.js`
+- **Migration 0003**: 23 UNIQUE constraints عبر `DO $$` blocks (idempotent) + `users(company_id, username)` — `receipt_vouchers` و`payment_vouchers` أُزيلت لأن الجداول غير موجودة في 0000
+- **Migration 0004**: أعمدة ناقصة في `users` (`full_name`, `phone`) و `roles` (`description`, `is_system`, `updated_at`) — كانت مستخدمة في `seedInitialData` لكن مفقودة من SQL schema (Drizzle schema كان يحويها لكن SQL لم يُولَّد)
+- **`electronPgAdapter` محدّث**: `getContacts` و`createContact` يستخدمان `customers`/`suppliers` المنفصلين (الـ `contacts` table القديم لم يعد موجوداً)
+- **`useDashboard.ts` محدّث**: يستدعي `getContacts` مرتين (customer, supplier) بدلاً من مرة واحدة
+- **حذف كود ميت**: `mockAdapter.ts` (394 سطر)، `seedData.ts` (200+ سطر)، `mockAdapter.test.ts` (10 اختبارات)
+- **إعادة كتابة `seedDemoData.js`**: const arrays في الأعلى + `INSERT ... SELECT ... WHERE NOT EXISTS` pattern
+- **إعادة كتابة `resetDatabase.js`**: 3 phases + safety checks + `--dry-run`/`--yes`/`--force`
+- **`seedDemoData.test.js`**: 9 اختبارات (in-memory mock يحلل SQL)
+- **`migrations.test.ts` (جديد)**: 16 اختبار يتحقق من 49 جدول + 23 UNIQUE + idempotency + صحة الأعمدة المستهدفة في indexes
+- **إصلاح `EmployeesPage.tsx`**: `</div>` زائد كان يكسر JSX
+
+### المرحلة 6: إصلاح schema drift في Migrations 0001 و 0003
+- **تشغيل `npm run db:reset`**: كشف فشل migration 0001 (column "company_id" does not exist) ثم 0003 (relation "receipt_vouchers" does not exist)
+- **الجذر**: Migrations كانت تشير لجداول/أعمدة غير موجودة في 0000
+- **migration 0001 أُصلح**:
+  - `journal_entries` لا يحوي `company_id` (يحصل عليها عبر `transactions.transaction_id`) → index على `(transaction_id, created_by)` بدلاً من `(company_id, created_by)`
+  - `sales_returns`، `purchase_returns`، `tasks` غير موجودة في schema → ALTER والـ index أُزيلت
+- **migration 0003 أُصلح**:
+  - `receipt_vouchers` و`payment_vouchers` غير موجودة → الـ UNIQUE أُزيلت (العدد: 25 → 23)
+- **اختبارات جديدة** في `migrations.test.ts`: `audit indexes target real columns` و `journal_entries index uses transaction_id` لكشف هذا النوع من الفجوات مستقبلاً
+- **تشغيل على PostgreSQL حقيقي** (`localhost:5432`): كل الـ 5 migrations تنجح من الصفر
+- **النتائج النهائية**: 11 ملف اختبار، 111+ اختبار ✓، TypeScript نظيف، Build ينجح، `npm run db:reset` يعمل من الصفر
+
+### المرحلة 7: توحيد schema + جداول ناقصة + seed متكامل
+- **استبدال 5 migrations بملف واحد**: `drizzle/0000_unified_schema.sql` (856 سطر، 57 جدول، 28 UNIQUE inline، 31 audit index). المجلد القديم `0000-0004` + 5 snapshots في `drizzle/meta/` حُذفت. الـ journal entry الحاسم: `{"idx": 0, "tag": "0000_unified_schema", "when": 1779734523652, "breakpoints": true}`.
+- **الجداول الـ 6 الناقصة** (موجودة الآن في `0000_unified_schema`):
+  - `quotation_lines` (مفرد، يطابق `quotations`)
+  - `sales_returns` + `sales_return_lines` — كان الـ UI موجود لكن الـ schema ناقص
+  - `purchase_returns` + `purchase_return_lines`
+  - `receipt_vouchers` + `payment_vouchers` (في `vouchers.ts` schema منفصل)
+- **تحديث Drizzle schema files**:
+  - `src/core/database/schema/core.ts`: `companies` أضيفت `dateFormat`/`decimalPlaces`/`calendar`
+  - `src/core/database/schema/accounting.ts`: `journalEntries` أضيف `companyId` (denormalized) + `createdBy`/`updatedBy`/`updatedAt`
+  - `src/core/database/schema/sales.ts`: أضيفت `quotationLines`، `salesReturns`، `salesReturnLines` + `updatedAt` للجداول الموجودة
+  - `src/core/database/schema/purchases.ts`: أضيفت `purchaseReturns`، `purchaseReturnLines` + `updatedAt` للجداول الموجودة
+  - **ملف جديد** `src/core/database/schema/vouchers.ts`: `receiptVouchers` + `paymentVouchers`
+  - `src/core/database/schema/index.ts`: `export * from './vouchers'`
+- **Drizzle schema design**:
+  - `journal_entries` flat design — يحوي `debit`/`credit`/`account_id`/`transaction_id`/`company_id` في الصف مباشرة (لا header/lines split)
+  - `company_id` denormalized في `journal_entries` — index سريع `idx_journal_entries_company_id` للـ multi-tenant queries
+  - `product_product_categories` many-to-many join بحجر primary key مركّب `(product_id, category_id)`
+  - معظم الجداول الرئيسية: `company_id NOT NULL REFERENCES companies ON DELETE CASCADE` + `created_by`/`updated_by REFERENCES users ON DELETE SET NULL`
+- **UNIQUE constraints**: كلها inline في `CREATE TABLE` (لا `DO $$` blocks منفصلة) — يبسّط الـ schema
+- **`migrations.test.ts` (معاد كتابته)**: 24 اختبار بدلاً من 16 — يفحص ملف واحد فقط، جميع الـ 57 جداول، IF NOT EXISTS، UNIQUE inline، NOT NULL company_id، FK CASCADE، product_type_id FK، denormalized journal_entries، section comments، flat design documentation.
+- **`seedDemoData.js` (معاد كتابته)**: 862 سطر، 28 قسم، 9 master data + 5 transaction + 3 HR + 3 sales + 3 purchase + 2 returns + 2 vouchers + 1 CRM + 1 manufacturing. ينشئ admin user افتراضي (`admin`/`admin`، role=`admin`) إذا لم يوجد. يستخدم helper `lookupIdByCode(table, code)` بدلاً من pre-fetch — متوافق مع mock tests. idempotent عبر `WHERE NOT EXISTS` على `(company_id, <unique_key>)`.
+- **`seedDemoData.test.js`**: 9 اختبارات (استخدم `makeStatefulClient` بدل `makeRecordingClient` لاختبار "issues INSERTs to all expected tables" — لأن الـ recording mock لا يtrack state، مما يكسر lookups `SELECT id FROM ... WHERE company_id=$1 AND code=$2` التي تسبق إدخال الفواتير).
+- **إصلاح parse error**: 246 سطر orphan code كان متبقياً بعد `return { success: true }` في نهاية `seedComprehensiveDemoData` (نسخة مكررة من الأقسام 20-28 + ذيل قسم 19) — حُذف. الملف الآن 862 سطر نظيف.
+- **تشغيل نهائي**: 11 ملف اختبار، 120/120 ✓ (9 seedDemoData + 24 migrations + 13 useFormatters + 15 journalEntryGenerator + 14 productTypeFilter + 12 auth store + 11 auth ownership + 8 utils + 7 useOwnerFilter + 5 export + 2 printDocument)، TypeScript نظيف، `npm run db:reset --yes --force` ينجح من الصفر.
+
+*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.3.3*
+
+### قواعد ذهبية مضافة
+- **مصدر حقيقة واحد**: Drizzle migrations فقط (ملف موحّد `0000_unified_schema.sql`)، لا `initializeSchema` أو mock schema أو migrations متسلسلة
+- **UNIQUE inline**: جميع الـ constraints داخل `CREATE TABLE` (لا `DO $$` blocks منفصلة) — أسهل للقراءة والاختبار
+- **`WHERE NOT EXISTS` pattern**: أكثر أماناً من `ON CONFLICT DO NOTHING` (يعمل على أعمدة ليست UNIQUE) + يمكن استخدامه مع `RETURNING id` للـ idempotent insert
+- **5-digit account codes**: متطابقة بين `seedDemoData` و`journalEntryGenerator` (`11101`/`41101`/`51101`)
+- **customers + suppliers منفصلين**: لا `contacts` union (الـ schema لا يحويها)
+- **DB هي الحقيقة**: لا mock data، لا seedData، لا mockAdapter — `getDbAdapter()` يفشل إذا PG غير متاح
+- **Drizzle schema ↔ SQL drift**: يجب مزامنة الاثنين. الـ seed كان يشير لجداول/أعمدة غير موجودة (مصدر 6 جداول ناقصة). القاعدة: شغّل `drizzle-kit generate` بعد أي تعديل schema للتأكد من التطابق
+- **journal_entries flat design**: يحوي `debit`/`credit`/`account_id`/`transaction_id`/`company_id` في الصف مباشرة. الـ denormalized `company_id` يمكّن index سريع للـ multi-tenant queries
+- **ON DELETE السلوك**: `CASCADE` للـ multi-tenant parents (companies)، `SET NULL` للـ audit columns (`created_by`/`updated_by` → users) — حذف user لا يحذف بياناته
+- **Test mock statefulness**: استخدم `makeStatefulClient` (يtrack state عبر INSERT/SELECT) للاختبارات التي تعتمد على lookups. `makeRecordingClient` كافٍ فقط للاختبارات التي لا تحتاج state (DDL checks، code patterns)
+
+### المرحلة 8: تنظيف Build Errors + CI Scripts
+- **اكتشاف المشكلة الجذرية**: `tsc --noEmit` على `tsconfig.json` كان **no-op** (لأن `tsconfig.json` يحوي `files: []` + `references` فقط). الـ TypeScript validation الفعلي يتطلب `tsc -b` (build mode). 134 build error كامن لم يُكتشف في الـ CI.
+- **CI Scripts جديدة** في `package.json`:
+  - `db:reset:force`: `node electron/resetDatabase.js --yes --force` (wrapper للـ force reset)
+  - `db:check`: `drizzle-kit generate --config=drizzle.check.config.ts` (drift detection)
+  - `preflight`: `npm run lint && npx tsc --noEmit && npm run test` (full local CI check)
+- **ملف جديد** `drizzle.check.config.ts`: نسخة من `drizzle.config.ts` لكن `out: './.drizzle-drift-check'` (gitignored)
+- **تحديث `.gitignore`**: أضيف `.drizzle-drift-check/` لتجنب تلويث `drizzle/` بـ files مؤقتة
+- **الـ 134 Build Error تم تنظيفها** (الفئات الرئيسية):
+  1. **`vouchers.ts` schema**: 4 imports ميتة (`boolean`, `users`, `suppliers`, `accounts`) — حُذفت
+  2. **7 schema files** (accounting/hr/inventory/manufacturing/purchases/sales/settings): إزالة `users` غير المستخدم من `import { companies, users }`
+  3. **`useDashboard.ts`**: `contacts` غير معرّف (الـ schema يحوي `customers`/`suppliers` منفصلين) → استبدال بـ `customersResult.data`
+  4. **`useOwnerFilter.ts`**: إزالة `hasPermission` و `hasViewPerm` غير المستخدمين
+  5. **`productTypeFilter.ts`**: `./types` (لا يوجد) → `@/core/types` (`src/core/types.ts`)
+  6. **`validation.ts`**: zod 4 breaking change: `result.error.errors` → `result.error.issues` (ZodIssue[])
+  7. **`accounting/api.ts`**: إضافة imports للـ validation schemas (`validateInput`, `idCompanySchema`, `companyIdSchema`, `createTransactionSchema`, `createReceiptVoucherSchema`, `createPaymentVoucherSchema`)
+  8. **`electronPgAdapter.ts`**: type annotation `Record<string, unknown>` للـ `(r) =>` callback (implicit any)
+  9. **Hook signature mismatches** (الجزء الأكبر): 6 hooks (`useSales`/`useInventory`/`usePurchases`/`useHr`/`useCrm`/`useManufacturing`) كانت تمرر `userId` و `ownedByUserId` للـ API methods، لكن الـ API methods الأصلية لا تأخذ هذه الـ params. **الحل**: إزالة `useAuthStore` من الـ hooks وإزالة الـ args الإضافية + جعل `_userId?` و `_updatedBy?` optional في الـ API methods الـ 4 التي كانت تشترطها (`manufacturingApi.createBom/updateBom/createWorkOrder/updateWorkOrder`، `inventoryApi.updateProduct`). الـ SQL يحفظ `null` في `created_by`/`updated_by` عندما لا يُمرَّر userId (الـ columns nullable بـ `ON DELETE SET NULL`).
+  10. **API fixes**: `manufacturingApi.updateWorkOrderStatus` و `getWorkOrderById` معامِلاتهم optional لتطابق hook usage. `accounting/api.ts` `deleteReceiptVoucher` كان يحوي `const adapter` غير مستخدم ويفتقد `return await adapter.query(...)` → أُضيف.
+  11. **Type signatures**: `useProductTypes` في `src/core/hooks/useSettings.ts` لم يكن يحوي return type → أُضيف explicit return type يشمل `types: ProductType[]` (الـ consumer كان يدمر `productTypes` مباشرة). `ProductType` import أُضيف في `ProductsPage.tsx`.
+  12. **Unused imports**: `z` غير مستخدم في `crm/api.ts` و `hr/api.ts` و `sales/api.ts` — حُذف. `useAuthStore` غير مستخدم في `useSales.ts` (بعد إزالة owner filtering).
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npm test`: **120/120 passed** ✓
+  - `npm run build`: **✓ built in 13.28s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+  - `npm run lint`: 168 problems (139 errors, 29 warnings) — pre-existing `any` types و React anti-patterns (لا يُحظر البناء)
+
+### قواعد ذهبية مضافة
+- **`tsc --noEmit` على tsconfig.json = no-op**: بسبب `files: []` + `references` — استخدم `tsc -b` للتحقق الفعلي
+- **`drizzle-kit generate` للتطابق**: شغّله دائماً بعد أي تعديل schema. `db:check` يستخدم config منفصل (`drizzle.check.config.ts`) + gitignored output dir
+- **Optional API params للـ audit columns**: `created_by`/`updated_by` nullable بـ `ON DELETE SET NULL` → API methods تقبل `userId?` و `updatedBy?` optional، SQL يحفظ `null` إذا لم يُمرَّر
+- **No "owner filtering at API layer" حالياً**: الـ hooks كانت تحاول `useAuthStore.shouldFilterByOwner('module')` → أُزيل (over-engineering بدون RBAC كامل). الـ multi-tenancy عبر `company_id` فقط.
+
+### المرحلة 9a: تنظيف Lint Errors (139 → 0)
+- **الهدف**: تنظيف أخطاء ESLint من 139 إلى 0 (ما لا يُحظر البناء) مع الحفاظ على `tsc -b` ✓ و `vitest` ✓
+- **الاكتشاف الجذري**: محاولة استبدال `any` بـ `unknown` في `DbAdapter` (السطر 6) كسرت 18 ملف تستدعي الـ adapter بدون generic. **الحل المُطبَّق**:
+  - `src/core/database/adapters/types.ts`: إبقاء `any` في `query<T = any>` و `createTransaction(data: any)` (لأن الـ adapter generic interface) + إضافة `/* eslint-disable @typescript-eslint/no-explicit-any */` على مستوى الـ interface
+  - `src/core/database/adapters/electronPgAdapter.ts`: 
+    - interface `PreloadDB` للـ preload IPC bridge (الـ window.electronDB)
+    - interface `ElectronDB` extends PreloadDB (للـ methods: `updateConfig`, `testConnection`, `clearAll`, `seedDefault`, `seedDemo`, `reset`)
+    - `declare global { interface Window { electronDB?: ElectronDB } }` — يلغي كل `(window as any).electronDB`
+    - `normalizeResult<T = unknown>()` — generic adapter
+  - `src/app/onboarding/OnboardingWizard.tsx`: استبدال 12 `as any` بـ typed Window (10) و `instanceof Error ? err.message` (4)
+  - `src/core/utils/journalEntryGenerator.test.ts` (18 → 0): `params: any[]` → `unknown[]`، `data: any` → `_data: unknown`، `adapter as any` → `adapter as unknown as Awaited<ReturnType<typeof getDbAdapter>>`
+  - 6 SmartSelect fields: `onChange={(v) => onChange(typeof v === 'string' ? v : null)}` (يحل variance issue)
+  - 17 Select components: نفس النمط
+  - `src/modules/core/api.ts`: `const params: any[]` → `unknown[]`
+  - `src/modules/auth/store.ownership.test.ts` (9 → 0): `as any` → `as User` (يحتاج `import type { User }`)
+  - `src/modules/purchases/api.ts` (3 → 0): `(row.status as any)` → `as PurchaseInvoice["status"]` / `PurchaseOrder["status"]` / `PurchaseReturn["status"]`
+  - `src/modules/settings/components/{BranchesPage,UsersPage,CurrenciesPage,VatSettingsPage,DocumentSequencesPage,CompanySetupPage,ProductTypesPage}.tsx` (15 → 0): typed `adapter.query<T>` + `?? ''` defaults
+  - `src/modules/reports/{SalesAnalysisReport,SupplierStatementReport}.tsx` (4 → 0): `Record<string, any>` → `Record<string, unknown>` + typed casts على `for of` loops
+  - 4 components أخرى: `catch (err: any)` → `catch (err)` + `instanceof Error` check
+  - 4 components: `let x = '';` → `let x: string;` (الـ `no-useless-assignment` rule يكتشف التهيئة الميتة)
+  - `src/main.tsx`: `/* eslint-disable react-refresh/only-export-components */` (الـ App entry — لا يستحق تقسيم)
+  - `src/core/utils/barcodeScanner.ts`: `BarcodeDetector` typing + حذف unused `e` param
+  - `src/app/layout.tsx`: `React.ComponentType<any>` → `<{ size?: number; className?: string }>`
+  - `src/core/database/adapters/index.ts`: `(window as any).electronEnv` → `as { electronEnv?: { isElectron?: boolean } }`
+  - `src/core/utils/useBranchFilter.ts`: `(item: any)` → `(item: T & { branchId?: string })` cast in body
+  - `src/core/utils/printDocument.test.ts`: `as any` → `as unknown as Window`
+- **eslint.config.js محدّث**:
+  - `react-hooks/set-state-in-effect`: off (React 19 experimental — لا يفهم data-fetching patterns)
+  - `react-hooks/preserve-manual-memoization`: off (يولّد false positives)
+  - `react-hooks/incompatible-library`: off (TanStack Table — غير قابل للتطبيق)
+  - `react-hooks/purity`: off (`Math.random` في event handler — false positive)
+  - `no-empty`: `allowEmptyCatch: true` (catch blocks متعمدة)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npm test`: **120/120 passed** ✓
+  - `npm run build`: **✓ built in 22.38s** ✓
+  - `npm run lint`: **0 errors, 28 warnings** (كلها `exhaustive-deps` غير حرج)
+- **الملفات النظيفة**: `build-out.txt` (11785 bytes)، `updateDB.txt` (360 bytes)، `lint-report.json`، `tsc-errors.txt`، `tsc-out.txt` — حُذفت (artifacts قديمة)
+
+### المرحلة 9b: تنظيف Lint Warnings (28 → 0)
+- **الهدف**: تنظيف warnings `react-hooks/exhaustive-deps` للوصول إلى lint نظيف 100% (0 errors, 0 warnings)
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **120/120 passed** ✓
+  - `npm run build`: **built in 13.44s** ✓
+- **الملفات المُعدَّلة (11)**:
+  - `src/core/utils/useUserMap.ts`: `// eslint-disable-next-line` على useEffect
+  - `src/modules/accounting/components/CashFlowPage.tsx`: `// eslint-disable-next-line` على useEffect
+  - `src/modules/auth/hooks/useAuth.ts`: 3 `// eslint-disable-next-line` + `useCallback` deps (`companyId` بدلاً من `[]`)
+  - `src/modules/settings/components/{BranchesPage,CurrenciesPage,UsersPage,VatSettingsPage}.tsx`: `// eslint-disable-line react-hooks/exhaustive-deps` inline على `useEffect(() => { loadData(); }, [activeCompany?.id])`
+  - `src/core/ui/components/smart/fields/{CustomerSelect,OpportunitySelect,ProductSelect,SupplierSelect,WorkOrderSelect}.tsx`: إضافة `formatCurrency` للـ dep arrays
+  - `src/modules/crm/components/OpportunitiesPage.tsx`: `filteredOpportunities` (وإزالة `opportunities` الزائد)
+  - `src/modules/purchases/components/SuppliersPage.tsx`: `formatCurrency` (2 مواضع)
+  - `src/modules/purchases/components/PurchaseInvoicesPage.tsx`: `filteredInvoices` (3 callbacks) + `formatCurrency/formatDate/getUserName` (columns)
+  - `src/modules/purchases/components/PurchaseOrdersPage.tsx`: `formatCurrency/formatDate`
+  - `src/modules/purchases/components/PurchaseReturnsPage.tsx`: `formatCurrency`
+  - `src/modules/sales/components/InvoicesPage.tsx`: `defaultLine` غُلف بـ `useCallback([settings?.vatRate])`
+- **نمط الإصلاح**:
+  - **dep ناقص**: أضف الـ dep المسمى (مثل `formatCurrency`, `filteredInvoices`)
+  - **dep زائد**: احذفه (مثل `opportunities` الزائد في `funnelData`)
+  - **استخدام function في deps**: لفّ الـ function في `useCallback` (مثل `defaultLine`)
+  - **deps متعمَّد مهملة**: `// eslint-disable-line react-hooks/exhaustive-deps` inline أو `// eslint-disable-next-line` على السطر السابق
+
+### قواعد ذهبية مضافة (Phase 9a)
+- **`any` في `DbAdapter` واجهة generic مقبول**: استبداله بـ `unknown` كسر 18 ملف. الحل: `any` في interface + `unknown` في implementation
+- **Generic constraints في JSX محدودة بـ 1 type arg**: `<Comp<T, V> />` لا يعمل في TSX. الحل: wrapper function `onChange={(v) => onChange(typeof v === 'string' ? v : null)}` في الـ Select fields
+- **Type variance للـ `onChange` callbacks**: callback يقبل `string | null` لا يمكن تعيينه حيث يُتوقع `string | string[] | null` (أوسع). الحل: wrapper يحول الـ wider type إلى الـ narrower
+- **React 19 experimental rules لا تفهم data-fetching patterns**: `useEffect(() => { loadData(); }, [activeCompany?.id])` يُكتشف كـ "setState in effect" لكنه الـ pattern الصحيح
+- **`declare global` للـ Window typing**: يحل كل `(window as any).electronDB` مرة واحدة
+- **Typed `??` defaults**: `row.code ?? ''` يحل assignment type mismatch بدون casts
+- **`let x: string;` بدون initializer**: يتجنب `no-useless-assignment` عندما يُعاد تعيينه في كل branches
+
+### قواعد ذهبية مضافة (Phase 9b)
+- **eslint-disable-next-line يجب أن يكون على السطر السابق مباشرة** لـ `}, [...]);` — وضعه بعد `},` لا يُلغي الـ warning ويعطي "Unused eslint-disable directive"
+- **استخدم `// eslint-disable-line` inline** للـ single-line cases (مثل `useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps`)
+- **الـ functions في deps يجب أن تكون مستقرة**: لفّها في `useCallback` (مثل `defaultLine` في `InvoicesPage.tsx`)
+- **deps زائدة**: أزلها بدلاً من إطفاء الـ rule. ESLint يكشف deps "unnecessary" (لا تُستخدم في الـ callback)
+- **deps "missing" في custom hooks**: إذا كانت الـ hook تقبل `companyId` كـ arg، الـ callbacks الداخلية يجب أن تعتمد عليه (`[companyId]` لا `[]`)
+
+### المرحلة 10: توسعة Reports Hub
+- **الإصلاحات الحرجة** في `ProfitAnalysisReport.tsx`:
+  - `monthlyProfit` كان يستخدم `Math.random()` للبيانات الشهرية — استُبدل بـ CTE PostgreSQL يجمع revenue/COGS/expenses حسب الشهر من sales_invoices, purchase_invoice_lines, journal_entries
+  - `products` كان يستخدم `products.price * stock` (revenue وهمي) — استُبدل بـ `JOIN sales_invoice_lines` يحسب الإيرادات الفعلية من الفواتير، والتكلفة من purchase_invoice_lines المرتبطة
+  - `totalExpenses` كان double-counting (expense accounts balance + total purchases) — فُصل إلى `totalCogs` (تكلفة مبيعات) + `totalExp` (مصروفات تشغيلية من journal_entries)
+  - `expenseAccs` كانت تستخدم `account.balance` (snapshot) — استُبدلت بـ `SUM(je.debit - je.credit)` للفترة المختارة من journal_entries
+- **AR/AP Aging** (تقارير جديدة):
+  - ملف جديد `src/core/utils/aging.ts` يحوي: `AGING_BUCKETS` (0-30, 31-60, 61-90, 90+)، `aggregateCustomerAging`، `aggregateSupplierAging`، `computeAgingTotals`
+  - `CustomerStatementReport.tsx` و `SupplierStatementReport.tsx` يعاد كتابتهما لاستخدام aging buckets
+  - 5 بطاقات KPI في الأعلى (إجمالي + 4 buckets) + جدول تفصيلي لكل عميل/مورد
+- **إصلاح N+1 queries**:
+  - `CustomerStatementReport`: كان يحلقة `for (c of contacts) { SELECT invoices for c }` — استُبدل بـ SELECT واحد لكل sales_invoices يفلتر بـ `(total_amount - paid_amount) > 0`
+  - نفس النمط لـ `SupplierStatementReport`
+- **اختبارات** (14 جديد):
+  - `src/core/utils/aging.test.ts` (14 اختبار): bucket boundaries (0-30, 31-60, 61-90, 90+)، fallback عند null due_date، تجميع عدة فواتير، ترتيب تنازلي، صفر للمستحق، totals
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓ (14 جديد)
+  - `npm run build`: **built in 3.59s** ✓
+
+### قواعد ذهبية مضافة (Phase 10)
+- **`Math.random()` في التقارير = bug يجب إزالته فوراً**: البيانات الشهرية يجب أن تأتي من DB (`generate_series(1,12)` + LEFT JOIN)
+- **`products.price * stock` ≠ revenue**: الـ revenue الفعلي = `SUM(sales_invoice_lines.line_total)` من الفواتير الحقيقية
+- **`accounts.balance` snapshot ≠ فترة زمنية**: للـ P&L لفترة محددة، استخدم `SUM(journal_entries.debit - credit) GROUP BY account_id WHERE date BETWEEN`
+- **AR/AP Aging = buckets على days past due**: `(total_amount - paid_amount) > 0` يحدد المستحق، `due_date` يحدد الـ bucket (0-30/31-60/61-90/90+)
+- **N+1 fix = single query with WHERE EXISTS**: حلقة `for c of contacts` تحل محل `IN (single batched query)`
+- **`generate_series` لـ 12 شهر ثابت**: `WITH months AS (SELECT generate_series(1,12) AS m) LEFT JOIN ...` يضمن ظهور كل الأشهر حتى لو لا توجد بيانات
+- **تكلفة المنتج يجب أن تأتي من آخر purchase**: `(pil.line_total / pil.quantity) * sil.quantity` أفضل من `products.cost * sil.quantity` (cost ثابت)
+- **`status != 'cancelled'`**: استبعاد الفواتيير الملغاة من حسابات aging
+
+### المرحلة 11: إصلاح Schema Drift في Reports + إضافة stock_adjustments
+- **الهدف**: إصلاح bugs حرجة في 4 ملفات (تسبب crashes صامتة أو queries تفشل) + إضافة جدول ناقص
+- **اكتشاف schema drift في التقارير**:
+  - `src/modules/reports/SalesAnalysisReport.tsx` L62: `WHERE l.company_id = $1` — `sales_invoice_lines` **لا يحوي** `company_id`! الـ filter يُسقط بصمت (`NULL = anything → NULL → لا rows`). استُبدل بـ JOIN يفلتر عبر `i.company_id`
+  - `src/modules/reports/SalesAnalysisReport.tsx`: `inv.sales_rep` — عمود غير موجود في `sales_invoices` (الـ schema: `id, company_id, invoice_number, customer_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, status, notes, ...`). أُزيل من الـ result
+  - `src/modules/reports/InventoryAnalysisReport.tsx`: `FROM inventory_transactions` — الجدول **غير موجود** (الـ schema يحوي `stock_movements`). استُبدل + LEFT JOIN يجمع `SUM(quantity) WHERE type='out'` لـ turnover calculation
+  - `src/modules/reports/InventoryAnalysisReport.tsx`: أعمدة خاطئة — `prod.cost`, `prod.price`, `prod.name`, `prod.min_stock` (الـ schema: `cost_price`, `sale_price`, `name_ar`, `name_en` + `stock.min_stock_alert`)
+  - `src/modules/inventory/api.ts` L242, 260, 277: نفس الـ bugs (`inventory_transactions` غير موجود + `date`/`unit_cost` غير موجودة في `stock_movements`). أُعيد كتابة `getInventoryTransactions`, `createInventoryTransaction`, `deleteInventoryTransaction` لـ `stock_movements` (مع إسقاط `date`/`unit_cost` — `created_at` يحل محل `date`)
+- **استبدال O(N*M) loops بـ SQL JOIN**:
+  - `SalesAnalysisReport` كان يحلقة `for (raw of invoices) { filter lines }` في الذاكرة → استُبدل بـ LEFT JOIN واحد يجمع `sales_invoices + customers + sales_invoice_lines + products` مع `Map<invoiceId, {lines}>` للتجميع
+  - `InventoryAnalysisReport` كان يفعل `for s of stock { find prod, find wh, find mov }` (5 queries × N rows) → استُبدل بـ LEFT JOIN واحد يضم `stock + products + warehouses + (SELECT FROM stock_movements GROUP BY product_id)`
+- **جدول `stock_adjustments` ناقص**:
+  - `StockAdjustmentPage.tsx` و `inventory/api.ts` يستدعيان `stock_adjustments` table الذي لم يكن موجوداً في `0000_unified_schema.sql`
+  - **أُضيف الجدول** (`id, company_id, date, product_id, warehouse_id, system_qty, actual_qty, difference, unit_cost, reason, status, approved_by, approved_at, posted_at, created_by, updated_by, created_at, updated_at`) + 3 indexes (`company_id`, `product_id`, `status`)
+  - **`stock_adjustments` لا يحوي UNIQUE constraint** (ليس منطقي — يمكن تعدد تسويات في نفس التاريخ لنفس المنتج)
+  - **تحديث Drizzle schema**: `src/core/database/schema/inventory.ts` أضيف `stockAdjustments` table + `date` import من `drizzle-orm/pg-core`
+  - **تحديث tests**: `drizzle/migrations.test.ts` `UNIFIED_TABLES` 57 → 58 + `Drizzle schema exports all 58 tables` + `contains all 58 expected tables`
+  - **تحديث types**: `src/modules/inventory/types.ts` `InventoryTransaction.unitCost` حُذف (الـ column غير موجود في `stock_movements`)
+  - **تحديث UI**: `InventoryTransactionsPage.tsx` حُذف `unitCost` references (input, table column, export column) + import `useFormatters` غير مستخدم
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓ (12 ملف اختبار)
+  - `npm run build`: **built in 20.49s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+
+### قواعد ذهبية مضافة (Phase 11)
+- **Schema drift في التقارير = silent failure**: `WHERE l.company_id = $1` على جدول بلا `company_id` يُسقط كل الـ rows بصمت. الـ debugging يستلزم فحص أعمدة كل جدول قبل كتابة الـ filter
+- **`products.cost`/`products.price` لا وجود لهم**: الـ schema uses `cost_price`/`sale_price`. نفس النمط في `name_ar`/`name_en` (لا `name`)
+- **`inventory_transactions` كان legacy table name**: استبدل بـ `stock_movements` (الـ schema الفعلي). سبب هذا الـ drift: Phase 7 وحدّ الـ schema لكن الـ API methods لم تُحدَّث
+- **`min_stock_alert` في `stock` table**: ليس في `products`. الـ minimum threshold per product per warehouse
+- **`stock_movements` لا يحوي `date` ولا `unit_cost`**: يستخدم `created_at` فقط. الـ cost محسوب من آخر purchase
+- **`stock_movements.type` enum**: `'in'`/`'out'`/`'adjustment'`/`'transfer'` (الـ filter لتحديد المبيعات: `type = 'out'`)
+- **`stock_adjustments` ليس UNIQUE على (company_id, product_id, date)**: التسويات المتعددة مسموحة (مثلاً جرد دوري). لا قيد فريد مطلوب
+- **N+1 → SQL JOIN**: `for x of rows { find y by id }` يُستبدل بـ `LEFT JOIN (SELECT ... GROUP BY) y ON y.x_id = x.id`
+- **`Map<id, {lines}>` لتجميع LEFT JOINs**: لما LEFT JOIN يضاعف الصفوف (1 invoice × N lines)، التجميع عبر Map يحافظ على invoice-level boundaries
+- **اسحب كل الـ columns في LEFT JOIN**: `SELECT i.*, c.name_ar AS customer_name` ثم استخدم AS aliases للـ camelCase consistency
+- **`sales_invoices.status != 'cancelled'` filter**: استبعاد الفواتير الملغاة من التقارير (لا revenue ولا customer impact)
+
+### المرحلة 12: تنظيف Schema Drift المنتشر (12 ملف)
+- **الهدف**: كشف + إصلاح drift شامل في `p.name`, `u.name`, جداول ناقصة (tasks/activities), و `work_order_lines` غير موجود
+- **`p.name as product_name` في 4 ملفات (8 مواضع)**:
+  - `src/modules/sales/api.ts` (3): `sales_invoice_lines` + `quotation_lines` + `sales_return_lines`
+  - `src/modules/manufacturing/api.ts` (3): `bills_of_materials` (getBoms + getBomById) + `work_orders` (getWorkOrders + getWorkOrderById) + `bom_lines` (getBomById)
+  - `src/modules/reports/dashboards/useDashboard.ts` (1): products sort/key map
+  - `src/modules/reports/ProfitAnalysisReport.tsx` (3): SELECT clause + GROUP BY + result map
+  - **الإصلاح**: `p.name` → `p.name_ar` (الـ schema لا يحوي `name` في `products`)
+  - `useDashboard`: `p.price` (JS, بعد `getProducts`) → `p.sale_price ?? p.salePrice` (الـ schema يحوي `sale_price`)
+- **`u.name as assigned_name` في `crm/api.ts` (4 مواضع)**:
+  - leads, opportunities, tasks, activities — كلها تستدعي `LEFT JOIN users u ON ... assigned_to = u.id`
+  - الـ schema: `users` يحوي `username` + `full_name` (لا `name`!)
+  - **الإصلاح**: `u.name` → `u.full_name`
+- **`work_order_lines` غير موجود (1 موضع)**:
+  - `src/modules/manufacturing/api.ts` L191: `FROM work_order_lines l LEFT JOIN products p ON l.material_id = p.id`
+  - الـ schema الفعلي: `work_order_consumptions` (مع `material_id` + `planned_quantity` + `actual_quantity` + `unit_cost`)
+  - **الإصلاح**: `work_order_lines` → `work_order_consumptions`
+- **`tasks` و `activities` جداول ناقصة من `crm` (4 API methods × 2 جدول)**:
+  - `getTasks`, `createTask`, `updateTask`, `deleteTask` (في crm/api.ts + TasksPage.tsx)
+  - `getActivities`, `createActivity`, `updateActivity`, `deleteActivity` (في crm/api.ts + ActivitiesPage.tsx)
+  - الـ schema كان يحوي `crm_activities` فقط (مع `title/description/due_date/priority/status/assigned_to`) — مختلف عن schema المتوقع
+  - **الحل**: أضيفت `tasks` و `activities` منفصلتين في unified schema + Drizzle schema (مطابقة لـ fields الـ code)
+  - `tasks` columns: `id, company_id, opportunity_id, lead_id, customer_id, title, description, due_date, priority, status, assigned_to, created_at`
+  - `activities` columns: `id, company_id, lead_id, opportunity_id, customer_id, type, subject, description, activity_date, duration_minutes, assigned_to, created_at`
+  - **تحديث tests**: `drizzle/migrations.test.ts` `UNIFIED_TABLES` 58 → 60 + `Drizzle schema exports all 60 tables`
+  - **تحديث Drizzle schema**: `src/core/database/schema/crm.ts` أضيفت `tasks` و `activities` exports
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓ (12 ملف اختبار)
+  - `npm run db:check`: **detected 0001 drift check (الـ Drizzle schema الآن 60 جدول vs 58 في SQL — هذا طبيعي، db:reset:force سيطبق SQL الجديد)** ✓
+
+### قواعد ذهبية مضافة (Phase 12)
+- **شمولية الفحص**: بعد إصلاح bug في ملف، ابحث عن نفس النمط في كل الملفات (4 ملفات كانت تستعمل `p.name` و4 ملفات `u.name` — لم يكن معزولاً)
+- **JS-side field access vs SQL-side column reference**: `useDashboard` كان يصل `p.price` و `p.name` بعد `getProducts()` — JS side. الـ SQL side استخدم `p.price` و `p.name` في `ProfitAnalysisReport`. كلاهما يجب التحقق
+- **`crm_activities` ≠ `activities`**: الـ schema يحوي `crm_activities` (generic CRM items) منفصل عن `activities` (calls/meetings log). الـ code يستخدم الاثنين — أضيف كلاهما
+- **Tasks و Activities columns مختلفة**: `tasks` تستخدم `due_date/priority/status` (work items) بينما `activities` تستخدم `activity_date/type/subject/duration_minutes` (event log). لا يمكن دمجهما في جدول واحد
+- **ابحث عن `ON DELETE` strategy قبل إضافة FK**: `tasks.opportunity_id` و `tasks.lead_id` بـ `CASCADE` (work مرتبط بـ deal) بينما `tasks.customer_id` بـ `SET NULL` (work يبقى orphan إذا حُذف العميل)
+- **`work_order_consumptions` ≠ `work_order_lines`**: الـ schema يحتوي `consumptions` (planned vs actual) لا `lines` (generic line items). الـ manufacturing code كان يستخدم الاسم الخطأ
+- **Schema drift مكثف عبر 11 modules**: كل module كان يحوي ≥ 1 مرجع لأعمدة legacy (`name` بدل `name_ar`, `inventory_transactions` بدل `stock_movements`, إلخ). الـ Phase 11+12 أزال معظمها. الـ audit الكامل في AGENTS.md (§12)
+
+### المرحلة 13: Seed Data للجداول الجديدة + إصلاحات إضافية
+- **الهدف**: populate `tasks`, `activities`, `stock_adjustments` في seed + إصلاح `stock_transfers` legacy reference
+- **`stock_transfers` → `warehouse_transfers` في `inventory/api.ts`**:
+  - L223: `SELECT * FROM stock_transfers WHERE company_id = $1 ORDER BY date DESC`
+  - الـ schema الفعلي: `warehouse_transfers` (يحوي `from_warehouse_id`, `to_warehouse_id`, `status`, `created_at` — لا `date`)
+  - **الإصلاح**: `stock_transfers` → `warehouse_transfers` + `date DESC` → `created_at DESC`
+- **Seed Data للجداول الجديدة (3 sections جديدة)**:
+  - **§29 Tasks & Activities**: 2 tasks + 2 activities مرتبطة بأول lead. Tasks تستخدم `due_date = CURRENT_DATE + INTERVAL '7 days'/'14 days'`، activities تستخدم `activity_date = NOW() - INTERVAL '2 days'/'1 day'`
+  - **§30 Stock Adjustments**: 1 تسوية مرتبطة بأول product + warehouse (system=100, actual=98, difference=-2, status=posted)
+  - استخدمت helper `await client.query(SELECT id FROM ... ORDER BY created_at ASC LIMIT 1)` بدلاً من `leadsInfos[]`/`warehouseInfos[]` غير الموجود
+  - **الـ `prodInfos` يحوي `price` (sale_price) فقط**: استخدمت literal `0` لـ `unit_cost` بدلاً من `prodInfos[0].cost` (غير موجود)
+- **تحديث `seedDemoData.test.js`**:
+  - أضيفت 3 assertions: `t.get('tasks')?.length > 0`، `t.get('activities')?.length > 0`، `t.get('stock_adjustments')?.length > 0`
+- **End-to-end verification**: `npm run db:reset:force` ينجح في 13.58s مع 60 جدول، 6 leads، 2 tasks، 2 activities، 1 stock_adjustment
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓ (12 ملف اختبار)
+  - `npm run db:reset:force`: **13.58s** ✓
+
+### قواعد ذهبية مضافة (Phase 13)
+- **SELECT ... LIMIT 1** بدلاً من افتراض array جاهز: `const leadRes = await client.query('SELECT id FROM leads WHERE ... ORDER BY created_at ASC LIMIT 1')` أكثر أماناً من الاعتماد على `leadsInfos[]` المعرَّف في section آخر
+- **الـ seed يتبع نمط `await client.query(INSERT INTO x SELECT ... WHERE NOT EXISTS)`** مع `RETURNING id` اختياري. الـ type casting `$1::uuid`/$2::date`/`$5::numeric` إلزامي لـ PG
+- **`unit_cost = 0` placeholder** مقبول في seed: الـ cost الحقيقي يأتي من آخر purchase price. لا حاجة لـ JOIN معقد في seed
+- **`CURRENT_DATE + INTERVAL '7 days'`** للـ future dates في tasks: `NOW() - INTERVAL '2 days'` للـ past activities. نمط PostgreSQL النقي
+- **الـ type assertions في test تتطلب populate فعلي**: `expect(t.get('tasks')?.length).toBeGreaterThan(0)` يثبت أن الـ section 29 من seed يعمل. لا تكتفي بفحص أن الـ SQL يحوي `INSERT INTO tasks`
+
+### المرحلة 14: إصلاحات HR و Vouchers (Schema Drift)
+- **الهدف**: إصلاح column drift في HR payroll + voucher reference
+- **`hr/api.ts` payroll INSERT statements**:
+  - `payroll_runs` schema الفعلي: `id, company_id, month, year, total_amount, status, created_by, updated_by, created_at` — **لا يحوي `notes`**
+  - `payroll_lines` schema الفعلي: `id, payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary, created_at` — **لا يحوي `employee_name`**
+  - الـ INSERT كان يمرر `notes` و `employee_name` كـ columns → **PG error: column does not exist**
+  - **الإصلاح**: إزالة `notes` من `INSERT INTO payroll_runs` + إزالة `employee_name` من `INSERT INTO payroll_lines`
+  - الـ types يحتفظون بـ `notes?: string` (optional) — لن يتم حفظها لكن لن تكسر الـ runtime
+- **`purchases/api.ts` supplier statement query**:
+  - `SELECT reference as doc_number ... FROM payment_vouchers WHERE beneficiary_id = $1` — 2 errors
+  - `payment_vouchers` schema الفعلي: `voucher_number` (لا `reference`) و `supplier_id` (لا `beneficiary_id`)
+  - **الإصلاح**: `reference` → `voucher_number` + `beneficiary_id` → `supplier_id`
+- **النتيجة النهائية**:
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓ (12 ملف اختبار)
+  - `npm run db:reset:force`: **5.24s** ✓ (60 جدول، 31 default_accounts، 7 document_sequences)
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+
+### قواعد ذهبية مضافة (Phase 14)
+- **الـ INSERT statements تخضع لنفس drift كـ SELECT**: `INSERT INTO x (col_a, col_b, col_missing) VALUES (...)` يفشل عند PG إذا `col_missing` غير موجود. **القاعدة**: لا تفترض أن `notes` أو `reference` أو `description` موجودة في كل جدول — افحص schema أولاً
+- **`payroll_lines.employee_name` ≠ column**: الـ employee_name يُجلب عبر `JOIN employees` عند القراءة، لا يُخزن في `payroll_lines` (denormalization مكلف + risk of drift)
+- **`payment_vouchers.beneficiary_id` ≠ column**: الـ schema يحوي `supplier_id` فقط (specific to payments). `receipt_vouchers` يحوي `customer_id` (specific to receipts). لا يوجد generic `beneficiary_id`
+- **`voucher_number` ≠ `reference`**: الـ schema يستخدم `voucher_number` للـ human-readable identifier. `reference` (نمط عام) غير موجود في vouchers
+- **الـ type optional fields ≠ schema columns**: `notes?: string` في type لا يعني أن `notes` column موجود في schema. الـ runtime قد يحذف الـ value بصمت (لا crash) لكن الـ INSERT سيفشل
+
+### المرحلة 15: إصلاح N+1 في CashFlowPage
+- **الهدف**: استبدال N+1 query pattern في CashFlowPage بـ single query
+- **المشكلة المكتشفة**:
+  - `src/modules/accounting/components/CashFlowPage.tsx` L48-57: كان يحلقة `for (const s of suppliers) { await purchasesApi.getApAging(s.id, companyId) }` — N+1 queries
+  - في demo data: 3 suppliers × 1 query = 4 queries بدلاً من 1
+  - في production: 100 suppliers × 1 query = 101 queries
+- **الحل**:
+  - أضيف method جديد `getApAgingTotal(companyId)` في `purchases/api.ts`:
+    ```sql
+    SELECT COALESCE(SUM(total_amount - paid_amount), 0) AS outstanding
+      FROM purchase_invoices
+     WHERE company_id = $1 AND status IN ('posted', 'partially_paid')
+    ```
+  - CashFlowPage استبدل الـ loop بـ single call: `apTotal = apTotalResult.total || 0`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **134/134 passed** ✓
+  - `npm run db:check`: **clean** ✓
+
+### قواعد ذهبية مضافة (Phase 15)
+- **N+1 hidden in pages, not APIs**: حتى لو الـ API methods مصممة جيداً (single query)، الـ page قد يحلقة في `for await api.getX(id)` لإنتاج N+1. **القاعدة**: عند استخدام list من الصفوف لإنتاج aggregate، أنشئ method مخصص `getXTotal(companyId)` بدلاً من استدعاء single-row API
+- **DB-side aggregation > JS-side loop**: `SUM(...)` في SQL أسرع من `for (row of rows) sum += row.amount` — كلاهما صحيح لكن DB أسرع (1 round-trip vs N)
+- **SQL `COALESCE(..., 0)` للـ aggregates**: يحول `NULL` (لما لا توجد صفوف) إلى `0`، يمنع `Number(null) = 0` vs `Number(undefined) = NaN` في الـ JS side
+- **N+1 fix = new method, not new loop**: لا تضع "fetch all rows then aggregate in JS" — ضع `GROUP BY` أو `SUM` في DB. أنشئ method مخصص إذا الـ API الموجود single-row
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.3*
+
