@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { crmApi } from '../api';
-import { useAuthStore } from '@/modules/auth/store';
 import type { Lead, Opportunity, Task, Activity } from '../types';
 
 export function useLeads(companyId: string) {
@@ -11,9 +10,7 @@ export function useLeads(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-      const res = await crmApi.getLeads(companyId, ownedByUserId);
+      const res = await crmApi.getLeads(companyId);
       if (res.success && res.data) setLeads(res.data);
       setIsLoading(false);
     }
@@ -23,25 +20,19 @@ export function useLeads(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const auth = useAuthStore.getState();
-    const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-    const res = await crmApi.getLeads(companyId, ownedByUserId);
+    const res = await crmApi.getLeads(companyId);
     if (res.success && res.data) setLeads(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Lead, 'id' | 'createdAt'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.createLead(data, userId);
+    const res = await crmApi.createLead(data);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Lead, 'id' | 'companyId'>>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.updateLead(id, companyId, userId, data);
+    const res = await crmApi.updateLead(id, companyId, data);
     if (res.success) await refresh();
     return res;
   }, [refresh, companyId]);
@@ -69,9 +60,7 @@ export function useOpportunities(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-      const res = await crmApi.getOpportunities(companyId, ownedByUserId);
+      const res = await crmApi.getOpportunities(companyId);
       if (res.success && res.data) setOpportunities(res.data);
       setIsLoading(false);
     }
@@ -81,25 +70,19 @@ export function useOpportunities(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const auth = useAuthStore.getState();
-    const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-    const res = await crmApi.getOpportunities(companyId, ownedByUserId);
+    const res = await crmApi.getOpportunities(companyId);
     if (res.success && res.data) setOpportunities(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Opportunity, 'id' | 'createdAt'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.createOpportunity(data, userId);
+    const res = await crmApi.createOpportunity(data);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Opportunity, 'id' | 'companyId'>>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.updateOpportunity(id, companyId, userId, data);
+    const res = await crmApi.updateOpportunity(id, companyId, data);
     if (res.success) await refresh();
     return res;
   }, [refresh, companyId]);
@@ -121,9 +104,7 @@ export function useTasks(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-      const res = await crmApi.getTasks(companyId, ownedByUserId);
+      const res = await crmApi.getTasks(companyId);
       if (res.success && res.data) setTasks(res.data);
       setIsLoading(false);
     }
@@ -133,25 +114,19 @@ export function useTasks(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const auth = useAuthStore.getState();
-    const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-    const res = await crmApi.getTasks(companyId, ownedByUserId);
+    const res = await crmApi.getTasks(companyId);
     if (res.success && res.data) setTasks(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Task, 'id' | 'createdAt'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.createTask(data, userId);
+    const res = await crmApi.createTask(data);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Task, 'id' | 'companyId'>>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.updateTask(id, companyId, userId, data);
+    const res = await crmApi.updateTask(id, companyId, data);
     if (res.success) await refresh();
     return res;
   }, [refresh, companyId]);
@@ -173,9 +148,7 @@ export function useActivities(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-      const res = await crmApi.getActivities(companyId, ownedByUserId);
+      const res = await crmApi.getActivities(companyId);
       if (res.success && res.data) setActivities(res.data);
       setIsLoading(false);
     }
@@ -185,25 +158,19 @@ export function useActivities(companyId: string) {
   const refresh = useCallback(async () => {
     if (!companyId) return;
     setIsLoading(true);
-    const auth = useAuthStore.getState();
-    const ownedByUserId = auth.shouldFilterByOwner('crm') ? auth.user?.id : undefined;
-    const res = await crmApi.getActivities(companyId, ownedByUserId);
+    const res = await crmApi.getActivities(companyId);
     if (res.success && res.data) setActivities(res.data);
     setIsLoading(false);
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Activity, 'id' | 'createdAt'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.createActivity(data, userId);
+    const res = await crmApi.createActivity(data);
     if (res.success) await refresh();
     return res;
   }, [refresh]);
 
   const update = useCallback(async (id: string, data: Partial<Omit<Activity, 'id' | 'companyId'>>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const res = await crmApi.updateActivity(id, companyId, userId, data);
+    const res = await crmApi.updateActivity(id, companyId, data);
     if (res.success) await refresh();
     return res;
   }, [refresh, companyId]);

@@ -63,6 +63,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
       setIsLoading(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, filters?.search, filters?.role, filters?.branchId, filters?.isActive]);
 
   const create = useCallback(async (data: Omit<User, 'id'>) => {
@@ -79,7 +80,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await authApi.deleteUser(companyId, id);
@@ -87,7 +88,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
       setUsers((prev) => prev.filter((u) => u.id !== id));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   const resetPassword = useCallback(async (id: string, newPassword: string) => {
     return authApi.resetPassword(id, newPassword);
@@ -99,7 +100,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, isActive } : u)));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   return { users, isLoading, create, update, remove, resetPassword, toggleActive };
 }
@@ -119,6 +120,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
       setIsLoading(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, filters?.search]);
 
   const create = useCallback(async (data: Omit<Role, 'id'>) => {
@@ -135,7 +137,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
       setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...data } : r)));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await authApi.deleteRole(companyId, id);
@@ -143,7 +145,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
       setRoles((prev) => prev.filter((r) => r.id !== id));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   return { roles, isLoading, create, update, remove };
 }
@@ -163,6 +165,7 @@ export function useAuditLogs(companyId: string, filters?: AuditLogFilters) {
       setIsLoading(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, filters?.userId, filters?.tableName, filters?.action, filters?.fromDate, filters?.toDate]);
 
   return { logs, isLoading };

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { inventoryApi } from '../api';
-import { useAuthStore } from '@/modules/auth/store';
 import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTransaction, StockAdjustment, ProductCategory } from '../types';
 
 export function useProducts(companyId: string) {
@@ -11,9 +10,7 @@ export function useProducts(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getProducts(companyId, ownedByUserId);
+      const result = await inventoryApi.getProducts(companyId);
       if (result.success && result.data) {
         setProducts(result.data);
       }
@@ -23,9 +20,7 @@ export function useProducts(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Product, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createProduct(data, userId);
+    const result = await inventoryApi.createProduct(data);
     if (result.success && result.id) {
       setProducts(prev => [...prev, { ...data, id: result.id! }]);
     }
@@ -33,9 +28,7 @@ export function useProducts(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Product>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.updateProduct(id, companyId, userId, { ...data, updatedBy: userId });
+    const result = await inventoryApi.updateProduct(id, companyId, undefined, data);
     if (result.success) {
       setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
     }
@@ -61,9 +54,7 @@ export function useWarehouses(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getWarehouses(companyId, ownedByUserId);
+      const result = await inventoryApi.getWarehouses(companyId);
       if (result.success && result.data) {
         setWarehouses(result.data);
       }
@@ -73,9 +64,7 @@ export function useWarehouses(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Warehouse, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createWarehouse(data, userId);
+    const result = await inventoryApi.createWarehouse(data);
     if (result.success && result.id) {
       setWarehouses(prev => [...prev, { ...data, id: result.id! }]);
     }
@@ -83,9 +72,7 @@ export function useWarehouses(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Warehouse>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.updateWarehouse(id, companyId, userId, data);
+    const result = await inventoryApi.updateWarehouse(id, companyId, data);
     if (result.success) {
       setWarehouses(prev => prev.map(w => w.id === id ? { ...w, ...data } : w));
     }
@@ -111,9 +98,7 @@ export function useStock(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getStock(companyId, ownedByUserId);
+      const result = await inventoryApi.getStock(companyId);
       if (result.success && result.data) {
         setStock(result.data);
       }
@@ -133,9 +118,7 @@ export function useStockDetailed(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getStockDetailed(companyId, ownedByUserId);
+      const result = await inventoryApi.getStockDetailed(companyId);
       if (result.success && result.data) {
         setStock(result.data);
       }
@@ -155,9 +138,7 @@ export function useStockTransfers(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getStockTransfers(companyId, ownedByUserId);
+      const result = await inventoryApi.getStockTransfers(companyId);
       if (result.success && result.data) {
         setTransfers(result.data);
       }
@@ -167,9 +148,7 @@ export function useStockTransfers(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<StockTransfer, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createStockTransfer(data, userId);
+    const result = await inventoryApi.createStockTransfer(data);
     if (result.success && result.id) {
       setTransfers(prev => [{ ...data, id: result.id! }, ...prev]);
     }
@@ -187,9 +166,7 @@ export function useInventoryTransactions(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getInventoryTransactions(companyId, ownedByUserId);
+      const result = await inventoryApi.getInventoryTransactions(companyId);
       if (result.success && result.data) {
         setTransactions(result.data);
       }
@@ -199,9 +176,7 @@ export function useInventoryTransactions(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<InventoryTransaction, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createInventoryTransaction(data, userId);
+    const result = await inventoryApi.createInventoryTransaction(data);
     if (result.success && result.id) {
       setTransactions(prev => [{ ...data, id: result.id! }, ...prev]);
     }
@@ -227,9 +202,7 @@ export function useStockAdjustments(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getStockAdjustments(companyId, ownedByUserId);
+      const result = await inventoryApi.getStockAdjustments(companyId);
       if (result.success && result.data) {
         setAdjustments(result.data);
       }
@@ -239,9 +212,7 @@ export function useStockAdjustments(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<StockAdjustment, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createStockAdjustment(data, userId);
+    const result = await inventoryApi.createStockAdjustment(data);
     if (result.success && result.id) {
       setAdjustments(prev => [{ ...data, id: result.id! }, ...prev]);
     }
@@ -275,9 +246,7 @@ export function useProductCategories(companyId: string) {
     if (!companyId) return;
     async function load() {
       setIsLoading(true);
-      const auth = useAuthStore.getState();
-      const ownedByUserId = auth.shouldFilterByOwner('inventory') ? auth.user?.id : undefined;
-      const result = await inventoryApi.getCategories(companyId, ownedByUserId);
+      const result = await inventoryApi.getCategories(companyId);
       if (result.success && result.data) {
         setCategories(result.data);
       }
@@ -287,9 +256,7 @@ export function useProductCategories(companyId: string) {
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<ProductCategory, 'id'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.createProductCategory(data, userId);
+    const result = await inventoryApi.createProductCategory(data);
     if (result.success && result.id) {
       setCategories(prev => [...prev, { ...data, id: result.id! }]);
     }
@@ -297,9 +264,7 @@ export function useProductCategories(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<ProductCategory>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) return { success: false, error: 'User not authenticated' };
-    const result = await inventoryApi.updateProductCategory(id, companyId, userId, data);
+    const result = await inventoryApi.updateProductCategory(id, companyId, data);
     if (result.success) {
       setCategories(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     }
