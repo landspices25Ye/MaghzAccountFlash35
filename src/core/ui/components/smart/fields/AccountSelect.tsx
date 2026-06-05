@@ -20,8 +20,18 @@ export const AccountSelect: React.FC<AccountSelectProps> = ({
 }) => {
   const { accounts, isLoading } = useAccounts(companyId);
 
+  const flattenedAccounts = useMemo(() => {
+    const flatten = (items: typeof accounts): typeof accounts => {
+      return items.flatMap(item => [
+        item,
+        ...(item.children ? flatten(item.children) : []),
+      ]);
+    };
+    return flatten(accounts);
+  }, [accounts]);
+
   const options = useMemo(() => {
-    let filtered = accounts;
+    let filtered = flattenedAccounts;
     if (filterType !== 'all') {
       filtered = filtered.filter(a => a.type === filterType);
     }
@@ -34,7 +44,7 @@ export const AccountSelect: React.FC<AccountSelectProps> = ({
       disabled: !a.isActive,
       ...a,
     })) as SmartSelectItem[];
-  }, [accounts, filterType, excludeGroups]);
+  }, [flattenedAccounts, filterType, excludeGroups]);
 
   return (
     <SmartSelect
