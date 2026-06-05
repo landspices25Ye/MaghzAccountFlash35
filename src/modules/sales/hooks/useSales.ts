@@ -248,3 +248,105 @@ export function useInvoicesPaginated(companyId: string, filters?: InvoiceFilters
     reload: reloadList,
   };
 }
+
+export interface QuotationFilters {
+  status?: string;
+  customerId?: string;
+}
+
+export function useQuotationsPaginated(companyId: string, filters?: QuotationFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Quotation>(
+    (page, pageSize) => salesApi.getQuotationsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.customerId]
+  );
+
+  const create = useCallback(async (data: Omit<Quotation, 'id'>) => {
+    const result = await salesApi.createQuotation(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Quotation, 'id' | 'companyId'>> & { lines?: Quotation['lines'] }) => {
+    const result = await salesApi.updateQuotation(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await salesApi.deleteQuotation(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const convertToInvoice = useCallback(async (id: string, invoiceData: Omit<SalesInvoice, 'id'>) => {
+    const result = await salesApi.convertQuotationToInvoice(id, companyId, invoiceData);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    quotations: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    convertToInvoice,
+    reload: reloadList,
+  };
+}
+
+export interface ReturnFilters {
+  status?: string;
+  customerId?: string;
+}
+
+export function useReturnsPaginated(companyId: string, filters?: ReturnFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<SalesReturn>(
+    (page, pageSize) => salesApi.getReturnsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.customerId]
+  );
+
+  const create = useCallback(async (data: Omit<SalesReturn, 'id'>) => {
+    const result = await salesApi.createReturn(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<SalesReturn, 'id' | 'companyId'>> & { lines?: SalesReturn['lines'] }) => {
+    const result = await salesApi.updateReturn(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await salesApi.deleteReturn(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const post = useCallback(async (id: string) => {
+    const result = await salesApi.postReturn(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    returns: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    post,
+    reload: reloadList,
+  };
+}

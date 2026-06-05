@@ -2,14 +2,14 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Store, Plus, FileText, Phone, Mail, MapPin, Hash } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { logAudit } from '@/core/utils/auditLogger';
-import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { useSuppliers, useSupplierDetails } from '../hooks/usePurchases';
+import { useSuppliersPaginated, useSupplierDetails } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { Supplier, SupplierStatementItem } from '../types';
@@ -40,7 +40,7 @@ export const SuppliersPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
-  const { suppliers, isLoading, create, update, remove } = useSuppliers(activeCompany?.id || '');
+  const { suppliers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useSuppliersPaginated(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -219,6 +219,13 @@ export const SuppliersPage: React.FC = () => {
           onExportPdf={handleExportPdf}
           searchable
           searchPlaceholder={t('search') + '...'}
+        />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </Card>
 

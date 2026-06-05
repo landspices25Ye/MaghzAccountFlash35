@@ -1,19 +1,18 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Tag, Plus, FileText, CheckSquare, Trash2, Printer, ArrowRightLeft } from 'lucide-react';
-import { Card, Button, Table, Input, Modal } from '@/core/ui/components';
+import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
-import { useQuotations } from '../hooks/useSales';
+import { useQuotationsPaginated } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { printDocument } from '@/core/utils/printDocument';
@@ -41,11 +40,22 @@ export const QuotationsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
-  const { quotations, isLoading, create, update, remove, convertToInvoice } = useQuotations(activeCompany?.id || '');
+  const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
+  const {
+    quotations,
+    total,
+    page,
+    pageSize,
+    isLoading,
+    goToPage,
+    changePageSize,
+    create,
+    update,
+    remove,
+    convertToInvoice,
+  } = useQuotationsPaginated(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const branchFiltered = useBranchFilter(quotations);
-  const { filtered: filteredQuotations, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'sales');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
@@ -232,7 +242,7 @@ export const QuotationsPage: React.FC = () => {
       { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
       { key: 'status', header: t('sales.status') || 'الحالة' },
     ];
-    exportToExcel(filteredQuotations.map(q => ({ quotationNumber: q.quotationNumber, customerName: q.customer?.name || q.customerId, date: q.date, expiryDate: q.expiryDate || '-', totalAmount: q.totalAmount, status: STATUS_FLOW[q.status] || q.status })), cols, `quotations_${new Date().toISOString().split('T')[0]}`);
+    exportToExcel(quotations.map(q => ({ quotationNumber: q.quotationNumber, customerName: q.customer?.name || q.customerId, date: q.date, expiryDate: q.expiryDate || '-', totalAmount: q.totalAmount, status: STATUS_FLOW[q.status] || q.status })), cols, `quotations_${new Date().toISOString().split('T')[0]}`);
   };
 
   const tableColumns = [
@@ -287,7 +297,7 @@ export const QuotationsPage: React.FC = () => {
           <div className="space-y-3 p-4">
             {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
           </div>
-        ) : filteredQuotations.length === 0 ? (
+        ) : quotations.length === 0 ? (
           <EmptyState
             icon="inbox"
             title={t('sales.quotation.emptyTitle') || 'لا توجد عروض أسعار'}
@@ -295,7 +305,16 @@ export const QuotationsPage: React.FC = () => {
             action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button>}
           />
         ) : (
-          <Table<Quotation> data={filteredQuotations} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+          <>
+            <Table<Quotation> data={quotations} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+            />
+          </>
         )}
       </Card>
 

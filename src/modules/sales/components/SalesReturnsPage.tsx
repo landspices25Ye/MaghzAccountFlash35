@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Undo2, Plus, CheckSquare, Trash2, Printer, FileText, Package, BookOpen } from 'lucide-react';
-import { Card, Button, Table, Input, Modal } from '@/core/ui/components';
+import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
-import { useReturns, useInvoices } from '../hooks/useSales';
+import { useReturnsPaginated, useInvoices } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -31,11 +31,23 @@ export const SalesReturnsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
-  const { returns, isLoading: returnsLoading, create, update, remove, post } = useReturns(activeCompany?.id || '');
+  const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
+  const {
+    returns,
+    total,
+    page,
+    pageSize,
+    isLoading: returnsLoading,
+    goToPage,
+    changePageSize,
+    create,
+    update,
+    remove,
+    post,
+  } = useReturnsPaginated(activeCompany?.id || '');
   const { invoices } = useInvoices(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const { filtered: filteredReturns, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(returns, 'sales');
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -248,11 +260,11 @@ export const SalesReturnsPage: React.FC = () => {
   ];
 
   const stats = useMemo(() => {
-    const total = filteredReturns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0);
-    const draftCount = filteredReturns.filter(r => r.status === 'draft').length;
-    const postedCount = filteredReturns.filter(r => r.status === 'posted').length;
+    const total = returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0);
+    const draftCount = returns.filter(r => r.status === 'draft').length;
+    const postedCount = returns.filter(r => r.status === 'posted').length;
     return { total, draftCount, postedCount };
-  }, [filteredReturns]);
+  }, [returns]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -274,7 +286,7 @@ export const SalesReturnsPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{filteredReturns.length}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.drafts') || 'مسودات'}</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p></div></Card>
       </div>
@@ -284,7 +296,7 @@ export const SalesReturnsPage: React.FC = () => {
           <div className="space-y-3 p-4">
             {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
           </div>
-        ) : filteredReturns.length === 0 ? (
+        ) : returns.length === 0 ? (
           <EmptyState
             icon="inbox"
             title={t('sales.return.emptyTitle') || 'لا توجد مردودات'}
@@ -292,7 +304,16 @@ export const SalesReturnsPage: React.FC = () => {
             action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setFormOpen(true); }}>{t('sales.return.create') || 'مردود جديد'}</Button>}
           />
         ) : (
-          <Table<SalesReturn> data={filteredReturns} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={returnsLoading} />
+          <>
+            <Table<SalesReturn> data={returns} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={returnsLoading} />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+            />
+          </>
         )}
       </Card>
 

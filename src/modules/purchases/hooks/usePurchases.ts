@@ -184,6 +184,50 @@ export function usePurchaseInvoicesPaginated(companyId: string, filters?: Purcha
   };
 }
 
+export interface SupplierFilters {
+  isActive?: boolean;
+  search?: string;
+}
+
+export function useSuppliersPaginated(companyId: string, filters?: SupplierFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Supplier>(
+    (page, pageSize) => purchasesApi.getSuppliersPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.isActive, filters?.search]
+  );
+
+  const create = useCallback(async (data: Omit<Supplier, 'id'>) => {
+    const result = await purchasesApi.createSupplier(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Supplier>) => {
+    const result = await purchasesApi.updateSupplier(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteSupplier(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    suppliers: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function usePurchaseOrders(companyId: string) {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);

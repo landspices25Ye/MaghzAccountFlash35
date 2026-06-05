@@ -366,6 +366,58 @@ export const salesApi = {
     }
   },
 
+  async getQuotationsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; customerId?: string }
+  ): Promise<PaginatedQueryResult<Quotation>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['q.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`q.status = $${params.length}`);
+      }
+      if (filters?.customerId) {
+        params.push(filters.customerId);
+        conditions.push(`q.customer_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM quotations q WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT q.*, c.name as customer_name
+         FROM quotations q LEFT JOIN customers c ON q.customer_id = c.id
+         WHERE ${where}
+         ORDER BY q.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapQuotationRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async getQuotationById(id: string, companyId: string): Promise<{ success: boolean; data?: Quotation; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
@@ -478,6 +530,60 @@ export const salesApi = {
       if (!result.success) return { success: false, error: result.error };
       const rows = (result.rows || []).map((r: Record<string, unknown>) => mapReturnRow(r));
       return { success: true, data: rows };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getReturnsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; customerId?: string }
+  ): Promise<PaginatedQueryResult<SalesReturn>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['r.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`r.status = $${params.length}`);
+      }
+      if (filters?.customerId) {
+        params.push(filters.customerId);
+        conditions.push(`r.customer_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM sales_returns r WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT r.*, c.name as customer_name, i.invoice_number as invoice_number_ref
+         FROM sales_returns r
+         LEFT JOIN customers c ON r.customer_id = c.id
+         LEFT JOIN sales_invoices i ON r.invoice_id = i.id
+         WHERE ${where}
+         ORDER BY r.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapReturnRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
