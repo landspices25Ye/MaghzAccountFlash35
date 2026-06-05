@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.7 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓ | 5 pages server-side paginated)
+- **الإصدار الحالي:** v0.3.8 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 185 ✓ | 5 pages server-side paginated)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -969,5 +969,41 @@ npx drizzle-kit migrate
 - **الـ page count threshold للـ refactor**: 5+ pages refactored = the refactor template is fully battle-tested. أي page جديد يمكن تطبيق نفس الـ template في <30 دقيقة
 - **Hooks الجديدة تتبع نفس الـ naming**: `useXxxPaginated(companyId, filters?)` — الـ suffix "Paginated" يميّز عن `useXxx` الـ in-memory
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.7*
+### المرحلة 17: RBAC React Integration
+- **الهدف**: إضافة React-idiomatic layer فوق `useAuthStore.hasPermission` الموجود
+- **الاكتشاف**: `useAuthStore` يحوي `hasPermission(perm)`, `hasRole(roles)`, `shouldFilterByOwner(module)`, `canAccessOwned(perm)`, `FALLBACK_PERMISSIONS` (manager/accountant/sales_rep/viewer) — البنية التحتية جاهزة، ينقص فقط الـ React layer
+- **`usePermission.ts`** (11 hook، 110 سطر):
+  - `usePermission(perm)` — single check reactive
+  - `usePermissions(perms[])` — batch check
+  - `useHasRole(roles)` — role check
+  - `useCanView/Create/Edit/Delete/Post(module)` — module.action shortcuts
+  - `useCanExport()` — `reports.export` shortcut
+  - `useModulePermissions(module)` — returns `{ canView, canCreate, canEdit, canDelete, canPost }`
+  - `useShouldFilterByOwner(module)` — own-records filter check
+- **`PermissionGate.tsx`** (95 سطر):
+  - `<PermissionGate permission="sales.create">` — single permission
+  - `<PermissionGate permissions={[...]}` — list (any or all via `requireAll`)
+  - `<PermissionGate module="sales" action="create">` — module+action
+  - `<PermissionGate role="admin">` — role check
+  - All composable, all support `fallback` prop
+  - `<Can action="create" module="sales">` — convenience shorthand
+  - Hidden when no user logged in
+- **اختبارات** (12 جديد):
+  - `PermissionGate.test.tsx`: single perm, list requireAll/any, module.action, role (string+array), no-user, super_admin/admin behavior, Can shorthand, fallback
+- **Demo wiring**: `InvoicesPage.tsx` — Create Invoice button + EmptyState CTA wrapped in `<Can>`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **185/185 passed** ✓ (12 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### قواعد ذهبية مضافة (Phase 17)
+- **React layer فوق store layer**: `useAuthStore` يحوي logic، الـ hooks تلفها بـ reactive subscription. لا تكرر الـ logic في الـ hooks
+- **لا تستدعي hooks بشكل شرطي في `PermissionGate`**: استخدم `if (!check) return fallback` بعد استدعاء الـ hooks. الـ React Rules of Hooks تتطلب استدعاءات top-level
+- **`<Can>` shorthand للـ module.action**: `<Can action="create" module="sales">` أبسط من `<PermissionGate module="sales" action="create">`. استخدمه كـ default
+- **fallback prop اختياري**: `fallback={null}` للـ hidden، `fallback={<Denied />}` لرسالة. لا throw error
+- **batch check مع object return**: `usePermissions(perms)` ترجع `Record<perm, bool>` — أسرع من multiple `usePermission()` calls في render
+- **no-user = hidden**: لا حاجة لـ `if (user)` في كل component — `PermissionGate` يتعامل مع `user = null` ويُرجع `fallback`
+- **super_admin / admin hardcoded shortcuts**: `hasPermission` في الـ store يحقق role-based bypasses. لا تحاول implementation في الـ React layer — logic في الـ store
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.8*
 
