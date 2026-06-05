@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.4 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 162 ✓)
+- **الإصدار الحالي:** v0.3.5 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -850,5 +850,45 @@ npx drizzle-kit migrate
 - **POC = client-side slice first**: `InvoicesPage` يستخدم `filteredInvoices.slice()` (client-side) كـ POC. Future pages تستخدم `getXxxPaginated` (server-side) مباشرة
 - **Page reset on filter change**: `useEffect(() => setPage(1), [filteredInvoices.length])` يمنع `page=5` خارج الـ range الجديد
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.4*
+### المرحلة 16d: توسيع Pagination للـ APIs
+- **الهدف**: إضافة paginated variants لـ 6 APIs إضافية + توسيع edge case tests
+- **APIs الجديدة** (7 methods):
+  - `purchasesApi.getSuppliersPaginated(filters: {isActive?, search?})`
+  - `purchasesApi.getInvoicesPaginated(filters: {status?, supplierId?})`
+  - `purchasesApi.getOrdersPaginated(filters: {status?, supplierId?})`
+  - `purchasesApi.getReturnsPaginated(filters: {status?, supplierId?})`
+  - `inventoryApi.getProductsPaginated(filters: {search?, isActive?, productTypeId?})`
+  - `crmApi.getLeadsPaginated(filters: {status?, assignedTo?, search?})`
+  - `crmApi.getOpportunitiesPaginated(filters: {stage?, assignedTo?, search?})`
+  - `hrApi.getEmployeesPaginated(filters: {isActive?, departmentId?, search?})`
+- **UI Wiring إضافي**: `PurchaseInvoicesPage.tsx` (نفس POC pattern كـ `InvoicesPage`)
+- **Tests جديدة** (11): `pagination-edge-cases.test.ts`
+  - `paginatedResult`: totalPages rounding + min 1
+  - `clampPageArgs`: NaN/-1/0 → safe defaults, maxPageSize cap
+  - `buildPaginationParams`: limit/offset derivation
+- **الـ Pattern الموحَّد**:
+  1. validate companyId via `validateInput(companyIdSchema, ...)`
+  2. `clampPageArgs(page, pageSize)` → `{page, pageSize, offset}`
+  3. بناء `conditions[]` و `params[]` dynamically
+  4. COUNT query منفصل: `SELECT COUNT(*)::int AS total FROM table WHERE ${where}`
+  5. data query: `SELECT ... FROM table LEFT JOIN ... WHERE ${where} ORDER BY ... LIMIT $N OFFSET $M`
+  6. `paginatedResult(items, total, p, ps)` لبناء `PaginatedData<T>`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **173/173 passed** ✓ (11 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - **8 APIs** تدعم server-side pagination الآن (sales invoices + 7 جديدة)
+
+### قواعد ذهبية مضافة (Phase 16d)
+- **نفس الـ pattern لكل paginated API**: COUNT أولاً، ثم data مع LIMIT/OFFSET. لا تختلف بين modules
+- **ILIKE للـ case-insensitive search**: في PostgreSQL، `name ILIKE '%search%'` أسرع من `LOWER(name) LIKE LOWER('%search%')` ويستخدم index
+- **`::int` casting في COUNT**: `SELECT COUNT(*)::int AS total` — يحول BIGINT إلى INT للـ JS Number safety. counts > 2^31 تستخدم `Number()` clamping
+- **filters param = optional + typed**: `filters?: { status?: string; ... }` — لا تطلب default object من caller، اسمح بـ `undefined`
+- **LEFT JOIN مع user-table**: `LEFT JOIN users u ON l.assigned_to = u.id` لإحضار `assigned_name` (مفيد في reports + filter UI)
+- **مقارنة pre-Phase 17c vs post**: قبل Phase 11 كان `WHERE l.company_id = $1` يكسر بصمت على `sales_invoice_lines` (لا يحوي `company_id`). الـ COUNT/data الجديد يفلتر عبر `l/i/o.company_id` (table root) دائماً
+- **totalPages = max(1, ceil(total/pageSize))**: حتى لو total=0، نعرض 1 page (لـ UX consistency)
+- **`usePaginatedList` ما زال POC**: الـ current 2 pages تستخدم client-side slice. الـ API methods الجديدة جاهزة لـ server-side integration مستقبلاً
+- **productTypeId filter = column reference**: `p.product_type_id = $N` (الـ FK column). لا تخلط مع `p.type`/`p.category` (غير موجودة)
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.5*
 
