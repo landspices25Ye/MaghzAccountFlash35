@@ -1,5 +1,6 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, createLeadSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Lead, Opportunity, Task, Activity } from './types';
 
 export const crmApi = {
@@ -18,6 +19,62 @@ export const crmApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getLeadsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; assignedTo?: string; search?: string }
+  ): Promise<PaginatedQueryResult<Lead>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['l.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`l.status = $${params.length}`);
+      }
+      if (filters?.assignedTo) {
+        params.push(filters.assignedTo);
+        conditions.push(`l.assigned_to = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(l.name ILIKE $${params.length} OR l.email ILIKE $${params.length} OR l.phone ILIKE $${params.length})`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM leads l WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT l.*, u.full_name as assigned_name
+         FROM leads l LEFT JOIN users u ON l.assigned_to = u.id
+         WHERE ${where}
+         ORDER BY l.created_at DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r) => mapLeadRow(r as Record<string, unknown>));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -129,6 +186,62 @@ export const crmApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getOpportunitiesPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { stage?: string; assignedTo?: string; search?: string }
+  ): Promise<PaginatedQueryResult<Opportunity>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['o.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.stage) {
+        params.push(filters.stage);
+        conditions.push(`o.stage = $${params.length}`);
+      }
+      if (filters?.assignedTo) {
+        params.push(filters.assignedTo);
+        conditions.push(`o.assigned_to = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`o.name ILIKE $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM opportunities o WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT o.*, u.full_name as assigned_name
+         FROM opportunities o LEFT JOIN users u ON o.assigned_to = u.id
+         WHERE ${where}
+         ORDER BY o.created_at DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapOpportunityRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

@@ -2,6 +2,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { z } from 'zod';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createProductSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTransaction, StockAdjustment, ProductCategory } from './types';
 
 export const inventoryApi = {
@@ -17,6 +18,66 @@ export const inventoryApi = {
         rows = rows.filter((r) => (r as unknown as { createdBy?: string }).createdBy === ownedByUserId);
       }
       return { success: result.success, data: rows, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getProductsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { search?: string; isActive?: boolean; productTypeId?: string }
+  ): Promise<PaginatedQueryResult<Product>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['p.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.isActive !== undefined) {
+        params.push(filters.isActive);
+        conditions.push(`p.is_active = $${params.length}`);
+      }
+      if (filters?.productTypeId) {
+        params.push(filters.productTypeId);
+        conditions.push(`p.product_type_id = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(p.name_ar ILIKE $${params.length} OR p.name_en ILIKE $${params.length} OR p.code ILIKE $${params.length})`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM products p WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT p.*, COALESCE(
+            (SELECT json_agg(ppc.category_id)
+             FROM product_product_categories ppc
+             WHERE ppc.product_id = p.id), '[]'::json
+         ) AS category_ids
+         FROM products p
+         WHERE ${where}
+         ORDER BY p.name_ar
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<Product>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

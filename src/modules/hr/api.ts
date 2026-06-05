@@ -1,5 +1,6 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, createEmployeeSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Employee, AttendanceRecord, PayrollRun, PayrollLine, Leave, EndOfService } from './types';
 
 export const hrApi = {
@@ -18,6 +19,62 @@ export const hrApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getEmployeesPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { isActive?: boolean; departmentId?: string; search?: string }
+  ): Promise<PaginatedQueryResult<Employee>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['e.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.isActive !== undefined) {
+        params.push(filters.isActive);
+        conditions.push(`e.is_active = $${params.length}`);
+      }
+      if (filters?.departmentId) {
+        params.push(filters.departmentId);
+        conditions.push(`e.department_id = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(e.full_name ILIKE $${params.length} OR e.code ILIKE $${params.length} OR e.email ILIKE $${params.length})`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM employees e WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT e.*, d.name as department_name
+         FROM employees e LEFT JOIN departments d ON e.department_id = d.id
+         WHERE ${where}
+         ORDER BY e.full_name
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapEmployeeRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

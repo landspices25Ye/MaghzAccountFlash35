@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { FileText, Plus, CheckSquare, BookOpen, Trash2, Printer } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
@@ -7,7 +7,7 @@ import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useUserMap } from '@/core/utils/useUserMap';
 import { logAudit } from '@/core/utils/auditLogger';
-import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -74,6 +74,14 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const branchFiltered = useBranchFilter(invoices);
   const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'purchases');
+
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const paginatedInvoices = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredInvoices.slice(start, start + pageSize);
+  }, [filteredInvoices, page, pageSize]);
+  useEffect(() => { setPage(1); }, [filteredInvoices.length]);
   const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -422,7 +430,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
       <Card>
         <DataTablePro<PurchaseInvoice>
-          data={filteredInvoices}
+          data={paginatedInvoices}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
@@ -433,6 +441,13 @@ export const PurchaseInvoicesPage: React.FC = () => {
           onPrint={() => window.print()}
           searchable
           searchPlaceholder={t('search') + '...'}
+        />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filteredInvoices.length}
+          onPageChange={setPage}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
         />
       </Card>
 

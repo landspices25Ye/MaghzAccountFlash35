@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createSupplierSchema, createPurchaseInvoiceSchema, createPurchaseOrderSchema, createPurchaseReturnSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type {
   Supplier,
   PurchaseInvoice,
@@ -158,6 +159,54 @@ export const purchasesApi = {
         return { success: true, data: (result.rows || []).map(mapSupplier) };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getSuppliersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { isActive?: boolean; search?: string }
+  ): Promise<PaginatedQueryResult<Supplier>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.isActive !== undefined) {
+        params.push(filters.isActive);
+        conditions.push(`is_active = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`name ILIKE $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM suppliers WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT * FROM suppliers WHERE ${where} ORDER BY name LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((row: Record<string, unknown>) => mapSupplier(row));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -401,6 +450,59 @@ export const purchasesApi = {
     }
   },
 
+  async getInvoicesPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; supplierId?: string }
+  ): Promise<PaginatedQueryResult<PurchaseInvoice>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['i.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`i.status = $${params.length}`);
+      }
+      if (filters?.supplierId) {
+        params.push(filters.supplierId);
+        conditions.push(`i.supplier_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM purchase_invoices i WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT i.*, s.name as supplier_name, s.id as supplier_id
+         FROM purchase_invoices i
+         LEFT JOIN suppliers s ON i.supplier_id = s.id
+         WHERE ${where}
+         ORDER BY i.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((row: Record<string, unknown>) => mapInvoice(row));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async getInvoiceById(id: string, companyId: string): Promise<{ success: boolean; data?: PurchaseInvoice; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
@@ -539,6 +641,59 @@ export const purchasesApi = {
         return { success: true, data: (result.rows || []).map(mapOrder) };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getOrdersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; supplierId?: string }
+  ): Promise<PaginatedQueryResult<PurchaseOrder>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['po.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`po.status = $${params.length}`);
+      }
+      if (filters?.supplierId) {
+        params.push(filters.supplierId);
+        conditions.push(`po.supplier_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM purchase_orders po WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT po.*, s.name as supplier_name, s.id as supplier_id
+         FROM purchase_orders po
+         LEFT JOIN suppliers s ON po.supplier_id = s.id
+         WHERE ${where}
+         ORDER BY po.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((row: Record<string, unknown>) => mapOrder(row));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -710,6 +865,59 @@ export const purchasesApi = {
         return { success: true, data: (result.rows || []).map(mapReturn) };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getReturnsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; supplierId?: string }
+  ): Promise<PaginatedQueryResult<PurchaseReturn>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['r.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`r.status = $${params.length}`);
+      }
+      if (filters?.supplierId) {
+        params.push(filters.supplierId);
+        conditions.push(`r.supplier_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM purchase_returns r WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT r.*, s.name as supplier_name, s.id as supplier_id
+         FROM purchase_returns r
+         LEFT JOIN suppliers s ON r.supplier_id = s.id
+         WHERE ${where}
+         ORDER BY r.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((row: Record<string, unknown>) => mapReturn(row));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
