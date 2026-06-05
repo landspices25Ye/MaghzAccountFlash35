@@ -7,7 +7,7 @@ import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useUserMap } from '@/core/utils/useUserMap';
 import { logAudit } from '@/core/utils/auditLogger';
-import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination, Can } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -424,9 +424,11 @@ export const PurchaseInvoicesPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          {t('purchases.invoice.create')}
-        </Button>
+        <Can action="create" module="purchases">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            {t('purchases.invoice.create')}
+          </Button>
+        </Can>
       </div>
     </div>
 

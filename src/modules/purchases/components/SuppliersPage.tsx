@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Store, Plus, FileText, Phone, Mail, MapPin, Hash } from 'lucide-react';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { logAudit } from '@/core/utils/auditLogger';
-import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination, Can } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -181,9 +181,11 @@ export const SuppliersPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('purchases.suppliersSubtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          {t('purchases.supplier.new')}
-        </Button>
+        <Can action="create" module="purchases">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            {t('purchases.supplier.new')}
+          </Button>
+        </Can>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

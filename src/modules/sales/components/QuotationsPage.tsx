@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Tag, Plus, FileText, CheckSquare, Trash2, Printer, ArrowRightLeft } from 'lucide-react';
-import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
+import { Card, Button, Table, Input, Modal, Pagination, Can } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
@@ -288,7 +288,9 @@ export const QuotationsPage: React.FC = () => {
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير'}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button>
+          <Can action="create" module="sales">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button>
+          </Can>
         </div>
       </div>
 
@@ -302,7 +304,7 @@ export const QuotationsPage: React.FC = () => {
             icon="inbox"
             title={t('sales.quotation.emptyTitle') || 'لا توجد عروض أسعار'}
             description={t('sales.quotation.emptyDesc') || 'يمكنك إنشاء عرض سعر جديد الآن'}
-            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button>}
+            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button></Can>}
           />
         ) : (
           <>
