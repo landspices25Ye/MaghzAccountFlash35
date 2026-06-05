@@ -260,19 +260,26 @@ export const salesApi = {
       const validation = validateInput(createInvoiceSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
+      const currencyCode = data.currencyCode || 'YER';
+      const exchangeRate = data.exchangeRate ?? 1;
+      const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
+      const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
       const queries: { sql: string; params: unknown[] }[] = [
-        { sql: `INSERT INTO sales_invoices (company_id, invoice_number, customer_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, status, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
-        params: [data.companyId, data.invoiceNumber, data.customerId, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, data.status, data.notes] },
+        { sql: `INSERT INTO sales_invoices (company_id, invoice_number, customer_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, currency_code, exchange_rate, base_currency_amount, base_currency_paid, status, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+        params: [data.companyId, data.invoiceNumber, data.customerId, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes] },
       ];
-      let lineIdx = 13;
+      let lineIdx = 17;
       for (const line of data.lines) {
+        const lineCurrencyCode = line.currencyCode || currencyCode;
+        const lineExchangeRate = line.exchangeRate ?? exchangeRate;
+        const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
         queries.push({
-          sql: `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total)
-          VALUES ((SELECT id FROM sales_invoices WHERE invoice_number = $2 AND company_id = $1 LIMIT 1), $${lineIdx}, $${lineIdx + 1}, $${lineIdx + 2}, $${lineIdx + 3}, $${lineIdx + 4}, $${lineIdx + 5})`,
-          params: [data.companyId, data.invoiceNumber, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal]
+          sql: `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total, currency_code, exchange_rate, base_currency_line_total)
+          VALUES ((SELECT id FROM sales_invoices WHERE invoice_number = $2 AND company_id = $1 LIMIT 1), $${lineIdx}, $${lineIdx + 1}, $${lineIdx + 2}, $${lineIdx + 3}, $${lineIdx + 4}, $${lineIdx + 5}, $${lineIdx + 6}, $${lineIdx + 7}, $${lineIdx + 8})`,
+          params: [data.companyId, data.invoiceNumber, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal]
         });
-        lineIdx += 6;
+        lineIdx += 9;
       }
       const txResult = await adapter.transaction(queries);
       if (txResult.success && txResult.results?.[0]?.[0]) {
@@ -301,6 +308,10 @@ export const salesApi = {
       if (data.vatAmount !== undefined) { fields.push(`vat_amount = $${idx++}`); values.push(data.vatAmount); }
       if (data.totalAmount !== undefined) { fields.push(`total_amount = $${idx++}`); values.push(data.totalAmount); }
       if (data.paidAmount !== undefined) { fields.push(`paid_amount = $${idx++}`); values.push(data.paidAmount); }
+      if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
+      if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
+      if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.baseCurrencyPaid !== undefined) { fields.push(`base_currency_paid = $${idx++}`); values.push(data.baseCurrencyPaid); }
       if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
       if (fields.length > 0) {
@@ -311,10 +322,13 @@ export const salesApi = {
       if (data.lines) {
         await adapter.query('DELETE FROM sales_invoice_lines WHERE invoice_id = $1', [id]);
         for (const line of data.lines) {
+          const lineCurrencyCode = line.currencyCode || data.currencyCode || 'YER';
+          const lineExchangeRate = line.exchangeRate ?? data.exchangeRate ?? 1;
+          const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
           await adapter.query(
-            `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal]
+            `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total, currency_code, exchange_rate, base_currency_line_total)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal]
           );
         }
       }
@@ -716,6 +730,10 @@ function mapInvoiceRow(row: Record<string, unknown>): SalesInvoice {
     vatAmount: Number(row.vat_amount) || 0,
     totalAmount: Number(row.total_amount) || 0,
     paidAmount: Number(row.paid_amount) || 0,
+    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    exchangeRate: row.exchange_rate !== undefined ? Number(row.exchange_rate) : 1,
+    baseCurrencyAmount: row.base_currency_amount !== undefined ? Number(row.base_currency_amount) : 0,
+    baseCurrencyPaid: row.base_currency_paid !== undefined ? Number(row.base_currency_paid) : 0,
     status: String(row.status) as SalesInvoice['status'],
     notes: row.notes ? String(row.notes) : undefined,
     lines: [],
@@ -733,6 +751,9 @@ function mapInvoiceLineRow(row: Record<string, unknown>): SalesInvoiceLine {
     discountPercent: Number(row.discount_percent) || 0,
     vatPercent: Number(row.vat_percent) || 0,
     lineTotal: Number(row.line_total) || 0,
+    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    exchangeRate: row.exchange_rate !== undefined ? Number(row.exchange_rate) : 1,
+    baseCurrencyLineTotal: row.base_currency_line_total !== undefined ? Number(row.base_currency_line_total) : 0,
   };
 }
 

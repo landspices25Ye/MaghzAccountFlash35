@@ -37,6 +37,10 @@ export interface SalesInvoice {
   vatAmount: number;
   totalAmount: number;
   paidAmount: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyAmount?: number;
+  baseCurrencyPaid?: number;
   status: 'draft' | 'posted' | 'paid' | 'partially_paid' | 'cancelled';
   notes?: string;
   lines: SalesInvoiceLine[];
@@ -54,6 +58,9 @@ export interface SalesInvoiceLine {
   discountPercent: number;
   vatPercent: number;
   lineTotal: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyLineTotal?: number;
 }
 
 export interface Quotation {

@@ -5,7 +5,7 @@ import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
-import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
+import { CustomerSelect, ProductSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useInvoicesPaginated } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
@@ -14,6 +14,7 @@ import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useUserMap } from '@/core/utils/useUserMap';
+import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
@@ -63,6 +64,7 @@ export const InvoicesPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getUserName } = useUserMap();
+  const { currencies, defaultCurrency } = useCurrencyDisplay();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [formOpen, setFormOpen] = useState(false);
@@ -81,13 +83,28 @@ export const InvoicesPage: React.FC = () => {
   }), [settings?.vatRate]);
 
   const [header, setHeader] = useState({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
+  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || 'YER');
+  const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [lines, setLines] = useState<InvoiceLineForm[]>([defaultLine()]);
 
   const resetForm = useCallback(() => {
     setHeader({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
+    setCurrencyCode(defaultCurrency?.code || 'YER');
+    setExchangeRate(1);
     setLines([defaultLine()]);
     setEditingId(null);
-  }, [defaultLine]);
+  }, [defaultLine, defaultCurrency?.code]);
+
+  const handleCurrencyChange = useCallback((code: string | null) => {
+    if (!code) {
+      setCurrencyCode('YER');
+      setExchangeRate(1);
+      return;
+    }
+    setCurrencyCode(code);
+    const c = currencies.find((x) => x.code === code);
+    setExchangeRate(c ? c.exchangeRate : 1);
+  }, [currencies]);
 
   const openCreate = useCallback(async () => {
     resetForm();
@@ -110,6 +127,8 @@ export const InvoicesPage: React.FC = () => {
       dueDate: invoice.dueDate || '',
       notes: invoice.notes || '',
     });
+    setCurrencyCode(invoice.currencyCode || 'YER');
+    setExchangeRate(invoice.exchangeRate ?? 1);
     setLines(invoice.lines.map(l => ({
       productId: l.productId,
       productName: l.productName || l.productId,
@@ -149,6 +168,7 @@ export const InvoicesPage: React.FC = () => {
     const mappedLines: SalesInvoiceLine[] = lines.map(l => {
       const lineNet = l.quantity * l.unitPrice * (1 - l.discountPercent / 100);
       const lineVat = lineNet * (l.vatPercent / 100);
+      const lineTotal = lineNet + lineVat;
       return {
         productId: l.productId,
         productName: l.productName,
@@ -156,7 +176,10 @@ export const InvoicesPage: React.FC = () => {
         unitPrice: l.unitPrice,
         discountPercent: l.discountPercent,
         vatPercent: l.vatPercent,
-        lineTotal: lineNet + lineVat,
+        lineTotal,
+        currencyCode,
+        exchangeRate,
+        baseCurrencyLineTotal: lineTotal * exchangeRate,
       };
     });
     return {
@@ -170,6 +193,10 @@ export const InvoicesPage: React.FC = () => {
       vatAmount: calculations.vatAmount,
       totalAmount: calculations.totalAmount,
       paidAmount: 0,
+      currencyCode,
+      exchangeRate,
+      baseCurrencyAmount: calculations.totalAmount * exchangeRate,
+      baseCurrencyPaid: 0,
       status: 'draft',
       notes: header.notes,
       lines: mappedLines,
@@ -326,7 +353,14 @@ export const InvoicesPage: React.FC = () => {
     { key: 'dueDate', header: t('sales.dueDate') || 'الاستحقاق', width: '110px', render: (row: SalesInvoice) => row.dueDate ? formatDate(row.dueDate) : '-' },
     { key: 'subtotal', header: t('sales.subtotal') || 'المجموع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.subtotal) },
     { key: 'vatAmount', header: t('sales.vat') || 'الضريبة', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.vatAmount) },
-    { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.totalAmount) },
+    { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => (
+      <span>
+        {formatCurrency(row.totalAmount)}
+        {row.currencyCode && row.currencyCode !== currencySymbol && (
+          <span className="text-xs text-slate-500 mr-1">({row.currencyCode})</span>
+        )}
+      </span>
+    ) },
     { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
     { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
     { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: SalesInvoice) => (
@@ -463,6 +497,27 @@ export const InvoicesPage: React.FC = () => {
             <Input label={t('sales.dueDate') || 'تاريخ الاستحقاق'} type="date" value={header.dueDate} onChange={e => setHeader(prev => ({ ...prev, dueDate: e.target.value }))} />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency') || 'العملة'}</label>
+              <CurrencySelect companyId={activeCompany?.id || ''} value={currencyCode} onChange={handleCurrencyChange} />
+            </div>
+            <Input
+              label={t('sales.exchangeRate') || 'سعر الصرف'}
+              type="number"
+              min={0}
+              step="0.0001"
+              value={String(exchangeRate)}
+              onChange={e => setExchangeRate(Number(e.target.value) || 1)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency') || 'المعادل بالأساسية'}</label>
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200">
+                {formatCurrency(calculations.totalAmount * exchangeRate)} <span className="text-slate-500">{currencySymbol}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
               <h4 className="font-semibold text-sm">{t('sales.invoice.lines') || 'سطور الفاتورة'}</h4>
@@ -574,9 +629,15 @@ export const InvoicesPage: React.FC = () => {
               <div className="space-y-1 text-sm">
                 <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.subtotal)}</span></p>
                 <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.vatAmount)}</span></p>
+                {viewing.baseCurrencyAmount !== undefined && viewing.baseCurrencyAmount > 0 && viewing.currencyCode !== currencySymbol && (
+                  <p className="text-slate-500 dark:text-slate-400">{t('sales.baseCurrency') || 'المعادل بالأساسية'} ({currencySymbol}): <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.baseCurrencyAmount)}</span></p>
+                )}
               </div>
               <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
                 {t('sales.total') || 'الإجمالي'}: {formatCurrency(viewing.totalAmount)}
+                {viewing.currencyCode && viewing.currencyCode !== currencySymbol && (
+                  <span className="text-sm font-normal text-slate-500 mr-2">({viewing.currencyCode})</span>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2">

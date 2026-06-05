@@ -114,6 +114,10 @@ export const createInvoiceSchema = z.object({
   vatAmount: currencyAmountSchema.optional(),
   totalAmount: currencyAmountSchema,
   paidAmount: currencyAmountSchema.optional(),
+  currencyCode: z.string().length(3).optional(),
+  exchangeRate: currencyAmountSchema.optional(),
+  baseCurrencyAmount: currencyAmountSchema.optional(),
+  baseCurrencyPaid: currencyAmountSchema.optional(),
   status: z.enum(['draft', 'posted', 'paid', 'partially_paid', 'cancelled']).default('draft'),
   notes: z.string().max(2000).optional(),
   lines: z.array(z.object({
@@ -123,6 +127,9 @@ export const createInvoiceSchema = z.object({
     discountPercent: percentageSchema.optional(),
     vatPercent: percentageSchema.optional(),
     lineTotal: currencyAmountSchema,
+    currencyCode: z.string().length(3).optional(),
+    exchangeRate: currencyAmountSchema.optional(),
+    baseCurrencyLineTotal: currencyAmountSchema.optional(),
   })).min(1),
 });
 
