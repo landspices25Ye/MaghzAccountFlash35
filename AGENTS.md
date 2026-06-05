@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.6 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓ | 2 pages server-side paginated)
+- **الإصدار الحالي:** v0.3.7 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓ | 5 pages server-side paginated)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -940,5 +940,34 @@ npx drizzle-kit migrate
 - **EmptyState icon prop = string enum**: `'inbox' | 'search' | 'file'` (لا Lucide component — للتوحيد)
 - **`title` attribute للـ a11y على select/button**: `title="تصفية حسب الدور"` يُحسّن screen reader support بدون تغيير visual
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.6*
+### المرحلة 16g: 3 صفحات إضافية Server-Side Pagination
+- **الهدف**: توسيع الـ refactor لـ 3 صفحات أخرى + 2 APIs جديدة
+- **APIs الجديدة** (2):
+  - `salesApi.getQuotationsPaginated(filters: {status?, customerId?})`
+  - `salesApi.getReturnsPaginated(filters: {status?, customerId?})`
+- **Hooks الجديدة** (3):
+  - `useQuotationsPaginated(companyId, filters?)` — mutations: create/update/remove/convertToInvoice
+  - `useReturnsPaginated(companyId, filters?)` — mutations: create/update/remove/post
+  - `useSuppliersPaginated(companyId, filters?)` — mutations: create/update/remove (API من Phase 16d)
+- **UI Refactors** (3 pages):
+  - `QuotationsPage` (sales): نفس الـ pattern — `useQuotations()` → `useQuotationsPaginated()`
+  - `SalesReturnsPage` (sales): `useReturns()` → `useReturnsPaginated()`
+  - `SuppliersPage` (purchases): `useSuppliers()` → `useSuppliersPaginated()`
+- **تحسين جانبي**:
+  - `AccountSelect.tsx`: recursive `flatMap` to flatten hierarchical accounts tree (`useMemo([accounts])`)
+  - إصلاح bug: `useAccounts` يرجع tree (with children) لكن `AccountSelect` كان يتوقع flat list
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **173/173 passed** ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - **5 pages** server-side paginated الآن: Invoices + PurchaseInvoices + Quotations + SalesReturns + Suppliers
+  - **10 APIs** تدعم server-side pagination
+
+### قواعد ذهبية مضافة (Phase 16g)
+- **Recursive flatMap لـ tree flattening**: `flatMap(item => [item, ...(item.children ? flatten(item.children) : [])])` لتحويل tree إلى flat list. الـ cache عبر `useMemo([accounts])` يمنع re-computation في كل render
+- **useMemo deps تشمل flattened source**: لا تضع `accounts` في deps بعد استخدام `flattenedAccounts` — استبدلها بـ `flattenedAccounts` (ESLint exhaustive-deps)
+- **الـ page count threshold للـ refactor**: 5+ pages refactored = the refactor template is fully battle-tested. أي page جديد يمكن تطبيق نفس الـ template في <30 دقيقة
+- **Hooks الجديدة تتبع نفس الـ naming**: `useXxxPaginated(companyId, filters?)` — الـ suffix "Paginated" يميّز عن `useXxx` الـ in-memory
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.7*
 
