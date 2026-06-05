@@ -23,25 +23,27 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
+import { useCanAccessModule } from '@/modules/auth/hooks/usePermission';
 import { cn } from '@/core/utils';
+import type { Permission } from '@/modules/auth/types';
 
 interface MenuItem {
   id: string;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
-  permission: string;
-  children?: { label: string; path: string }[];
+  module: 'core' | 'accounting' | 'inventory' | 'sales' | 'purchases' | 'manufacturing' | 'hr' | 'crm' | 'reports' | 'settings';
+  children?: { label: string; path: string; permission?: Permission }[];
 }
 
 const menuItems: MenuItem[] = [
-  { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, path: '/', permission: 'core.view' },
+  { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, path: '/', module: 'core' },
   {
     id: 'accounting',
     label: 'الحسابات',
     icon: Calculator,
     path: '/accounting',
-    permission: 'accounting.view',
+    module: 'accounting',
     children: [
       { label: 'شجرة الحسابات', path: '/accounting/chart' },
       { label: 'القيود اليومية', path: '/accounting/journal' },
@@ -58,7 +60,7 @@ const menuItems: MenuItem[] = [
     label: 'المخازن',
     icon: Package,
     path: '/inventory',
-    permission: 'inventory.view',
+    module: 'inventory',
     children: [
       { label: 'المنتجات', path: '/inventory/products' },
       { label: 'المستودعات', path: '/inventory/warehouses' },
@@ -72,7 +74,7 @@ const menuItems: MenuItem[] = [
     label: 'المبيعات',
     icon: ShoppingCart,
     path: '/sales',
-    permission: 'sales.view',
+    module: 'sales',
     children: [
       { label: 'فواتير المبيعات', path: '/sales/invoices' },
       { label: 'العملاء', path: '/sales/customers' },
@@ -85,7 +87,7 @@ const menuItems: MenuItem[] = [
     label: 'المشتريات',
     icon: Store,
     path: '/purchases',
-    permission: 'purchases.view',
+    module: 'purchases',
     children: [
       { label: 'فواتير المشتريات', path: '/purchases/invoices' },
       { label: 'الموردين', path: '/purchases/suppliers' },
@@ -98,7 +100,7 @@ const menuItems: MenuItem[] = [
     label: 'التصنيع',
     icon: Factory,
     path: '/manufacturing',
-    permission: 'manufacturing.view',
+    module: 'manufacturing',
     children: [
       { label: 'فاتير المواد', path: '/manufacturing/bom' },
       { label: 'أوامر التشغيل', path: '/manufacturing/work-orders' },
@@ -109,7 +111,7 @@ const menuItems: MenuItem[] = [
     label: 'الموظفين',
     icon: Users,
     path: '/hr',
-    permission: 'hr.view',
+    module: 'hr',
     children: [
       { label: 'الموظفين', path: '/hr/employees' },
       { label: 'الحضور', path: '/hr/attendance' },
@@ -123,7 +125,7 @@ const menuItems: MenuItem[] = [
     label: 'العملاء',
     icon: HeartHandshake,
     path: '/crm',
-    permission: 'crm.view',
+    module: 'crm',
     children: [
       { label: 'العملاء المحتملين', path: '/crm/leads' },
       { label: 'الفرص', path: '/crm/opportunities' },
@@ -136,7 +138,7 @@ const menuItems: MenuItem[] = [
     label: 'التقارير',
     icon: BarChart3,
     path: '/reports',
-    permission: 'reports.view',
+    module: 'reports',
     children: [
       { label: 'مركز التقارير', path: '/reports' },
       { label: 'تحليل المبيعات', path: '/reports/sales-analysis' },
@@ -152,7 +154,7 @@ const menuItems: MenuItem[] = [
     label: 'الإعدادات',
     icon: Settings,
     path: '/settings',
-    permission: 'settings.view',
+    module: 'settings',
     children: [
       { label: 'بيانات الشركة', path: '/settings/company' },
       { label: 'العملات', path: '/settings/currencies' },
@@ -166,12 +168,19 @@ const menuItems: MenuItem[] = [
 
 function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boolean }) {
   const location = useLocation();
-  const hasChildren = item.children && item.children.length > 0;
+  const canView = useCanAccessModule(item.module);
+  const user = useAuthStore((state) => state.user);
+  const visibleChildren = React.useMemo(
+    () =>
+      (item.children ?? []).filter((c) => !c.permission || useAuthStore.getState().hasPermission(c.permission)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [item.children, user]
+  );
+  const hasChildren = visibleChildren.length > 0;
   const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
   const [isExpanded, setIsExpanded] = useState(isActive);
-  const hasPermission = useAuthStore((state) => state.hasPermission);
 
-  if (!hasPermission(item.permission)) return null;
+  if (!canView) return null;
 
   return (
     <div className="space-y-0.5">
@@ -207,7 +216,7 @@ function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boole
 
       {hasChildren && sidebarOpen && isExpanded && (
         <div className="mr-6 space-y-0.5 border-r border-slate-800 pr-2">
-          {item.children!.map((child) => {
+          {visibleChildren.map((child) => {
             const childActive = location.pathname === child.path;
             return (
               <Link
