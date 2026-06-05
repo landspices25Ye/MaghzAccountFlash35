@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { FileText, Plus, CheckSquare, BookOpen, Trash2, Printer } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
@@ -14,12 +14,11 @@ import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { usePurchaseInvoices } from '../hooks/usePurchases';
+import { usePurchaseInvoicesPaginated } from '../hooks/usePurchases';
 import { usePurchaseOrders } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { postPurchaseInvoice } from '@/core/utils/journalEntryGenerator';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PurchaseInvoice } from '../types';
@@ -67,21 +66,24 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
-  const { invoices, isLoading, create, update, remove, post } = usePurchaseInvoices(activeCompany?.id || '');
+  const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'purchases');
+  const {
+    invoices,
+    total,
+    page,
+    pageSize,
+    isLoading,
+    goToPage,
+    changePageSize,
+    create,
+    update,
+    remove,
+    post,
+  } = usePurchaseInvoicesPaginated(activeCompany?.id || '');
   const { orders } = usePurchaseOrders(activeCompany?.id || '');
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
-  const branchFiltered = useBranchFilter(invoices);
-  const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'purchases');
-
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const paginatedInvoices = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredInvoices.slice(start, start + pageSize);
-  }, [filteredInvoices, page, pageSize]);
-  useEffect(() => { setPage(1); }, [filteredInvoices.length]);
   const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -304,7 +306,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
   }, [activeCompany, t, currencySymbol]);
 
   const handleExportExcel = useCallback(() => {
-    exportToExcel(filteredInvoices, [
+    exportToExcel(invoices, [
       { key: 'invoiceNumber', header: t('purchases.invoiceNumber'), width: 20 },
       { key: 'supplierName', header: t('purchases.supplier'), width: 25 },
       { key: 'date', header: t('purchases.date'), width: 15 },
@@ -313,10 +315,10 @@ export const PurchaseInvoicesPage: React.FC = () => {
       { key: 'totalAmount', header: t('purchases.total'), width: 15 },
       { key: 'status', header: t('purchases.status'), width: 15 },
     ], 'purchase_invoices');
-  }, [t, filteredInvoices]);
+  }, [t, invoices]);
 
   const handleExportPdf = useCallback(() => {
-    exportToPDF(filteredInvoices, [
+    exportToPDF(invoices, [
       { key: 'invoiceNumber', header: t('purchases.invoiceNumber') },
       { key: 'supplierName', header: t('purchases.supplier') },
       { key: 'date', header: t('purchases.date') },
@@ -328,7 +330,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
       rtl: true,
       companyName: activeCompany?.name,
     });
-  }, [t, activeCompany, filteredInvoices]);
+  }, [t, activeCompany, invoices]);
 
   const columns = useMemo<ColumnDef<PurchaseInvoice>[]>(() => [
     {
@@ -430,7 +432,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
       <Card>
         <DataTablePro<PurchaseInvoice>
-          data={paginatedInvoices}
+          data={invoices}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
@@ -445,9 +447,9 @@ export const PurchaseInvoicesPage: React.FC = () => {
         <Pagination
           page={page}
           pageSize={pageSize}
-          total={filteredInvoices.length}
-          onPageChange={setPage}
-          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </Card>
 

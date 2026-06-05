@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { purchasesApi } from '../api';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type {
   Supplier,
   PurchaseInvoice,
@@ -130,6 +131,57 @@ export function usePurchaseInvoices(companyId: string) {
   }, [companyId]);
 
   return { invoices, isLoading, create, update, remove, post };
+}
+
+export interface PurchaseInvoiceFilters {
+  status?: string;
+  supplierId?: string;
+}
+
+export function usePurchaseInvoicesPaginated(companyId: string, filters?: PurchaseInvoiceFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<PurchaseInvoice>(
+    (page, pageSize) => purchasesApi.getInvoicesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.supplierId]
+  );
+
+  const create = useCallback(async (data: Omit<PurchaseInvoice, 'id'>) => {
+    const result = await purchasesApi.createInvoice(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<PurchaseInvoice>) => {
+    const result = await purchasesApi.updateInvoice(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteInvoice(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const post = useCallback(async (id: string) => {
+    const result = await purchasesApi.postInvoice(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    invoices: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    post,
+    reload: reloadList,
+  };
 }
 
 export function usePurchaseOrders(companyId: string) {
