@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { salesApi } from '../api';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Customer, SalesInvoice, Quotation, SalesReturn } from '../types';
 
 export function useCustomers(companyId: string) {
@@ -192,4 +193,58 @@ export function useCustomerArAging(companyId: string) {
   useEffect(() => { load(); }, [load]);
 
   return { data: data || [], isLoading, reload: load };
+}
+
+export interface InvoiceFilters {
+  status?: string;
+  customerId?: string;
+  createdBy?: string;
+}
+
+export function useInvoicesPaginated(companyId: string, filters?: InvoiceFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<SalesInvoice>(
+    (page, pageSize) => salesApi.getInvoicesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.customerId, filters?.createdBy]
+  );
+
+  const create = useCallback(async (data: Omit<SalesInvoice, 'id'>) => {
+    const result = await salesApi.createInvoice(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<SalesInvoice, 'id' | 'companyId'>> & { lines?: SalesInvoice['lines'] }) => {
+    const result = await salesApi.updateInvoice(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await salesApi.deleteInvoice(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const post = useCallback(async (id: string) => {
+    const result = await salesApi.postInvoice(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    invoices: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    totalPages: list.totalPages,
+    isLoading: list.isLoading,
+    error: list.error,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    post,
+    reload: reloadList,
+  };
 }

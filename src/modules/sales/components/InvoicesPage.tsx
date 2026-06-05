@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { FileText, Plus, CheckSquare, Trash2, Printer, Download } from 'lucide-react';
 import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -6,7 +6,7 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
-import { useInvoices } from '../hooks/useSales';
+import { useInvoicesPaginated } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -18,7 +18,6 @@ import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { SalesInvoice, SalesInvoiceLine } from '../types';
@@ -44,22 +43,27 @@ export const InvoicesPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
-  const { invoices, isLoading, create, update, remove, post } = useInvoices(activeCompany?.id || '');
+  const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
+  const {
+    invoices,
+    total,
+    page,
+    pageSize,
+    isLoading,
+    goToPage,
+    changePageSize,
+    create,
+    update,
+    remove,
+    post,
+  } = useInvoicesPaginated(activeCompany?.id || '', {
+    createdBy: isOwnOnly ? currentUser?.id : undefined,
+  });
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
-  const branchFiltered = useBranchFilter(invoices);
-  const { filtered: filteredInvoices, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'sales');
   const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
-
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const paginatedInvoices = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filteredInvoices.slice(start, start + pageSize);
-  }, [filteredInvoices, page, pageSize]);
-  useEffect(() => { setPage(1); }, [filteredInvoices.length]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -282,7 +286,7 @@ export const InvoicesPage: React.FC = () => {
       { key: 'vatAmount', header: t('sales.vat') || 'الضريبة' },
       { key: 'totalAmount', header: t('sales.total') || 'الإجمالي' },
     ];
-    const data = filteredInvoices.map(i => ({
+    const data = invoices.map(i => ({
       invoiceNumber: i.invoiceNumber,
       customerName: i.customer?.name || i.customerId,
       date: i.date,
@@ -302,7 +306,7 @@ export const InvoicesPage: React.FC = () => {
       { key: 'status', header: t('sales.status') || 'الحالة', width: 20 },
       { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', width: 20 },
     ];
-    const data = filteredInvoices.map(i => ({
+    const data = invoices.map(i => ({
       invoiceNumber: i.invoiceNumber,
       customerName: i.customer?.name || i.customerId,
       date: i.date,
@@ -356,12 +360,12 @@ export const InvoicesPage: React.FC = () => {
   ];
 
   const stats = useMemo(() => {
-    const total = filteredInvoices.reduce((s, i) => s + i.totalAmount, 0);
-    const paid = filteredInvoices.reduce((s, i) => s + i.paidAmount, 0);
-    const draftCount = filteredInvoices.filter(i => i.status === 'draft').length;
-    const postedCount = filteredInvoices.filter(i => i.status === 'posted' || i.status === 'partially_paid' || i.status === 'paid').length;
+  const total = invoices.reduce((s, i) => s + i.totalAmount, 0);
+  const paid = invoices.reduce((s, i) => s + i.paidAmount, 0);
+  const draftCount = invoices.filter(i => i.status === 'draft').length;
+  const postedCount = invoices.filter(i => i.status === 'posted' || i.status === 'partially_paid' || i.status === 'paid').length;
     return { total, paid, draftCount, postedCount };
-  }, [filteredInvoices]);
+  }, [invoices]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -393,7 +397,7 @@ export const InvoicesPage: React.FC = () => {
         <Card>
           <div className="p-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.invoice.totalInvoices') || 'عدد الفواتير'}</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{filteredInvoices.length}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p>
           </div>
         </Card>
         <Card>
@@ -419,25 +423,25 @@ export const InvoicesPage: React.FC = () => {
       {/* Table */}
       <Card>
         {isLoading ? (
-          <div className="space-y-3 p-4">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
-          </div>
-        ) : filteredInvoices.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('loading') || 'جاري التحميل...'}</div>
+        ) : invoices.length === 0 ? (
           <EmptyState
             icon="file"
             title={t('sales.invoice.emptyTitle') || 'لا توجد فواتير'}
-            description={t('sales.invoice.emptyDesc') || 'يمكنك إنشاء فاتورة مبيعات جديدة الآن'}
-            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>}
+            description={t('sales.invoice.emptyDescription') || 'ابدأ بإنشاء فاتورة جديدة'}
+            action={
+              <Button onClick={openCreate} leftIcon={<Plus size={16} />}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>
+            }
           />
         ) : (
           <>
-            <Table<SalesInvoice> data={paginatedInvoices} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+            <Table<SalesInvoice> data={invoices} columns={tableColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
             <Pagination
               page={page}
               pageSize={pageSize}
-              total={filteredInvoices.length}
-              onPageChange={setPage}
-              onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
             />
           </>
         )}

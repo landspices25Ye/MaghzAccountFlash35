@@ -215,6 +215,7 @@ export function SmartSelect<T extends SmartSelectItem>({
           {clearable && selectedValues.length > 0 && !disabled && (
             <button
               type="button"
+              title="مسح"
               onClick={handleClear}
               className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-rose-500 transition-colors"
             >

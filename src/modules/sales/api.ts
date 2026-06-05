@@ -179,7 +179,7 @@ export const salesApi = {
     companyId: string,
     page: number,
     pageSize: number,
-    filters?: { status?: string; customerId?: string }
+    filters?: { status?: string; customerId?: string; createdBy?: string }
   ): Promise<PaginatedQueryResult<SalesInvoice>> {
     try {
       const cidValidation = validateInput(companyIdSchema, companyId);
@@ -196,6 +196,10 @@ export const salesApi = {
       if (filters?.customerId) {
         params.push(filters.customerId);
         conditions.push(`i.customer_id = $${params.length}`);
+      }
+      if (filters?.createdBy) {
+        params.push(filters.createdBy);
+        conditions.push(`i.created_by = $${params.length}`);
       }
       const where = conditions.join(' AND ');
 
