@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { FileText, Plus, CheckSquare, Trash2, Printer, Download } from 'lucide-react';
-import { Card, Button, Table, Input, Modal, Pagination } from '@/core/ui/components';
+import { Card, Button, Table, Input, Modal, Pagination, Can } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
@@ -386,9 +386,11 @@ export const InvoicesPage: React.FC = () => {
           <Button size="sm" variant="ghost" onClick={handleExportPDF} title={t('reports.exportPdf') || 'تصدير PDF'}>
             <Printer size={16} className="text-rose-600" />
           </Button>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-            {t('sales.invoice.create') || 'فاتورة جديدة'}
-          </Button>
+          <Can action="create" module="sales">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+              {t('sales.invoice.create') || 'فاتورة جديدة'}
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -430,7 +432,9 @@ export const InvoicesPage: React.FC = () => {
             title={t('sales.invoice.emptyTitle') || 'لا توجد فواتير'}
             description={t('sales.invoice.emptyDescription') || 'ابدأ بإنشاء فاتورة جديدة'}
             action={
-              <Button onClick={openCreate} leftIcon={<Plus size={16} />}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>
+              <Can action="create" module="sales">
+                <Button onClick={openCreate} leftIcon={<Plus size={16} />}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>
+              </Can>
             }
           />
         ) : (

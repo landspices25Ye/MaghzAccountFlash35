@@ -11,3 +11,4 @@ export { EmptyState } from './EmptyState';
 export { DataTablePro } from './DataTablePro';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Pagination } from './Pagination';
+export { PermissionGate, Can } from './PermissionGate';
