@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.9 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 206 ✓ | 5 pages server-side paginated | RBAC reactive)
+- **الإصدار الحالي:** v0.3.10 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 215 ✓ | 5 pages server-side paginated | RBAC reactive)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1051,5 +1051,43 @@ npx drizzle-kit migrate
 - **Sidebar children permission = default to parent**: `!c.permission || hasPermission(c.permission)` — children بلا explicit permission تظهر إذا parent visible
 - **`useMemo([item.children, user?.id, user?.role])` vs `useMemo([item.children, user])`**: ESLint يحلل deps structure. `user` (object) يعتبر "unnecessary" إذا الـ body يستخدم `getState()` فقط. استخدم `eslint-disable-next-line` أو حدد `user?.id`
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.9*
+### المرحلة 17d: Roles Management UI
+- **الهدف**: تحسين RolesPage الموجود مع RBAC integration + حماية الأدوار النظامية من التعديل
+- **Bug fix**: استبدال `useAuthStore((s) => s.hasPermission)` بـ `usePermission` hook (نفس fix 17c)
+- **`<Can>` wrappers**:
+  - Create button: `<Can action="edit" module="settings">` (admin لا يحوي settings.edit → button hidden)
+  - Edit + Clone buttons: `<Can action="edit" module="settings">`
+  - Delete button: `<Can action="delete" module="settings">` (نفس permission لكن semantic أوضح)
+- **Clone feature جديد**:
+  - زر "نسخ" بجانب Edit/Delete يفتح modal جديد مع `${role.name} - نسخة` + permissions منسوخة
+  - يتيح إنشاء دور مخصص من دور نظامي بدون تعديل الدور الأصلي
+- **isSystem read-only mode**:
+  - Badge: "نظامي" + `<Lock size={10} />` icon
+  - Modal: warning banner أصفر "دور نظامي — للقراءة فقط"
+  - Name/Description inputs: `disabled={editingRole?.isSystem}`
+  - Permission grid: `opacity-60 pointer-events-none` + `disabled` على toggle buttons
+  - Save button: `disabled` + label "للقراءة فقط"
+- **handleSave**:
+  - يحفظ `isSystem: editingRole?.isSystem ?? false` (يحافظ على flag عند update)
+  - كان قبل يحوي `isSystem: false` (يفقد flag الـ system roles)
+- **اختبارات** (9 جديد في `RolesPage.test.tsx`):
+  - `vi.mock('../hooks/useAuth')` لـ mock useRoles (لا DB calls في الاختبارات)
+  - `setUser(null)` في beforeEach، `useAppStore.setState({ activeCompany })` للـ context
+  - تغطية: redirect، super_admin access، admin لا يستطيع access، create button visibility، system role badge، delete hidden لـ isSystem، edit/clone/delete لـ non-system، read-only state في modal، clone modal يفتح مع name منسوخ
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **215/215 passed** ✓ (9 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### قواعد ذهبية مضافة (Phase 17d)
+- **`vi.mock('../hooks/useAuth')` pattern للـ component tests**: لا تستدعي DB في الاختبارات. الـ mock يلفّ `useRoles` ويعيد `{ roles, isLoading, create, update, remove }` يدوياً
+- **`<Can action="delete" module="...">` semantic = same as `<Can action="edit">` لكن أوضح للـ reading**: نفس الـ permission لكن action type يفهم الـ intent. الـ future: actions might diverge (e.g., users who can edit can't delete)
+- **isSystem role = read-only for permissions but cloneable**: حماية النظام + يتيح extension. الـ pattern: `disabled={editingRole?.isSystem}` على inputs + `pointer-events-none` على grid + warning banner
+- **Clone modal = editingRole = null**: الـ handleClone يضع `editingRole = null` (create new) لكن `formData.permissions = [...role.permissions]`. الـ modal title يبقى "دور جديد" (create flow) لا "تعديل الدور" (edit flow)
+- **`isSystem: editingRole?.isSystem ?? false` في update**: يحفظ الـ flag عند update. الـ default `false` صحيح للـ new roles لكن يجب جلب من existing لو updating
+- **Test `getAllByText` بدلاً من `getByText` لما العنصر قد يتكرر**: "دور جديد" يظهر مرتين (header + EmptyState action). استخدم `getAllByText().length > 0`
+- **Test `getByDisplayValue` للـ input value verification**: `getByLabelText` يتطلب `htmlFor` association. `getByDisplayValue` يجد الـ input مباشرة
+- **vi.mock module-level import order**: `vi.mock(...)` يجب أن يكون قبل الـ `import` الـ module (hoisted). استخدم `vi.mocked(importedFn)` للـ type-safe mock assertions
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.10*
 
