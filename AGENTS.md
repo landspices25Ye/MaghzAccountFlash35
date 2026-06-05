@@ -1178,5 +1178,60 @@ npx drizzle-kit migrate
 - **No destructive changes في migration جديد**: الـ schema extensions تكون backward-compatible (new columns with defaults). الـ breaking changes (rename، drop، type change) تحتاج migration strategy منفصل
 - **db:check قبل الـ commit**: شغّل `npm run db:check` بعد أي Drizzle schema edit. الـ `No schema changes, nothing to migrate` = sync. أي drift = commit الـ regenerated SQL
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.12*
+### المرحلة 18c: Multi-Currency Form Integration (Sales Invoices)
+- **الهدف**: ربط الـ schema الجديد (Phase 18b) بنموذج فاتورة المبيعات (currency picker + live base-currency readout)
+- **Types** (`src/modules/sales/types.ts`):
+  - `SalesInvoice`: `currencyCode?`، `exchangeRate?`، `baseCurrencyAmount?`، `baseCurrencyPaid?` (كلها optional)
+  - `SalesInvoiceLine`: `currencyCode?`، `exchangeRate?`، `baseCurrencyLineTotal?` (optional)
+- **Validation** (`src/core/utils/validation.ts`):
+  - `createInvoiceSchema` يحوي `currencyCode: z.string().length(3).optional()` + `exchangeRate/baseCurrencyAmount/baseCurrencyPaid` (currencyAmountSchema.optional)
+  - Lines: نفس النمط
+- **API** (`src/modules/sales/api.ts`):
+  - `createInvoice` SQL: INSERT 4 columns جديدة (`currency_code`، `exchange_rate`، `base_currency_amount`، `base_currency_paid`، `status`، `notes` = 16 cols)
+  - **Auto-compute formula**: `baseCurrencyAmount = totalAmount * exchangeRate` (إذا لم يُمرَّر يدوياً) — fallback في الـ API layer
+  - `updateInvoice` SQL: SET clause ديناميكي يضيف الـ currency fields بدون لمس الـ legacy fields
+  - Lines INSERT: `base_currency_line_total = lineTotal * exchangeRate` (يأخذ rate من parent)
+  - `mapInvoiceRow`/`mapInvoiceLineRow`: extract new columns (default `'YER'` و `1` إذا undefined)
+- **Form UI** (`InvoicesPage.tsx`):
+  - `useCurrencyDisplay()` hook: يحمّل الـ currencies + default
+  - 2 form state: `currencyCode` (default defaultCurrency.code || 'YER')، `exchangeRate` (default 1)
+  - `handleCurrencyChange(code)`: يحدّث الـ rate تلقائياً لما الـ user يختار عملة (يبحث في `currencies` array)
+  - **Form layout**: row جديد بعد customer/date/dueDate يحوي `<CurrencySelect>` + exchange rate `<Input>` + base equivalent readout (computed live)
+  - `buildInvoicePayload` يضيف `currencyCode`، `exchangeRate`، `baseCurrencyAmount: totalAmount * exchangeRate`، `baseCurrencyPaid: 0`
+  - `openEdit` يحمّل الـ currency fields من الـ existing invoice
+- **Display**:
+  - **Table column** "الإجمالي" يعرض `(USD)` badge لو الـ currency != base
+  - **Detail modal** يعرض "المعادل بالأساسية" في السطور (لما currency != base)
+  - Detail modal header: totalAmount + currency badge
+- **i18n**: 3 keys جديدة (AR + EN متوازنان): `sales.currency`، `sales.exchangeRate`، `sales.baseCurrency`
+- **اختبارات** (6 جديد في `src/core/utils/validation-currency.test.ts`):
+  - Accepts invoice بدون currency fields (defaults applied)
+  - Accepts YER + rate 1
+  - Accepts USD + rate 1500 + base = 1,725,000
+  - Lines with currency fields
+  - Rejects currency code بطول != 3
+  - Auto-compute formula verification (500 * 2.5 = 1250)
+- **Live DB verification**: `INSERT INTO sales_invoices (..., currency_code='USD', exchange_rate=1500, base_currency_amount=172500)` ينجح
+- **Commit**: `fde371a` (Phase 18c: Multi-currency form integration for sales invoices)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **258/258 passed** ✓ (6 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 16.37s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+
+### قواعد ذهبية مضافة (Phase 18c)
+- **Auto-compute في الـ API layer، لا الـ UI**: الـ form يمرر `totalAmount` + `exchangeRate`، الـ API يحسب `baseCurrencyAmount = totalAmount * exchangeRate` إذا لم يُمرَّر. الـ UI logic أقل = أسهل للـ test + الـ invariant يبقى صحيح
+- **Optional fields في validation schema**: `currencyCode: z.string().length(3).optional()` (لا required) — الـ API يطبق default. الـ backward compat محفوظ
+- **mapRow defaults**: `row.currency_code ? String(...) : 'YER'` (fallback string) و `row.exchange_rate !== undefined ? Number(...) : 1` (fallback number). لو الـ row ناقص (legacy data)، الـ type لا يكسر
+- **form state mirror للـ useCurrencyDisplay**: `useState<string>(defaultCurrency?.code || 'YER')` + `useState<number>(1)`. الـ `useEffect` لتغيير الـ rate لما الـ user يغير العملة يعتمد على `currencies.find(c => c.code === code)` — لا reload DB
+- **Currency badge in table cells**: `row.currencyCode && row.currencyCode !== currencySymbol && <span>({row.currencyCode})</span>` — يظهر فقط لو الـ currency != base (YER) لتجنب الضوضاء
+- **Lines inherit parent rate**: `lineExchangeRate = line.exchangeRate ?? data.exchangeRate ?? 1`. لو الـ line لم يحدد rate، يرث من الـ invoice
+- **i18n balance automatic via test**: 3 keys في AR + EN متوازنان. الـ test يفحص `Object.keys(en).length === Object.keys(ar).length` — catch immediately
+- **MapInvoiceRow select * يكفي**: الـ SQL `SELECT i.*` يجلب الـ columns الجديدة تلقائياً. لا حاجة لتعديل الـ SELECT clause. لكن `mapInvoiceRow` يجب أن يعرف الـ keys الجديدة
+- **CurrencySelect موجود مسبقاً**: من Phase 18a تَمَّ إنشاء `core/ui/components/smart/fields/CurrencySelect.tsx` — الـ integration في الـ forms يَستخدمه مباشرة
+- **Auto-compute formula = source of truth واحد**: `baseCurrencyAmount = totalAmount * exchangeRate` (لا تأخذ من client) — لو الـ client يحسبها، الـ client قد يكذب. الـ server يَحسب
+- **z.string().length(3) يقبل أي 3 chars**: لا يحدد ISO 4217. الـ validation في الـ currency table (`code` column) — الـ zod فقط يتحقق الـ length
+
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.13*
 
