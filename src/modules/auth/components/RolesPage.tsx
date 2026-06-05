@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Plus, Search, Pencil, Trash2, Check, Save } from 'lucide-react';
+import { Shield, Plus, Search, Pencil, Trash2, Check, Save, Lock } from 'lucide-react';
 import { Card, Button, Input, Modal, Badge } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
-import { useAuthStore } from '../store';
+import { Can } from '@/core/ui/components/PermissionGate';
+import { usePermission } from '../hooks/usePermission';
 import { useRoles } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
 import { PERMISSION_GROUPS } from '../types';
@@ -13,7 +14,7 @@ import type { Role, Permission } from '../types';
 export const RolesPage: React.FC = () => {
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
-  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canManageRoles = usePermission('settings.roles');
   const [search, setSearch] = useState('');
   const { roles, isLoading, create, update, remove } = useRoles(activeCompany?.id || '', { search });
 
@@ -32,12 +33,11 @@ export const RolesPage: React.FC = () => {
     permissions: [] as Permission[],
   });
 
-  // Redirect if no permission
   React.useEffect(() => {
-    if (!hasPermission('settings.roles')) {
+    if (!canManageRoles) {
       navigate('/');
     }
-  }, [hasPermission, navigate]);
+  }, [canManageRoles, navigate]);
 
   const openModal = useCallback((role?: Role) => {
     if (role) {
@@ -62,7 +62,7 @@ export const RolesPage: React.FC = () => {
       name: formData.name,
       description: formData.description,
       permissions: formData.permissions,
-      isSystem: false,
+      isSystem: editingRole?.isSystem ?? false,
     };
 
     if (editingRole) {
@@ -89,7 +89,18 @@ export const RolesPage: React.FC = () => {
     });
   };
 
+  const handleClone = (role: Role) => {
+    setEditingRole(null);
+    setFormData({
+      name: `${role.name} - نسخة`,
+      description: role.description || '',
+      permissions: [...role.permissions],
+    });
+    setIsModalOpen(true);
+  };
+
   const togglePermission = (permission: Permission) => {
+    if (editingRole?.isSystem) return;
     setFormData((prev) => ({
       ...prev,
       permissions: prev.permissions.includes(permission)
@@ -99,6 +110,7 @@ export const RolesPage: React.FC = () => {
   };
 
   const toggleAllModulePermissions = (modulePermissions: Permission[]) => {
+    if (editingRole?.isSystem) return;
     setFormData((prev) => {
       const allSelected = modulePermissions.every((p) => prev.permissions.includes(p));
       if (allSelected) {
@@ -136,9 +148,11 @@ export const RolesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة أدوار المستخدمين وشبكة الصلاحيات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-          دور جديد
-        </Button>
+        <Can action="edit" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
+            دور جديد
+          </Button>
+        </Can>
       </div>
 
       {/* Filters */}
@@ -183,7 +197,10 @@ export const RolesPage: React.FC = () => {
                   )}
                 </div>
                 {role.isSystem && (
-                  <Badge className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">نظامي</Badge>
+                  <Badge className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 flex items-center gap-1">
+                    <Lock size={10} />
+                    نظامي
+                  </Badge>
                 )}
               </div>
 
@@ -201,25 +218,40 @@ export const RolesPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => openModal(role)}
-                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                >
-                  <Pencil size={14} />
-                  <span className="mr-1">تعديل</span>
-                </Button>
-                {!role.isSystem && (
+                <Can action="edit" module="settings">
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleDelete(role)}
-                    className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                    onClick={() => openModal(role)}
+                    className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   >
-                    <Trash2 size={14} />
-                    <span className="mr-1">حذف</span>
+                    <Pencil size={14} />
+                    <span className="mr-1">تعديل</span>
                   </Button>
+                </Can>
+                <Can action="edit" module="settings">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleClone(role)}
+                    className="text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20"
+                  >
+                    <Plus size={14} />
+                    <span className="mr-1">نسخ</span>
+                  </Button>
+                </Can>
+                {!role.isSystem && (
+                  <Can action="delete" module="settings">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleDelete(role)}
+                      className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                    >
+                      <Trash2 size={14} />
+                      <span className="mr-1">حذف</span>
+                    </Button>
+                  </Can>
                 )}
               </div>
             </Card>
@@ -237,13 +269,30 @@ export const RolesPage: React.FC = () => {
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button>
-            <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave}>
-              حفظ
+            <Button
+              variant="primary"
+              leftIcon={<Save size={16} />}
+              onClick={handleSave}
+              disabled={editingRole?.isSystem}
+            >
+              {editingRole?.isSystem ? 'للقراءة فقط' : 'حفظ'}
             </Button>
           </div>
         }
       >
         <div className="space-y-6">
+          {editingRole?.isSystem && (
+            <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200">
+              <Lock size={16} className="mt-0.5 shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium mb-1">دور نظامي — للقراءة فقط</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  لا يمكن تعديل صلاحيات هذا الدور لأنه جزء من النظام. يمكنك نسخه لإنشاء دور جديد.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Role Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
@@ -251,11 +300,13 @@ export const RolesPage: React.FC = () => {
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               required
+              disabled={editingRole?.isSystem}
             />
             <Input
               label="الوصف"
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              disabled={editingRole?.isSystem}
             />
           </div>
 
@@ -280,13 +331,14 @@ export const RolesPage: React.FC = () => {
               </div>
 
               {/* Grid Body */}
-              <div className="divide-y divide-slate-200 dark:divide-slate-700 max-h-[400px] overflow-y-auto">
+              <div className={`divide-y divide-slate-200 dark:divide-slate-700 max-h-[400px] overflow-y-auto ${editingRole?.isSystem ? 'opacity-60 pointer-events-none' : ''}`}>
                 {PERMISSION_GROUPS.map((group) => (
                   <div key={group.module} className="grid grid-cols-[180px_1fr]">
                     <div className="p-3 bg-slate-50/50 dark:bg-slate-800/30 border-l border-slate-200 dark:border-slate-700 flex items-center gap-2">
                       <button
                         onClick={() => toggleAllModulePermissions(group.permissions.map((p) => p.key as Permission))}
                         className="flex items-center gap-2 text-sm font-medium text-slate-800 dark:text-slate-200 hover:text-primary-600 transition-colors"
+                        disabled={editingRole?.isSystem}
                       >
                         {isModuleSelected(group.permissions.map((p) => p.key as Permission)) ? (
                           <Check size={16} className="text-emerald-600" />
