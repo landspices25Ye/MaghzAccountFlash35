@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.8 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 185 ✓ | 5 pages server-side paginated)
+- **الإصدار الحالي:** v0.3.9 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 206 ✓ | 5 pages server-side paginated | RBAC reactive)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1005,5 +1005,51 @@ npx drizzle-kit migrate
 - **no-user = hidden**: لا حاجة لـ `if (user)` في كل component — `PermissionGate` يتعامل مع `user = null` ويُرجع `fallback`
 - **super_admin / admin hardcoded shortcuts**: `hasPermission` في الـ store يحقق role-based bypasses. لا تحاول implementation في الـ React layer — logic في الـ store
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.8*
+### المرحلة 17b: Can Wiring عبر الصفحات
+- **الهدف**: تطبيق `<Can>` على Create buttons في كل الصفحات الـ server-side paginated
+- **التطبيقات** (4 صفحات، 6 sites):
+  - `PurchaseInvoicesPage`: 1 site (header Create button)
+  - `QuotationsPage`: 2 sites (header + EmptyState CTA)
+  - `SalesReturnsPage`: 2 sites (header + EmptyState CTA)
+  - `SuppliersPage`: 1 site (header Create button)
+  - `InvoicesPage`: 2 sites (header + EmptyState CTA — تم في Phase 17)
+- **الـ pattern**: `<Can action="create" module="sales">` + Button + `</Can>` — Button لا يظهر إذا user لا يحوي الـ permission
+- **النتيجة**: 8 `<Can>` wraps total عبر 5 صفحات
+
+### المرحلة 17c: Role-Aware Navigation
+- **الهدف**: إخفاء menu items في Sidebar لما user لا يستطيع access الـ module + إصلاح subscription bug في usePermission
+- **Bug اكتشف**: `useAuthStore((s) => s.hasPermission)` كانت ترجع function reference (stable) → الـ components لا re-render لما user/permissions تتغير!
+  - **الإصلاح**: subscribe to `(s) => s.user` و `(s) => s.permissions` + use `useAuthStore.getState().hasPermission(perm)` للـ fresh state
+  - **الـ hooks المتأثرة**: `usePermission`, `usePermissions`, `useHasRole`, `useModulePermissions`, `useShouldFilterByOwner`, `useCanAccessModule` (جديد)
+- **`useCanAccessModule(module)` hook جديد**:
+  - يجمع 3 access levels: `module.view` (full access) OR `module.own` (own records only) OR `module.create` (can create)
+  - super_admin يرجع true تلقائياً
+  - يحل مشكلة `sales_rep` (لديه `sales.own` + `sales.create`، ليس `sales.view`) — يقدر يرى menu المبيعات لكن فقط مع own records
+- **`Sidebar` refactor**:
+  - `MenuItem.permission: string` → `MenuItem.module: Module` (type-safe union)
+  - `SidebarItem` يستخدم `useCanAccessModule(item.module)` بدل `usePermission(item.permission)`
+  - Children filtering: `!c.permission || hasPermission(c.permission)` (الـ default = parent permission)
+  - Module union أضيف `'core'`
+- **اختبارات** (21 جديد):
+  - `usePermission.test.tsx` (12): reactivity on login/logout/permission changes، super_admin bypass، module shortcuts (canView/canCreate/useModulePermissions)
+  - `layout.test.tsx` (9): no user = empty sidebar، super_admin sees all، viewer sees read-only، sales_rep sees own modules، re-renders on login/logout، active parent expands، collapsed hides children، admin bypass
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **206/206 passed** ✓ (21 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### قواعد ذهبية مضافة (Phase 17c)
+- **Zustand subscription bug**: `useAuthStore((s) => s.hasPermission)` ترجع function reference (stable) → لا re-renders. **الحل**: subscribe to state (e.g. `s.user`، `s.permissions`)، ثم use `getState().method()` للـ fresh read
+- **useAuthStore.getState() = safe في render**: يقرأ الـ current state synchronously، لا subscription، مثالي مع state subscriptions كـ "triggers"
+- **module.view vs module.own**: `module.view` = full read access، `module.own` = own records only. الـ menu visibility لا يجب أن يعتمد على `view` فقط
+- **`useCanAccessModule` = OR-based check**: `view OR own OR create` = "user يقدر يستخدم module". `useCanView` = view-only check
+- **Module union type يحوي 'core'**: الـ Module type لازم يحوي core/acct/inv/sales/purch/mfg/hr/crm/reports/settings (10 modules)
+- **Test reactivity = use act + rerender + verify DOM change**: `act(() => { store.login(newUser) })` + `rerender(<Component />)` يجب أن يحدث DOM
+- **Test helper `makeUser(role, _permissions)`**: استخدم `_permissions` prefix (الـ unused arg convention) لـ ESLint satisfaction
+- **Test helper `setUser(user, _permissions)`**: defaults `permissions = []` (مهم — test calls بدون args تستخدم [])
+- **Test bug: `setUser(makeUser('manager', [...perms]))` ≠ `setUser(makeUser('manager'), [...perms])`**: الأول يمرر perms كـ second arg لـ makeUser (الـ type accepts)، الثاني يمرر لـ setUser. الـ test code يجب أن يكون صريح: `setUser(user, permissions)`
+- **Sidebar children permission = default to parent**: `!c.permission || hasPermission(c.permission)` — children بلا explicit permission تظهر إذا parent visible
+- **`useMemo([item.children, user?.id, user?.role])` vs `useMemo([item.children, user])`**: ESLint يحلل deps structure. `user` (object) يعتبر "unnecessary" إذا الـ body يستخدم `getState()` فقط. استخدم `eslint-disable-next-line` أو حدد `user?.id`
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.9*
 
