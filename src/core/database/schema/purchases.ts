@@ -33,6 +33,10 @@ export const purchaseInvoices = pgTable('purchase_invoices', {
   vatAmount: numeric('vat_amount', { precision: 18, scale: 4 }).default('0'),
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
   paidAmount: numeric('paid_amount', { precision: 18, scale: 4 }).default('0'),
+  currencyCode: varchar('currency_code', { length: 3 }).notNull().default('YER'),
+  exchangeRate: numeric('exchange_rate', { precision: 18, scale: 6 }).notNull().default('1'),
+  baseCurrencyAmount: numeric('base_currency_amount', { precision: 18, scale: 4 }).notNull().default('0'),
+  baseCurrencyPaid: numeric('base_currency_paid', { precision: 18, scale: 4 }).notNull().default('0'),
   status: varchar('status', { length: 20 }).default('draft'),
   notes: text('notes'),
   createdBy: uuid('created_by'),
@@ -50,6 +54,9 @@ export const purchaseInvoiceLines = pgTable('purchase_invoice_lines', {
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitPrice: numeric('unit_price', { precision: 18, scale: 4 }).notNull(),
   lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),
+  currencyCode: varchar('currency_code', { length: 3 }).notNull().default('YER'),
+  exchangeRate: numeric('exchange_rate', { precision: 18, scale: 6 }).notNull().default('1'),
+  baseCurrencyLineTotal: numeric('base_currency_line_total', { precision: 18, scale: 4 }).notNull().default('0'),
 });
 
 // ─── Purchase Orders ──────────────────────────────────────────────────────────

@@ -34,6 +34,10 @@ export const salesInvoices = pgTable('sales_invoices', {
   vatAmount: numeric('vat_amount', { precision: 18, scale: 4 }).default('0'),
   totalAmount: numeric('total_amount', { precision: 18, scale: 4 }).notNull().default('0'),
   paidAmount: numeric('paid_amount', { precision: 18, scale: 4 }).default('0'),
+  currencyCode: varchar('currency_code', { length: 3 }).notNull().default('YER'),
+  exchangeRate: numeric('exchange_rate', { precision: 18, scale: 6 }).notNull().default('1'),
+  baseCurrencyAmount: numeric('base_currency_amount', { precision: 18, scale: 4 }).notNull().default('0'),
+  baseCurrencyPaid: numeric('base_currency_paid', { precision: 18, scale: 4 }).notNull().default('0'),
   status: varchar('status', { length: 20 }).default('draft'),
   notes: text('notes'),
   createdBy: uuid('created_by'),
@@ -52,6 +56,9 @@ export const salesInvoiceLines = pgTable('sales_invoice_lines', {
   discountPercent: numeric('discount_percent', { precision: 5, scale: 2 }).default('0'),
   vatPercent: numeric('vat_percent', { precision: 5, scale: 2 }).default('15'),
   lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),
+  currencyCode: varchar('currency_code', { length: 3 }).notNull().default('YER'),
+  exchangeRate: numeric('exchange_rate', { precision: 18, scale: 6 }).notNull().default('1'),
+  baseCurrencyLineTotal: numeric('base_currency_line_total', { precision: 18, scale: 4 }).notNull().default('0'),
 });
 
 // ─── Quotations ───────────────────────────────────────────────────────────────

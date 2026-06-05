@@ -68,15 +68,14 @@ describe('Drizzle migrations (unified)', () => {
     file0 = files.length > 0 ? readMigration(files[0]) : '';
   });
 
-  it('has exactly one unified migration file', () => {
+  it('has the unified base migration file', () => {
     const files = listMigrations();
-    expect(files.length).toBe(1);
     expect(files[0]).toBe('0000_unified_schema.sql');
   });
 
-  it('_journal.json has a single entry matching the unified file', () => {
+  it('_journal.json entries match migration files', () => {
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf-8'));
-    expect(journal.entries.length).toBe(1);
+    expect(journal.entries.length).toBeGreaterThanOrEqual(1);
     expect(journal.entries[0].tag).toBe('0000_unified_schema');
     expect(journal.entries[0].idx).toBe(0);
   });
@@ -272,6 +271,57 @@ describe('Drizzle migrations (unified)', () => {
 
   it('flat journal_entries design documented in header', () => {
     expect(file0).toMatch(/Flat design/i);
+  });
+});
+
+describe('Migration 0001: Multi-currency columns', () => {
+  let mig1: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0001_multi_currency.sql');
+    mig1 = readFileSync(path, 'utf-8');
+  });
+
+  it('adds currency_code to sales_invoices with YER default', () => {
+    expect(mig1).toMatch(/ALTER TABLE "sales_invoices"[\s\S]*?"currency_code"[\s\S]*?DEFAULT 'YER' NOT NULL/i);
+  });
+
+  it('adds currency_code to purchase_invoices with YER default', () => {
+    expect(mig1).toMatch(/ALTER TABLE "purchase_invoices"[\s\S]*?"currency_code"[\s\S]*?DEFAULT 'YER' NOT NULL/i);
+  });
+
+  it('adds exchange_rate to sales_invoices with 1 default', () => {
+    expect(mig1).toMatch(/ALTER TABLE "sales_invoices"[\s\S]*?"exchange_rate"[\s\S]*?DEFAULT '1' NOT NULL/i);
+  });
+
+  it('adds base_currency_amount to both sales and purchase invoices', () => {
+    expect(mig1).toContain('"base_currency_amount"');
+    expect(mig1.match(/"base_currency_amount"/g)?.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('adds base_currency_paid to invoices for payment tracking', () => {
+    expect(mig1).toContain('"base_currency_paid"');
+    expect(mig1.match(/"base_currency_paid"/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('adds base_currency_line_total to invoice lines', () => {
+    expect(mig1).toContain('"base_currency_line_total"');
+    expect(mig1.match(/"base_currency_line_total"/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('adds currency columns to receipt_vouchers and payment_vouchers', () => {
+    expect(mig1).toMatch(/ALTER TABLE "receipt_vouchers"[\s\S]*?"currency_code"/i);
+    expect(mig1).toMatch(/ALTER TABLE "payment_vouchers"[\s\S]*?"currency_code"/i);
+  });
+
+  it('creates composite index for currency aggregation queries', () => {
+    expect(mig1).toContain('CREATE INDEX IF NOT EXISTS "idx_sales_invoices_company_currency"');
+    expect(mig1).toContain('CREATE INDEX IF NOT EXISTS "idx_purchase_invoices_company_currency"');
+  });
+
+  it('is idempotent (uses IF NOT EXISTS on all ADD COLUMN and CREATE INDEX)', () => {
+    expect(mig1).not.toMatch(/ADD COLUMN\s+(?!IF NOT EXISTS)/);
+    expect(mig1).not.toMatch(/CREATE INDEX\s+(?!IF NOT EXISTS)/);
   });
 });
 
