@@ -1,3 +1,5 @@
+import { pbkdf2Sync, randomBytes } from 'crypto';
+
 /**
  * Comprehensive demo data seeder for PostgreSQL
  * Populates a freshly-created (or empty) company with realistic demo data
@@ -9,6 +11,14 @@
  *   - All multi-tenant tables filter on company_id
  *   - All created_by/updated_by are set to the admin user if available
  */
+
+const PBKDF2_ITERATIONS = 100000;
+const SALT_LENGTH = 32;
+function hashPasswordNode(password) {
+  const salt = randomBytes(SALT_LENGTH).toString('hex');
+  const hash = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, 32, 'sha256').toString('hex');
+  return `pbkdf2:${PBKDF2_ITERATIONS}:${salt}:${hash}`;
+}
 
 const VAT_RATE = 0.15;
 
@@ -214,9 +224,9 @@ export async function seedComprehensiveDemoData(client, companyId) {
     const r = await client.query(
       `INSERT INTO users (company_id, username, email, full_name, password_hash, role, is_active)
        VALUES ($1::uuid, 'admin', 'admin@demo.ye', 'مدير النظام',
-               '$2b$10$Q7HWYxVRnvNQ6I6fO8w6tu5CZ5Y6Y8uK5K5K5K5K5K5K5K5K5K5K5K', 'admin', TRUE)
+               $2, 'admin', TRUE)
        RETURNING id`,
-      [companyId]
+      [companyId, hashPasswordNode('admin')]
     );
     adminId = r.rows[0]?.id;
     if (adminId) {

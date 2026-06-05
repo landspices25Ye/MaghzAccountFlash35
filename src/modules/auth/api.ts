@@ -1,4 +1,5 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { mapRows } from '@/core/utils/mapPgRow';
 import type {
   User,
   Role,
@@ -108,16 +109,13 @@ export const authApi = {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
-        'SELECT * FROM users WHERE username = $1 AND is_active = true',
-        [credentials.username]
-      );
+      const result = await adapter.query('SELECT * FROM users WHERE username = $1', [credentials.username]);
 
       if (!result.success || !result.rows || result.rows.length === 0) {
         return { success: false, error: 'اسم المستخدم أو كلمة المرور غير صحيحة' };
       }
 
-      const user = result.rows[0] as User;
+      const user = mapRows<User>(result.rows)[0];
 
       if (!user.isActive) {
         return { success: false, error: 'الحساب معطل' };
@@ -175,7 +173,7 @@ export const authApi = {
         [companyId]
       );
       if (result.success) {
-        let users = (result.rows || []) as User[];
+        let users = mapRows<User>(result.rows);
         if (filters?.search) {
           const q = filters.search.toLowerCase();
           users = users.filter((u) => (u.username?.toLowerCase() || '').includes(q) || (u.email && u.email.toLowerCase().includes(q)));
@@ -202,7 +200,7 @@ export const authApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query('SELECT * FROM users WHERE id = $1 AND company_id = $2', [id, companyId]);
       if (result.success && result.rows && result.rows.length > 0) {
-        return { success: true, data: result.rows[0] as User };
+        return { success: true, data: mapRows<User>(result.rows)[0] };
       }
       return { success: false, error: result.error || 'User not found' };
     } catch {
