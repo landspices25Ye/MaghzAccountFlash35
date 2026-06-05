@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.10 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 215 ✓ | 5 pages server-side paginated | RBAC reactive)
+- **الإصدار الحالي:** v0.3.11 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 243 ✓ | 5 pages server-side paginated | RBAC reactive | Multi-currency utilities)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1089,5 +1089,48 @@ npx drizzle-kit migrate
 - **Test `getByDisplayValue` للـ input value verification**: `getByLabelText` يتطلب `htmlFor` association. `getByDisplayValue` يجد الـ input مباشرة
 - **vi.mock module-level import order**: `vi.mock(...)` يجب أن يكون قبل الـ `import` الـ module (hoisted). استخدم `vi.mocked(importedFn)` للـ type-safe mock assertions
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.10*
+### المرحلة 18a: Multi-Currency Foundation
+- **الهدف**: إضافة الـ utility layer للـ multi-currency بدون لمس الـ schema
+- **`currencyConverter.ts`** (107 سطر، pure functions):
+  - `getCurrency/getDefaultCurrency/getActiveCurrencies` للـ lookup
+  - `convertAmount(value, fromRate, toRate) = (value * fromRate) / toRate`
+  - `convertToBase / convertFromBase` (مع baseRate اختياري)
+  - `formatWithSymbol(value, currency)`: "1,234.50 USD" أو "$ 1,234.50"
+  - `formatYer(value, decimals)`: يستخدم symbol "ر.ي"
+  - `getBaseCurrencyConversion`: يرجع `{ value, currency, originalValue }`
+  - `summarizeMultiCurrency`: يجمع Record<code, amount> للـ base currency
+- **`useCurrencyDisplay.ts`** (116 سطر، React hook):
+  - `useCurrencies(companyId)`: يحمّل من DB
+  - `useCurrencyDisplay()`: يرجع `{ currencies, defaultCurrency, formatWithCurrency, convert, toBase, summarize }`
+  - `formatWithCurrency(value, code?)`: يستخدم default إذا لم يُمرَّر code
+  - `convert(value, fromCode, toCode?)`: cross-currency conversion
+- **Exchange rate semantics**:
+  - `rate` = "كم من الـ base currency = 1 من هذا"
+  - 1 USD = 1500 YER → `USD.rate = 1500`، `YER.rate = 1`
+  - Formula: `value * fromRate / toRate` (يتضمن الـ base normalization)
+- **اختبارات** (28 جديد في `currencyConverter.test.ts`):
+  - `getCurrency`: lookup + null fallback
+  - `convertAmount`: same/cross/invalid/zero rate
+  - `formatWithSymbol`: with symbol, with code, invalid, null currency
+  - `formatYer`: ر.ي symbol, decimal places (regex match `100$` و `100.00$`)
+  - `getBaseCurrencyConversion`: same as base, cross (10 USD = 15,000 YER)
+  - `summarizeMultiCurrency`: multi-currency sum (1,000 YER + 10 USD = 16,000 YER)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **243/243 passed** ✓ (28 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### قواعد ذهبية مضافة (Phase 18a)
+- **Exchange rate semantics = "units per 1 of base"**: 1 USD = 1500 YER → rate(USD) = 1500. الـ formula للـ conversion: `value * fromRate / toRate` (NOT `/ fromRate * toRate` — هذا يعطي inverse)
+- **rate = 1 للـ base currency**: الـ default currency دائماً rate = 1 (YER). non-base currencies لها rate > 1
+- **`convertToBase(value, fromRate)` = `value * fromRate / 1`**: إذا base rate = 1، الـ math ببساطة `value * fromRate`
+- **`convertFromBase(value, toRate)` = `value * 1 / toRate`**: الـ inverse، يقسم على toRate
+- **`convertAmount(value, fromRate, toRate)` = `value * fromRate / toRate`**: cross-currency عبر الـ base
+- **Regex `/\./` يطابق dot في Arabic symbol**: `ر.ي` يحوي period — `not.toMatch(/\./)` يفشل لـ "ر.ي 100". استخدم `toMatch(/100$/)` أو `toMatch(/100\.00$/)` للـ integer/decimal check
+- **`getBaseCurrencyConversion` يرجع originalValue**: حتى لو converted = 0، الـ originalValue محفوظ للـ audit trail
+- **Zero rate = fallback to original**: `if (rate <= 0) return value` — لا throw error، لا NaN
+- **NaN/Infinity = 0**: `if (!isFinite(value)) return 0` — لا propagate NaN في التقارير
+- **YER_CODE constant**: `'YER'` literal في module واحد، الباقي يستورد
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.11*
 
