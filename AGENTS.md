@@ -1132,5 +1132,51 @@ npx drizzle-kit migrate
 - **NaN/Infinity = 0**: `if (!isFinite(value)) return 0` — لا propagate NaN في التقارير
 - **YER_CODE constant**: `'YER'` literal في module واحد، الباقي يستورد
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.11*
+### المرحلة 18b: Multi-Currency Schema Columns
+- **الهدف**: إضافة `currency_code`/`exchange_rate`/`base_currency_amount` إلى الجداول الـ transactional (الـ utility layer جاهز من Phase 18a)
+- **`drizzle/0001_multi_currency.sql`** (52 سطر، idempotent):
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` للـ 6 جداول: `sales_invoices`، `sales_invoice_lines`، `purchase_invoices`، `purchase_invoice_lines`، `receipt_vouchers`، `payment_vouchers`
+  - Defaults: `currency_code='YER'`، `exchange_rate=1`، `base_currency_amount/paid/line_total=0` (backward compat — كل الـ rows القديمة تستخدم YER)
+  - **4 composite indexes**: `(company_id, currency_code)` على الـ 4 parent tables للـ aggregation queries
+- **Drizzle schema updates** (3 files، 12 new columns total):
+  - `src/core/database/schema/sales.ts`: `salesInvoices` (4 cols) + `salesInvoiceLines` (3 cols)
+  - `src/core/database/schema/purchases.ts`: `purchaseInvoices` (4 cols) + `purchaseInvoiceLines` (3 cols)
+  - `src/core/database/schema/vouchers.ts`: `receiptVouchers` (3 cols) + `paymentVouchers` (3 cols)
+- **Journal entry**: `{"idx": 1, "version": "7", "tag": "0001_multi_currency", "when": 1779800000000, "breakpoints": true}`
+- **Tests جديدة** (9 جديد، 24 → 33 في `drizzle/migrations.test.ts`):
+  - `Migration 0001: Multi-currency columns` block جديد
+  - currency_code to sales/purchase invoices (YER default)
+  - exchange_rate to sales_invoices (1 default)
+  - base_currency_amount (≥ 4 occurrences: sales_invoices + purchase_invoices + receipt_vouchers + payment_vouchers)
+  - base_currency_paid (≥ 2 occurrences: sales_invoices + purchase_invoices)
+  - base_currency_line_total (≥ 2 occurrences: sales_invoice_lines + purchase_invoice_lines)
+  - currency columns on receipt/payment vouchers
+  - composite indexes (idx_sales_invoices_company_currency, idx_purchase_invoices_company_currency)
+  - idempotency: IF NOT EXISTS on ADD COLUMN and CREATE INDEX
+- **Test fix**: `_journal.json entries match migration files` (بدل `single entry`) — يقبل migration chain (0..n entries) لأن Phase 18b أضاف entry ثاني
+- **Verification end-to-end** (PostgreSQL 18 localhost):
+  - 20 new columns present (information_schema query)
+  - 4 new indexes created (pg_indexes query)
+  - `npm run db:reset:force`: 22.24s ✓
+- **Commit**: `93e1502` (Phase 18b: Multi-currency schema columns)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **252/252 passed** ✓ (9 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓ (Drizzle schema ↔ SQL في sync)
+
+### قواعد ذهبية مضافة (Phase 18b)
+- **migration جديد = 3 files على الأقل**: `drizzle/0001_*.sql` + `drizzle/meta/_journal.json` (entry جديد) + Drizzle schema files (matching columns). **القاعدة**: لا تنشئ SQL migration بدون تحديث Drizzle schema — الـ drift detection يكتشفه لكن الـ production code يكسر
+- **ADD COLUMN ... DEFAULT 'value' NOT NULL**: NOT NULL + DEFAULT في ALTER TABLE يعمل في PG (يضيف العمود بـ default value لكل الـ existing rows). لا حاجة لـ UPDATE لاحق
+- **`IF NOT EXISTS` على كل ADD COLUMN و CREATE INDEX في migration**: الـ migration قد تُعاد تشغيلها (re-apply scenario) — الـ guard يمنع errors
+- **`character varying(3)` للـ currency_code**: الـ ISO 4217 codes دائماً 3 chars. الـ precision/validation لاحقاً (CHECK constraint ممكن)
+- **`numeric(18, 6)` للـ exchange_rate**: 6 decimal places يدعم rates صغيرة (مثل KWD ≈ 0.003 USD). أكبر من الـ amount columns (4 decimals) لأن precision حرجة هنا
+- **base_currency_amount/payment في parent، base_currency_line_total في lines**: الـ parent يحوي aggregates للـ سريع reporting؛ الـ lines يحوي computed values للـ traceability
+- **Composite index `(company_id, currency_code)`**: يخدم `SELECT ... WHERE company_id=$1 GROUP BY currency_code` (multi-tenant + aggregation). الـ order: equality filter أولاً
+- **migration test assumption flip**: الـ test القديم كان يفترض `length === 1` (single unified file). مع multi-migration، استخدم `entries[0].tag === '0000_unified_schema'` + `length >= 1` — لا تحط `length === 1` لأن extensions مطلوبة
+- **Migration tests كـ integration tests للـ schema**: لا تعتمد على running PG. افحص الـ SQL text مباشرة بـ `readFileSync` + regex patterns — أسرع + portable
+- **No destructive changes في migration جديد**: الـ schema extensions تكون backward-compatible (new columns with defaults). الـ breaking changes (rename، drop، type change) تحتاج migration strategy منفصل
+- **db:check قبل الـ commit**: شغّل `npm run db:check` بعد أي Drizzle schema edit. الـ `No schema changes, nothing to migrate` = sync. أي drift = commit الـ regenerated SQL
+
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.12*
 
