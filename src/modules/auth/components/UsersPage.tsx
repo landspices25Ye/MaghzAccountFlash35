@@ -254,6 +254,7 @@ export const UsersPage: React.FC = () => {
           />
         </div>
         <select
+          title="تصفية حسب الدور"
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
           className="form-control w-full sm:w-48"
@@ -324,6 +325,7 @@ export const UsersPage: React.FC = () => {
             <div>
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">الدور</label>
               <select
+                title="تصفية حسب الدور"
                 value={formData.role}
                 onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value as User['role'] }))}
                 className="form-control w-full"
@@ -339,6 +341,7 @@ export const UsersPage: React.FC = () => {
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">الفرع</label>
               <select
                 value={formData.branchId || ''}
+                title="تصفية حسب الفرع"
                 onChange={(e) => setFormData((prev) => ({ ...prev, branchId: e.target.value || null }))}
                 className="form-control w-full"
               >

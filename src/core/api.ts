@@ -1,11 +1,12 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { mapRows } from '@/core/utils/mapPgRow';
 import type { DocumentSequence, ProductType, Unit, CashBox, Bank, CostCenter, PayrollComponent, DefaultAccount } from './types';
 
 // ─── Document Sequences ───────────────────────────────────────────────────────
 export async function getDocumentSequences(companyId: string): Promise<{ success: boolean; data?: DocumentSequence[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 ORDER BY document_type', [companyId]);
-  return result.success ? { success: true, data: result.rows as DocumentSequence[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<DocumentSequence>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function updateDocumentSequence(id: string, data: Partial<DocumentSequence>): Promise<{ success: boolean; error?: string }> {
@@ -35,7 +36,7 @@ export async function getNextDocumentNumber(companyId: string, documentType: str
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 AND document_type = $2 AND is_active = true', [companyId, documentType]);
   if (!result.success || !result.rows?.[0]) return { success: false, error: 'Sequence not found' };
-  const seq = result.rows[0] as DocumentSequence;
+  const seq = mapRows<DocumentSequence>([result.rows[0]])[0];
   const fullNumber = formatSequenceNumber(seq);
   // Increment
   await adapter.query('UPDATE document_sequences SET current_number = current_number + increment_step WHERE id = $1', [seq.id]);
@@ -46,7 +47,7 @@ export async function peekNextDocumentNumber(companyId: string, documentType: st
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 AND document_type = $2 AND is_active = true', [companyId, documentType]);
   if (!result.success || !result.rows?.[0]) return { success: false, error: 'Sequence not found' };
-  const seq = result.rows[0] as DocumentSequence;
+  const seq = mapRows<DocumentSequence>([result.rows[0]])[0];
   // Preview only: use currentNumber (as if next consumption) without incrementing
   const previewSeq = { ...seq, currentNumber: seq.currentNumber + (seq.incrementStep || 1) };
   return { success: true, number: formatSequenceNumber(previewSeq) };
@@ -56,7 +57,7 @@ export async function peekNextDocumentNumber(companyId: string, documentType: st
 export async function getProductTypes(companyId: string): Promise<{ success: boolean; data?: ProductType[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM product_types WHERE company_id = $1 ORDER BY name_ar', [companyId]);
-  return result.success ? { success: true, data: result.rows as ProductType[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<ProductType>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createProductType(data: Omit<ProductType, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -88,7 +89,7 @@ export async function deleteProductType(id: string): Promise<{ success: boolean;
 export async function getUnits(companyId: string): Promise<{ success: boolean; data?: Unit[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM units WHERE company_id = $1 AND is_active = true ORDER BY name_ar', [companyId]);
-  return result.success ? { success: true, data: result.rows as Unit[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<Unit>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createUnit(data: Omit<Unit, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -119,7 +120,7 @@ export async function deleteUnit(id: string): Promise<{ success: boolean; error?
 export async function getCashBoxes(companyId: string): Promise<{ success: boolean; data?: CashBox[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM cash_boxes WHERE company_id = $1 AND is_active = true ORDER BY name', [companyId]);
-  return result.success ? { success: true, data: result.rows as CashBox[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<CashBox>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createCashBox(data: Omit<CashBox, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -144,7 +145,7 @@ export async function updateCashBox(id: string, data: Partial<CashBox>): Promise
 export async function getBanks(companyId: string): Promise<{ success: boolean; data?: Bank[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM banks WHERE company_id = $1 AND is_active = true ORDER BY name', [companyId]);
-  return result.success ? { success: true, data: result.rows as Bank[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<Bank>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createBank(data: Omit<Bank, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -182,7 +183,7 @@ export async function deleteBank(id: string): Promise<{ success: boolean; error?
 export async function getCostCenters(companyId: string): Promise<{ success: boolean; data?: CostCenter[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM cost_centers WHERE company_id = $1 AND is_active = true ORDER BY name_ar', [companyId]);
-  return result.success ? { success: true, data: result.rows as CostCenter[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<CostCenter>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createCostCenter(data: Omit<CostCenter, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -213,7 +214,7 @@ export async function deleteCostCenter(id: string): Promise<{ success: boolean; 
 export async function getPayrollComponents(companyId: string): Promise<{ success: boolean; data?: PayrollComponent[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM payroll_components WHERE company_id = $1 AND is_active = true ORDER BY type, name_ar', [companyId]);
-  return result.success ? { success: true, data: result.rows as PayrollComponent[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<PayrollComponent>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function createPayrollComponent(data: Omit<PayrollComponent, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
@@ -239,7 +240,7 @@ export async function updatePayrollComponent(id: string, data: Partial<PayrollCo
 export async function getDefaultAccounts(companyId: string): Promise<{ success: boolean; data?: DefaultAccount[]; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query('SELECT * FROM default_accounts WHERE company_id = $1 ORDER BY function_key', [companyId]);
-  return result.success ? { success: true, data: result.rows as DefaultAccount[] } : { success: false, error: result.error };
+  return result.success ? { success: true, data: mapRows<DefaultAccount>(result.rows) } : { success: false, error: result.error };
 }
 
 export async function updateDefaultAccount(id: string, accountId: string | null): Promise<{ success: boolean; error?: string }> {

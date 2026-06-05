@@ -51,7 +51,7 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
   return (
     <SmartSelect
       value={value}
-      onChange={(v) => onChange(typeof v === 'string' ? v : null)}
+      onChange={(v) => onChange(typeof v === 'string' ? v : multiple ? v : null)}
       options={options}
       isLoading={isLoading}
       placeholder={placeholder}
