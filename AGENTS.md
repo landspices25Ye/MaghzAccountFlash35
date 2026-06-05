@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.5 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓)
+- **الإصدار الحالي:** v0.3.6 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 173 ✓ | 2 pages server-side paginated)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -890,5 +890,55 @@ npx drizzle-kit migrate
 - **`usePaginatedList` ما زال POC**: الـ current 2 pages تستخدم client-side slice. الـ API methods الجديدة جاهزة لـ server-side integration مستقبلاً
 - **productTypeId filter = column reference**: `p.product_type_id = $N` (الـ FK column). لا تخلط مع `p.type`/`p.category` (غير موجودة)
 
-*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.5*
+### المرحلة 16e: InvoicesPage Server-Side Refactor
+- **الهدف**: استبدال client-side slice POC بـ real server-side pagination في `InvoicesPage` (sales)
+- **`getInvoicesPaginated` API توسعة**: أضيف `createdBy?: string` filter للـ server-side owner filtering
+- **Hook جديد** `useInvoicesPaginated(companyId, filters?)` في `sales/hooks/useSales.ts`:
+  - يلفّ `usePaginatedList<SalesInvoice>` + `salesApi.getInvoicesPaginated`
+  - Filters: `{ status?, customerId?, createdBy? }`
+  - يضيف `create/update/remove/post` callbacks التي تنادي `reload()` تلقائياً
+  - Returns: `{ invoices, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post, reload }`
+- **`InvoicesPage` refactor**:
+  - استبدل `useInvoices()` (in-memory) بـ `usePurchaseInvoicesPaginated()` (server-side)
+  - `OwnerFilterToggle` يمرر `createdBy` filter للـ API (لا client-side loop)
+  - حذف `useBranchFilter` (لم يعد مطلوباً — server-side filters كل شيء)
+  - `useEffect` للـ page reset أُزيل (الـ hook يدير الـ state)
+- **Bonus fixes** (commits منفصلة):
+  - `SmartSelect.tsx`: إصلاح bug `text="x"` attribute → `title="مسح"`
+  - `core/api.ts`: `mapRows<T>` للـ consistency (2 calls)
+  - `UsersPage.tsx`/`OnboardingWizard.tsx`/`ProductSelect.tsx`: a11y `title` attributes
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **173/173 passed** ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `InvoicesPage` هو أول **real server-side paginated page** (لا client-side slice)
+
+### المرحلة 16f: PurchaseInvoicesPage Server-Side Refactor
+- **الهدف**: إثبات أن الـ pattern قابل لإعادة الاستخدام — تطبيق نفس الـ refactor على `PurchaseInvoicesPage` (purchases)
+- **Hook جديد** `usePurchaseInvoicesPaginated(companyId, filters?)` في `purchases/hooks/usePurchases.ts`:
+  - نفس البنية كـ `useInvoicesPaginated`
+  - Filters: `{ status?, supplierId? }` (لا `createdBy` — لم يُطلب للـ purchases)
+  - يضيف `create/update/remove/post` callbacks مع `reload()` تلقائي
+- **`PurchaseInvoicesPage` refactor**:
+  - استبدل `usePurchaseInvoices()` بـ `usePurchaseInvoicesPaginated()`
+  - حذف client-side slice + `useEffect` page reset
+  - حذف `useBranchFilter` (server-side handles everything)
+  - `OwnerFilterToggle` placeholder (future integration)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **173/173 passed** ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - **2 pages** server-side paginated الآن (InvoicesPage + PurchaseInvoicesPage)
+
+### قواعد ذهبية مضافة (Phases 16e+16f)
+- **نفس الـ hook pattern لكل module**: `useXxxPaginated(companyId, filters?)` = wrapper حول `usePaginatedList` + `xxxApi.getXxxPaginated` + mutations that call `reload()`
+- **Filters مكان الـ client-side loops**: `useBranchFilter` + `useOwnerFilter` يحلقة على الـ array → استبدل بـ API filters (`branchId`/`createdBy` column conditions)
+- **Mutations تستدعي `reload()`**: `create/update/remove/post` callbacks يجب أن تنادي `reloadList()` بعد النجاح — وإلا الـ UI يعرض stale data
+- **Hook يدمج `usePaginatedList` + mutations في API واحد**: الـ page لا تحتاج تستخدم `usePaginatedList` + `salesApi.createInvoice` منفصلاً — hook واحد يدير كل شيء
+- **Server-side filters تعني `useOwnerFilter([], 'sales')` placeholder**: الـ hook يطلب array فارغ كـ input، الـ filter يصبح API-level عبر `filters.createdBy`
+- **`<Pagination>` props**: `page`, `pageSize`, `total`, `onPageChange`, `onPageSizeChange` (لا `totalPages` — يُحسب داخلياً)
+- **EmptyState icon prop = string enum**: `'inbox' | 'search' | 'file'` (لا Lucide component — للتوحيد)
+- **`title` attribute للـ a11y على select/button**: `title="تصفية حسب الدور"` يُحسّن screen reader support بدون تغيير visual
+
+*آخر تحديث: 2026-06-05 | الإصدار: maghzaccount-pro v0.3.6*
 
