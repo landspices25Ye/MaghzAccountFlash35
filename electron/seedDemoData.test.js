@@ -150,7 +150,8 @@ describe('seedDemoData', () => {
       'currencies', 'cost_centers', 'banks',
       'product_categories', 'products', 'warehouses', 'customers',
       'suppliers', 'departments', 'employees', 'payroll_components',
-      'payroll_lines', 'payroll_runs', 'leads', 'stock', 'stock_movements',
+      'payroll_lines', 'payroll_runs', 'leads', 'opportunities',
+      'stock', 'stock_movements',
       'sales_invoices', 'sales_invoice_lines', 'purchase_orders',
       'purchase_order_lines', 'purchase_invoices', 'purchase_invoice_lines',
       'quotations', 'quotation_lines', 'sales_returns', 'sales_return_lines',
@@ -256,6 +257,7 @@ describe('seedDemoData', () => {
     // New: HR + transactions + returns + vouchers
     expect(t.get('employees')?.length || 0).toBeGreaterThan(0);
     expect(t.get('leads')?.length || 0).toBeGreaterThan(0);
+    expect(t.get('opportunities')?.length || 0).toBeGreaterThan(0);
     expect(t.get('sales_invoices')?.length || 0).toBeGreaterThan(0);
     expect(t.get('quotations')?.length || 0).toBeGreaterThan(0);
     expect(t.get('receipt_vouchers')?.length || 0).toBeGreaterThan(0);

@@ -213,14 +213,16 @@ export function SmartSelect<T extends SmartSelectItem>({
         <div className="flex items-center gap-1 shrink-0">
           {isLoading && <Loader2 size={14} className="animate-spin text-slate-400" />}
           {clearable && selectedValues.length > 0 && !disabled && (
-            <button
-              type="button"
+            <span
+              role="button"
+              tabIndex={0}
               title="مسح"
-              onClick={handleClear}
-              className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-rose-500 transition-colors"
+              onClick={(e) => { e.stopPropagation(); handleClear(e as unknown as React.MouseEvent); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleClear(e as unknown as React.MouseEvent); } }}
+              className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
             >
               <X size={14} />
-            </button>
+            </span>
           )}
           <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>

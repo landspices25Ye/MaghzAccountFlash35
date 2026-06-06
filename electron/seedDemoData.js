@@ -842,7 +842,23 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 28. Manufacturing: BOMs + Work Orders ───────────────────────────────
+  // ─── 28. Opportunities (converted from leads) ────────────────────────────
+  const leadIds = await client.query(`SELECT id FROM leads WHERE company_id = $1::uuid ORDER BY created_at ASC LIMIT 2`, [companyId]);
+  for (let i = 0; i < leadIds.rows.length; i++) {
+    const lid = leadIds.rows[i]?.id;
+    if (!lid) continue;
+    const oppTitle = i === 0 ? 'فرصة بيع منتجات تقنية' : 'فرصة خدمات استشارية';
+    const oppStage = i === 0 ? 'proposal' : 'negotiation';
+    const oppValue = i === 0 ? 150000 : 75000;
+    await client.query(
+      `INSERT INTO opportunities (company_id, lead_id, name, stage, value, expected_close_date, assigned_to, created_by)
+       SELECT $1::uuid, $2::uuid, $3::text, $4::text, $5::numeric, CURRENT_DATE + INTERVAL '30 days', $6::uuid, $6::uuid
+       WHERE NOT EXISTS (SELECT 1 FROM opportunities WHERE company_id = $1::uuid AND lead_id = $2::uuid);`,
+      [companyId, lid, oppTitle, oppStage, oppValue, adminId]
+    );
+  }
+
+  // ─── 29. Manufacturing: BOMs + Work Orders ───────────────────────────────
   console.log('[SEED] Inserting BOMs and work orders...');
   if (prodInfos.length >= 2) {
     const bomRes = await client.query(
@@ -868,7 +884,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     }
   }
 
-  // ─── 29. CRM Tasks & Activities ──────────────────────────────────────────
+  // ─── 30. CRM Tasks & Activities ──────────────────────────────────────────
   console.log('[SEED] Inserting tasks and activities...');
   const leadRes = await client.query(`SELECT id FROM leads WHERE company_id = $1::uuid ORDER BY created_at ASC LIMIT 1`, [companyId]);
   const leadId = leadRes.rows[0]?.id;
@@ -899,7 +915,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
-  // ─── 30. Stock Adjustments ────────────────────────────────────────────────
+  // ─── 31. Stock Adjustments ────────────────────────────────────────────────
   console.log('[SEED] Inserting stock adjustments...');
   const whRes = await client.query(`SELECT id FROM warehouses WHERE company_id = $1::uuid ORDER BY created_at ASC LIMIT 1`, [companyId]);
   const warehouseId = whRes.rows[0]?.id;

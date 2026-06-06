@@ -89,6 +89,8 @@ export const warehouseTransfers = pgTable('warehouse_transfers', {
   companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   fromWarehouseId: uuid('from_warehouse_id').notNull(),
   toWarehouseId: uuid('to_warehouse_id').notNull(),
+  date: timestamp('date', { withTimezone: true }).defaultNow(),
+  reference: varchar('reference', { length: 100 }),
   status: varchar('status', { length: 20 }).default('pending'), // pending, completed, cancelled
   notes: text('notes'),
   createdBy: uuid('created_by'),

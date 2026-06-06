@@ -278,8 +278,8 @@ export const electronPgAdapter: DbAdapter = {
     // Route to the correct table based on type
     if (data.type === 'supplier') {
       const result = await getDB().query(
-        `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],
       );
       return result.success && result.rows?.length && result.rows[0]
@@ -289,7 +289,7 @@ export const electronPgAdapter: DbAdapter = {
     // default to customer
     const result = await getDB().query(
       `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, balance)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],
     );
     return result.success && result.rows?.length && result.rows[0]

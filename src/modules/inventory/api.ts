@@ -256,20 +256,31 @@ export const inventoryApi = {
     }
   },
 
-  // ─── Stock Transfer ─────────────────────────────────────────────────────────
+  // ─── Stock Transfer (warehouse_transfers header + warehouse_transfer_lines) ──
   async createStockTransfer(data: Omit<StockTransfer, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const cidValidation = validateInput(companyIdSchema, data.companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
-        `INSERT INTO stock_transfers (company_id, product_id, from_warehouse_id, to_warehouse_id, quantity, date, reference, notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [data.companyId, data.productId, data.fromWarehouseId, data.toWarehouseId, data.quantity, data.date, data.reference, data.notes, data.status]
+      // Insert header into warehouse_transfers
+      const headerResult = await adapter.query(
+        `INSERT INTO warehouse_transfers (company_id, from_warehouse_id, to_warehouse_id, date, reference, notes, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [data.companyId, data.fromWarehouseId, data.toWarehouseId, data.date, data.reference, data.notes, data.status]
       );
-      if (result.success && result.rows?.[0]) {
-        return { success: true, id: result.rows[0].id };
+      if (!headerResult.success || !headerResult.rows?.[0]) {
+        return { success: false, error: headerResult.error || 'Failed to create transfer header' };
       }
-      return { success: false, error: result.error };
+      const transferId = String(headerResult.rows[0].id);
+      // Insert line into warehouse_transfer_lines
+      const lineResult = await adapter.query(
+        `INSERT INTO warehouse_transfer_lines (transfer_id, product_id, quantity) VALUES ($1, $2, $3)`,
+        [transferId, data.productId, String(data.quantity)]
+      );
+      if (!lineResult.success) {
+        return { success: false, error: lineResult.error };
+      }
+      return { success: true, id: transferId };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -281,7 +292,12 @@ export const inventoryApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT * FROM warehouse_transfers WHERE company_id = $1 ORDER BY created_at DESC`,
+        `SELECT wt.*, wl.product_id, wl.quantity, p.name_ar AS product_name
+         FROM warehouse_transfers wt
+         LEFT JOIN warehouse_transfer_lines wl ON wl.transfer_id = wt.id
+         LEFT JOIN products p ON p.id = wl.product_id
+         WHERE wt.company_id = $1
+         ORDER BY wt.created_at DESC`,
         [companyId]
       );
       if (result.success) {

@@ -22,6 +22,13 @@
       "when": 1780780000000,
       "tag": "0002_bom_schema_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780785000000,
+      "tag": "0003_warehouse_transfer_columns",
+      "breakpoints": true
     }
   ]
 }
