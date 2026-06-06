@@ -1233,5 +1233,46 @@ npx drizzle-kit migrate
 - **Auto-compute formula = source of truth واحد**: `baseCurrencyAmount = totalAmount * exchangeRate` (لا تأخذ من client) — لو الـ client يحسبها، الـ client قد يكذب. الـ server يَحسب
 - **z.string().length(3) يقبل أي 3 chars**: لا يحدد ISO 4217. الـ validation في الـ currency table (`code` column) — الـ zod فقط يتحقق الـ length
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.13*
+### المرحلة 18d: Multi-Currency للفواتير + السندات (Purchases + Vouchers)
+- **الهدف**: توسيع الـ pattern من Phase 18c لـ 3 forms إضافية: Purchase Invoices + Receipt Vouchers + Payment Vouchers
+- **Validation** (`src/core/utils/validation.ts`):
+  - `createPurchaseInvoiceSchema`: optional `currencyCode/exchangeRate/baseCurrencyAmount/baseCurrencyPaid` + lines options
+  - `createReceiptVoucherSchema` + `createPaymentVoucherSchema`: optional `currencyCode/exchangeRate/baseCurrencyAmount` (no lines — flat doc)
+- **Types**:
+  - `PurchaseInvoice` + `PurchaseInvoiceLine`: optional currency fields
+  - `ReceiptVoucher` + `PaymentVoucher`: optional `currencyCode/exchangeRate/baseCurrencyAmount`
+- **API SQL** (`purchases/api.ts` + `accounting/api.ts`):
+  - `createInvoice`/`updateInvoice` (purchases): INSERT/UPDATE 4 new columns + lines (8 new cols)
+  - `createReceiptVoucher`/`updateReceiptVoucher`: dynamic SET clause يدعم currency fields (replaced fixed-position UPDATE)
+  - `createPaymentVoucher`/`updatePaymentVoucher`: نفس النمط
+  - **mapRows auto-converts snake_case → camelCase**: `mapRows<ReceiptVoucher>(result.rows)` يحوِّل `currency_code` → `currencyCode` تلقائياً — لا custom mapping مطلوب (Phase 16b)
+- **Forms** (3 pages):
+  - `PurchaseInvoicesPage`: `<CurrencySelect>` + rate input + live base equivalent readout
+  - `ReceiptVouchersPage`: نفس النمط (no lines)
+  - `PaymentVouchersPage`: نفس النمط (no lines)
+  - **Reset form** يحفظ defaults: `currencyCode: defaultCurrency?.code || 'YER'` + `exchangeRate: 1`
+  - **Edit mode** يحمّل `voucher.currencyCode/exchangeRate` من الـ existing record
+- **اختبارات** (10 جديد في `src/core/utils/validation-currency-extended.test.ts`):
+  - Purchase Invoice: accepts without currency، accepts USD+rate 1500، accepts SAR+rate 400 with lines
+  - Receipt Voucher: accepts without currency، accepts USD+rate 1500 (1000 * 1500 = 1,500,000)
+  - Payment Voucher: accepts without currency، accepts EUR+rate 1600 (5000 * 1600 = 8,000,000)، rejects 2-char code
+  - Auto-compute formula: 750 * 1.5 = 1125، 2300 * 1500 = 3,450,000
+- **Live DB verification**: `INSERT INTO payment_vouchers (..., currency_code='EUR', exchange_rate=1600, base_currency_amount=8000000)` ينجح
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **268/268 passed** ✓ (10 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 8.43s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+
+### قواعد ذهبية مضافة (Phase 18d)
+- **نفس الـ pattern لكل form**: `useCurrencyDisplay` + `useState` لـ `currencyCode` + `exchangeRate` + `<CurrencySelect>` + rate `<Input>` + computed base readout. لا re-invent
+- **mapRows auto-converts**: `mapRows<ReceiptVoucher>(rows)` يحوِّل كل snake_case من PG إلى camelCase في الـ type — لا custom mapping functions مطلوبة. الـ `useFormatters`، `useOwnerFilter`، وما شابه كلها تستفيد من نفس الـ pattern
+- **Dynamic SET clause للـ UPDATE**: الـ UPDATE الجديد يضيف `if (data.X !== undefined) { fields.push(...); values.push(...) }` لكل column. الـ `if` يحمي من overwrite الـ existing values بـ undefined
+- **`updated_at = NOW()` + `updated_by = $N` forced**: عند dynamic SET، يجب إضافة هذين في الـ fields list (لا شرطيين). الـ pattern: `fields.push('updated_at = NOW()')` بدون value
+- **No-lines docs (vouchers) ≠ with-lines docs (invoices)**: الـ voucher's `baseCurrencyAmount = amount * exchangeRate` (1 formula). الـ invoice's = `totalAmount * exchangeRate` (after line aggregation) — لكن الـ formula واحدة في الـ API: `data.amount * data.exchangeRate`
+- **3 sales-agnostic i18n keys**: `sales.currency/exchangeRate/baseCurrency` يُعاد استخدامها في purchase + voucher forms — لا duplicates per module. لو request label يحتاج module-specific، أضف `purchases.currency` منفصل
+- **es-lint exhaustive-deps fix**: `useCallback(handleSave, [..., currencyCode, exchangeRate])` — الـ functions التي تَستخدم currency fields يجب أن تعتمد عليها. الـ ESLint rule يكتشف deps الناقصة تلقائياً
+
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.14*
 
