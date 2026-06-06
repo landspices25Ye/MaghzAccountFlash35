@@ -12,7 +12,7 @@ export const manufacturingApi = {
       const cidValidation = validateInput(companyIdSchema, companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      let sql = `SELECT b.*, p.name_ar as product_name FROM bills_of_materials b LEFT JOIN products p ON b.product_id = p.id WHERE b.company_id = $1`;
+      let sql = `SELECT b.*, p.name_ar as product_name FROM boms b LEFT JOIN products p ON b.product_id = p.id WHERE b.company_id = $1`;
       const params: unknown[] = [companyId];
       if (ownedByUserId) {
         const uidValidation = validateInput(uuidSchema, ownedByUserId);
@@ -48,7 +48,7 @@ export const manufacturingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const bomRes = await adapter.query('SELECT * FROM bills_of_materials WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
+      const bomRes = await adapter.query('SELECT * FROM boms WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
       if (!bomRes.success || !bomRes.rows?.[0]) return { success: false, error: bomRes.error || 'Not found' };
       const row = bomRes.rows[0];
       const bom: BOM = {
@@ -84,16 +84,13 @@ export const manufacturingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const tx = await adapter.transaction([
-        { sql: `INSERT INTO bills_of_materials (company_id, product_id, version, is_active, total_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, params: [data.companyId, data.productId, data.version, data.isActive, data.totalCost, data.notes, _userId ?? null] },
+        { sql: `INSERT INTO boms (company_id, product_id, version, is_active, total_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, params: [data.companyId, data.productId, data.version, data.isActive, data.totalCost, data.notes, _userId ?? null] },
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const bomId = tx.results[0][0].id as string;
-        for (const line of data.lines) {
-          await adapter.query(
-            `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost, total_cost) VALUES ($1,$2,$3,$4,$5)`,
-            [bomId, line.materialId, line.quantity, line.unitCost, (line.quantity || 0) * (line.unitCost || 0)]
-          );
-        }
+        await batchInsertLines(adapter, 'bom_lines', ['bom_id', 'material_id', 'quantity', 'unit_cost', 'total_cost'],
+          data.lines.map(l => [bomId, l.materialId, l.quantity, l.unitCost, (l.quantity || 0) * (l.unitCost || 0)])
+        );
         return { success: true, id: bomId };
       }
       return { success: false, error: tx.error };
@@ -119,15 +116,12 @@ export const manufacturingApi = {
       fields.push(`updated_by = $${idx++}`);
       values.push(_userId ?? null);
 
-      if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE bills_of_materials SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
+      if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE boms SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
         await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1', [id]);
-        for (const line of data.lines) {
-          await adapter.query(
-            `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost, total_cost) VALUES ($1,$2,$3,$4,$5)`,
-            [id, line.materialId, line.quantity, line.unitCost, (line.quantity || 0) * (line.unitCost || 0)]
-          );
-        }
+        await batchInsertLines(adapter, 'bom_lines', ['bom_id', 'material_id', 'quantity', 'unit_cost', 'total_cost'],
+          data.lines.map(l => [id, l.materialId, l.quantity, l.unitCost, (l.quantity || 0) * (l.unitCost || 0)])
+        );
       }
       return { success: true };
     } catch (e) {
@@ -141,7 +135,7 @@ export const manufacturingApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1', [id]);
-      const result = await adapter.query('DELETE FROM bills_of_materials WHERE id = $1 AND company_id = $2', [id, companyId]);
+      const result = await adapter.query('DELETE FROM boms WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
@@ -215,12 +209,9 @@ export const manufacturingApi = {
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const woId = tx.results[0][0].id as string;
-        for (const line of data.lines) {
-          await adapter.query(
-            `INSERT INTO work_order_lines (work_order_id, material_id, planned_quantity, unit_cost) VALUES ($1,$2,$3,$4)`,
-            [woId, line.materialId, line.plannedQuantity, line.unitCost]
-          );
-        }
+        await batchInsertLines(adapter, 'work_order_consumptions', ['work_order_id', 'material_id', 'planned_quantity', 'unit_cost'],
+          data.lines.map(l => [woId, l.materialId, l.plannedQuantity, l.unitCost])
+        );
         return { success: true, id: woId };
       }
       return { success: false, error: tx.error };
@@ -256,13 +247,10 @@ export const manufacturingApi = {
 
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE work_orders SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
-        await adapter.query('DELETE FROM work_order_lines WHERE work_order_id = $1', [id]);
-        for (const line of data.lines) {
-          await adapter.query(
-            `INSERT INTO work_order_lines (work_order_id, material_id, planned_quantity, actual_quantity, unit_cost, actual_unit_cost) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [id, line.materialId, line.plannedQuantity, line.actualQuantity, line.unitCost, line.actualUnitCost]
-          );
-        }
+        await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1', [id]);
+        await batchInsertLines(adapter, 'work_order_consumptions', ['work_order_id', 'material_id', 'planned_quantity', 'actual_quantity', 'unit_cost', 'actual_unit_cost'],
+          data.lines.map(l => [id, l.materialId, l.plannedQuantity, l.actualQuantity, l.unitCost, l.actualUnitCost])
+        );
       }
       return { success: true };
     } catch (e) {
@@ -275,7 +263,7 @@ export const manufacturingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      await adapter.query('DELETE FROM work_order_lines WHERE work_order_id = $1', [id]);
+      await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1', [id]);
       const result = await adapter.query('DELETE FROM work_orders WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
     } catch (e) {
@@ -346,5 +334,16 @@ function mapWorkOrderRow(r: Record<string, unknown>): WorkOrder {
     createdBy: r.created_by ? String(r.created_by) : undefined,
     updatedBy: r.updated_by ? String(r.updated_by) : undefined,
   };
+}
+
+async function batchInsertLines(adapter: Awaited<ReturnType<typeof getDbAdapter>>, table: string, columns: string[], rows: unknown[][]): Promise<void> {
+  if (rows.length === 0) return;
+  const colCount = columns.length;
+  const placeholders = rows.map((_, ri) => {
+    const base = ri * colCount;
+    return `(${Array.from({ length: colCount }, (_, ci) => `$${base + ci + 1}`).join(',')})`;
+  }).join(',');
+  const values = rows.flat();
+  await adapter.query(`INSERT INTO ${table} (${columns.join(',')}) VALUES ${placeholders}`, values);
 }
 

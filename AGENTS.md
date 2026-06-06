@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.18*
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.19*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1481,4 +1481,45 @@ npx drizzle-kit migrate
 - **modalPanel = heading → `..` → `..` → `..`**: `getByRole('heading')` → `<h3>` → `..` (wrapper div) → `..` (header section) → `..` (panel div). 3 مستويات من `locator('..')` للوصول للـ panel
 - **تفادي SmartSelect في e2e**: إذا كان SmartSelect معقداً (nested button، remote search)، اختبر flows أبسط بدلاً من كتابة interactions معقدة
 - **`page.getByRole('button', { name: /.../i })` vs `page.locator('button:has-text(...)')`**: `getByRole` يستخدم accessible name (أفضل لـ a11y)، `has-text` يطابق text content مباشرة. كلاهما صحيح لكن `getByRole` أكثر دقة مع icon buttons
+
+### المرحلة 23: إصلاح Schema Drift في Manufacturing (BOM + Work Orders)
+- **الهدف**: إصلاح runtime crashes في manufacturing module — `bills_of_materials` (جدول غير موجود) + `work_order_lines` (جدول غير موجود) + أعمدة مفقودة
+- **الأكتشاف** (Audit منهجي):
+  - `src/modules/manufacturing/api.ts`: **7 مراجع** لـ `bills_of_materials` بدلاً من `boms` (الجدول الفعلي)
+  - **4 مراجع** لـ `work_order_lines` بدلاً من `work_order_consumptions`
+  - **أعمدة مفقودة**: `boms.total_cost`، `boms.notes`، `bom_lines.total_cost`، `work_order_consumptions.actual_unit_cost`
+  - **4 for-of loops** مع INSERT منفرد -> N+1 query pattern (لـ getBomById، createBom، updateBom، updateWorkOrder)
+- **إصلاحات Drizzle schema** (`src/core/database/schema/manufacturing.ts`):
+  - `boms`: +`totalCost: numeric('total_cost', ...)`، +`notes: text('notes')`
+  - `bomLines`: +`totalCost: numeric('total_cost', ...)`
+  - `workOrderConsumptions`: +`actualUnitCost: numeric('actual_unit_cost', ...)`
+- **إصلاحات API** (`src/modules/manufacturing/api.ts`):
+  - جميع `bills_of_materials` → `boms` (7 مواضع: getBoms، getBomById، createBom، updateBom، deleteBom، getBomById lines، createBom lines)
+  - جميع `work_order_lines` → `work_order_consumptions` (4 مواضع: getWorkOrders، getWorkOrderById، createWorkOrder cons، updateWorkOrder cons)
+  - **`batchInsertLines(table, data, prefix?)` helper جديد**: يبني `INSERT INTO table (cols) VALUES ($1,$2,...),($N,$N+1,...),...` ديناميكياً — يمنع 4 for-of loops
+  - `getBomById`: استُبدل حلقة `for of lines { append }` بـ `batchInsertLines`
+  - `createBom`: استُبدل 3 استعلامات INSERT بـ batch واحد
+  - `updateBom`: استُبدل حذف + إعادة إدراج الـ lines بـ batch
+  - `updateWorkOrder`: استُبدل cons lines update بـ batch
+- **Migration**:
+  - `drizzle-kit generate` أنتج `0002_sleepy_norman_osborn.sql` (47KB، CREATE TABLE لكل الجداول) — خطأ من Drizzle Kit (مقارنة snapshot خاطئة)
+  - **الحل**: حذف الملف التلقائي + كتابة `drizzle/0002_bom_schema_fix.sql` يدوي (ALTER TABLE مع IF NOT EXISTS، 12 سطر)
+  - **تحديث** `drizzle/meta/_journal.json`: إدخال جديد `idx=2, tag=0002_bom_schema_fix, version=7`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 9.55s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+  - `npm run db:reset:force`: **16.04s** ✓ (3 migrations + seed + verification)
+  - `npx playwright test`: **10/10 passed** (2.1m) ✓
+
+### قواعد ذهبية مضافة (Phase 23)
+- **`drizzle-kit generate` قد ينتج snapshot كامل بدلاً من migration جزئي**: إذا كان الفرق بين schema و snapshot كبيراً، أو snapshot تالفاً، ينتج `CREATE TABLE` لكل الجداول بدلاً من `ALTER TABLE`. **الحل**: افحص الناتج قبل الاستخدام، وإذا كان snapshot كامل — احذفه واكتب migration يدوي بـ ALTER TABLE + IF NOT EXISTS
+- **ALTER TABLE مع `IF NOT EXISTS` للـ idempotency**: `ALTER TABLE x ADD COLUMN IF NOT EXISTS col type default` — يعمل في PostgreSQL 9.6+. يضمن أن الـ migration يمكن إعادة تشغيله
+- **Batch INSERT > for-of loops**: `batchInsertLines(table, rows, prefix?)` helper يبني INSERT واحد متعدد الصفوف (1 استعلام) بدلاً من N استعلامات منفصلة. يقبل dynamic columns + prefix (RETURNING). يمنع N+1 في API layer
+- **`bills_of_materials` ≠ `boms`**: الـ schema الفعلي يستخدم `boms` (اسم قصير). drift من إعادة تسمية سابقة
+- **`work_order_lines` ≠ `work_order_consumptions`**: drift من تعارض تسمية قديم. الـ schema استقر على `consumptions` (planned vs actual qty + cost)
+- **Audit منهجي قبل التعديل**: عدد المراجع الخاطئة بدقة (7 لـ `bills_of_materials`، 4 لـ `work_order_lines`) لضمان عدم ترك مرجع واحد
+- **`npm run db:reset:force` كاختبار تكامل نهائي**: يثبت أن 3 migrations + seed يعملون من الصفر. يشمل verification لجميع الجداول
 

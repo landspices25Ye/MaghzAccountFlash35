@@ -8,6 +8,8 @@ export const boms = pgTable('boms', {
   productId: uuid('product_id').notNull(), // finished product
   version: varchar('version', { length: 20 }).default('1.0'),
   isActive: boolean('is_active').notNull().default(true),
+  totalCost: numeric('total_cost', { precision: 18, scale: 4 }).default('0'),
+  notes: text('notes'),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -19,6 +21,7 @@ export const bomLines = pgTable('bom_lines', {
   materialId: uuid('material_id').notNull(), // raw material product
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitCost: numeric('unit_cost', { precision: 18, scale: 4 }).default('0'),
+  totalCost: numeric('total_cost', { precision: 18, scale: 4 }).default('0'),
 });
 
 // ─── Work Orders ──────────────────────────────────────────────────────────────
@@ -50,4 +53,5 @@ export const workOrderConsumptions = pgTable('work_order_consumptions', {
   plannedQuantity: numeric('planned_quantity', { precision: 18, scale: 4 }).notNull(),
   actualQuantity: numeric('actual_quantity', { precision: 18, scale: 4 }).default('0'),
   unitCost: numeric('unit_cost', { precision: 18, scale: 4 }).default('0'),
+  actualUnitCost: numeric('actual_unit_cost', { precision: 18, scale: 4 }).default('0'),
 });
