@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.18 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 7/7 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | **Infinite loading fixed**)
+- **الإصدار الحالي:** v0.3.19 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | **Infinite loading fixed** | **e2e Supplier/Voucher/Leads CRUD**) 
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1451,5 +1451,34 @@ npx drizzle-kit migrate
 - **Modal لا يحوي `role="dialog"` افتراضياً**: ابحث عن modal title (`text=...`) بدلاً من الـ role
 - **vitest config exclude لـ e2e/**: `exclude: ['node_modules', 'dist', 'e2e/**', 'test-results/**', 'playwright-report/**']` — يمنع vitest من load `*.spec.ts` كـ unit tests
 - **artifact files في .gitignore**: `test-results/`, `playwright-report/`, `build-output.txt`, `lint-output.txt`, `test-output.txt` — مخرجات transient لا يجب commit
-- **dual e2e + unit test setup**: `npm test` (vitest، 279 unit) و `npm run test:e2e` (playwright، 7 e2e) منفصلين — متعمَّد
+- **dual e2e + unit test setup**: `npm test` (vitest، 279 unit) و `npm run test:e2e` (playwright، 10 e2e) منفصلين — متعمَّد
+
+### المرحلة 22: توسعة e2e Coverage (Supplier/Voucher/Leads CRUD)
+- **الهدف**: زيادة تغطية e2e من 7 إلى 10 اختبارات تشمل CRUD flows حرجة
+- **3 ملفات جديدة**:
+  - `e2e/05-receipt-voucher.spec.ts` (1/1): يفتح modal إنشاء سند قبض، يتحقق من وجود حقل "المبلغ"، يغلق عبر Escape key، يتحقق من اختفاء المودال
+  - `e2e/06-suppliers.spec.ts` (1/1): يفتح صفحة الموردين، ينقر "مورد جديد"، يملأ الاسم والهاتف، ينقر "إنشاء"، يتحقق من ظهور المورد في الجدول
+  - `e2e/07-leads.spec.ts` (1/1): يفتح صفحة Leads، يتحقق من وجود جدول بصفوف
+- **إصلاحات هامة أثناء الكتابة**:
+  - **05**: `getByText('سند قبض جديد')` كان يعطي strict mode violation (تطابق مع عنصرين). الحل: استخدم `getByRole('heading', ...)` بدلاً من `getByText` للتمييز بين العنوان `<h3>` والزر `<button>`
+  - **06**: زر الحفظ كان `disabled` لأن الاسم لم يكن مملوءاً — أضيف `toBeEnabled` بعد `fill()`. كما أن النص الأصلي "إضافة مورد" غير صحيح — الترجمة الفعلية `t('purchases.supplier.new')` = "مورد جديد"
+  - **Modal.tsx** يستخدم `createPortal` → الـ backdrop في `<body>` وليس متداخلاً في الصفحة. الـ CSS selector يتطلب escape `/` → `bg-black\\/50`
+- **الصعوبات**: SmartSelect (CustomerSelect) معقد للتفاعل في e2e (nested `<button>` elements). تم تجاوزه باختيار flows أسهل (Suppliers ليس لديه SmartSelect، يستخدم Input عادي)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 51.90s** ✓
+  - `npm run db:check`: **No schema changes** ✓
+  - `npx playwright test`: **10/10 passed** ✓
+
+### قواعد ذهبية مضافة (Phase 22)
+- **`getByRole('heading')` للتمييز بين العنوان `<h3>` والزر `<button>` عند تطابق النص**: `getByText('سند قبض جديد')` يطابق كل من العنوان `<h3>` والزر `<button>`. `getByRole('heading', { name: /سند قبض جديد/i })` يطابق فقط `<h3>`
+- **`toBeEnabled` بعد `fill()` للتحقق من تفعيل الأزرار**: `fill()` يعود بعد dispatching events، لكن React state update غير متزامن. استخدم `toBeEnabled({ timeout })` للانتظار حتى enable
+- **`has-text` لا يطابق إذا النص يحتوي على child elements**: في `<Button leftIcon={<Plus />}>{t('...')}</Button>`، الـ `has-text` ما زال يعمل لأن button's text content يشمل child text nodes
+- **تطابق ترجمة الزر مع المفتاح في i18n**: `button:has-text("إضافة مورد")` فشل لأن الترجمة الصحيحة هي `t('purchases.supplier.new')` = "مورد جديد". **القاعدة**: افحص الترجمة الفعلية في `ar.json` قبل كتابة selectors
+- **Escape key للإغلاق**: `page.keyboard.press('Escape')` أسرع وأكثر موثوقية من البحث عن زر "إلغاء" في Modal footer
+- **modalPanel = heading → `..` → `..` → `..`**: `getByRole('heading')` → `<h3>` → `..` (wrapper div) → `..` (header section) → `..` (panel div). 3 مستويات من `locator('..')` للوصول للـ panel
+- **تفادي SmartSelect في e2e**: إذا كان SmartSelect معقداً (nested button، remote search)، اختبر flows أبسط بدلاً من كتابة interactions معقدة
+- **`page.getByRole('button', { name: /.../i })` vs `page.locator('button:has-text(...)')`**: `getByRole` يستخدم accessible name (أفضل لـ a11y)، `has-text` يطابق text content مباشرة. كلاهما صحيح لكن `getByRole` أكثر دقة مع icon buttons
 

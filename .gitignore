@@ -17,6 +17,7 @@ playwright-report/
 build-output.txt
 lint-output.txt
 test-output.txt
+*-out.txt
 
 # Editor directories and files
 .vscode/*
