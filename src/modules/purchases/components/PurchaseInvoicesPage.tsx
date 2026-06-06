@@ -12,13 +12,14 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
-import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
+import { SupplierSelect, ProductSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { usePurchaseInvoicesPaginated } from '../hooks/usePurchases';
 import { usePurchaseOrders } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { postPurchaseInvoice } from '@/core/utils/journalEntryGenerator';
+import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PurchaseInvoice } from '../types';
@@ -85,16 +86,30 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { getUserName } = useUserMap();
+  const { currencies, defaultCurrency } = useCurrencyDisplay();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<InvoiceForm>(initialForm());
+  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || 'YER');
+  const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmPost, setConfirmPost] = useState<string | null>(null);
   const [postingId, setPostingId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
+
+  const handleCurrencyChange = useCallback((code: string | null) => {
+    if (!code) {
+      setCurrencyCode('YER');
+      setExchangeRate(1);
+      return;
+    }
+    setCurrencyCode(code);
+    const c = currencies.find((x) => x.code === code);
+    setExchangeRate(c ? c.exchangeRate : 1);
+  }, [currencies]);
 
   const vatRate = settings?.vatRate ?? 15;
 
@@ -147,6 +162,8 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
   const openEdit = useCallback((invoice: PurchaseInvoice) => {
     setEditingId(invoice.id);
+    setCurrencyCode(invoice.currencyCode || 'YER');
+    setExchangeRate(invoice.exchangeRate ?? 1);
     setForm({
       supplierId: invoice.supplierId,
       purchaseOrderId: invoice.purchaseOrderId || '',
@@ -187,6 +204,10 @@ export const PurchaseInvoicesPage: React.FC = () => {
       vatAmount: formTotals.vatAmount,
       totalAmount: formTotals.totalAmount,
       paidAmount: 0,
+      currencyCode,
+      exchangeRate,
+      baseCurrencyAmount: formTotals.totalAmount * exchangeRate,
+      baseCurrencyPaid: 0,
       status: 'draft' as const,
       notes: form.notes,
       lines: form.lines.map(l => ({
@@ -197,6 +218,9 @@ export const PurchaseInvoicesPage: React.FC = () => {
         discountPercent: l.discountPercent,
         vatPercent: l.vatPercent,
         lineTotal: l.lineTotal,
+        currencyCode,
+        exchangeRate,
+        baseCurrencyLineTotal: l.lineTotal * exchangeRate,
       })),
     };
 
@@ -228,7 +252,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, formTotals, editingId, invoices, create, update, user, getNextNumber]);
+  }, [activeCompany, form, formTotals, editingId, invoices, create, update, user, getNextNumber, currencyCode, exchangeRate]);
 
   const handleDelete = useCallback(async (id: string) => {
     setConfirmDelete(id);
@@ -495,6 +519,26 @@ export const PurchaseInvoicesPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('purchases.date')} type="date" value={form.date} onChange={e => setForm(prev => ({ ...prev, date: e.target.value }))} />
             <Input label={t('purchases.dueDate')} type="date" value={form.dueDate} onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency')}</label>
+              <CurrencySelect companyId={activeCompany?.id || ''} value={currencyCode} onChange={handleCurrencyChange} />
+            </div>
+            <Input
+              label={t('sales.exchangeRate')}
+              type="number"
+              min={0}
+              step="0.0001"
+              value={String(exchangeRate)}
+              onChange={e => setExchangeRate(Number(e.target.value) || 1)}
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency')}</label>
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200">
+                {formatCurrency(formTotals.totalAmount * exchangeRate)} <span className="text-slate-500">{currencySymbol}</span>
+              </div>
+            </div>
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">

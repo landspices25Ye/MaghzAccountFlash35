@@ -3,7 +3,7 @@ import { Banknote, Plus, CheckSquare, Users } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
 import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components';
-import { CustomerSelect, BankSelect } from '@/core/ui/components/smart';
+import { CustomerSelect, BankSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useReceiptVouchers } from '../hooks/useAccounting';
@@ -11,6 +11,7 @@ import { postReceiptVoucher } from '@/core/utils/journalEntryGenerator';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
@@ -23,6 +24,7 @@ export const ReceiptVouchersPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { currencies, defaultCurrency } = useCurrencyDisplay();
   const branchFiltered = useBranchFilter(vouchers);
   const { filtered: filteredVouchers, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'accounting');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
@@ -98,6 +100,9 @@ export const ReceiptVouchersPage: React.FC = () => {
       customerId: form.customerId,
       customerName: form.customerName || '',
       amount: Number(form.amount) || 0,
+      currencyCode: form.currencyCode || 'YER',
+      exchangeRate: form.exchangeRate ?? 1,
+      baseCurrencyAmount: (Number(form.amount) || 0) * (form.exchangeRate ?? 1),
       paymentMethod: form.paymentMethod || 'cash',
       bankAccountId: form.bankAccountId,
       checkNumber: form.checkNumber,
@@ -117,8 +122,17 @@ export const ReceiptVouchersPage: React.FC = () => {
     resetForm();
   };
 
+  const handleCurrencyChange = (code: string | null) => {
+    if (!code) {
+      setForm(prev => ({ ...prev, currencyCode: 'YER', exchangeRate: 1 }));
+      return;
+    }
+    const c = currencies.find((x) => x.code === code);
+    setForm(prev => ({ ...prev, currencyCode: code, exchangeRate: c ? c.exchangeRate : 1 }));
+  };
+
   const resetForm = () => {
-    setForm({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0] });
+    setForm({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0], currencyCode: defaultCurrency?.code || 'YER', exchangeRate: 1 });
     setIsEditMode(false);
     setEditingId(null);
   };
@@ -236,6 +250,26 @@ export const ReceiptVouchersPage: React.FC = () => {
             <CustomerSelect companyId={activeCompany?.id || ''} value={form.customerId || ''} onChange={v => setForm({ ...form, customerId: v || '' })} />
           </div>
           <Input label={t('accounting.amount')} type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency')}</label>
+              <CurrencySelect companyId={activeCompany?.id || ''} value={form.currencyCode || 'YER'} onChange={handleCurrencyChange} />
+            </div>
+            <Input
+              label={t('sales.exchangeRate')}
+              type="number"
+              min={0}
+              step="0.0001"
+              value={String(form.exchangeRate ?? 1)}
+              onChange={e => setForm({ ...form, exchangeRate: Number(e.target.value) || 1 })}
+            />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency')}</label>
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200">
+                {formatCurrency((Number(form.amount) || 0) * (form.exchangeRate ?? 1))} <span className="text-slate-500">{currencySymbol}</span>
+              </div>
+            </div>
+          </div>
           <div>
             <label className="block text-sm mb-1">{t('accounting.paymentMethod')}</label>
             <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as ReceiptVoucher['paymentMethod'] })}>

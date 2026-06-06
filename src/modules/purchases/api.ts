@@ -53,6 +53,10 @@ function mapInvoice(row: Record<string, unknown>): PurchaseInvoice {
     vatAmount: toNum(row.vat_amount || row.vatAmount),
     totalAmount: toNum(row.total_amount || row.totalAmount),
     paidAmount: toNum(row.paid_amount || row.paidAmount),
+    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    exchangeRate: row.exchange_rate !== undefined ? toNum(row.exchange_rate) : 1,
+    baseCurrencyAmount: row.base_currency_amount !== undefined ? toNum(row.base_currency_amount) : 0,
+    baseCurrencyPaid: row.base_currency_paid !== undefined ? toNum(row.base_currency_paid) : 0,
     status: (row.status as PurchaseInvoice["status"]) || 'draft',
     notes: row.notes ? String(row.notes) : undefined,
     createdAt: row.created_at ? String(row.created_at) : undefined,
@@ -72,6 +76,9 @@ function mapInvoiceLine(row: Record<string, unknown>): PurchaseInvoiceLine {
     discountPercent: toNum(row.discount_percent || row.discountPercent),
     vatPercent: toNum(row.vat_percent || row.vatPercent),
     lineTotal: toNum(row.line_total || row.lineTotal),
+    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    exchangeRate: row.exchange_rate !== undefined ? toNum(row.exchange_rate) : 1,
+    baseCurrencyLineTotal: row.base_currency_line_total !== undefined ? toNum(row.base_currency_line_total) : 0,
   };
 }
 
@@ -533,19 +540,26 @@ export const purchasesApi = {
       const validation = validateInput(createPurchaseInvoiceSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
+      const currencyCode = data.currencyCode || 'YER';
+      const exchangeRate = data.exchangeRate ?? 1;
+      const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
+      const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
       const queries: { sql: string; params?: unknown[] }[] = [
         {
-          sql: `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, purchase_order_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, status, notes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
-          params: [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, data.status, data.notes],
+          sql: `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, purchase_order_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, currency_code, exchange_rate, base_currency_amount, base_currency_paid, status, notes)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
+          params: [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes],
         },
       ];
       for (let i = 0; i < data.lines.length; i++) {
         const line = data.lines[i];
+        const lineCurrencyCode = line.currencyCode || currencyCode;
+        const lineExchangeRate = line.exchangeRate ?? exchangeRate;
+        const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
         queries.push({
-          sql: `INSERT INTO purchase_invoice_lines (invoice_id, product_id, quantity, unit_price, line_total)
-          VALUES ($1, $2, $3, $4, $5)`,
-          params: [null, line.productId, line.quantity, line.unitPrice, line.lineTotal],
+          sql: `INSERT INTO purchase_invoice_lines (invoice_id, product_id, quantity, unit_price, line_total, currency_code, exchange_rate, base_currency_line_total)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          params: [null, line.productId, line.quantity, line.unitPrice, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal],
         });
       }
 
@@ -579,6 +593,10 @@ export const purchasesApi = {
       if (data.vatAmount !== undefined) { fields.push(`vat_amount = $${idx++}`); values.push(data.vatAmount); }
       if (data.totalAmount !== undefined) { fields.push(`total_amount = $${idx++}`); values.push(data.totalAmount); }
       if (data.paidAmount !== undefined) { fields.push(`paid_amount = $${idx++}`); values.push(data.paidAmount); }
+      if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
+      if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
+      if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.baseCurrencyPaid !== undefined) { fields.push(`base_currency_paid = $${idx++}`); values.push(data.baseCurrencyPaid); }
       if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 

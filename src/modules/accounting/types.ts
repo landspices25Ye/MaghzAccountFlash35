@@ -81,6 +81,9 @@ export interface ReceiptVoucher {
   customerId: string;
   customerName: string;
   amount: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyAmount?: number;
   paymentMethod: 'cash' | 'bank' | 'check';
   bankAccountId?: string;
   checkNumber?: string;
@@ -101,6 +104,9 @@ export interface PaymentVoucher {
   supplierName?: string;
   expenseAccountId?: string;
   amount: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyAmount?: number;
   paymentMethod: 'cash' | 'bank' | 'check';
   bankAccountId?: string;
   checkNumber?: string;

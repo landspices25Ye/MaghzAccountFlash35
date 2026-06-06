@@ -16,38 +16,45 @@ updatedBy?: string;
 }
 
 export interface PurchaseInvoice {
-id: string;
-companyId: string;
-invoiceNumber: string;
-supplierId: string;
-supplier?: Supplier;
-purchaseOrderId?: string;
-date: string;
-dueDate?: string;
-subtotal: number;
-discountAmount: number;
-vatAmount: number;
-totalAmount: number;
-paidAmount: number;
-status: 'draft' | 'posted' | 'paid' | 'partially_paid' | 'cancelled';
-notes?: string;
-createdAt?: string;
-updatedAt?: string;
-createdBy?: string;
-updatedBy?: string;
-lines: PurchaseInvoiceLine[];
+  id: string;
+  companyId: string;
+  invoiceNumber: string;
+  supplierId: string;
+  supplier?: Supplier;
+  purchaseOrderId?: string;
+  date: string;
+  dueDate?: string;
+  subtotal: number;
+  discountAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyAmount?: number;
+  baseCurrencyPaid?: number;
+  status: 'draft' | 'posted' | 'paid' | 'partially_paid' | 'cancelled';
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  lines: PurchaseInvoiceLine[];
 }
 
 export interface PurchaseInvoiceLine {
-id?: string;
-invoiceId?: string;
-productId?: string;
-description?: string;
-quantity: number;
-unitPrice: number;
-discountPercent?: number;
-vatPercent?: number;
-lineTotal: number;
+  id?: string;
+  invoiceId?: string;
+  productId?: string;
+  description?: string;
+  quantity: number;
+  unitPrice: number;
+  discountPercent?: number;
+  vatPercent?: number;
+  lineTotal: number;
+  currencyCode?: string;
+  exchangeRate?: number;
+  baseCurrencyLineTotal?: number;
 }
 
 export interface PurchaseOrder {

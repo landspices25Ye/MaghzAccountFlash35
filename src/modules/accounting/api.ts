@@ -301,10 +301,13 @@ export const accountingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
+      const currencyCode = data.currencyCode || 'YER';
+      const exchangeRate = data.exchangeRate ?? 1;
+      const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
@@ -318,9 +321,28 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const fields: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+      if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
+      if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
+      if (data.amount !== undefined) { fields.push(`amount = $${idx++}`); values.push(data.amount); }
+      if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
+      if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
+      if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
+      if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
+      if (data.checkNumber !== undefined) { fields.push(`check_number = $${idx++}`); values.push(data.checkNumber); }
+      if (data.checkDate !== undefined) { fields.push(`check_date = $${idx++}`); values.push(data.checkDate); }
+      if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+      if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+      fields.push(`updated_at = NOW()`);
+      fields.push(`updated_by = $${idx++}`); values.push(userId);
+      values.push(id);
+      values.push(companyId);
       return await adapter.query(
-        `UPDATE receipt_vouchers SET date = $1, customer_id = $2, amount = $3, payment_method = $4, bank_account_id = $5, check_number = $6, check_date = $7, notes = $8, status = $9, updated_at = NOW(), updated_by = $10 WHERE id = $11 AND company_id = $12`,
-        [data.date, data.customerId, data.amount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, id, companyId]
+        `UPDATE receipt_vouchers SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`,
+        values
       );
     } catch (e) {
       return { success: false, error: String(e) };
@@ -375,10 +397,13 @@ export const accountingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
+      const currencyCode = data.currencyCode || 'YER';
+      const exchangeRate = data.exchangeRate ?? 1;
+      const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, expense_account_id, amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.expenseAccountId, data.amount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, expense_account_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.expenseAccountId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
@@ -392,9 +417,29 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const fields: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+      if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
+      if (data.supplierId !== undefined) { fields.push(`supplier_id = $${idx++}`); values.push(data.supplierId); }
+      if (data.expenseAccountId !== undefined) { fields.push(`expense_account_id = $${idx++}`); values.push(data.expenseAccountId); }
+      if (data.amount !== undefined) { fields.push(`amount = $${idx++}`); values.push(data.amount); }
+      if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
+      if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
+      if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
+      if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
+      if (data.checkNumber !== undefined) { fields.push(`check_number = $${idx++}`); values.push(data.checkNumber); }
+      if (data.checkDate !== undefined) { fields.push(`check_date = $${idx++}`); values.push(data.checkDate); }
+      if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
+      if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+      fields.push(`updated_at = NOW()`);
+      fields.push(`updated_by = $${idx++}`); values.push(userId);
+      values.push(id);
+      values.push(companyId);
       return await adapter.query(
-        `UPDATE payment_vouchers SET date = $1, supplier_id = $2, expense_account_id = $3, amount = $4, payment_method = $5, bank_account_id = $6, check_number = $7, check_date = $8, notes = $9, status = $10, updated_at = NOW(), updated_by = $11 WHERE id = $12 AND company_id = $13`,
-        [data.date, data.supplierId, data.expenseAccountId, data.amount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, id, companyId]
+        `UPDATE payment_vouchers SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`,
+        values
       );
     } catch (e) {
       return { success: false, error: String(e) };
