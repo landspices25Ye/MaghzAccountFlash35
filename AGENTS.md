@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.17 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 279 ✓ + **e2e: 7/7 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | **Playwright e2e foundation**)
+- **الإصدار الحالي:** v0.3.18 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 7/7 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | **Infinite loading fixed**)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1341,7 +1341,55 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.17*
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.18*
+
+### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
+- **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
+- **السبب الجذري**: 
+  - `useState(true)` → isLoading=true من أول render
+  - `if (!activeCompany?.id) return;` → early return بدون setIsLoading(false)
+  - الـ effect ما يَشتغل أبداً → setIsLoading(false) ما يُستدعى أبداً
+- **الحل المُطبَّق**:
+  - **`useAsyncData<T>(fetcher, deps, enabled?)` hook جديد** (46 سطر): يَستبدل الـ pattern الخاطئ
+    - `useState(false)` للـ isLoading (لا spinner قبل الـ deps)
+    - `enabled` param: لو `false`، يَمسح data ويُبقي isLoading=false (لا fetch، لا spinner)
+    - `try/finally` يَضمن setIsLoading(false) حتى في الـ errors
+    - `cancelled` flag في cleanup function → لا setState على unmounted component
+    - `reload()` method للـ manual re-fetch
+  - **14 صفحة** مُعدَّلة بـ minimal fix: `useState(true)` → `useState(false)`
+    - `ProfitLossPage` مُعدَّل بالـ refactor الكامل (نموذج لاستخدام الـ hook)
+    - الـ 14 الأخرى تَستفيد من الـ minimal fix (سطر واحد)
+- **Bonus fix**: `journal_entries.company_id` كان مَفقود من INSERT statements في `electronPgAdapter.ts` + `accounting/api.ts` → silent failure في multi-tenant queries
+- **Tests** (10 جديد): `useAsyncData.test.ts`
+  - initialized with isLoading=false when enabled=false (infinite loading fix verification)
+  - starts loading after mount with enabled=true
+  - does not fetch when enabled=false
+  - switches isLoading from false→true→false
+  - sets error and stops loading on rejection
+  - wraps non-Error rejections into Error objects
+  - re-fetches when deps change
+  - reload() re-triggers the fetcher
+  - cancels stale fetches when component unmounts
+  - toggles from enabled=false to true triggers fetch
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 5.00s** ✓
+  - `npx playwright test`: **7/7 passed** ✓
+  - `npm run db:check`: **No schema changes** ✓
+
+### قواعد ذهبية مضافة (Phase 20b)
+- **Infinite loading = useState(true) + early return**: الـ pattern الخاطئ هو `useState(true)` للـ isLoading + `if (!companyId) return;` بدون reset. الـ spinner يَبقى للأبد. **الحل**: `useState(false)` أو custom hook
+- **useAsyncData hook signature**: `useAsyncData<T>(fetcher, deps, enabled?)`. الـ `enabled` param يحل الـ "no company" case بدون setIsLoading gymnastics
+- **try/finally للـ isLoading**: `setIsLoading(true)` في البداية + `setIsLoading(false)` في finally (حتى في الـ errors). الـ catch وحده لا يكفي
+- **cancelled flag في cleanup**: `let cancelled = false` + `if (!cancelled) setData(...)` — يمنع setState على unmounted component (React 18+ warning)
+- **enabled=false → data=null + isLoading=false**: لا fetch، لا spinner. الـ user يَرى empty state فوراً
+- **enabled toggle من false → true يُشغِّل fetch**: الـ effect يَستجيب لتغييرات enabled
+- **reload() عبر reloadCounter state**: `setReloadCounter(c => c + 1)` في الـ deps يَضمن re-fetch بدون تغيير الـ fetcher reference
+- **journal_entries.company_id NOT NULL + denormalized**: الـ schema يَفرض NOT NULL (Phase 7). الـ INSERT statements يجب أن تَشمل company_id. الـ omission = silent failure (NULL filter)
+- **`data` يُرجَع `T | null`**: لا تستخدم `= []` في الـ destructure — استخدم `?? []` في الـ usage sites. الـ type safety أهم
+- **24 صفحة تأثرت بنفس الـ pattern**: ابحث بـ `Select-String "if \(!activeCompany\?\.id\) return;"` عبر src/modules لاكتشاف كل الـ cases
 
 ### المرحلة 19: Playwright e2e Tests
 - **الهدف**: إنشاء CI-grade e2e tests للـ critical user flows (login، pagination، multi-currency form، voucher page) دون الاعتماد على Electron build (أبطأ 10x)
