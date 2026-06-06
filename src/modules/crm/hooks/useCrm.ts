@@ -99,7 +99,7 @@ export function useOpportunities(companyId: string) {
 
 export function useTasks(companyId: string) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -143,7 +143,7 @@ export function useTasks(companyId: string) {
 
 export function useActivities(companyId: string) {
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

@@ -72,7 +72,7 @@ export function useAttendance(companyId: string, month: number, year: number) {
 
 export function usePayrollRuns(companyId: string) {
   const [payrolls, setPayrolls] = useState<PayrollRun[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -110,7 +110,7 @@ export function usePayrollRuns(companyId: string) {
 
 export function useLeaves(companyId: string) {
   const [leaves, setLeaves] = useState<Leave[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

@@ -276,8 +276,9 @@ export const crmApi = {
       if (data.stage !== undefined) { fields.push(`stage = $${idx++}`); values.push(data.stage); }
       if (data.probability !== undefined) { fields.push(`probability = $${idx++}`); values.push(data.probability); }
       if (data.expectedCloseDate !== undefined) { fields.push(`expected_close_date = $${idx++}`); values.push(data.expectedCloseDate); }
+      if (data.leadId !== undefined) { fields.push(`lead_id = $${idx++}`); values.push(data.leadId); }
+      if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
       if (data.assignedTo !== undefined) { fields.push(`assigned_to = $${idx++}`); values.push(data.assignedTo); }
-      if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
       if (fields.length === 0) return { success: true };
       values.push(id);
       values.push(companyId);
@@ -349,6 +350,9 @@ export const crmApi = {
       if (data.dueDate !== undefined) { fields.push(`due_date = $${idx++}`); values.push(data.dueDate); }
       if (data.priority !== undefined) { fields.push(`priority = $${idx++}`); values.push(data.priority); }
       if (data.status !== undefined) { fields.push(`status = $${idx++}`); values.push(data.status); }
+      if (data.opportunityId !== undefined) { fields.push(`opportunity_id = $${idx++}`); values.push(data.opportunityId); }
+      if (data.leadId !== undefined) { fields.push(`lead_id = $${idx++}`); values.push(data.leadId); }
+      if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
       if (data.assignedTo !== undefined) { fields.push(`assigned_to = $${idx++}`); values.push(data.assignedTo); }
       if (fields.length === 0) return { success: true };
       values.push(id);
@@ -421,6 +425,9 @@ export const crmApi = {
       if (data.description !== undefined) { fields.push(`description = $${idx++}`); values.push(data.description); }
       if (data.activityDate !== undefined) { fields.push(`activity_date = $${idx++}`); values.push(data.activityDate); }
       if (data.durationMinutes !== undefined) { fields.push(`duration_minutes = $${idx++}`); values.push(data.durationMinutes); }
+      if (data.leadId !== undefined) { fields.push(`lead_id = $${idx++}`); values.push(data.leadId); }
+      if (data.opportunityId !== undefined) { fields.push(`opportunity_id = $${idx++}`); values.push(data.opportunityId); }
+      if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
       if (data.assignedTo !== undefined) { fields.push(`assigned_to = $${idx++}`); values.push(data.assignedTo); }
       if (fields.length === 0) return { success: true };
       values.push(id);

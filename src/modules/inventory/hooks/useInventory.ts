@@ -5,7 +5,7 @@ import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTran
 
 export function useProducts(companyId: string) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -49,7 +49,7 @@ export function useProducts(companyId: string) {
 
 export function useWarehouses(companyId: string) {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -93,7 +93,7 @@ export function useWarehouses(companyId: string) {
 
 export function useStock(companyId: string) {
   const [stock, setStock] = useState<Stock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -113,7 +113,7 @@ export function useStock(companyId: string) {
 
 export function useStockDetailed(companyId: string) {
   const [stock, setStock] = useState<StockItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -133,7 +133,7 @@ export function useStockDetailed(companyId: string) {
 
 export function useStockTransfers(companyId: string) {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -161,7 +161,7 @@ export function useStockTransfers(companyId: string) {
 
 export function useInventoryTransactions(companyId: string) {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -197,7 +197,7 @@ export function useInventoryTransactions(companyId: string) {
 
 export function useStockAdjustments(companyId: string) {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -241,7 +241,7 @@ export function useStockAdjustments(companyId: string) {
 
 export function useProductCategories(companyId: string) {
   const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
