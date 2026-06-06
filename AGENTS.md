@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.11 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 590 keys متوازنة | Tests: 243 ✓ | 5 pages server-side paginated | RBAC reactive | Multi-currency utilities)
+- **الإصدار الحالي:** v0.3.16 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 279 ✓ | 11 pages server-side paginated | RBAC reactive | Multi-currency complete)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1303,18 +1303,43 @@ npx drizzle-kit migrate
   - `npm run build`: **built in 8.85s** ✓
   - `npm run db:check`: **No schema changes** ✓
 
-### قواعد ذهبية مضافة (Phase 18e)
-- **`SUM(amount)` عبر عملات مختلفة = رقم بلا معنى**: USD 1000 + YER 5000 = 6000 يخلط بين 1 USD و 1 YER. **القاعدة**: GROUP BY currency_code في كل query report
-- **`baseEquivalent` computed at query time, not display time**: يحسب في الـ utility (`amount * fromRate / baseRate`) — ليس في الـ component. الـ percent يُحسب من total base أيضاً
-- **CurrencyBadge logic**: `hasMultipleCurrencies = items.length > 1` — لا تحسبها من count فقط
-- **Sort by raw amount desc, not base equivalent**: الـ user يرى الـ "actual" الـ dominant currency أول (10,000 USD > 100 YER حتى لو 1 USD = 1500 YER، الـ 10K USD يساوي 15M YER لكن الـ 100 YER فعلياً أقل)
-- **Inventory is base-currency only**: `stock.quantity * p.cost_price` — كلاهما في الـ base. لا multi-currency
-- **Voucher join table للـ breakdown**: لا تجمع raw في الـ UI، دائماً عبر الـ utility الـ typed (`buildCurrencyBreakdown`)
-- **`formatWithCurrency(amount, code)` للـ per-row display**: يضيف "ر.ي" أو "USD" suffix. للـ "المعادل بالأساسية" استخدم `formatWithCurrency(item.baseEquivalent)` بدون code (default = base)
-- **`percent = Math.round((baseEq / totalBase) * 100)`**: النسبة دائماً من total base (للمقارنة بين currencies بشكل عادل)
-- **Map<id, lines> للـ invoices with no lines**: `entry.currencyCode = String(r.currency_code || 'YER')` — يضمن كل invoice له currency حتى لو لا lines
-- **`GROUP BY currency_code` على tables التي تحويه**: sales_invoices، purchase_invoices، receipt_vouchers، payment_vouchers. لا على purchase_invoice_lines (يحوي `currency_code` لكن الـ aggregated في parent query)
-- **`useMemo([filteredData, currencies])` للـ breakdown**: currencies تتغير عند reload — يجب إعادة الحساب
+### المرحلة 16h: 6 صفحات إضافية Server-Side Pagination
+- **الهدف**: توسيع الـ refactor للـ 6 pages المتبقية (PurchaseOrders/PurchaseReturns/Products/Leads/Opportunities/Employees)
+- **Hooks الجديدة (6)**:
+  - `purchasesApi`: `usePurchaseOrdersPaginated` + `usePurchaseReturnsPaginated`
+  - `inventoryApi`: `useProductsPaginated`
+  - `crmApi`: `useLeadsPaginated` + `useOpportunitiesPaginated`
+  - `hrApi`: `useEmployeesPaginated`
+  - كلها بنفس الـ pattern: `useXxxPaginated(companyId, filters?)` + mutations that call `reload()`
+- **UI Refactors (6 pages)**:
+  - `PurchaseOrdersPage`: status filter dropdown (draft/confirmed/invoiced/cancelled)
+  - `PurchaseReturnsPage`: status filter (draft/posted/cancelled)
+  - `ProductsPage`: productTypeId server filter + category client filter (الـ category filter ليس في API)
+  - `LeadsPage`: status filter dropdown (new/contacted/qualified/converted/lost)
+  - `OpportunitiesPage`: stage filter (new/qualified/proposal/negotiation/won/lost)
+  - `EmployeesPage`: isActive filter (all/active/inactive) + total count
+- **Pattern موحَّد**: نفس template من Phase 16e-16g:
+  1. Replace hook import + call
+  2. Remove `useBranchFilter` + `useOwnerFilter` + `OwnerFilterToggle`
+  3. Add filter state (status/stage/isActive) + pass to hook
+  4. Add `<Pagination>` after the table
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **279/279 passed** ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 18.44s** ✓
+  - `npm run db:check`: **No schema changes** ✓
+  - **11 pages** server-side paginated total: Invoices + PurchaseInvoices + Quotations + SalesReturns + Suppliers + **Orders** + **Returns** + **Products** + **Leads** + **Opportunities** + **Employees**
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.15*
+### قواعد ذهبية مضافة (Phase 16h)
+- **Hook naming موحَّد**: `useXxxPaginated(companyId, filters?)` + `*Filters` interface منفصلة — لا تكرر النمط في كل page
+- **Filter union للـ `isActive?`**: `boolean | undefined` — `undefined` = all (لا filter). الـ API يحقق `filters?.isActive !== undefined` للـ WHERE
+- **Category client-side filter للـ ProductsPage**: الـ API لا يحوي `categoryId` filter → استخدم `useMemo` على الـ `products` بعد الـ server-side pagination. الـ trade-off: يعمل على current page فقط، لكن الـ categories في الـ demo data محدودة
+- **Status filter لا يحوي `cancelled` افتراضياً**: اعرض الخيارات في الـ dropdown (draft/posted/cancelled) — لكن الـ API لا يفلتر cancelled تلقائياً. لو طلب "active only" استخدم API filter مخصص
+- **Empty filter = no filter**: `filters={ status: statusFilter || undefined }` — إذا الـ dropdown "الكل"، الـ value = `''`، نمرر `undefined` للـ API (لا WHERE)
+- **الـ total count في الـ pagination = count after filters**: `total = COUNT(*) WHERE ${where}` — لو filter status=posted، الـ total = عدد posted فقط. الـ user يرى count صحيح للـ active filter
+- **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
+- **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
+
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.16*
 
