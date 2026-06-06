@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.19 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | **Infinite loading fixed** | **e2e Supplier/Voucher/Leads CRUD**) 
+- **الإصدار الحالي:** v0.3.20 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | Infinite loading fixed | e2e Supplier/Voucher/Leads CRUD | **SET clause P1 + infinite loading #2 fixed**)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.19*
+*آخر تحديث: 2026-06-07 | الإصدار: maghzaccount-pro v0.3.20*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1522,4 +1522,26 @@ npx drizzle-kit migrate
 - **`work_order_lines` ≠ `work_order_consumptions`**: drift من تعارض تسمية قديم. الـ schema استقر على `consumptions` (planned vs actual qty + cost)
 - **Audit منهجي قبل التعديل**: عدد المراجع الخاطئة بدقة (7 لـ `bills_of_materials`، 4 لـ `work_order_lines`) لضمان عدم ترك مرجع واحد
 - **`npm run db:reset:force` كاختبار تكامل نهائي**: يثبت أن 3 migrations + seed يعملون من الصفر. يشمل verification لجميع الجداول
+
+### المرحلة 24: إصلاح SET clause + Infinite Loading #2
+- **الهدف**: إصلاح P1 runtime crashes في dynamic SET clauses (CRM) + إصلاح `useState(true)` في 10 hooks إضافية
+- **Issues المصححة (3 من audit)**:
+  - **Issue 1 (P1 — Data loss)**: `updateTask` missing `opportunity_id`، `lead_id`، `customer_id` في dynamic SET clause → البيانات تفقد عند تعديل المهمة. `updateActivity` نفس الـ 3 fields missing
+  - **Issue 3 (P2 — Data integrity)**: `updateOpportunity` missing `lead_id`، `customer_id` في SET clause + `notes` column (غير موجود في schema) — كان يكسر PG
+  - **Issue 2 (P2 — Infinite loading)**: 10 hooks كانت تستخدم `useState(true)` + `if (!companyId) return;` بدون `setIsLoading(false)` → spinner باقٍ للأبد
+- **ملفات معدلة (4)**:
+  - `src/modules/crm/api.ts`: `updateOpportunity` (أضيف leadId/customerId، أزيل notes) + `updateTask` (أضيف 3 relational fields) + `updateActivity` (أضيف 3 relational fields)
+  - `src/modules/crm/hooks/useCrm.ts`: `useTasks` + `useActivities` — `useState(true)` → `useState(false)`
+  - `src/modules/inventory/hooks/useInventory.ts`: 6 hooks (replaceAll) — `useState(true)` → `useState(false)`
+  - `src/modules/hr/hooks/useHr.ts`: `useLeaves` — `useState(true)` → `useState(false)`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - Commit: `cdff33c`
+
+### قواعد ذهبية مضافة (Phase 24)
+- **SET clause missing fields = silent data loss**: dynamic SET clause يبني `fields[]` من `Object.keys(data)`. لو key غير موجود في الـ block، الـ column لا يُحدَّث — **القاعدة**: افحص dynamic SET clauses لكل جدول يحوي nullable FK columns و تأكد أن كل FK موجود في الـ code
+- **`useState(true)` + early return = infinite loading**: الـ pattern `useState(true)` + `if (!companyId) return;` دون `setIsLoading(false)` يعلّق الـ spinner للأبد. **الحل**: `useState(false)` — الـ effect يضبط `setIsLoading(true)` فقط عند بدء الـ fetch
+- **Batch edit للملفات الكبيرة**: ملف مثل `AGENTS.md` (1525 سطر) لا يُكتب عبر `write` tool (JSON payload overflow). استخدم `edit` tool للتغييرات المستهدفة — update version line + add section at end
 
