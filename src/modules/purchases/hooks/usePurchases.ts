@@ -331,3 +331,105 @@ export function usePurchaseReturns(companyId: string) {
 
   return { returns, isLoading, create, update, remove, post };
 }
+
+export interface OrderFilters {
+  status?: string;
+  supplierId?: string;
+}
+
+export function usePurchaseOrdersPaginated(companyId: string, filters?: OrderFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<PurchaseOrder>(
+    (page, pageSize) => purchasesApi.getOrdersPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.supplierId]
+  );
+
+  const create = useCallback(async (data: Omit<PurchaseOrder, 'id'>) => {
+    const result = await purchasesApi.createOrder(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<PurchaseOrder>) => {
+    const result = await purchasesApi.updateOrder(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteOrder(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const convertToInvoice = useCallback(async (orderId: string) => {
+    const result = await purchasesApi.convertOrderToInvoice(orderId, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    orders: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    convertToInvoice,
+    reload: reloadList,
+  };
+}
+
+export interface PurchaseReturnFilters {
+  status?: string;
+  supplierId?: string;
+}
+
+export function usePurchaseReturnsPaginated(companyId: string, filters?: PurchaseReturnFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<PurchaseReturn>(
+    (page, pageSize) => purchasesApi.getReturnsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.supplierId]
+  );
+
+  const create = useCallback(async (data: Omit<PurchaseReturn, 'id'>) => {
+    const result = await purchasesApi.createReturn(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<PurchaseReturn>) => {
+    const result = await purchasesApi.updateReturn(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await purchasesApi.deleteReturn(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const post = useCallback(async (id: string) => {
+    const result = await purchasesApi.postReturn(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    returns: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    post,
+    reload: reloadList,
+  };
+}

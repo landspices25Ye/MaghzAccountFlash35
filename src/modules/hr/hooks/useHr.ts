@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { hrApi } from '../api';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Employee, AttendanceRecord, PayrollRun, Leave, EndOfService } from '../types';
 
 export function useEmployees(companyId: string) {
@@ -193,4 +194,49 @@ export function useEndOfServices(companyId: string) {
   }, [refresh, companyId]);
 
   return { items, isLoading, refresh, create, updateStatus, remove };
+}
+
+export interface EmployeeFilters {
+  isActive?: boolean;
+  departmentId?: string;
+  search?: string;
+}
+
+export function useEmployeesPaginated(companyId: string, filters?: EmployeeFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Employee>(
+    (page, pageSize) => hrApi.getEmployeesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.isActive, filters?.departmentId, filters?.search]
+  );
+
+  const create = useCallback(async (data: Omit<Employee, 'id'>) => {
+    const res = await hrApi.createEmployee(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Employee, 'id' | 'companyId'>>) => {
+    const res = await hrApi.updateEmployee(id, companyId, data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await hrApi.deleteEmployee(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    employees: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
 }

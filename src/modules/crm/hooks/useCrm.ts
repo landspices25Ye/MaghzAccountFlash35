@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { crmApi } from '../api';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Lead, Opportunity, Task, Activity } from '../types';
 
 export function useLeads(companyId: string) {
@@ -182,4 +183,101 @@ export function useActivities(companyId: string) {
   }, [refresh, companyId]);
 
   return { activities, isLoading, refresh, create, update, remove };
+}
+
+export interface LeadFilters {
+  status?: string;
+  assignedTo?: string;
+  search?: string;
+}
+
+export function useLeadsPaginated(companyId: string, filters?: LeadFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Lead>(
+    (page, pageSize) => crmApi.getLeadsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.assignedTo, filters?.search]
+  );
+
+  const create = useCallback(async (data: Omit<Lead, 'id' | 'createdAt'>) => {
+    const res = await crmApi.createLead(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Lead, 'id' | 'companyId'>>) => {
+    const res = await crmApi.updateLead(id, companyId, data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await crmApi.deleteLead(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const convertToCustomer = useCallback(async (id: string, customerData: Record<string, unknown>) => {
+    const res = await crmApi.convertLeadToCustomer(id, companyId, customerData);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    leads: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    convertToCustomer,
+    reload: reloadList,
+  };
+}
+
+export interface OpportunityFilters {
+  stage?: string;
+  assignedTo?: string;
+  search?: string;
+}
+
+export function useOpportunitiesPaginated(companyId: string, filters?: OpportunityFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Opportunity>(
+    (page, pageSize) => crmApi.getOpportunitiesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.stage, filters?.assignedTo, filters?.search]
+  );
+
+  const create = useCallback(async (data: Omit<Opportunity, 'id' | 'createdAt'>) => {
+    const res = await crmApi.createOpportunity(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Opportunity, 'id' | 'companyId'>>) => {
+    const res = await crmApi.updateOpportunity(id, companyId, data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await crmApi.deleteOpportunity(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    opportunities: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
 }

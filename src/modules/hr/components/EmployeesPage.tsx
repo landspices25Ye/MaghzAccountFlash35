@@ -1,23 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { Users, Plus, User } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
-import { useEmployees } from '../hooks/useHr';
+import { useEmployeesPaginated } from '../hooks/useHr';
 import type { Employee } from '../types';
 
 export const EmployeesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const { employees, isLoading, create, update, remove } = useEmployees(companyId);
-  const { filtered: filteredEmployees, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(employees, 'hr');
+  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
+  const { employees, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useEmployeesPaginated(companyId, { isActive: isActiveFilter });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -146,21 +144,45 @@ export const EmployeesPage: React.FC = () => {
         </div>
     <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>
       </div>
-      <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
 
       <Card>
+        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-600 dark:text-slate-300">الحالة:</label>
+            <select
+              value={isActiveFilter === undefined ? 'all' : isActiveFilter ? 'active' : 'inactive'}
+              onChange={(e) => {
+                const v = e.target.value;
+                setIsActiveFilter(v === 'all' ? undefined : v === 'active');
+              }}
+              className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600"
+            >
+              <option value="all">الكل</option>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
+            </select>
+          </div>
+          <span className="text-xs text-slate-500">إجمالي: {total}</span>
+        </div>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : filteredEmployees.length === 0 ? (
+        ) : employees.length === 0 ? (
           <EmptyState icon="inbox" title="لا يوجد موظفين" description="يمكنك إضافة موظف جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>} />
         ) : (
-        <Table<Employee>
-          data={filteredEmployees}
+          <Table<Employee>
+            data={employees}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا يوجد موظفين"
           />
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </Card>
 
       {/* Create/Edit Modal */}

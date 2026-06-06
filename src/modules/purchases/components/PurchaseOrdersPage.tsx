@@ -4,17 +4,14 @@ import { printDocument } from '@/core/utils/printDocument';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
-import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { usePurchaseOrders } from '../hooks/usePurchases';
+import { usePurchaseOrdersPaginated } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseOrder } from '../types';
@@ -57,11 +54,10 @@ export const PurchaseOrdersPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
-  const { orders, isLoading, create, update, remove, convertToInvoice } = usePurchaseOrders(activeCompany?.id || '');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const { orders, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToInvoice } = usePurchaseOrdersPaginated(activeCompany?.id || '', { status: statusFilter || undefined });
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const branchFiltered = useBranchFilter(orders);
-  const { filtered: filteredOrders, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'purchases');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
@@ -255,7 +251,13 @@ export const PurchaseOrdersPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
+          <option value="">كل الحالات</option>
+          <option value="draft">مسودة</option>
+          <option value="confirmed">مؤكد</option>
+          <option value="invoiced">مفوتر</option>
+          <option value="cancelled">ملغي</option>
+        </select>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           {t('purchases.order.create')}
         </Button>
@@ -264,7 +266,7 @@ export const PurchaseOrdersPage: React.FC = () => {
 
       <Card>
         <DataTablePro<PurchaseOrder>
-          data={filteredOrders}
+          data={orders}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
@@ -272,6 +274,13 @@ export const PurchaseOrdersPage: React.FC = () => {
           title={t('purchases.orders')}
           searchable
           searchPlaceholder={t('search') + '...'}
+        />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </Card>
 

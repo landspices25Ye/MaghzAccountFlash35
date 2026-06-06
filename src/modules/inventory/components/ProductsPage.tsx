@@ -1,12 +1,12 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Package, Plus, Upload, Camera, X } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { UnitSelect, ProductTypeSelect } from '@/core/ui/components/smart';
-import { useProducts, useProductCategories } from '../hooks/useInventory';
+import { useProductsPaginated, useProductCategories } from '../hooks/useInventory';
 import { useProductTypes } from '@/core/hooks/useSettings';
 import type { ProductType } from '@/core/types';
 import { useAppStore } from '@/core/store';
@@ -14,8 +14,6 @@ import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { barcodeScanner } from '@/core/utils/barcodeScanner';
 import { logAudit } from '@/core/utils/auditLogger';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { useFormatters } from '@/core/utils/useFormatters';
 import type { Product } from '../types';
 
@@ -47,11 +45,11 @@ export const ProductsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore((state) => state.user);
-  const { products, isLoading, create, update, remove } = useProducts(activeCompany?.id || '');
+  const [filterTypeId, setFilterTypeId] = useState<string>('');
+  const { products, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useProductsPaginated(activeCompany?.id || '', { productTypeId: filterTypeId || undefined });
   const { categories } = useProductCategories(activeCompany?.id || '');
   const { types: productTypes } = useProductTypes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(products, 'inventory');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -60,22 +58,15 @@ export const ProductsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [search, setSearch] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('');
-  const [filterTypeId, setFilterTypeId] = useState<string>('');
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const filteredProducts = ownerFiltered.filter(p => {
-    const matchesSearch = !search ||
-      (p.nameAr?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (p.code?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (p.barcode && p.barcode.includes(search));
+  const filteredProducts = useMemo(() => products.filter(p => {
     const matchesCategory = !filterCategoryId ||
       p.categoryId === filterCategoryId ||
       p.categoryIds?.includes(filterCategoryId);
-    const matchesType = !filterTypeId || p.productTypeId === filterTypeId;
-    return matchesSearch && matchesCategory && matchesType;
-  });
+    return matchesCategory;
+  }), [products, filterCategoryId]);
 
   const handleOpenCreate = () => {
     setFormData(initialForm);
@@ -257,18 +248,12 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-        <Input
-            placeholder={t('search')}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-64"
-          />
           <select
             value={filterCategoryId}
             onChange={e => setFilterCategoryId(e.target.value)}
             className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
             aria-label="فلترة حسب التصنيف"
+            title="تصفية حسب التصنيف"
           >
             <option value="">كل التصنيفات</option>
             {categories.map(cat => (
@@ -280,6 +265,7 @@ export const ProductsPage: React.FC = () => {
             onChange={e => setFilterTypeId(e.target.value)}
             className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
             aria-label="فلترة حسب النوع"
+            title="تصفية حسب النوع"
           >
             <option value="">كل الأنواع</option>
             {productTypes.map((t: ProductType) => (
@@ -296,8 +282,8 @@ export const ProductsPage: React.FC = () => {
         {filteredProducts.length === 0 && !isLoading ? (
           <EmptyState
             icon="search"
-            title={search ? 'لا توجد نتائج' : 'لا توجد منتجات'}
-            description={search ? 'جرب بحثاً مختلفاً' : 'أضف منتجات جديدة للبدء'}
+            title="لا توجد منتجات"
+            description="أضف منتجات جديدة للبدء"
             action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newProduct')}</Button>}
           />
         ) : (
@@ -309,6 +295,13 @@ export const ProductsPage: React.FC = () => {
             emptyMessage=""
           />
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </Card>
 
       {/* Create/Edit Modal */}

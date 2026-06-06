@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { inventoryApi } from '../api';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTransaction, StockAdjustment, ProductCategory } from '../types';
 
 export function useProducts(companyId: string) {
@@ -280,4 +281,49 @@ export function useProductCategories(companyId: string) {
   }, [companyId]);
 
   return { categories, isLoading, create, update, remove };
+}
+
+export interface ProductFilters {
+  search?: string;
+  isActive?: boolean;
+  productTypeId?: string;
+}
+
+export function useProductsPaginated(companyId: string, filters?: ProductFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Product>(
+    (page, pageSize) => inventoryApi.getProductsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.search, filters?.isActive, filters?.productTypeId]
+  );
+
+  const create = useCallback(async (data: Omit<Product, 'id'>) => {
+    const result = await inventoryApi.createProduct(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Product>) => {
+    const result = await inventoryApi.updateProduct(id, companyId, undefined, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await inventoryApi.deleteProduct(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    products: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
 }

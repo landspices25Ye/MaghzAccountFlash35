@@ -3,21 +3,19 @@ import { Undo2, Plus, CheckSquare, Trash2, Printer, FileText, BookOpen } from 'l
 import { printDocument } from '@/core/utils/printDocument';
 import { logAudit } from '@/core/utils/auditLogger';
 import { postPurchaseReturn } from '@/core/utils/journalEntryGenerator';
-import { Card, Button, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { SupplierSelect, ProductSelect } from '@/core/ui/components/smart';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { usePurchaseReturns, usePurchaseInvoices } from '../hooks/usePurchases';
+import { usePurchaseReturnsPaginated, usePurchaseInvoices } from '../hooks/usePurchases';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseReturn } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 
 interface ReturnFormLine {
   productId: string;
@@ -57,10 +55,10 @@ export const PurchaseReturnsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
-  const { returns, isLoading, create, update, remove, post } = usePurchaseReturns(activeCompany?.id || '');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const { returns, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post } = usePurchaseReturnsPaginated(activeCompany?.id || '', { status: statusFilter || undefined });
   const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const { filtered: filteredReturns, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(returns, 'purchases');
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -272,7 +270,12 @@ export const PurchaseReturnsPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
+          <option value="">كل الحالات</option>
+          <option value="draft">مسودة</option>
+          <option value="posted">مرحل</option>
+          <option value="cancelled">ملغي</option>
+        </select>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
           {t('purchases.return.create')}
         </Button>
@@ -302,7 +305,7 @@ export const PurchaseReturnsPage: React.FC = () => {
 
       <Card>
         <DataTablePro<PurchaseReturn>
-          data={filteredReturns}
+          data={returns}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
@@ -310,6 +313,13 @@ export const PurchaseReturnsPage: React.FC = () => {
           title={t('purchases.returns')}
           searchable
           searchPlaceholder={t('search') + '...'}
+        />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </Card>
 

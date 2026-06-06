@@ -1,22 +1,20 @@
 import React, { useState } from 'react';
 import { Target, Plus, UserCheck } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { useLeads, useActivities } from '../hooks/useCrm';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { useLeadsPaginated, useActivities } from '../hooks/useCrm';
 import type { Lead, Activity } from '../types';
 
 export const LeadsPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { leads, isLoading, create, update, remove, convertToCustomer } = useLeads(companyId);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const { leads, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToCustomer } = useLeadsPaginated(companyId, { status: statusFilter || undefined });
   const { create: createActivity } = useActivities(companyId);
-  const { filtered: filteredLeads, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(leads, 'crm');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
@@ -141,23 +139,43 @@ export const LeadsPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة العملاء المحتملين والمتابعات</p>
           </div>
         </div>
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
       <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>
       </div>
 
       <Card>
+        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-slate-600 dark:text-slate-300">الحالة:</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
+              <option value="">الكل</option>
+              <option value="new">جديد</option>
+              <option value="contacted">تم التواصل</option>
+              <option value="qualified">مؤهل</option>
+              <option value="converted">تم التحويل</option>
+              <option value="lost">خاسر</option>
+            </select>
+          </div>
+          <span className="text-xs text-slate-500">إجمالي: {total}</span>
+        </div>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : filteredLeads.length === 0 ? (
+        ) : leads.length === 0 ? (
           <EmptyState icon="inbox" title="لا يوجد عملاء محتملين" description="يمكنك إضافة عميل محتمل جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>} />
         ) : (
-        <Table<Lead>
-          data={filteredLeads}
+          <Table<Lead>
+            data={leads}
             columns={columns}
             keyExtractor={(row) => row.id}
             emptyMessage="لا يوجد عملاء محتملين"
           />
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </Card>
 
       {/* Create/Edit Modal */}
