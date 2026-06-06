@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.16 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 279 ✓ | 11 pages server-side paginated | RBAC reactive | Multi-currency complete)
+- **الإصدار الحالي:** v0.3.17 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 279 ✓ + **e2e: 7/7 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | **Playwright e2e foundation**)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1341,5 +1341,67 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.16*
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.17*
+
+### المرحلة 19: Playwright e2e Tests
+- **الهدف**: إنشاء CI-grade e2e tests للـ critical user flows (login، pagination، multi-currency form، voucher page) دون الاعتماد على Electron build (أبطأ 10x)
+- **القرار المعماري**: تشغيل e2e في Chromium headless عبر Vite dev server + custom plugin يحاكي `window.electronDB` باستخدام Node `pg.Pool`. الـ app code الحالي يعمل بدون أي تعديل
+- **التثبيت**: `npm install -D @playwright/test` → v1.60.0، `npx playwright install chromium` (180MB download، ~170s)
+- **`playwright.config.ts`**: 
+  - testDir `./e2e`، timeout 60s، fully parallel
+  - webServer: `npx vite --config vite.e2e.config.ts --port 5173 --strictPort`، timeout 120s، `reuseExistingServer: !CI`
+  - baseURL `http://localhost:5173`
+- **`vite.e2e.config.ts`**: Vite config منفصل يحمّل `e2eDbBridge` plugin (لا يستخدم `vite.config.ts` العادي — يَتجنب الازدحام مع dev server)
+- **`e2e/vite-e2e-plugin.ts` (e2eDbBridge)**:
+  - `apply: 'serve'`، `configureServer` middleware: 
+    - `/__e2e/db` POST: parses `{sql, params}`، يتحقق من `FORBIDDEN_SQL_PATTERNS` (DROP/ALTER/TRUNCATE/GRANT/REVOKE/CREATE+type/INSERT+pg_/DELETE+pg_)، ينفذ عبر `pool.query`، يرجع `{success, rows, rowCount}`
+    - `/__e2e/ping` GET: يرجع `{success: true, db: 'MaghzAccountFlash35', version: 'PostgreSQL 18.3...'}` (يطابق `DbAdapter.ping()` interface)
+  - `transformIndexHtml`: يرجع `[{tag: 'script', attrs: {type: 'text/javascript'}, children: shimCode, injectTo: 'head-prepend'}]` — يحقن `window.electronDB` قبل React hydration
+  - `closeBundle`: `pool.end()` للـ cleanup
+  - **حماية FORBIDDEN_SQL_PATTERNS**: 7 patterns تحظر destructive queries (DROP، ALTER، TRUNCATE، GRANT، REVOKE، CREATE+type، INSERT/UPDATE/DELETE على pg_*) — security guard
+- **`e2e/fixtures/auth.ts`**:
+  - `ADMIN_USER = {username: 'admin', password: 'admin'}` (من `electron/seedDemoData.js` line 226-229)
+  - `ONBOARDING_STORAGE`: `{state: {completed: true, currentStep: 4, companyConfig, seedOption: 'demo'}, version: 0}` (zustand persist shape)
+  - `useOnboardingBypass(context)`: `context.addInitScript` يَضع `localStorage['maghzaccount-onboarding']` **قبل** page load
+  - `loginAs(page)`: `page.goto('/login')` → `input[required]` × 2 → `button[type="submit"]` → wait `!url.includes('/login')` → assert `text=لوحة التحكم` visible
+  - `logout(page)`: `button[title="تسجيل الخروج"]` (icon-only button، لا text)
+  - custom `test` fixture: `test.extend({ context })` — يمد `context` بـ onboarding bypass
+- **4 spec files (7/7 pass)**:
+  - `e2e/01-auth.spec.ts` (3/3): login يحوّل لـ /، invalid creds تظهر error، logout يَرجع لـ /login
+  - `e2e/02-invoices-pagination.spec.ts` (2/2): 
+    - `invoices page loads with table data`: `expect.poll(tableRows.count)` للتحمُّل في الـ race condition
+    - `sidebar shows sales submenu after expanding المبيعات`
+  - `e2e/03-invoice-multicurrency.spec.ts` (1/1): invoice create modal يحوي "العملة" + "سعر الصرف" + "المعادل بالأساسية" (يستخدم `text=فاتورة مبيعات جديدة` للـ modal detection — Modal لا يحوي `role="dialog"`)
+  - `e2e/04-vouchers.spec.ts` (1/1): `/accounting/receipt-vouchers` يَعرض الجدول
+- **`vitest.config.ts` exclude**: `e2e/**`، `test-results/**`، `playwright-report/**` (vitest كان يَكتشف `*.spec.ts` ويفشل في load كـ unit tests)
+- **`.gitignore` additions**: `test-results/`، `playwright-report/`، `build-output.txt`، `lint-output.txt`، `test-output.txt`
+- **`package.json` scripts**: 
+  - `test:e2e`: `playwright test` (headless)
+  - `test:e2e:headed`: `playwright test --headed` (لـ debugging)
+  - `e2e:reset`: `node electron/resetDatabase.js --yes --force` (helper قبل e2e)
+- **devDep**: `@playwright/test: ^1.60.0`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **279/279 passed** (26 files، e2e مستبعدة) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 42.24s** ✓
+  - `npm run db:check`: **No schema changes** ✓
+  - `npx playwright test`: **7/7 passed** ✓
+
+### قواعد ذهبية مضافة (Phase 19)
+- **e2e على Chromium، لا Electron**: Electron build بطيء (~5min). Chromium + Vite dev server + shim plugin أسرع 10x
+- **e2eDbBridge = pg.Pool + middleware + HTML script shim**: يحاكي `window.electronDB` عبر HTTP bridge. الـ app code يعمل بدون تعديل
+- **FORBIDDEN_SQL_PATTERNS guard**: 7 patterns تحظر DROP/ALTER/TRUNCATE/GRANT/REVOKE/CREATE+type/INSERT+pg_/DELETE+pg_* — security check على كل query
+- **Admin credentials في seed**: `admin`/`admin` (الـ seed يَنشئه عبر `pbkdf2:100000:<salt>:<hash>`)
+- **addInitScript + zustand persist = onboarding bypass**: `localStorage['maghzaccount-onboarding'] = {state: {completed: true, ...}, version: 0}` يَتخطى الـ wizard قبل page load
+- **BrowserRouter vs HashRouter**: التطبيق يستخدم `BrowserRouter` لما `electronEnv.isElectron === false` — استخدم `page.goto('/login')` لا `/#/login`
+- **Vite `transformIndexHtml` array format**: `children` يجب أن يكون JS code (string)، لا HTML. لا تضع `<script>` tags (يُسبب nested `<script>` parse error)
+- **ping endpoint = source of truth للـ DB connectivity**: `GET /__e2e/ping` يرجع `{success: true, ...}` يطابق `DbAdapter.ping()` interface
+- **Logout button = icon-only**: استخدم `button[title="..."]` selector لا `button:has-text(...)` (الأيقونات لا text)
+- **Sidebar children hidden until parent expanded**: انقر parent menu (`المبيعات`) قبل النقر على child (`فواتير المبيعات`) في الـ navigation tests
+- **Race condition في table load**: استخدم `expect.poll(locator.count(), {timeout: 20s})` بدلاً من `expect(count).toBeGreaterThan(0)` مباشرة — أكثر robust
+- **Modal لا يحوي `role="dialog"` افتراضياً**: ابحث عن modal title (`text=...`) بدلاً من الـ role
+- **vitest config exclude لـ e2e/**: `exclude: ['node_modules', 'dist', 'e2e/**', 'test-results/**', 'playwright-report/**']` — يمنع vitest من load `*.spec.ts` كـ unit tests
+- **artifact files في .gitignore**: `test-results/`, `playwright-report/`, `build-output.txt`, `lint-output.txt`, `test-output.txt` — مخرجات transient لا يجب commit
+- **dual e2e + unit test setup**: `npm test` (vitest، 279 unit) و `npm run test:e2e` (playwright، 7 e2e) منفصلين — متعمَّد
 
