@@ -2,12 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart, FileDown, Filter, RotateCcw } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
+import { CurrencyBreakdown } from '@/core/ui/components/CurrencyBreakdown';
 import { useAppStore } from '@/core/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useCurrencies } from '@/core/utils/useCurrencyDisplay';
+import { buildCurrencyBreakdown, type CurrencyBreakdownResult } from '@/core/utils/currencyBreakdown';
+import type { Currency } from '@/modules/core/types';
 
 interface ExpenseBreakdown {
   category: string;
@@ -32,6 +36,8 @@ interface PeriodData {
   totalExpenses: number;
   totalProfit: number;
   monthlyProfit: Array<{ month: string; profit: number }>;
+  revenueBreakdown: CurrencyBreakdownResult;
+  cogsBreakdown: CurrencyBreakdownResult;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
@@ -61,6 +67,7 @@ export const ProfitAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { currencies } = useCurrencies(activeCompany?.id || '');
   const [currentPeriod, setCurrentPeriod] = useState<PeriodData | null>(null);
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -75,6 +82,7 @@ export const ProfitAnalysisReport: React.FC = () => {
     async function load() {
       setIsLoading(true);
       const adapter = await getDbAdapter();
+      const activeCurrencies: Currency[] = currencies.length > 0 ? currencies : [];
 
       const computePeriod = async (from?: string, to?: string): Promise<PeriodData> => {
         const range = buildDateRange(from, to);
@@ -91,6 +99,21 @@ export const ProfitAnalysisReport: React.FC = () => {
         const revRow = (revResult.rows?.[0] || {}) as Record<string, unknown>;
         const totalRevenue = toNumber(revRow.revenue);
 
+        const revByCurrencyResult = await adapter.query(
+          `SELECT currency_code, COALESCE(SUM(total_amount), 0) AS amount, COUNT(*) AS inv_count
+             FROM sales_invoices
+            WHERE company_id = $1 AND date >= $2 AND date <= $3
+            GROUP BY currency_code`,
+          [companyId, fromD, toD],
+        );
+        const revBreakdown = buildCurrencyBreakdown(
+          ((revByCurrencyResult.rows || []) as Record<string, unknown>[]).map((r) => ({
+            code: String(r.currency_code || 'YER'),
+            amount: toNumber(r.amount),
+          })),
+          activeCurrencies,
+        );
+
         const cogsResult = await adapter.query(
           `SELECT COALESCE(SUM(pil.line_total), 0) AS cogs,
                   COALESCE(SUM(pil.quantity * COALESCE(pil.unit_price, 0)), 0) AS cogs_qty_cost
@@ -101,6 +124,22 @@ export const ProfitAnalysisReport: React.FC = () => {
         );
         const cogsRow = (cogsResult.rows?.[0] || {}) as Record<string, unknown>;
         const totalCogs = toNumber(cogsRow.cogs);
+
+        const cogsByCurrencyResult = await adapter.query(
+          `SELECT pi.currency_code, COALESCE(SUM(pil.line_total), 0) AS amount
+             FROM purchase_invoice_lines pil
+             JOIN purchase_invoices pi ON pi.id = pil.invoice_id
+            WHERE pi.company_id = $1 AND pi.date >= $2 AND pi.date <= $3
+            GROUP BY pi.currency_code`,
+          [companyId, fromD, toD],
+        );
+        const cogsBreakdown = buildCurrencyBreakdown(
+          ((cogsByCurrencyResult.rows || []) as Record<string, unknown>[]).map((r) => ({
+            code: String(r.currency_code || 'YER'),
+            amount: toNumber(r.amount),
+          })),
+          activeCurrencies,
+        );
 
         const accResult = await adapter.getAccounts(companyId);
         const accounts = (accResult.data || []) as Record<string, unknown>[];
@@ -254,6 +293,8 @@ export const ProfitAnalysisReport: React.FC = () => {
           totalExpenses,
           totalProfit: totalRevenue - totalExpenses,
           monthlyProfit,
+          revenueBreakdown: revBreakdown,
+          cogsBreakdown,
         };
       };
 
@@ -276,7 +317,7 @@ export const ProfitAnalysisReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id, fromDate, toDate, compareMode]);
+  }, [activeCompany?.id, fromDate, toDate, compareMode, currencies]);
 
   const comparisonChart = useMemo(() => {
     if (!currentPeriod) return [];
@@ -508,6 +549,14 @@ export const ProfitAnalysisReport: React.FC = () => {
           />
         </div>
       </Card>
+
+      {/* Currency Breakdown */}
+      {(currentPeriod.revenueBreakdown.items.length > 0 || currentPeriod.cogsBreakdown.items.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CurrencyBreakdown result={currentPeriod.revenueBreakdown} title="الإيرادات حسب العملة" />
+          <CurrencyBreakdown result={currentPeriod.cogsBreakdown} title="تكلفة المبيعات حسب العملة" />
+        </div>
+      )}
     </div>
   );
 };

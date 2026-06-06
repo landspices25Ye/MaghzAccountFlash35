@@ -2,12 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TrendingUp, FileDown, Filter, RotateCcw } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
+import { CurrencyBreakdown } from '@/core/ui/components/CurrencyBreakdown';
 import { useAppStore } from '@/core/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useCurrencies } from '@/core/utils/useCurrencyDisplay';
+import { buildCurrencyBreakdown, type CurrencyBreakdownResult } from '@/core/utils/currencyBreakdown';
 
 interface SalesLine {
   month: string;
@@ -18,6 +21,7 @@ interface SalesLine {
   revenue: number;
   invoiceCount: number;
   avgValue: number;
+  currencyCode: string;
 }
 
 interface PivotRow {
@@ -33,6 +37,7 @@ export const SalesAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { currencies } = useCurrencies(activeCompany?.id || '');
   const [rawData, setRawData] = useState<SalesLine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,6 +64,7 @@ export const SalesAnalysisReport: React.FC = () => {
                 i.status,
                 i.total_amount,
                 i.paid_amount,
+                i.currency_code,
                 c.name_ar AS customer_name,
                 l.id AS line_id,
                 l.product_id,
@@ -86,6 +92,7 @@ export const SalesAnalysisReport: React.FC = () => {
         invoiceId: string;
         date: string;
         customerName: string;
+        currencyCode: string;
         lines: { productName: string; lineTotal: number; quantity: number; unitPrice: number }[];
       }>();
       for (const r of dbRows) {
@@ -97,6 +104,7 @@ export const SalesAnalysisReport: React.FC = () => {
             invoiceId: invId,
             date: String(r.date || ''),
             customerName: String(r.customer_name || 'غير معروف'),
+            currencyCode: String(r.currency_code || 'YER'),
             lines: [],
           };
           invoiceMap.set(invId, entry);
@@ -126,6 +134,7 @@ export const SalesAnalysisReport: React.FC = () => {
             revenue: 0,
             invoiceCount: 1,
             avgValue: 0,
+            currencyCode: entry.currencyCode,
           });
         } else {
           for (const l of entry.lines) {
@@ -138,6 +147,7 @@ export const SalesAnalysisReport: React.FC = () => {
               revenue: l.lineTotal,
               invoiceCount: 1,
               avgValue: l.lineTotal,
+              currencyCode: entry.currencyCode,
             });
           }
         }
@@ -146,7 +156,7 @@ export const SalesAnalysisReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id]);
+  }, [activeCompany?.id, currencies]);
 
   const filteredData = useMemo(() => {
     return rawData.filter((row) => {
@@ -184,6 +194,14 @@ export const SalesAnalysisReport: React.FC = () => {
   const totalRevenue = filteredData.reduce((s, d) => s + d.revenue, 0);
   const totalInvoices = filteredData.reduce((s, d) => s + d.invoiceCount, 0);
   const avgInvoice = totalInvoices > 0 ? Math.floor(totalRevenue / totalInvoices) : 0;
+
+  const currencyBreakdown: CurrencyBreakdownResult = useMemo(
+    () => buildCurrencyBreakdown(
+      filteredData.map((r) => ({ code: r.currencyCode, amount: r.revenue })),
+      currencies,
+    ),
+    [filteredData, currencies],
+  );
 
   const chartData = useMemo(() => {
     if (pivotBy !== 'none') return pivotData.map((p) => ({ name: p.dimension, revenue: p.revenue }));
@@ -403,6 +421,7 @@ export const SalesAnalysisReport: React.FC = () => {
                 { key: 'customerName', header: 'العميل' },
                 { key: 'productName', header: 'المنتج' },
                 { key: 'repName', header: 'المندوب' },
+                { key: 'currencyCode', header: 'العملة', align: 'right', render: (row) => <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{row.currencyCode}</span> },
                 { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
               ]}
               keyExtractor={(row, i) => `${row.customerName}-${i}`}
@@ -410,6 +429,11 @@ export const SalesAnalysisReport: React.FC = () => {
           )}
         </div>
       </Card>
+
+      {/* Currency Breakdown */}
+      {currencyBreakdown.items.length > 0 && (
+        <CurrencyBreakdown result={currencyBreakdown} title="الإيرادات حسب العملة" />
+      )}
     </div>
   );
 };
