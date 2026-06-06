@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron . --dev\"",
@@ -16,7 +18,8 @@
     "db:reset": "node electron/resetDatabase.js",
     "db:reset:force": "node electron/resetDatabase.js --yes --force",
     "db:check": "drizzle-kit generate --config=drizzle.check.config.ts",
-    "preflight": "npm run lint && npx tsc --noEmit && npm run test"
+    "preflight": "npm run lint && npx tsc --noEmit && npm run test",
+    "e2e:reset": "node electron/resetDatabase.js --yes --force"
   },
   "build": {
     "appId": "com.maghzaccount.pro",
@@ -64,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

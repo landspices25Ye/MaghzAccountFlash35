@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 .drizzle-drift-check/
+test-results/
+playwright-report/
+build-output.txt
+lint-output.txt
+test-output.txt
 
 # Editor directories and files
 .vscode/*
