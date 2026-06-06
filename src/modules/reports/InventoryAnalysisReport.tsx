@@ -29,7 +29,7 @@ export const InventoryAnalysisReport: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [items, setItems] = useState<StockItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'good' | 'low' | 'out'>('all');
   const [view, setView] = useState<'all' | 'lowStock' | 'slowMoving' | 'abc'>('all');

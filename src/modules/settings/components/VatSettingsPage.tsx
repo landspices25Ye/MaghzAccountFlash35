@@ -18,7 +18,7 @@ export const VatSettingsPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const [vatTypes, setVatTypes] = useState<VatType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);

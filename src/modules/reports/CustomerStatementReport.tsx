@@ -13,7 +13,7 @@ export const CustomerStatementReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [customers, setCustomers] = useState<ReturnType<typeof aggregateCustomerAging>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);

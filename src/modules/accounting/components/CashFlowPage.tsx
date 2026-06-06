@@ -23,7 +23,7 @@ export const CashFlowReport: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   
   const [operating, setOperating] = useState<CFRow[]>([]);
   const [investing, setInvesting] = useState<CFRow[]>([]);

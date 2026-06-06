@@ -39,7 +39,7 @@ export const SalesAnalysisReport: React.FC = () => {
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { currencies } = useCurrencies(activeCompany?.id || '');
   const [rawData, setRawData] = useState<SalesLine[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filters
   const [fromDate, setFromDate] = useState('');

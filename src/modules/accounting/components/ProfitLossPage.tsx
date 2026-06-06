@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart3, FileDown, Calendar } from 'lucide-react';
-import { Card, Button, Input } from '@/core/ui/components';
-import { useAppStore } from '@/core/store';
+import React, { useState } from 'react';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useAppStore } from '@/core/store';
+import { useFormatters } from '@/core/utils/useFormatters';
+import { useAsyncData } from '@/core/hooks/useAsyncData';
 import { accountingApi } from '../api';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
-import { useFormatters } from '@/core/utils/useFormatters';
+import { Card, Input, Button } from '@/core/ui/components';
+import { BarChart3, FileDown, Calendar } from 'lucide-react';
 import type { Account } from '../types';
 
 interface PnLRow {
-  section: string;
+  section: 'header' | 'revenue' | 'expense' | 'net';
   account: string;
   accountId: string;
   amount: number;
@@ -21,59 +22,55 @@ export const ProfitLossReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const [pnlData, setPnlData] = useState<PnLRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    if (!activeCompany?.id) return;
-    const companyId = activeCompany.id;
-    async function load() {
-      setIsLoading(true);
+  const { data: pnlDataResult, isLoading } = useAsyncData<PnLRow[]>(
+    async () => {
+      const companyId = activeCompany!.id;
       const result = await accountingApi.getProfitLoss(companyId, startDate || undefined, endDate || undefined);
-      if (result.success && result.data) {
-        const accounts = result.data as Account[];
-        const rows: PnLRow[] = [];
+      if (!result.success || !result.data) return [];
+      const accounts = result.data as Account[];
+      const rows: PnLRow[] = [];
 
-        const revenues = accounts.filter(a => a.type === 'revenue');
-        if (revenues.length > 0) {
-          rows.push({ section: 'header', account: 'الإيرادات', accountId: '', amount: 0, isHeader: true });
-          let totalRev = 0;
-          for (const acc of revenues) {
-            const amt = Math.abs(acc.balance);
-            rows.push({ section: 'revenue', account: acc.nameAr, accountId: acc.id, amount: amt });
-            totalRev += amt;
-          }
-          rows.push({ section: 'revenue', account: 'إجمالي الإيرادات', accountId: '', amount: totalRev, isTotal: true });
+      const revenues = accounts.filter(a => a.type === 'revenue');
+      if (revenues.length > 0) {
+        rows.push({ section: 'header', account: 'الإيرادات', accountId: '', amount: 0, isHeader: true });
+        let totalRev = 0;
+        for (const acc of revenues) {
+          const amt = Math.abs(acc.balance);
+          rows.push({ section: 'revenue', account: acc.nameAr, accountId: acc.id, amount: amt });
+          totalRev += amt;
         }
-
-        const expenses = accounts.filter(a => a.type === 'expense');
-        if (expenses.length > 0) {
-          rows.push({ section: 'header', account: 'المصروفات', accountId: '', amount: 0, isHeader: true });
-          let totalExp = 0;
-          for (const acc of expenses) {
-            const amt = Math.abs(acc.balance);
-            rows.push({ section: 'expense', account: acc.nameAr, accountId: acc.id, amount: amt });
-            totalExp += amt;
-          }
-          rows.push({ section: 'expense', account: 'إجمالي المصروفات', accountId: '', amount: totalExp, isTotal: true });
-        }
-
-        const totalRevenue = revenues.reduce((s, a) => s + Math.abs(a.balance), 0);
-        const totalExpense = expenses.reduce((s, a) => s + Math.abs(a.balance), 0);
-        const netProfit = totalRevenue - totalExpense;
-        rows.push({ section: 'net', account: 'صافي الربح', accountId: '', amount: netProfit, isTotal: true });
-
-        setPnlData(rows);
+        rows.push({ section: 'revenue', account: 'إجمالي الإيرادات', accountId: '', amount: totalRev, isTotal: true });
       }
-      setIsLoading(false);
-    }
-    load();
-  }, [activeCompany?.id, startDate, endDate]);
+
+      const expenses = accounts.filter(a => a.type === 'expense');
+      if (expenses.length > 0) {
+        rows.push({ section: 'header', account: 'المصروفات', accountId: '', amount: 0, isHeader: true });
+        let totalExp = 0;
+        for (const acc of expenses) {
+          const amt = Math.abs(acc.balance);
+          rows.push({ section: 'expense', account: acc.nameAr, accountId: acc.id, amount: amt });
+          totalExp += amt;
+        }
+        rows.push({ section: 'expense', account: 'إجمالي المصروفات', accountId: '', amount: totalExp, isTotal: true });
+      }
+
+      const totalRevenue = revenues.reduce((s, a) => s + Math.abs(a.balance), 0);
+      const totalExpense = expenses.reduce((s, a) => s + Math.abs(a.balance), 0);
+      const netProfit = totalRevenue - totalExpense;
+      rows.push({ section: 'net', account: 'صافي الربح', accountId: '', amount: netProfit, isTotal: true });
+
+      return rows;
+    },
+    [startDate, endDate],
+    !!activeCompany?.id,
+  );
 
   const handleExportExcel = () => {
+    const pnlData = pnlDataResult ?? [];
     exportToExcel(pnlData.map(r => ({ البند: r.account, المبلغ: r.amount })), [
       { key: 'البند', header: 'البند', width: 40 },
       { key: 'المبلغ', header: 'المبلغ', width: 15 },
@@ -81,6 +78,7 @@ export const ProfitLossReport: React.FC = () => {
   };
 
   const handleExportPDF = () => {
+    const pnlData = pnlDataResult ?? [];
     exportToPDF(pnlData.map(r => ({ item: r.account, amount: r.amount })), [
       { key: 'item', header: 'البند' },
       { key: 'amount', header: 'المبلغ' },
@@ -135,7 +133,7 @@ export const ProfitLossReport: React.FC = () => {
 
       <Card>
         <div className="space-y-2">
-          {pnlData.map((row, idx) => {
+          {(pnlDataResult ?? []).map((row, idx) => {
             if (row.isHeader) {
               return <div key={idx} className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-4 mb-2">{row.account}</div>;
             }

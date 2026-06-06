@@ -70,7 +70,7 @@ export const ProfitAnalysisReport: React.FC = () => {
   const { currencies } = useCurrencies(activeCompany?.id || '');
   const [currentPeriod, setCurrentPeriod] = useState<PeriodData | null>(null);
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [fromDate, setFromDate] = useState('');
@@ -147,11 +147,12 @@ export const ProfitAnalysisReport: React.FC = () => {
         const expenseMovementsResult = await adapter.query(
           `SELECT je.account_id, COALESCE(SUM(je.debit), 0) AS debits, COALESCE(SUM(je.credit), 0) AS credits
              FROM journal_entries je
+             JOIN transactions t ON t.id = je.transaction_id
              JOIN accounts a ON a.id = je.account_id
             WHERE a.company_id = $1
               AND a.type = 'expense'
-              AND je.date >= $2
-              AND je.date <= $3
+              AND t.date >= $2
+              AND t.date <= $3
             GROUP BY je.account_id`,
           [companyId, fromD, toD],
         );
@@ -251,14 +252,15 @@ export const ProfitAnalysisReport: React.FC = () => {
               GROUP BY 1
            ),
            exp AS (
-             SELECT EXTRACT(MONTH FROM je.date)::int AS m,
+             SELECT EXTRACT(MONTH FROM t.date)::int AS m,
                     COALESCE(SUM(je.debit - je.credit), 0) AS exp
                FROM journal_entries je
+               JOIN transactions t ON t.id = je.transaction_id
                JOIN accounts a ON a.id = je.account_id
               WHERE a.company_id = $1
                 AND a.type = 'expense'
-                AND je.date >= $2
-                AND je.date <= $3
+                AND t.date >= $2
+                AND t.date <= $3
               GROUP BY 1
            )
            SELECT months.m,

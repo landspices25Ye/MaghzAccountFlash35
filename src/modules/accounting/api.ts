@@ -194,8 +194,8 @@ export const accountingApi = {
       ];
       for (const entry of (data.entries as JournalEntry[])) {
         queries.push({
-          sql: `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5, $6)`,
-          params: [entry.id || crypto.randomUUID(), txId, entry.accountId, entry.debit, entry.credit, entry.memo]
+          sql: `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          params: [entry.id || crypto.randomUUID(), txId, entry.accountId, entry.debit, entry.credit, entry.memo, data.companyId]
         });
       }
       const txResult = await adapter.transaction(queries);
@@ -225,8 +225,8 @@ export const accountingApi = {
 
         for (const entry of data.entries) {
           const entryResult = await adapter.query(
-            `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo) VALUES ($1, $2, $3, $4, $5, $6)`,
-            [entry.id || crypto.randomUUID(), id, entry.accountId, entry.debit, entry.credit, entry.memo]
+            `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [entry.id || crypto.randomUUID(), id, entry.accountId, entry.debit, entry.credit, entry.memo, companyId]
           );
           if (!entryResult.success) return entryResult;
         }

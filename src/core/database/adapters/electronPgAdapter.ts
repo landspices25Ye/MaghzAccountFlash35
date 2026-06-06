@@ -199,12 +199,12 @@ export const electronPgAdapter: DbAdapter = {
     if (txResult.success && txResult.results?.[0]?.[0]) {
       const txId = String((txResult.results[0][0] as { id: unknown }).id);
 
-      // Insert journal entries
+      // Insert journal entries (include company_id for denormalized multi-tenant queries)
       for (const entry of data.entries) {
         await getDB().query(
-          `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [txId, entry.accountId, entry.debit, entry.credit, entry.memo],
+          `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo, company_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [txId, entry.accountId, entry.debit, entry.credit, entry.memo, data.companyId],
         );
       }
 

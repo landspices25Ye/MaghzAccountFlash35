@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getDbAdapter } from '@/core/database/adapters';
+import type { DbAdapter } from '@/core/database/adapters/types';
+import { aggregateCustomerAging, parseOutstandingRows, type CustomerAging } from '@/core/utils/aging';
 
 export type PeriodFilter = 'today' | 'week' | 'month' | 'year' | 'custom';
 
@@ -77,9 +79,10 @@ function formatDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-function isDateInRange(dateStr: string | Date, from: Date, to: Date): boolean {
-  const d = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
-  return d >= from && d <= to;
+function toNum(v: unknown): number {
+  if (v == null) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export interface ComparisonData {
@@ -130,126 +133,289 @@ export function useDashboard(companyId: string, filters: DashboardFilters) {
   return { data, isLoading };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function fetchDashboardData(adapter: any, companyId: string, range: { from: Date; to: Date }) {
-  // Accounts
-  const accResult = await adapter.getAccounts(companyId);
-  const accounts = (accResult.data || []) as Record<string, unknown>[];
-  const revenueAccs = accounts.filter((a) => a.type === 'revenue');
-  const expenseAccs = accounts.filter((a) => a.type === 'expense');
-  const totalRevenue = revenueAccs.reduce((s: number, a) => s + Math.abs(Number(a.balance)), 0);
-  const totalExpenses = expenseAccs.reduce((s: number, a) => s + Math.abs(Number(a.balance)), 0);
+const AR_BUCKET_SQL = `SELECT customer_id, date::text AS date, due_date::text AS due_date,
+                              (total_amount - paid_amount) AS outstanding,
+                              invoice_number
+                         FROM sales_invoices
+                        WHERE company_id = $1
+                          AND status NOT IN ('paid', 'cancelled')
+                          AND (total_amount - paid_amount) > 0`;
+
+const AR_AGGREGATE_SQL = `SELECT id, name, phone, balance
+                            FROM customers
+                           WHERE company_id = $1`;
+
+async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: { from: Date; to: Date }): Promise<DashboardData> {
+  const fromStr = formatDate(range.from);
+  const toStr = formatDate(range.to);
+  const durationMs = range.to.getTime() - range.from.getTime();
+  const days = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60 * 24)));
+
+  // 1. Period totals (revenue, expenses, profit)
+  const [revResult, expResult, invResult] = await Promise.all([
+    adapter.query<{ revenue: string | number }>(
+      `SELECT COALESCE(SUM(total_amount), 0) AS revenue
+         FROM sales_invoices
+        WHERE company_id = $1 AND date >= $2 AND date <= $3
+          AND status != 'cancelled'`,
+      [companyId, fromStr, toStr],
+    ),
+    adapter.query<{ expenses: string | number }>(
+      `SELECT COALESCE(SUM(total_amount), 0) AS expenses
+         FROM purchase_invoices
+        WHERE company_id = $1 AND date >= $2 AND date <= $3
+          AND status != 'cancelled'`,
+      [companyId, fromStr, toStr],
+    ),
+    adapter.query<{ cnt: string | number }>(
+      `SELECT COUNT(*)::int AS cnt
+         FROM sales_invoices
+        WHERE company_id = $1 AND date >= $2 AND date <= $3`,
+      [companyId, fromStr, toStr],
+    ),
+  ]);
+  const totalRevenue = toNum(revResult.rows?.[0]?.revenue);
+  const totalExpenses = toNum(expResult.rows?.[0]?.expenses);
   const netProfit = totalRevenue - totalExpenses;
+  const invoicesCount = toNum(invResult.rows?.[0]?.cnt);
 
-  // Products
-  const prodResult = await adapter.getProducts(companyId);
-  const products = (prodResult.data || []) as Record<string, unknown>[];
-  const lowStockCount = products.filter((p) => (Number(p.stock) || 0) <= (Number(p.min_stock) || 0)).length;
+  // 2. Master counts (customers, suppliers, employees, products, low stock, overdue)
+  const [custResult, suppResult, empResult, prodResult, overdueResult, lowStockResult] = await Promise.all([
+    adapter.query<{ cnt: string | number }>(`SELECT COUNT(*)::int AS cnt FROM customers WHERE company_id = $1`, [companyId]),
+    adapter.query<{ cnt: string | number }>(`SELECT COUNT(*)::int AS cnt FROM suppliers WHERE company_id = $1`, [companyId]),
+    adapter.query<{ cnt: string | number }>(`SELECT COUNT(*)::int AS cnt FROM employees WHERE company_id = $1`, [companyId]),
+    adapter.query<{ cnt: string | number }>(`SELECT COUNT(*)::int AS cnt FROM products WHERE company_id = $1 AND is_active = true`, [companyId]),
+    adapter.query<{ cnt: string | number }>(
+      `SELECT COUNT(*)::int AS cnt
+         FROM sales_invoices
+        WHERE company_id = $1
+          AND status NOT IN ('paid', 'cancelled')
+          AND due_date < CURRENT_DATE
+          AND paid_amount < total_amount`,
+      [companyId],
+    ),
+    adapter.query<{ cnt: string | number }>(
+      `SELECT COUNT(*)::int AS cnt
+         FROM stock s JOIN products p ON s.product_id = p.id
+        WHERE p.company_id = $1 AND p.is_active = true
+          AND s.min_stock_alert IS NOT NULL
+          AND s.quantity <= s.min_stock_alert`,
+      [companyId],
+    ),
+  ]);
+  const customersCount = toNum(custResult.rows?.[0]?.cnt);
+  const suppliersCount = toNum(suppResult.rows?.[0]?.cnt);
+  const employeesCount = toNum(empResult.rows?.[0]?.cnt);
+  const productsCount = toNum(prodResult.rows?.[0]?.cnt);
+  const overdueInvoicesCount = toNum(overdueResult.rows?.[0]?.cnt);
+  const lowStockCount = toNum(lowStockResult.rows?.[0]?.cnt);
 
-  // Sales invoices
-  const salesInvResult = await adapter.query(
-    `SELECT * FROM sales_invoices WHERE company_id = $1`,
-    [companyId]
-  );
-  const salesInvoices = (salesInvResult.rows || []) as Record<string, unknown>[];
-  const filteredSalesInvoices = salesInvoices.filter((i) => i.date && isDateInRange(String(i.date), range.from, range.to));
-  const invoicesCount = filteredSalesInvoices.length;
-  const overdueInvoicesCount = filteredSalesInvoices.filter((i) => i.status === 'overdue').length;
-
-  // Purchase invoices
-  const purchResult = await adapter.query(
-    `SELECT * FROM purchase_invoices WHERE company_id = $1`,
-    [companyId]
-  );
-  const purchInvoices = (purchResult.rows || []) as Record<string, unknown>[];
-  const filteredPurchInvoices = purchInvoices.filter((i) => i.date && isDateInRange(String(i.date), range.from, range.to));
-
-  // Contacts (customers + suppliers are separate tables)
-  const customersResult = await adapter.getContacts(companyId, 'customer');
-  const suppliersResult = await adapter.getContacts(companyId, 'supplier');
-  const customersCount = (customersResult.data || []).length;
-  const suppliersCount = (suppliersResult.data || []).length;
-
-  // Employees
-  const empResult = await adapter.query(`SELECT * FROM employees WHERE company_id = $1`, [companyId]);
-  const employees = (empResult.rows || []) as Record<string, unknown>[];
-  const employeesCount = employees.length;
-
-  // Monthly revenue
-  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  const monthMap: Record<string, { revenue: number; expenses: number }> = {};
-  for (const m of months) monthMap[m] = { revenue: 0, expenses: 0 };
-
-  for (const inv of filteredSalesInvoices) {
-    if (inv.date) {
-      const d = new Date(String(inv.date));
-      const m = months[d.getMonth()] || months[0];
-      monthMap[m].revenue += Number(inv.total || inv.total_amount || 0);
+  // 3. Monthly revenue (only when period spans >60 days, otherwise daily)
+  const showMonthly = days > 60;
+  const monthlyRevenue: DashboardData['monthlyRevenue'] = [];
+  if (showMonthly) {
+    const monthRes = await adapter.query<{ month: string; revenue: string | number; expenses: string | number }>(
+      `WITH months AS (
+         SELECT generate_series(
+           date_trunc('month', $2::date),
+           date_trunc('month', $3::date),
+           '1 month'::interval
+         ) AS m
+       )
+       SELECT TO_CHAR(months.m, 'YYYY-MM') AS month,
+              COALESCE(SUM(CASE WHEN si.total_amount IS NOT NULL THEN si.total_amount ELSE 0 END), 0) AS revenue,
+              COALESCE(SUM(CASE WHEN pi.total_amount IS NOT NULL THEN pi.total_amount ELSE 0 END), 0) AS expenses
+         FROM months
+         LEFT JOIN sales_invoices si ON si.company_id = $1
+              AND date_trunc('month', si.date) = months.m
+              AND si.status != 'cancelled'
+         LEFT JOIN purchase_invoices pi ON pi.company_id = $1
+              AND date_trunc('month', pi.date) = months.m
+              AND pi.status != 'cancelled'
+        GROUP BY months.m
+        ORDER BY months.m`,
+      [companyId, fromStr, toStr],
+    );
+    for (const r of monthRes.rows || []) {
+      monthlyRevenue.push({
+        month: String(r.month),
+        revenue: toNum(r.revenue),
+        expenses: toNum(r.expenses),
+      });
+    }
+  } else {
+    const dayRes = await adapter.query<{ day: string; revenue: string | number; expenses: string | number }>(
+      `WITH days AS (
+         SELECT generate_series($2::date, $3::date, '1 day'::interval)::date AS d
+       )
+       SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS day,
+              COALESCE(SUM(CASE WHEN si.total_amount IS NOT NULL THEN si.total_amount ELSE 0 END), 0) AS revenue,
+              COALESCE(SUM(CASE WHEN pi.total_amount IS NOT NULL THEN pi.total_amount ELSE 0 END), 0) AS expenses
+         FROM days
+         LEFT JOIN sales_invoices si ON si.company_id = $1 AND si.date = days.d AND si.status != 'cancelled'
+         LEFT JOIN purchase_invoices pi ON pi.company_id = $1 AND pi.date = days.d AND pi.status != 'cancelled'
+        GROUP BY days.d
+        ORDER BY days.d`,
+      [companyId, fromStr, toStr],
+    );
+    for (const r of dayRes.rows || []) {
+      monthlyRevenue.push({
+        month: String(r.day),
+        revenue: toNum(r.revenue),
+        expenses: toNum(r.expenses),
+      });
     }
   }
-  for (const inv of filteredPurchInvoices) {
-    if (inv.date) {
-      const d = new Date(String(inv.date));
-      const m = months[d.getMonth()] || months[0];
-      monthMap[m].expenses += Number(inv.total || inv.total_amount || 0);
-    }
-  }
-  const monthlyRevenue = months.map((m) => ({ month: m, revenue: monthMap[m].revenue, expenses: monthMap[m].expenses }));
 
-  // Top products
-  const topProducts = products
-    .sort((a, b) => (Number(b.sale_price ?? b.salePrice) || 0) - (Number(a.sale_price ?? a.salePrice) || 0))
-    .slice(0, 5)
-    .map((p) => ({ name: String(p.name_ar ?? p.nameAr ?? ''), value: Number(p.sale_price ?? p.salePrice) || 0 }));
-
-  // AR Aging
-  const customers = (customersResult.data || []) as Record<string, unknown>[];
-  const arAging = [
-    { range: '0-30', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.4 : 0), 0) },
-    { range: '31-60', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.3 : 0), 0) },
-    { range: '61-90', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.2 : 0), 0) },
-    { range: '+90', amount: customers.reduce((s: number, c) => s + (Number(c.balance) > 0 ? Number(c.balance) * 0.1 : 0), 0) },
-  ];
-
-  // Cash flow
-  const cashAccounts = accounts.filter((a) => String(a.code).startsWith('111') || String(a.code).startsWith('112'));
-  const cashInflow = cashAccounts.reduce((s: number, a) => s + Math.max(0, Number(a.balance)), 0);
-  const cashOutflow = totalExpenses * 0.6;
-  const cashFlow = months.map((m) => ({
-    month: m,
-    inflow: Math.floor(cashInflow / 12 + Math.random() * 200000),
-    outflow: Math.floor(cashOutflow / 12 + Math.random() * 150000),
+  // 4. Top products (top 5 by sales)
+  const topProdResult = await adapter.query<{ name: string; value: string | number }>(
+    `SELECT p.name_ar AS name, COALESCE(SUM(sil.line_total), 0) AS value
+       FROM products p
+       JOIN sales_invoice_lines sil ON sil.product_id = p.id
+       JOIN sales_invoices si ON sil.invoice_id = si.id
+      WHERE p.company_id = $1
+        AND si.date >= $2 AND si.date <= $3
+        AND si.status != 'cancelled'
+      GROUP BY p.id, p.name_ar
+      ORDER BY value DESC
+      LIMIT 5`,
+    [companyId, fromStr, toStr],
+  );
+  const topProducts: DashboardData['topProducts'] = (topProdResult.rows || []).map((r) => ({
+    name: String(r.name || ''),
+    value: toNum(r.value),
   }));
 
-  // Sales trend
-  const salesTrend: Array<{ date: string; sales: number; purchases: number }> = [];
-  const dayCount = Math.min(30, Math.ceil((range.to.getTime() - range.from.getTime()) / (1000 * 60 * 60 * 24)));
-  for (let i = 0; i < dayCount; i++) {
-    const d = new Date(range.to);
-    d.setDate(d.getDate() - i);
-    const dateStr = formatDate(d);
-    const daySales = filteredSalesInvoices.filter((inv) => formatDate(new Date(String(inv.date))) === dateStr).reduce((s: number, inv) => s + Number(inv.total || 0), 0);
-    const dayPurch = filteredPurchInvoices.filter((inv) => formatDate(new Date(String(inv.date))) === dateStr).reduce((s: number, inv) => s + Number(inv.total || 0), 0);
-    salesTrend.unshift({ date: dateStr, sales: daySales, purchases: dayPurch });
+  // 5. AR Aging (use real aging.ts logic)
+  const arCustomersResult = await adapter.query<{ id: string; name: string; phone: string; balance: string | number }>(
+    AR_AGGREGATE_SQL,
+    [companyId],
+  );
+  const arInvoicesResult = await adapter.query<{
+    customer_id: string;
+    date: string;
+    due_date: string | null;
+    outstanding: string | number;
+    invoice_number: string;
+  }>(AR_BUCKET_SQL, [companyId]);
+  const customerAgingList: CustomerAging[] = aggregateCustomerAging(
+    parseOutstandingRows(arInvoicesResult),
+    toStr,
+    (arCustomersResult.rows || []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone || '',
+      balance: toNum(r.balance),
+    })),
+  );
+  const arAging: DashboardData['arAging'] = [
+    { range: '0-30', amount: customerAgingList.reduce((s, c) => s + c.bucket0to30, 0) },
+    { range: '31-60', amount: customerAgingList.reduce((s, c) => s + c.bucket31to60, 0) },
+    { range: '61-90', amount: customerAgingList.reduce((s, c) => s + c.bucket61to90, 0) },
+    { range: '90+', amount: customerAgingList.reduce((s, c) => s + c.bucket90plus, 0) },
+  ];
+
+  // 6. Cash flow (cash accounts: codes 111* or 112*) — monthly or daily
+  const cashFlow: DashboardData['cashFlow'] = [];
+  if (showMonthly) {
+    const cfRes = await adapter.query<{ month: string; inflow: string | number; outflow: string | number }>(
+      `WITH months AS (
+         SELECT generate_series(
+           date_trunc('month', $2::date),
+           date_trunc('month', $3::date),
+           '1 month'::interval
+         ) AS m
+       )
+       SELECT TO_CHAR(months.m, 'YYYY-MM') AS month,
+              COALESCE(SUM(je.credit) FILTER (WHERE je.credit > 0), 0) AS inflow,
+              COALESCE(SUM(je.debit) FILTER (WHERE je.debit > 0), 0) AS outflow
+         FROM months
+         LEFT JOIN journal_entries je ON je.company_id = $1
+              AND date_trunc('month', je.created_at) = months.m
+         LEFT JOIN accounts a ON je.account_id = a.id
+              AND (a.code LIKE '111%' OR a.code LIKE '112%')
+        WHERE je.id IS NULL OR a.id IS NOT NULL
+        GROUP BY months.m
+        ORDER BY months.m`,
+      [companyId, fromStr, toStr],
+    );
+    for (const r of cfRes.rows || []) {
+      cashFlow.push({ month: String(r.month), inflow: toNum(r.inflow), outflow: toNum(r.outflow) });
+    }
+  } else {
+    const cfRes = await adapter.query<{ day: string; inflow: string | number; outflow: string | number }>(
+      `WITH days AS (
+         SELECT generate_series($2::date, $3::date, '1 day'::interval)::date AS d
+       )
+       SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS day,
+              COALESCE(SUM(je.credit) FILTER (WHERE je.credit > 0), 0) AS inflow,
+              COALESCE(SUM(je.debit) FILTER (WHERE je.debit > 0), 0) AS outflow
+         FROM days
+         LEFT JOIN journal_entries je ON je.company_id = $1
+              AND je.created_at::date = days.d
+         LEFT JOIN accounts a ON je.account_id = a.id
+              AND (a.code LIKE '111%' OR a.code LIKE '112%')
+        WHERE je.id IS NULL OR a.id IS NOT NULL
+        GROUP BY days.d
+        ORDER BY days.d`,
+      [companyId, fromStr, toStr],
+    );
+    for (const r of cfRes.rows || []) {
+      cashFlow.push({ month: String(r.day), inflow: toNum(r.inflow), outflow: toNum(r.outflow) });
+    }
   }
 
-  // Profit trend
-  const profitTrend = salesTrend.map((t) => ({ date: t.date, profit: t.sales - t.purchases }));
+  // 7. Sales trend (daily, last min(30, days) days)
+  const trendDays = Math.min(30, days);
+  const trendFrom = new Date(range.to);
+  trendFrom.setDate(trendFrom.getDate() - trendDays + 1);
+  const trendFromStr = formatDate(trendFrom);
+  const trendResult = await adapter.query<{ day: string; sales: string | number; purchases: string | number }>(
+    `WITH days AS (
+       SELECT generate_series($2::date, $3::date, '1 day'::interval)::date AS d
+     )
+     SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS day,
+            COALESCE(SUM(CASE WHEN si.total_amount IS NOT NULL THEN si.total_amount ELSE 0 END), 0) AS sales,
+            COALESCE(SUM(CASE WHEN pi.total_amount IS NOT NULL THEN pi.total_amount ELSE 0 END), 0) AS purchases
+       FROM days
+       LEFT JOIN sales_invoices si ON si.company_id = $1 AND si.date = days.d AND si.status != 'cancelled'
+       LEFT JOIN purchase_invoices pi ON pi.company_id = $1 AND pi.date = days.d AND pi.status != 'cancelled'
+      GROUP BY days.d
+      ORDER BY days.d`,
+    [companyId, trendFromStr, toStr],
+  );
+  const salesTrend: DashboardData['salesTrend'] = (trendResult.rows || []).map((r) => ({
+    date: String(r.day),
+    sales: toNum(r.sales),
+    purchases: toNum(r.purchases),
+  }));
+  const profitTrend: DashboardData['profitTrend'] = salesTrend.map((t) => ({ date: t.date, profit: t.sales - t.purchases }));
 
-  // Category share
-  const categoryMap: Record<string, number> = {};
-  for (const p of products) {
-    const cat = String(p.type_name || p.category || 'عام');
-    categoryMap[cat] = (categoryMap[cat] || 0) + (Number(p.stock) || 0) * (Number(p.cost) || 0);
-  }
-  const categoryShare = Object.entries(categoryMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 6);
+  // 8. Category share (top 6 by stock value, joining product_categories)
+  const catResult = await adapter.query<{ name: string; value: string | number }>(
+    `SELECT COALESCE(pc.name, 'غير مصنف') AS name,
+            COALESCE(SUM(s.quantity * p.cost_price), 0) AS value
+       FROM stock s
+       JOIN products p ON s.product_id = p.id
+       LEFT JOIN product_product_categories ppc ON ppc.product_id = p.id
+       LEFT JOIN product_categories pc ON ppc.category_id = pc.id
+      WHERE p.company_id = $1
+      GROUP BY pc.name
+      ORDER BY value DESC
+      LIMIT 6`,
+    [companyId],
+  );
+  const categoryShare: DashboardData['categoryShare'] = (catResult.rows || []).map((r) => ({
+    name: String(r.name || 'غير مصنف'),
+    value: toNum(r.value),
+  }));
 
   return {
     totalRevenue,
     totalExpenses,
     netProfit,
     invoicesCount,
-    productsCount: products.length,
+    productsCount,
     customersCount,
     suppliersCount,
     employeesCount,

@@ -23,7 +23,7 @@ export const BalanceSheetReport: React.FC = () => {
   const [assets, setAssets] = useState<BSRow[]>([]);
   const [liabilities, setLiabilities] = useState<BSRow[]>([]);
   const [equity, setEquity] = useState<BSRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [asOfDate, setAsOfDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 

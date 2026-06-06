@@ -22,7 +22,7 @@ export const CurrenciesPage: React.FC = () => {
   const user = useAuthStore((state) => state.user);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
