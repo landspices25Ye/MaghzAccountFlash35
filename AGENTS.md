@@ -1274,5 +1274,47 @@ npx drizzle-kit migrate
 - **3 sales-agnostic i18n keys**: `sales.currency/exchangeRate/baseCurrency` يُعاد استخدامها في purchase + voucher forms — لا duplicates per module. لو request label يحتاج module-specific، أضف `purchases.currency` منفصل
 - **es-lint exhaustive-deps fix**: `useCallback(handleSave, [..., currencyCode, exchangeRate])` — الـ functions التي تَستخدم currency fields يجب أن تعتمد عليها. الـ ESLint rule يكتشف deps الناقصة تلقائياً
 
-*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.14*
+### المرحلة 18e: Multi-Currency Report Aggregations
+- **الهدف**: حل `SUM(total_amount)` يخلط بين USD/YER/SAR في رقم بلا معنى. تقسيم التقارير حسب `currency_code`
+- **`currencyBreakdown.ts`** (57 سطر، pure functions):
+  - `buildCurrencyBreakdown(amounts[], currencies)` — يجمع amounts حسب `code`، يحسب `baseEquivalent = amount * fromRate / baseRate`، يرتب تنازلياً، يحسب percent من total base
+  - يرجع `{ items, totalInBase, hasMultipleCurrencies, uniqueCurrencyCount }`
+  - يتجاهل entries بـ `code` فارغ، NaN/Infinity = 0، unknown currency = rate=0
+- **`CurrencyBreakdown.tsx`** (UI، 100 سطر):
+  - Card مع table: العملة / المبلغ (مع `formatWithCurrency`) / المعادل بالأساسية (إذا multiple) / progress bar + percent
+  - Badge "متعدد العملات" لما `hasMultipleCurrencies=true`
+  - Footer: "الإجمالي بالأساسية" إذا multiple
+- **`ProfitAnalysisReport` توسعة**:
+  - 2 SQL queries جديدة: `GROUP BY currency_code` على sales_invoices + purchase_invoice_lines
+  - `PeriodData` يحوي `revenueBreakdown` + `cogsBreakdown`
+  - UI section جديد: grid 2 columns (revenue + cogs breakdowns)
+- **`SalesAnalysisReport` توسعة**:
+  - `SalesLine.currencyCode` (من `i.currency_code`)
+  - `useMemo` يحسب `currencyBreakdown` على filtered data
+  - Column "العملة" في detail table (currency badge)
+  - UI section جديد: `<CurrencyBreakdown>` في الأسفل
+- **اختبارات** (11 جديد في `currencyBreakdown.test.ts`):
+  - empty input، groups by code، base equivalent via rate، totalInBase sum، multiple detection، sort desc، percent of total، skips empty code، NaN→0، unknown currency rate=0، no currencies fallback
+- **InventoryAnalysisReport**: skip (stock.base currency only، لا multi-currency)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **279/279 passed** ✓ (11 جديد)
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 8.85s** ✓
+  - `npm run db:check`: **No schema changes** ✓
+
+### قواعد ذهبية مضافة (Phase 18e)
+- **`SUM(amount)` عبر عملات مختلفة = رقم بلا معنى**: USD 1000 + YER 5000 = 6000 يخلط بين 1 USD و 1 YER. **القاعدة**: GROUP BY currency_code في كل query report
+- **`baseEquivalent` computed at query time, not display time**: يحسب في الـ utility (`amount * fromRate / baseRate`) — ليس في الـ component. الـ percent يُحسب من total base أيضاً
+- **CurrencyBadge logic**: `hasMultipleCurrencies = items.length > 1` — لا تحسبها من count فقط
+- **Sort by raw amount desc, not base equivalent**: الـ user يرى الـ "actual" الـ dominant currency أول (10,000 USD > 100 YER حتى لو 1 USD = 1500 YER، الـ 10K USD يساوي 15M YER لكن الـ 100 YER فعلياً أقل)
+- **Inventory is base-currency only**: `stock.quantity * p.cost_price` — كلاهما في الـ base. لا multi-currency
+- **Voucher join table للـ breakdown**: لا تجمع raw في الـ UI، دائماً عبر الـ utility الـ typed (`buildCurrencyBreakdown`)
+- **`formatWithCurrency(amount, code)` للـ per-row display**: يضيف "ر.ي" أو "USD" suffix. للـ "المعادل بالأساسية" استخدم `formatWithCurrency(item.baseEquivalent)` بدون code (default = base)
+- **`percent = Math.round((baseEq / totalBase) * 100)`**: النسبة دائماً من total base (للمقارنة بين currencies بشكل عادل)
+- **Map<id, lines> للـ invoices with no lines**: `entry.currencyCode = String(r.currency_code || 'YER')` — يضمن كل invoice له currency حتى لو لا lines
+- **`GROUP BY currency_code` على tables التي تحويه**: sales_invoices، purchase_invoices، receipt_vouchers، payment_vouchers. لا على purchase_invoice_lines (يحوي `currency_code` لكن الـ aggregated في parent query)
+- **`useMemo([filteredData, currencies])` للـ breakdown**: currencies تتغير عند reload — يجب إعادة الحساب
+
+*آخر تحديث: 2026-06-06 | الإصدار: maghzaccount-pro v0.3.15*
 
