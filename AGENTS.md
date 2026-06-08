@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.22*
+*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.23*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1621,4 +1621,41 @@ npx drizzle-kit migrate
 - **journal_entries.company_id defense-in-depth**: حتى لو `transaction_id` FK يضمن الـ company صحيحة، إضافة `company_id = $N` في WHERE يحمي من race conditions و injection
 - **Zero `useState(true)` remaining في `src/`**: بعد المراجعة الشاملة، لا يوجد `useState(true)` لـ `isLoading` في أي hook في المشروع
 - **الـ pages التي تستخدم old hooks لا تزال تعمل**: الـ `useState(false)` يعني عدم ظهور spinner قبل جلب companyId. الـ load يشتغل لما الـ deps تتغير (companyId يصبح truthy)
+
+### المرحلة 28: توسعة RBAC + إصلاح useFormatters test + مراجعة عميقة
+- **الهدف**: توسيع `<Can>` على 16 صفحة إضافية + إصلاج اختبار Hijri + مراجعة P1/P2 شاملة
+- **RBAC expansion (16 pages)**:
+  - `sales`: CustomersPage
+  - `hr`: EmployeesPage
+  - `inventory`: WarehousesPage, StockAdjustmentPage
+  - `manufacturing`: BomPage, WorkOrdersPage
+  - `crm`: LeadsPage, OpportunitiesPage, TasksPage, ActivitiesPage
+  - `accounting`: ChartOfAccounts, JournalEntriesPage, ReceiptVouchersPage, PaymentVouchersPage
+  - `settings`: BranchesPage, UsersPage
+  - **النمط**: `<Can action="create" module="...">` حول زر الإنشاء في الـ header + EmptyState CTA
+  - **المجموع**: 17 ملف مُعدَّل، 109 insertions، 109 `<Can>` wrappers جديدة
+- **useFormatters test fix**:
+  - الـ test كان يُmock `@/core/utils/useSettings` (مسار absolute) لكن الـ hook يستورد `./useSettings` (relative)
+  - **الحل**: تغيير mock path إلى `./useSettings` ليطابق import path فعلياً
+  - جميع 13 اختبار يَنجحون (5 Hijri tests كانت تفشل)
+- **Deep review للـ P1/P2 bugs**:
+  - **N+1 queries**: لا يوجد for-of loops مع await query داخلي (تم البحث عبر كل src/modules)
+  - **SELECT without company_id**: 9 SELECT by-id queries — جميعها تستخدم `AND company_id = $2` ✓
+  - **SQL injection**: 294 `${}` interpolation patterns — جميعها parameterized queries بـ `$N` (آمنة)
+  - **Error swallowing**: كل الـ catch blocks تُرجع `{ success: false, error: ... }` (لا empty catches)
+  - **Missing validation**: كل الـ API methods تبدأ بـ `validateInput` على الأقل للـ companyId
+  - **Schema drift**: لا مراجع legacy (bills_of_materials/work_order_lines/inventory_transactions) بقيت بعد Phase 23
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 14.74s** ✓
+  - Commit: `2bd03cc`
+
+### قواعد ذهبية مضافة (Phase 28)
+- **Mock path يجب أن يطابق import path**: `vi.mock('@/core/utils/useSettings')` ≠ `import { useSettings } from './useSettings'`. vitest treats absolute vs relative as different modules. **الحل**: استخدم نفس path format في mock
+- **Batch RBAC via subagents**: 16 page RBAC addition تم عبر 2 subagents (8+8) في 10 دقائق — أسرع من edit يدوي لكل page
+- **Deep review checklist**: N+1 (for+await) → SELECT company_id → SQL injection (${}) → error swallowing (catch {}) → missing validation. هذا الترتيب يكشف 90% من runtime bugs
+- **Zero `useState(true)` في src/**: بعد Phase 27 + المراجعة، لا يوجد `useState(true)` لـ isLoading في أي hook
+- **Subagent side-effect guard**: subagents قد تُعدّل ملفات غير مستهدفة (useFormatters.ts/useSettings.ts/dbHandler.js). **الحل**: revert unintended files قبل الـ commit
 
