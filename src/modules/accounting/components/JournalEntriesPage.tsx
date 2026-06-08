@@ -3,15 +3,13 @@ import { BookOpen, Plus, Save, Send, X } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
 import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components';
 import { AccountSelect } from '@/core/ui/components/smart';
-import { useTransactions } from '../hooks/useAccounting';
+import { Pagination } from '@/core/ui/components/Pagination';
+import { useTransactionsPaginated } from '../hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { printDocument } from '@/core/utils/printDocument';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { cn } from '@/core/utils';
 import { useFormatters } from '@/core/utils/useFormatters';
@@ -30,11 +28,11 @@ const emptyLine = (): EntryLine => ({ accountId: '', debit: 0, credit: 0, memo: 
 export const JournalEntriesPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { transactions, isLoading, create, update, post, remove } = useTransactions(activeCompany?.id || '');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const txFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { transactions, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, post, remove } = useTransactionsPaginated(activeCompany?.id || '', txFilters);
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const branchFiltered = useBranchFilter(transactions);
-  const { filtered: filteredTransactions, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'accounting');
   const { getUserName } = useUserMap();
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
@@ -194,7 +192,16 @@ export const JournalEntriesPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select
+          className="input text-sm"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          title={t('sales.status') || 'الحالة'}
+        >
+          <option value="">{t('all') || 'الكل'}</option>
+          <option value="draft">{t('accounting.draft') || 'مسودة'}</option>
+          <option value="posted">{t('accounting.posted') || 'مرحل'}</option>
+        </select>
         <Can action="create" module="accounting">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
             {t('accounting.newJournalEntry')}
@@ -205,11 +212,18 @@ export const JournalEntriesPage: React.FC = () => {
 
       <Card>
         <Table<Transaction>
-          data={filteredTransactions}
+          data={transactions}
           columns={columns}
           keyExtractor={(row, i) => row.id || String(i)}
           isLoading={isLoading}
           emptyMessage={t('accounting.noData')}
+        />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
         />
       </Card>
 

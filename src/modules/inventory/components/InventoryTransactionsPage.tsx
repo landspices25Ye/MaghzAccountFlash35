@@ -1,16 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ArrowRightLeft, Plus, Printer, Download, CheckSquare } from 'lucide-react';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { ProductSelect, WarehouseSelect } from '@/core/ui/components/smart';
-import { useInventoryTransactions } from '../hooks/useInventory';
+import { useInventoryTransactionsPaginated } from '../hooks/useInventory';
+import { Pagination } from '@/core/ui/components/Pagination';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 // import { printDocument } from '@/core/utils/printDocument';
 import type { InventoryTransaction } from '../types';
 
@@ -24,8 +23,9 @@ const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 export const InventoryTransactionsPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { transactions, isLoading, create, remove } = useInventoryTransactions(activeCompany?.id || '');
-  const { filtered: ownerFiltered, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(transactions, 'inventory');
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const txFilters = useMemo(() => ({ type: typeFilter || undefined }), [typeFilter]);
+  const { transactions, total, page, pageSize, isLoading, goToPage, changePageSize, create, remove } = useInventoryTransactionsPaginated(activeCompany?.id || '', txFilters);
 
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState<Partial<InventoryTransaction>>({
@@ -35,7 +35,7 @@ export const InventoryTransactionsPage: React.FC = () => {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const filtered = ownerFiltered.filter(tx =>
+  const filtered = transactions.filter(tx =>
     tx.reference?.toLowerCase().includes(search.toLowerCase()) ||
     tx.notes?.toLowerCase().includes(search.toLowerCase())
   );
@@ -152,7 +152,13 @@ ${filtered.map(tx => `<tr>
             onChange={e => setSearch(e.target.value)}
           className="w-48"
         />
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select className="input text-sm" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} title={t('inventory.type') || 'النوع'}>
+          <option value="">{t('all') || 'الكل'}</option>
+          <option value="in">{t('inventory.in') || 'وارد'}</option>
+          <option value="out">{t('inventory.out') || 'صادر'}</option>
+          <option value="adjustment">{t('inventory.adjustment') || 'تسوية'}</option>
+          <option value="transfer">{t('inventory.transfer') || 'تحويل'}</option>
+        </select>
         <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>
             {t('print')}
           </Button>
@@ -201,6 +207,13 @@ ${filtered.map(tx => `<tr>
             emptyMessage=""
           />
         )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={goToPage}
+          onPageSizeChange={changePageSize}
+        />
       </Card>
 
       {/* Create Modal */}

@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.23*
+*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.24*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1658,4 +1658,41 @@ npx drizzle-kit migrate
 - **Deep review checklist**: N+1 (for+await) → SELECT company_id → SQL injection (${}) → error swallowing (catch {}) → missing validation. هذا الترتيب يكشف 90% من runtime bugs
 - **Zero `useState(true)` في src/**: بعد Phase 27 + المراجعة، لا يوجد `useState(true)` لـ isLoading في أي hook
 - **Subagent side-effect guard**: subagents قد تُعدّل ملفات غير مستهدفة (useFormatters.ts/useSettings.ts/dbHandler.js). **الحل**: revert unintended files قبل الـ commit
+
+### المرحلة 29: Server-side Pagination للصفحات الباقية (5 صفحات)
+- **الهدف**: تحويل 5 صفحات متبقية من client-side to server-side pagination
+- **APIs الجديدة** (5 methods):
+  - `salesApi.getCustomersPaginated(filters: {search?, isActive?})`
+  - `accountingApi.getTransactionsPaginated(filters: {status?, createdBy?})`
+  - `accountingApi.getReceiptVouchersPaginated(filters: {status?})`
+  - `accountingApi.getPaymentVouchersPaginated(filters: {status?})`
+  - `inventoryApi.getInventoryTransactionsPaginated(filters: {type?, productId?})`
+- **Hooks الجديدة** (5 hooks):
+  - `useCustomersPaginated(companyId, filters?)` — mutations: create/update/remove
+  - `useTransactionsPaginated(companyId, filters?)` — mutations: create/update/post/remove
+  - `useReceiptVouchersPaginated(companyId, filters?)` — mutations: create/update/remove
+  - `usePaymentVouchersPaginated(companyId, filters?)` — mutations: create/update/remove
+  - `useInventoryTransactionsPaginated(companyId, filters?)` — mutations: create/remove
+- **UI Refactors** (5 pages):
+  - `CustomersPage` (sales): `useCustomers` → `useCustomersPaginated` + search filter
+  - `JournalEntriesPage` (accounting): `useTransactions` → `useTransactionsPaginated` + status filter + removed `useBranchFilter`/`useOwnerFilter`/`OwnerFilterToggle`
+  - `ReceiptVouchersPage` (accounting): `useReceiptVouchers` → `useReceiptVouchersPaginated` + status filter + removed client-side filters
+  - `PaymentVouchersPage` (accounting): `usePaymentVouchers` → `usePaymentVouchersPaginated` + status filter + removed client-side filters
+  - `InventoryTransactionsPage` (inventory): `useInventoryTransactions` → `useInventoryTransactionsPaginated` + type filter + removed `useOwnerFilter`/`OwnerFilterToggle`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 9.73s** ✓
+  - **16 pages** server-side paginated total
+
+### قواعد ذهبية مضافة (Phase 29)
+- **Server-side filter取代 client-side loops**: `useBranchFilter` + `useOwnerFilter` يحلقة على الـ array → استبدل بـ API filters (`status`/`createdBy`/`type` column conditions)
+- ** نفس الـ pattern لكل paginated page**: `useXxxPaginated(companyId, filters?)` + `useMemo` لـ filter objects + `<Pagination>` بعد الـ Table
+- **Status filter = `<select>` dropdown**: يمرر `status` filter للـ API (server-side). الـ "الكل" = `undefined` (لا filter)
+- **Search filter = `<Input>`**: يمرر `search` filter للـ API (ILIKE query). الـ empty = `undefined`
+- **Type filter = `<select>` dropdown**: للـ inventory transactions (in/out/adjustment/transfer)
+- **`useMemo` لـ filter objects**: يمنع re-render loop من inline objects في deps
+- **Zero `useState(true)` في src/**: كل الـ hooks تستخدم `useState(false)` الآن
+- **Server-side pagination = 16 pages**: Invoices + PurchaseInvoices + Quotations + SalesReturns + Suppliers + PurchaseOrders + PurchaseReturns + Products + Leads + Opportunities + Employees + **Customers** + **JournalEntries** + **ReceiptVouchers** + **PaymentVouchers** + **InventoryTransactions**
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { accountingApi } from '../api';
 import { useAuthStore } from '@/modules/auth/store';
+import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Account, Transaction, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from '../types';
 
 export function useAccounts(companyId: string) {
@@ -113,6 +114,63 @@ export function useTransactions(companyId: string) {
   return { transactions, isLoading, create, update, post, remove };
 }
 
+export interface TransactionFilters {
+  status?: string;
+  createdBy?: string;
+}
+
+export function useTransactionsPaginated(companyId: string, filters?: TransactionFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Transaction>(
+    (page, pageSize) => accountingApi.getTransactionsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.createdBy]
+  );
+
+  const create = useCallback(async (data: Omit<Transaction, 'id'>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.createTransaction(data, userId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Transaction>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.updateTransaction(id, companyId, userId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const post = useCallback(async (id: string) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.postTransaction(id, companyId, userId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await accountingApi.deleteTransaction(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    transactions: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    post,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function useTrialBalance(companyId: string, asOfDate?: string) {
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -203,6 +261,53 @@ export function useReceiptVouchers(companyId: string) {
   return { vouchers, isLoading, create, update, remove };
 }
 
+export interface ReceiptVoucherFilters {
+  status?: string;
+}
+
+export function useReceiptVouchersPaginated(companyId: string, filters?: ReceiptVoucherFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<ReceiptVoucher>(
+    (page, pageSize) => accountingApi.getReceiptVouchersPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status]
+  );
+
+  const create = useCallback(async (data: Omit<ReceiptVoucher, 'id'>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.createReceiptVoucher(data, userId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<ReceiptVoucher>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.updateReceiptVoucher(id, companyId, userId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await accountingApi.deleteReceiptVoucher(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    vouchers: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function usePaymentVouchers(companyId: string) {
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -251,4 +356,51 @@ export function usePaymentVouchers(companyId: string) {
   }, [companyId]);
 
   return { vouchers, isLoading, create, update, remove };
+}
+
+export interface PaymentVoucherFilters {
+  status?: string;
+}
+
+export function usePaymentVouchersPaginated(companyId: string, filters?: PaymentVoucherFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<PaymentVoucher>(
+    (page, pageSize) => accountingApi.getPaymentVouchersPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status]
+  );
+
+  const create = useCallback(async (data: Omit<PaymentVoucher, 'id'>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.createPaymentVoucher(data, userId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<PaymentVoucher>) => {
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return { success: false, error: 'User not authenticated' };
+    const result = await accountingApi.updatePaymentVoucher(id, companyId, userId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await accountingApi.deletePaymentVoucher(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    vouchers: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
 }

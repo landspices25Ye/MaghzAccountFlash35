@@ -5,7 +5,8 @@ import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
-import { useCustomers, useCustomerStatement, useCustomerArAging } from '../hooks/useSales';
+import { Pagination } from '@/core/ui/components/Pagination';
+import { useCustomersPaginated, useCustomerStatement, useCustomerArAging } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -22,7 +23,9 @@ export const CustomersPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const currentUser = useAuthStore(state => state.user);
-  const { customers, isLoading, create, update, remove } = useCustomers(activeCompany?.id || '');
+  const [search, setSearch] = useState('');
+  const customerFilters = useMemo(() => ({ search: search || undefined }), [search]);
+  const { customers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useCustomersPaginated(activeCompany?.id || '', customerFilters);
   const { data: arAging, reload: reloadAging } = useCustomerArAging(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);
@@ -153,6 +156,12 @@ export const CustomersPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Input
+            placeholder={t('search') || 'بحث...'}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="max-w-xs"
+          />
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير Excel'}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
@@ -161,7 +170,7 @@ export const CustomersPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total') || 'إجمالي العملاء'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{customers.length}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total') || 'إجمالي العملاء'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.active') || 'العملاء النشطون'}</p><p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
       </div>
@@ -179,7 +188,16 @@ export const CustomersPage: React.FC = () => {
             action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button></Can>}
           />
         ) : (
-          <Table<Customer> data={customers} columns={customerColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+          <>
+            <Table<Customer> data={customers} columns={customerColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+            />
+          </>
         )}
       </Card>
 

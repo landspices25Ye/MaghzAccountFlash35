@@ -38,6 +38,50 @@ export function useCustomers(companyId: string) {
   return { customers, isLoading, create, update, remove, reload: load };
 }
 
+export interface CustomerFilters {
+  search?: string;
+  isActive?: boolean;
+}
+
+export function useCustomersPaginated(companyId: string, filters?: CustomerFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Customer>(
+    (page, pageSize) => salesApi.getCustomersPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.search, filters?.isActive]
+  );
+
+  const create = useCallback(async (data: Omit<Customer, 'id'>) => {
+    const result = await salesApi.createCustomer(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Customer, 'id' | 'companyId'>>) => {
+    const result = await salesApi.updateCustomer(id, companyId, data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await salesApi.deleteCustomer(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    customers: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function useInvoices(companyId: string) {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);

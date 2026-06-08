@@ -1,6 +1,7 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { validateInput, idCompanySchema, companyIdSchema, createTransactionSchema, createReceiptVoucherSchema, createPaymentVoucherSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Account, Transaction, JournalEntry, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from './types';
 
 export const accountingApi = {
@@ -130,6 +131,54 @@ export const accountingApi = {
       }
       const result = await adapter.getTransactions(companyId);
       return { success: result.success, data: mapRows<Transaction>(result.data), error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getTransactionsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; createdBy?: string }
+  ): Promise<PaginatedQueryResult<Transaction>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['t.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`t.status = $${params.length}`);
+      }
+      if (filters?.createdBy) {
+        params.push(filters.createdBy);
+        conditions.push(`t.created_by = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM transactions t WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT t.* FROM transactions t WHERE ${where} ORDER BY t.date DESC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<Transaction>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -295,6 +344,55 @@ export const accountingApi = {
     }
   },
 
+  async getReceiptVouchersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<ReceiptVoucher>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['rv.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`rv.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM receipt_vouchers rv WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT rv.*, c.name as customer_name
+         FROM receipt_vouchers rv
+         LEFT JOIN customers c ON rv.customer_id = c.id
+         WHERE ${where}
+         ORDER BY rv.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<ReceiptVoucher>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async createReceiptVoucher(data: Omit<ReceiptVoucher, 'id'>, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const validation = validateInput(createReceiptVoucherSchema, data);
@@ -386,6 +484,56 @@ export const accountingApi = {
         return { success: true, data: mapRows<PaymentVoucher>(result.rows) };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getPaymentVouchersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<PaymentVoucher>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['pv.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`pv.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM payment_vouchers pv WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT pv.*, c.name as supplier_name, a.name_ar as expense_account_name
+         FROM payment_vouchers pv
+         LEFT JOIN suppliers c ON pv.supplier_id = c.id
+         LEFT JOIN accounts a ON pv.expense_account_id = a.id
+         WHERE ${where}
+         ORDER BY pv.date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<PaymentVoucher>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

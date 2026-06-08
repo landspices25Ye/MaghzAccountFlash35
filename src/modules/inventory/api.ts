@@ -331,6 +331,60 @@ export const inventoryApi = {
     }
   },
 
+  async getInventoryTransactionsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { type?: string; productId?: string }
+  ): Promise<PaginatedQueryResult<InventoryTransaction>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['sm.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.type) {
+        params.push(filters.type);
+        conditions.push(`sm.type = $${params.length}`);
+      }
+      if (filters?.productId) {
+        params.push(filters.productId);
+        conditions.push(`sm.product_id = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM stock_movements sm WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT sm.*, p.name_ar as product_name, w.name as warehouse_name
+         FROM stock_movements sm
+         LEFT JOIN products p ON sm.product_id = p.id
+         LEFT JOIN warehouses w ON sm.warehouse_id = w.id
+         WHERE ${where}
+         ORDER BY sm.created_at DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<InventoryTransaction>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async createInventoryTransaction(data: Omit<InventoryTransaction, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const cidValidation = validateInput(companyIdSchema, data.companyId);

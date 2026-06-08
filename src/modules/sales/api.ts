@@ -22,6 +22,54 @@ export const salesApi = {
     }
   },
 
+  async getCustomersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { search?: string; isActive?: boolean }
+  ): Promise<PaginatedQueryResult<Customer>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['c.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.isActive !== undefined) {
+        params.push(filters.isActive);
+        conditions.push(`c.is_active = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length} OR c.code ILIKE $${params.length})`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM customers c WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT c.* FROM customers c WHERE ${where} ORDER BY c.name ASC LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = mapRows<Customer>(dataResult.rows || []);
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async getCustomerById(id: string, companyId: string): Promise<{ success: boolean; data?: Customer; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });

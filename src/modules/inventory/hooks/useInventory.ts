@@ -195,6 +195,43 @@ export function useInventoryTransactions(companyId: string) {
   return { transactions, isLoading, create, remove };
 }
 
+export interface InventoryTransactionFilters {
+  type?: string;
+  productId?: string;
+}
+
+export function useInventoryTransactionsPaginated(companyId: string, filters?: InventoryTransactionFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<InventoryTransaction>(
+    (page, pageSize) => inventoryApi.getInventoryTransactionsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.type, filters?.productId]
+  );
+
+  const create = useCallback(async (data: Omit<InventoryTransaction, 'id'>) => {
+    const result = await inventoryApi.createInventoryTransaction(data);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList]);
+
+  const remove = useCallback(async (id: string) => {
+    const result = await inventoryApi.deleteInventoryTransaction(id, companyId);
+    if (result.success) await reloadList();
+    return result;
+  }, [reloadList, companyId]);
+
+  return {
+    transactions: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function useStockAdjustments(companyId: string) {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [isLoading, setIsLoading] = useState(false);

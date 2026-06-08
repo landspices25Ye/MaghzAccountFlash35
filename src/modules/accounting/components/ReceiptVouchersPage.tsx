@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Banknote, Plus, CheckSquare, Users } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
@@ -6,28 +6,26 @@ import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components'
 import { CustomerSelect, BankSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { useReceiptVouchers } from '../hooks/useAccounting';
+import { useReceiptVouchersPaginated } from '../hooks/useAccounting';
 import { postReceiptVoucher } from '@/core/utils/journalEntryGenerator';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
-import { useBranchFilter } from '@/core/utils/useBranchFilter';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { Pagination } from '@/core/ui/components/Pagination';
 import type { ReceiptVoucher } from '../types';
 
 export const ReceiptVouchersPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { vouchers, isLoading, create, update, remove } = useReceiptVouchers(activeCompany?.id || '');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const voucherFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { vouchers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useReceiptVouchersPaginated(activeCompany?.id || '', voucherFilters);
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { currencies, defaultCurrency } = useCurrencyDisplay();
-  const branchFiltered = useBranchFilter(vouchers);
-  const { filtered: filteredVouchers, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(branchFiltered, 'accounting');
   const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
 
   const [postingId, setPostingId] = useState<string | null>(null);
@@ -145,8 +143,8 @@ export const ReceiptVouchersPage: React.FC = () => {
     setIsOpen(true);
   };
 
-  const totalCash = filteredVouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'cash').reduce((s, v) => s + v.amount, 0);
-  const totalBank = filteredVouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'bank').reduce((s, v) => s + v.amount, 0);
+  const totalCash = vouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'cash').reduce((s, v) => s + v.amount, 0);
+  const totalBank = vouchers.filter(v => v.status === 'posted' && v.paymentMethod === 'bank').reduce((s, v) => s + v.amount, 0);
 
   const columns = [
     { key: 'voucherNumber', header: t('accounting.voucherNumber') },
@@ -206,7 +204,11 @@ export const ReceiptVouchersPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select className="input text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} title={t('sales.status') || 'الحالة'}>
+          <option value="">{t('all') || 'الكل'}</option>
+          <option value="draft">{t('accounting.draft') || 'مسودة'}</option>
+          <option value="posted">{t('accounting.posted') || 'مرحل'}</option>
+        </select>
         <Can action="create" module="accounting">
           <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newReceiptVoucher')}</Button>
         </Can>
@@ -229,19 +231,20 @@ export const ReceiptVouchersPage: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">عدد السندات</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{filteredVouchers.length}</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{vouchers.length}</p>
           </div>
         </Card>
       </div>
 
       <Card>
         <Table
-          data={filteredVouchers}
+          data={vouchers}
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
           emptyMessage={t('accounting.noData')}
         />
+        <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
       </Card>
 
       <Modal isOpen={isOpen} title={isEditMode ? t('accounting.editVoucher') : t('accounting.newReceiptVoucher')} onClose={() => setIsOpen(false)} size="md">
