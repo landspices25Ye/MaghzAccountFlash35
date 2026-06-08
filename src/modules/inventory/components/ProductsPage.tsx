@@ -46,7 +46,8 @@ export const ProductsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const [filterTypeId, setFilterTypeId] = useState<string>('');
-  const { products, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useProductsPaginated(activeCompany?.id || '', { productTypeId: filterTypeId || undefined });
+  const productFilters = useMemo(() => ({ productTypeId: filterTypeId || undefined }), [filterTypeId]);
+  const { products, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useProductsPaginated(activeCompany?.id || '', productFilters);
   const { categories } = useProductCategories(activeCompany?.id || '');
   const { types: productTypes } = useProductTypes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');

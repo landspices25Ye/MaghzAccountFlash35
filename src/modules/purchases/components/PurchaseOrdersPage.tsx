@@ -55,7 +55,8 @@ export const PurchaseOrdersPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const { orders, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToInvoice } = usePurchaseOrdersPaginated(activeCompany?.id || '', { status: statusFilter || undefined });
+  const orderFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { orders, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToInvoice } = usePurchaseOrdersPaginated(activeCompany?.id || '', orderFilters);
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');

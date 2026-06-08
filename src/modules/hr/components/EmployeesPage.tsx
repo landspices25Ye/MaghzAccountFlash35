@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Users, Plus, User } from 'lucide-react';
 import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -15,7 +15,8 @@ export const EmployeesPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
-  const { employees, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useEmployeesPaginated(companyId, { isActive: isActiveFilter });
+  const employeeFilters = useMemo(() => ({ isActive: isActiveFilter }), [isActiveFilter]);
+  const { employees, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useEmployeesPaginated(companyId, employeeFilters);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);

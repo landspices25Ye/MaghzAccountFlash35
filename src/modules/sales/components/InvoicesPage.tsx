@@ -57,9 +57,9 @@ export const InvoicesPage: React.FC = () => {
     update,
     remove,
     post,
-  } = useInvoicesPaginated(activeCompany?.id || '', {
+  } = useInvoicesPaginated(activeCompany?.id || '', useMemo(() => ({
     createdBy: isOwnOnly ? currentUser?.id : undefined,
-  });
+  }), [isOwnOnly, currentUser?.id]));
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');

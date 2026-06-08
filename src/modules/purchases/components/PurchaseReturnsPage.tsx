@@ -56,7 +56,8 @@ export const PurchaseReturnsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const { returns, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post } = usePurchaseReturnsPaginated(activeCompany?.id || '', { status: statusFilter || undefined });
+  const returnFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { returns, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post } = usePurchaseReturnsPaginated(activeCompany?.id || '', returnFilters);
   const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 

@@ -34,7 +34,8 @@ export const OpportunitiesPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
   const [stageFilter, setStageFilter] = useState<string>('');
-  const { opportunities, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useOpportunitiesPaginated(companyId, { stage: stageFilter || undefined });
+  const opportunityFilters = useMemo(() => ({ stage: stageFilter || undefined }), [stageFilter]);
+  const { opportunities, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useOpportunitiesPaginated(companyId, opportunityFilters);
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'funnel'>('kanban');
   const [isModalOpen, setIsModalOpen] = useState(false);

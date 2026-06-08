@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Target, Plus, UserCheck } from 'lucide-react';
 import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -13,7 +13,8 @@ export const LeadsPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const { leads, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToCustomer } = useLeadsPaginated(companyId, { status: statusFilter || undefined });
+  const leadFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { leads, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, convertToCustomer } = useLeadsPaginated(companyId, leadFilters);
   const { create: createActivity } = useActivities(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
