@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.21*
+*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.22*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1585,4 +1585,40 @@ npx drizzle-kit migrate
 - **`useMemo` filters مفيد لكنه وحده لا يكفي**: `useMemo` يمنع filter object من التغير، لكن الـ `fetchFn` نفسه كان inline arrow → يتغير كل render بشكل مستقل عن الـ filters
 - **`react-hooks/refs` rule**: لا تكتب `ref.current = value` خلال render (خارج hooks). استخدم `useEffect(() => { ref.current = value; })` بدلاً من ذلك
 - **الإصلاح في المصدر يمنع تكرار المشكلة**: بدل إصلاح 11 hook فردي، إصلاح `usePaginatedList` نفسه يحل المشكلة للجميع دفعة واحدة
+
+### المرحلة 27: إصلاح batch لـ useState(true) المتبقي + security journal_entries
+- **الهدف**: إصلاح بقية الـ hooks بـ `useState(true)` + تعزيز multi-tenancy في accounting
+- **الإصلاحات**:
+  - **`useState(true)` → `useState(false)` في 13 ملف hook** (~29 hook function):
+    - `useSales.ts`: useCustomers, useInvoices, useQuotations, useReturns
+    - `usePurchases.ts`: useSuppliers, usePurchaseInvoices, usePurchaseOrders, usePurchaseReturns
+    - `useHr.ts`: useEmployees, useAttendance, useEndOfServices (useLeaves/usePayrollRuns مُحدَّثان سابقاً)
+    - `useAccounting.ts`: 6 hooks
+    - `useAuth.ts`: 3 hooks
+    - `useCrm.ts`: useLeads, useOpportunities
+    - `useManufacturing.ts`: useBoms, useWorkOrders
+    - `useDashboard.ts`: 1 hook
+    - `useCore.ts`: useCompany, useCurrencies, useVatSettings, useBranches
+    - `useSettings.ts` (core/utils + core/hooks), `useCurrencyDisplay.ts`
+  - **Security fix — `accounting/api.ts`**: `DELETE FROM journal_entries WHERE transaction_id = $1` → أضيف `AND company_id = $2` (defense-in-depth للـ multi-tenancy)
+- **الـ pages المتأثرة** (التي تستخدم الـ hooks القديمة):
+  - HR: AttendancePage, EndOfServicePage, LeavesPage, PayrollPage
+  - Sales: SalesReturnsPage (useInvoices)
+  - Purchases: PurchaseReturnsPage (usePurchaseInvoices), PurchaseInvoicesPage (usePurchaseOrders)
+  - Inventory: StockPage, WarehousesPage, InventoryTransactionsPage, StockAdjustmentPage, ProductDetail
+  - Accounting: ChartOfAccounts, JournalEntriesPage, ReceiptVouchersPage, PaymentVouchersPage
+  - CRM: CustomersPage, DefaultAccountsPage
+  - Manufacturing: BomPage, WorkOrdersPage
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - Commit: `10fc01f`
+
+### قواعد ذهبية مضافة (Phase 27)
+- **Batch fix للـ `useState(true)`**: 13 ملف hook (~29 function) بنفس النمط. `replaceAll` آمن لأن كل الـ `useState(true)` في هذه الملفات تخص `isLoading` فقط
+- **Security audit للـ DELETE/UPDATE statements**: ابحث عن `DELETE FROM x WHERE id = $1` بدون `AND company_id = $N` — قد يسمح بحذف بيانات tenant آخر
+- **journal_entries.company_id defense-in-depth**: حتى لو `transaction_id` FK يضمن الـ company صحيحة، إضافة `company_id = $N` في WHERE يحمي من race conditions و injection
+- **Zero `useState(true)` remaining في `src/`**: بعد المراجعة الشاملة، لا يوجد `useState(true)` لـ `isLoading` في أي hook في المشروع
+- **الـ pages التي تستخدم old hooks لا تزال تعمل**: الـ `useState(false)` يعني عدم ظهور spinner قبل جلب companyId. الـ load يشتغل لما الـ deps تتغير (companyId يصبح truthy)
 
