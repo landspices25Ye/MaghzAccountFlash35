@@ -5,7 +5,7 @@ import type { DocumentSequence, ProductType, Unit, CashBox, Bank, CostCenter, Pa
 // ─── Document Sequences ───────────────────────────────────────────────────────
 export function useDocumentSequences(companyId: string) {
   const [sequences, setSequences] = useState<DocumentSequence[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -46,7 +46,7 @@ export function useProductTypes(companyId: string): {
   remove: (id: string) => Promise<{ success: boolean; error?: string }>;
 } {
   const [types, setTypes] = useState<ProductType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -83,7 +83,7 @@ export function useProductTypes(companyId: string): {
 // ─── Units ────────────────────────────────────────────────────────────────────
 export function useUnits(companyId: string) {
   const [units, setUnits] = useState<Unit[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -120,7 +120,7 @@ export function useUnits(companyId: string) {
 // ─── Cash Boxes ───────────────────────────────────────────────────────────────
 export function useCashBoxes(companyId: string) {
   const [boxes, setBoxes] = useState<CashBox[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -157,7 +157,7 @@ export function useCashBoxes(companyId: string) {
 // ─── Banks ────────────────────────────────────────────────────────────────────
 export function useBanks(companyId: string) {
   const [banks, setBanks] = useState<Bank[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -194,7 +194,7 @@ export function useBanks(companyId: string) {
 // ─── Cost Centers ─────────────────────────────────────────────────────────────
 export function useCostCenters(companyId: string) {
   const [centers, setCenters] = useState<CostCenter[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -231,7 +231,7 @@ export function useCostCenters(companyId: string) {
 // ─── Payroll Components ───────────────────────────────────────────────────────
 export function usePayrollComponents(companyId: string) {
   const [components, setComponents] = useState<PayrollComponent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -262,7 +262,7 @@ export function usePayrollComponents(companyId: string) {
 // ─── Default Accounts ─────────────────────────────────────────────────────────
 export function useDefaultAccounts(companyId: string) {
   const [accounts, setAccounts] = useState<DefaultAccount[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

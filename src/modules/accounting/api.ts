@@ -220,7 +220,7 @@ export const accountingApi = {
       if (!txResult.success) return txResult;
 
       if (data.entries && data.entries.length > 0) {
-        const deleteResult = await adapter.query(`DELETE FROM journal_entries WHERE transaction_id = $1`, [id]);
+        const deleteResult = await adapter.query(`DELETE FROM journal_entries WHERE transaction_id = $1 AND company_id = $2`, [id, companyId]);
         if (!deleteResult.success) return deleteResult;
 
         for (const entry of data.entries) {

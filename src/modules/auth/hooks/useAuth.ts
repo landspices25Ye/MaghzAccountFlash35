@@ -50,7 +50,7 @@ export function useAuth() {
 
 export function useUsers(companyId: string, filters?: UserFilters) {
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -107,7 +107,7 @@ export function useUsers(companyId: string, filters?: UserFilters) {
 
 export function useRoles(companyId: string, filters?: RoleFilters) {
   const [roles, setRoles] = useState<Role[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -152,7 +152,7 @@ export function useRoles(companyId: string, filters?: RoleFilters) {
 
 export function useAuditLogs(companyId: string, filters?: AuditLogFilters) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

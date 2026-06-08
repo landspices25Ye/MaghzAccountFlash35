@@ -5,7 +5,7 @@ import type { Customer, SalesInvoice, Quotation, SalesReturn } from '../types';
 
 export function useCustomers(companyId: string) {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -40,7 +40,7 @@ export function useCustomers(companyId: string) {
 
 export function useInvoices(companyId: string) {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -81,7 +81,7 @@ export function useInvoices(companyId: string) {
 
 export function useQuotations(companyId: string) {
   const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -122,7 +122,7 @@ export function useQuotations(companyId: string) {
 
 export function useReturns(companyId: string) {
   const [returns, setReturns] = useState<SalesReturn[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;

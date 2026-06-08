@@ -12,7 +12,7 @@ import {
 
 export function useCurrencies(companyId: string) {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) {

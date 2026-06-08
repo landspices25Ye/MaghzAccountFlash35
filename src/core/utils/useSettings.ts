@@ -15,7 +15,7 @@ interface AppSettings {
 
 export function useSettings(companyId: string) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const loadSettings = useCallback(async () => {
     if (!companyId) return;

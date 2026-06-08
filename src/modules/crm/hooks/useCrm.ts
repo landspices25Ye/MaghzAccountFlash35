@@ -5,7 +5,7 @@ import type { Lead, Opportunity, Task, Activity } from '../types';
 
 export function useLeads(companyId: string) {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -55,7 +55,7 @@ export function useLeads(companyId: string) {
 
 export function useOpportunities(companyId: string) {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

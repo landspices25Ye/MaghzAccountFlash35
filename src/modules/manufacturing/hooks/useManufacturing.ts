@@ -4,7 +4,7 @@ import type { BOM, WorkOrder, WorkOrderVariance } from '../types';
 
 export function useBoms(companyId: string) {
   const [boms, setBoms] = useState<BOM[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -48,7 +48,7 @@ export function useBoms(companyId: string) {
 
 export function useWorkOrders(companyId: string) {
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

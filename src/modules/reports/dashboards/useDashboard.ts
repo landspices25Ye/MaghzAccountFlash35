@@ -92,7 +92,7 @@ export interface ComparisonData {
 
 export function useDashboard(companyId: string, filters: DashboardFilters) {
   const [data, setData] = useState<ComparisonData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

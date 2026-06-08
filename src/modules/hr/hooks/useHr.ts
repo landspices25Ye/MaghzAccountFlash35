@@ -5,7 +5,7 @@ import type { Employee, AttendanceRecord, PayrollRun, Leave, EndOfService } from
 
 export function useEmployees(companyId: string) {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -49,7 +49,7 @@ export function useEmployees(companyId: string) {
 
 export function useAttendance(companyId: string, month: number, year: number) {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -154,7 +154,7 @@ export function useLeaves(companyId: string) {
 
 export function useEndOfServices(companyId: string) {
   const [items, setItems] = useState<EndOfService[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

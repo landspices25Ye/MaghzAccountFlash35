@@ -12,7 +12,7 @@ import type {
 
 export function useSuppliers(companyId: string) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -82,7 +82,7 @@ export function useSupplierDetails(companyId: string, supplierId: string | null)
 
 export function usePurchaseInvoices(companyId: string) {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -230,7 +230,7 @@ export function useSuppliersPaginated(companyId: string, filters?: SupplierFilte
 
 export function usePurchaseOrders(companyId: string) {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -282,7 +282,7 @@ export function usePurchaseOrders(companyId: string) {
 
 export function usePurchaseReturns(companyId: string) {
   const [returns, setReturns] = useState<PurchaseReturn[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

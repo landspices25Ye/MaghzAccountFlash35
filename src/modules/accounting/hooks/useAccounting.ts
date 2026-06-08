@@ -5,7 +5,7 @@ import type { Account, Transaction, TrialBalanceRow, LedgerRow, ReceiptVoucher, 
 
 export function useAccounts(companyId: string) {
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -55,7 +55,7 @@ export function useAccounts(companyId: string) {
 
 export function useTransactions(companyId: string) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -115,7 +115,7 @@ export function useTransactions(companyId: string) {
 
 export function useTrialBalance(companyId: string, asOfDate?: string) {
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -135,7 +135,7 @@ export function useTrialBalance(companyId: string, asOfDate?: string) {
 
 export function useAccountLedger(accountId: string, companyId: string, startDate?: string, endDate?: string) {
   const [rows, setRows] = useState<LedgerRow[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!accountId || !companyId) return;
@@ -155,7 +155,7 @@ export function useAccountLedger(accountId: string, companyId: string, startDate
 
 export function useReceiptVouchers(companyId: string) {
   const [vouchers, setVouchers] = useState<ReceiptVoucher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -205,7 +205,7 @@ export function useReceiptVouchers(companyId: string) {
 
 export function usePaymentVouchers(companyId: string) {
   const [vouchers, setVouchers] = useState<PaymentVoucher[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;

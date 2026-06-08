@@ -4,7 +4,7 @@ import type { Company, Currency, VatSetting, Branch } from '../types';
 
 export function useCompany() {
   const [company, setCompany] = useState<Company | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function useCompany() {
 
 export function useCurrencies(companyId: string) {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -71,7 +71,7 @@ export function useCurrencies(companyId: string) {
 
 export function useVatSettings(companyId: string) {
   const [settings, setSettings] = useState<VatSetting | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -100,7 +100,7 @@ export function useVatSettings(companyId: string) {
 
 export function useBranches(companyId: string) {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
