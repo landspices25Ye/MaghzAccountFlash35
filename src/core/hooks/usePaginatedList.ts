@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { PaginatedQueryResult } from '@/core/utils/pagination';
 
 export type PaginatedFetchFn<T> = (page: number, pageSize: number) => Promise<PaginatedQueryResult<T>>;
@@ -22,13 +22,16 @@ export function usePaginatedList<T>(
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchFnRef = useRef(fetchFn);
+  useEffect(() => { fetchFnRef.current = fetchFn; });
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await fetchFn(page, pageSize);
+      const result = await fetchFnRef.current(page, pageSize);
       if (result.success && result.data) {
         setItems(result.data.items);
         setTotal(result.data.total);
@@ -44,7 +47,7 @@ export function usePaginatedList<T>(
     } finally {
       setIsLoading(false);
     }
-  }, [fetchFn, page, pageSize]);
+  }, [page, pageSize]);
 
   useEffect(() => {
     if (autoLoad) load();
