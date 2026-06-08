@@ -9,6 +9,7 @@ import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useEmployeesPaginated } from '../hooks/useHr';
 import type { Employee } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 export const EmployeesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
@@ -143,7 +144,7 @@ export const EmployeesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">سجلات الموظفين وإدارة بياناتهم</p>
           </div>
         </div>
-    <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>
+    <Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button></Can>
       </div>
 
       <Card>
@@ -168,7 +169,7 @@ export const EmployeesPage: React.FC = () => {
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : employees.length === 0 ? (
-          <EmptyState icon="inbox" title="لا يوجد موظفين" description="يمكنك إضافة موظف جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button>} />
+          <EmptyState icon="inbox" title="لا يوجد موظفين" description="يمكنك إضافة موظف جديد" action={<Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button></Can>} />
         ) : (
           <Table<Employee>
             data={employees}

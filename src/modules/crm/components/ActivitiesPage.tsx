@@ -8,6 +8,7 @@ import { useActivities } from '../hooks/useCrm';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Activity as ActivityType } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   call: <Phone size={14} />,
@@ -135,7 +136,7 @@ export const ActivitiesPage: React.FC = () => {
       <div className="flex items-center gap-2">
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="secondary" leftIcon={<BarChart3 size={16} />} onClick={() => setShowReport(true)}>تقرير الأداء</Button>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button>
+        <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button></Can>
       </div>
       </div>
 
@@ -143,7 +144,7 @@ export const ActivitiesPage: React.FC = () => {
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : filteredActivities.length === 0 ? (
-          <EmptyState icon="inbox" title="لا توجد أنشطة" description="يمكنك إضافة نشاط جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button>} />
+          <EmptyState icon="inbox" title="لا توجد أنشطة" description="يمكنك إضافة نشاط جديد" action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>نشاط جديد</Button></Can>} />
         ) : (
           <Table<ActivityType>
             data={filteredActivities}

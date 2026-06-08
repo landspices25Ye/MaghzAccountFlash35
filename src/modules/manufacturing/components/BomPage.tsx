@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { GitBranch, Plus, Printer, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
+import { Can } from '@/core/ui/components/PermissionGate';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
@@ -140,16 +141,22 @@ export const BomPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">Bill of Materials - إدارة تكوين المنتجات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          BOM جديد
-        </Button>
+        <Can action="create" module="manufacturing">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            BOM جديد
+          </Button>
+        </Can>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : boms.length === 0 ? (
-          <EmptyState icon="file" title="لا توجد BOMs" description="يمكنك إضافة BOM جديد للبدء" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>BOM جديد</Button>} />
+          <EmptyState icon="file" title="لا توجد BOMs" description="يمكنك إضافة BOM جديد للبدء" action={
+            <Can action="create" module="manufacturing">
+              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>BOM جديد</Button>
+            </Can>
+          } />
         ) : (
           <Table<BOM>
             data={boms}

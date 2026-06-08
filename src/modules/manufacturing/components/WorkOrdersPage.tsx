@@ -11,6 +11,7 @@ import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { Can } from '@/core/ui/components/PermissionGate';
 import type { WorkOrder, WorkOrderLine } from '../types';
 
 interface WorkOrderFormLine {
@@ -173,16 +174,22 @@ export const WorkOrdersPage: React.FC = () => {
           </div>
         </div>
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-      <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          أمر تشغيل جديد
-        </Button>
+        <Can action="create" module="manufacturing">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            أمر تشغيل جديد
+          </Button>
+        </Can>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : filteredWorkOrders.length === 0 ? (
-          <EmptyState icon="file" title="لا توجد أوامر تشغيل" description="يمكنك إضافة أمر تشغيل جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>أمر تشغيل جديد</Button>} />
+          <EmptyState icon="file" title="لا توجد أوامر تشغيل" description="يمكنك إضافة أمر تشغيل جديد" action={
+            <Can action="create" module="manufacturing">
+              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>أمر تشغيل جديد</Button>
+            </Can>
+          } />
         ) : (
           <Table<WorkOrder>
             data={filteredWorkOrders}

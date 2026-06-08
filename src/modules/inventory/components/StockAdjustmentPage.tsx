@@ -16,6 +16,7 @@ import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { StockAdjustment } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 export const StockAdjustmentPage: React.FC = () => {
   const { t } = useTranslation();
@@ -199,7 +200,7 @@ ${filtered.map(a => `<tr>
           <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>{t('print')}</Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportExcel}>Excel</Button>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportPDF}>PDF</Button>
-          <Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => setIsOpen(true)}>{t('inventory.newAdjustment')}</Button>
+          <Can action="create" module="inventory"><Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => setIsOpen(true)}>{t('inventory.newAdjustment')}</Button></Can>
         </div>
       </div>
 

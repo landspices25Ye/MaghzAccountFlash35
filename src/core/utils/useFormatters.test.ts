@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-vi.mock('@/core/store/settingsStore', () => ({
-  useSettingsStore: vi.fn(),
+vi.mock('./useSettings', () => ({
+  useSettings: vi.fn(),
 }));
 
-import { useSettingsStore } from '@/core/store/settingsStore';
-import { useFormatters } from '@/core/utils/useFormatters';
+import { useSettings } from './useSettings';
+import { useFormatters } from './useFormatters';
 
-const mockUseSettingsStore = useSettingsStore as unknown as ReturnType<typeof vi.fn>;
+const mockUseSettings = useSettings as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -16,8 +16,8 @@ beforeEach(() => {
 
 describe('useFormatters - formatCurrency', () => {
   it('formats with 2 decimal places by default', () => {
-    mockUseSettingsStore.mockReturnValue({
-      decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatCurrency(1234.5);
@@ -26,8 +26,8 @@ describe('useFormatters - formatCurrency', () => {
   });
 
   it('formats with 0 decimal places', () => {
-    mockUseSettingsStore.mockReturnValue({
-      decimalPlaces: 0, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { decimalPlaces: 0, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatCurrency(1234.56);
@@ -36,8 +36,8 @@ describe('useFormatters - formatCurrency', () => {
   });
 
   it('returns dash for invalid input', () => {
-    mockUseSettingsStore.mockReturnValue({
-      decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     expect(result.current.formatCurrency(NaN)).toBe('-');
@@ -45,8 +45,8 @@ describe('useFormatters - formatCurrency', () => {
   });
 
   it('handles string number input', () => {
-    mockUseSettingsStore.mockReturnValue({
-      decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { decimalPlaces: 2, dateFormat: 'yyyy-MM-dd', calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatCurrency('5000');
@@ -56,8 +56,8 @@ describe('useFormatters - formatCurrency', () => {
 
 describe('useFormatters - formatDate (Gregorian)', () => {
   it('formats with default yyyy-MM-dd', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate(new Date(2024, 5, 15));
@@ -65,8 +65,8 @@ describe('useFormatters - formatDate (Gregorian)', () => {
   });
 
   it('formats with dd/MM/yyyy', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'dd/MM/yyyy', decimalPlaces: 2, calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'dd/MM/yyyy', decimalPlaces: 2, calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate(new Date(2024, 5, 15));
@@ -74,8 +74,8 @@ describe('useFormatters - formatDate (Gregorian)', () => {
   });
 
   it('formats string date input', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate('2024-06-15');
@@ -83,8 +83,8 @@ describe('useFormatters - formatDate (Gregorian)', () => {
   });
 
   it('returns dash for invalid date', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     expect(result.current.formatDate('invalid-date')).toBe('-');
@@ -93,8 +93,8 @@ describe('useFormatters - formatDate (Gregorian)', () => {
 
 describe('useFormatters - formatDate (Hijri)', () => {
   it('formats Hijri date with yyyy/MM/dd and adds  هـ suffix', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy/MM/dd', decimalPlaces: 2, calendar: 'hijri',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy/MM/dd', decimalPlaces: 2, calendar: 'hijri' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate(new Date(2024, 0, 1));
@@ -102,8 +102,8 @@ describe('useFormatters - formatDate (Hijri)', () => {
   });
 
   it('formats Hijri date with dd/MM/yyyy pattern', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'dd/MM/yyyy', decimalPlaces: 2, calendar: 'hijri',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'dd/MM/yyyy', decimalPlaces: 2, calendar: 'hijri' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate(new Date(2024, 5, 15));
@@ -111,8 +111,8 @@ describe('useFormatters - formatDate (Hijri)', () => {
   });
 
   it('returns Hijri year approximately 1445-1446 for 2024 Gregorian', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy', decimalPlaces: 2, calendar: 'hijri',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy', decimalPlaces: 2, calendar: 'hijri' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     const formatted = result.current.formatDate(new Date(2024, 5, 15));
@@ -124,16 +124,16 @@ describe('useFormatters - formatDate (Hijri)', () => {
 
 describe('useFormatters - calendar field', () => {
   it('returns gregorian by default', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy-MM-dd', decimalPlaces: 2, calendar: 'gregorian' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     expect(result.current.calendar).toBe('gregorian');
   });
 
   it('returns hijri when set', () => {
-    mockUseSettingsStore.mockReturnValue({
-      dateFormat: 'yyyy/MM/dd', decimalPlaces: 2, calendar: 'hijri',
+    mockUseSettings.mockReturnValue({
+      settings: { dateFormat: 'yyyy/MM/dd', decimalPlaces: 2, calendar: 'hijri' },
     });
     const { result } = renderHook(() => useFormatters('comp-1'));
     expect(result.current.calendar).toBe('hijri');

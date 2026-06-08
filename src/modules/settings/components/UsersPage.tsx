@@ -5,6 +5,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 interface User {
   id: string;
@@ -156,9 +157,11 @@ export const UsersPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة المستخدمين والصلاحيات</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); }}>
-          مستخدم جديد
-        </Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); }}>
+            مستخدم جديد
+          </Button>
+        </Can>
       </div>
 
       <Card>

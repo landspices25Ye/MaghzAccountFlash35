@@ -12,6 +12,7 @@ import { useSettings } from '@/core/utils/useSettings';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { Can } from '@/core/ui/components/PermissionGate';
 import { cn } from '@/core/utils';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useUserMap } from '@/core/utils/useUserMap';
@@ -194,9 +195,11 @@ export const JournalEntriesPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
-          {t('accounting.newJournalEntry')}
-        </Button>
+        <Can action="create" module="accounting">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
+            {t('accounting.newJournalEntry')}
+          </Button>
+        </Can>
       </div>
     </div>
 

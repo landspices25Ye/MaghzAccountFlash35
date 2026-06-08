@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useOpportunitiesPaginated } from '../hooks/useCrm';
 import type { Opportunity } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 const STAGES: Opportunity['stage'][] = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
@@ -135,7 +136,7 @@ export const OpportunitiesPage: React.FC = () => {
             <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قائمة</button>
             <button onClick={() => setViewMode('funnel')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'funnel' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قمع</button>
           </div>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button>
+          <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button></Can>
         </div>
       </div>
 
@@ -169,7 +170,7 @@ export const OpportunitiesPage: React.FC = () => {
       {isLoading ? (
         <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
       ) : opportunities.length === 0 ? (
-        <EmptyState icon="inbox" title="لا توجد فرص" description="يمكنك إضافة فرصة جديدة" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button>} />
+        <EmptyState icon="inbox" title="لا توجد فرص" description="يمكنك إضافة فرصة جديدة" action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button></Can>} />
       ) : viewMode === 'kanban' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => (

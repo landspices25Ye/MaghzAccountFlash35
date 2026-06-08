@@ -15,6 +15,7 @@ import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { useBranchFilter } from '@/core/utils/useBranchFilter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { Can } from '@/core/ui/components/PermissionGate';
 import type { PaymentVoucher } from '../types';
 
 export const PaymentVouchersPage: React.FC = () => {
@@ -208,7 +209,9 @@ export const PaymentVouchersPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-        <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newPaymentVoucher')}</Button>
+        <Can action="create" module="accounting">
+          <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newPaymentVoucher')}</Button>
+        </Can>
       </div>
     </div>
 

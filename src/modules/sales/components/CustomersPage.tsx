@@ -13,6 +13,7 @@ import { exportToExcel } from '@/core/utils/exportEngine';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { logAudit } from '@/core/utils/auditLogger';
 import type { Customer } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 type TabKey = 'details' | 'statement' | 'aging';
 
@@ -155,7 +156,7 @@ export const CustomersPage: React.FC = () => {
           <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير Excel'}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button>
+          <Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button></Can>
         </div>
       </div>
 
@@ -175,7 +176,7 @@ export const CustomersPage: React.FC = () => {
             icon="inbox"
             title={t('sales.customer.emptyTitle') || 'لا يوجد عملاء'}
             description={t('sales.customer.emptyDesc') || 'يمكنك إضافة عميل جديد للبدء'}
-            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button>}
+            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button></Can>}
           />
         ) : (
           <Table<Customer> data={customers} columns={customerColumns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} />

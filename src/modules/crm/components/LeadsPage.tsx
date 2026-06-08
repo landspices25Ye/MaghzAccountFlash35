@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
 import { useLeadsPaginated, useActivities } from '../hooks/useCrm';
 import type { Lead, Activity } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 export const LeadsPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
@@ -140,7 +141,7 @@ export const LeadsPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة العملاء المحتملين والمتابعات</p>
           </div>
         </div>
-      <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>
+      <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button></Can>
       </div>
 
       <Card>
@@ -161,7 +162,7 @@ export const LeadsPage: React.FC = () => {
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : leads.length === 0 ? (
-          <EmptyState icon="inbox" title="لا يوجد عملاء محتملين" description="يمكنك إضافة عميل محتمل جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button>} />
+          <EmptyState icon="inbox" title="لا يوجد عملاء محتملين" description="يمكنك إضافة عميل محتمل جديد" action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>عميل محتمل جديد</Button></Can>} />
         ) : (
           <Table<Lead>
             data={leads}

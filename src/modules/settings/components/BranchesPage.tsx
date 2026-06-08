@@ -5,6 +5,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 interface Branch {
   id: string;
@@ -119,9 +120,11 @@ export const BranchesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة فروع الشركة</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>
-          فرع جديد
-        </Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>
+            فرع جديد
+          </Button>
+        </Can>
       </div>
 
       <Card>

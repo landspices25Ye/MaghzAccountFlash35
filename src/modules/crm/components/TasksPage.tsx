@@ -8,6 +8,7 @@ import { useTasks } from '../hooks/useCrm';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Task } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 export const TasksPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
@@ -128,14 +129,14 @@ export const TasksPage: React.FC = () => {
           </div>
         </div>
         <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>
+        <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button></Can>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
         ) : filteredTasks.length === 0 ? (
-          <EmptyState icon="inbox" title="لا توجد مهام" description="يمكنك إضافة مهمة جديدة" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button>} />
+          <EmptyState icon="inbox" title="لا توجد مهام" description="يمكنك إضافة مهمة جديدة" action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>مهمة جديدة</Button></Can>} />
         ) : (
           <Table<Task>
             data={filteredTasks}

@@ -6,6 +6,7 @@ import { useAccounts } from '../hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
+import { Can } from '@/core/ui/components/PermissionGate';
 import { useFormatters } from '@/core/utils/useFormatters';
 import type { Account } from '../types';
 
@@ -226,9 +227,11 @@ export const ChartOfAccounts: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.accountLedger')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
-          {t('accounting.addAccount')}
-        </Button>
+        <Can action="create" module="accounting">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
+            {t('accounting.addAccount')}
+          </Button>
+        </Can>
       </div>
 
       <div className="relative">

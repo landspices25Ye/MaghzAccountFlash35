@@ -11,6 +11,7 @@ import { useStockDetailed } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import type { Warehouse as WarehouseType } from '../types';
+import { Can } from '@/core/ui/components/PermissionGate';
 
 interface FormData {
   name: string;
@@ -111,9 +112,9 @@ export const WarehousesPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('inventory.warehouses')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>
+        <Can action="create" module="inventory"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>
           {t('inventory.newWarehouse')}
-        </Button>
+        </Button></Can>
       </div>
 
       <Card>
@@ -122,7 +123,7 @@ export const WarehousesPage: React.FC = () => {
             icon="inbox"
             title="لا توجد مستودعات"
             description="أضف مستودعات جديدة لإدارة مخزونك"
-            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newWarehouse')}</Button>}
+            action={<Can action="create" module="inventory"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newWarehouse')}</Button></Can>}
           />
         ) : (
           <Table<WarehouseType>
