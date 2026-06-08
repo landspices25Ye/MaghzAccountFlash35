@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-07 | الإصدار: maghzaccount-pro v0.3.20*
+*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.21*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1544,4 +1544,45 @@ npx drizzle-kit migrate
 - **SET clause missing fields = silent data loss**: dynamic SET clause يبني `fields[]` من `Object.keys(data)`. لو key غير موجود في الـ block، الـ column لا يُحدَّث — **القاعدة**: افحص dynamic SET clauses لكل جدول يحوي nullable FK columns و تأكد أن كل FK موجود في الـ code
 - **`useState(true)` + early return = infinite loading**: الـ pattern `useState(true)` + `if (!companyId) return;` دون `setIsLoading(false)` يعلّق الـ spinner للأبد. **الحل**: `useState(false)` — الـ effect يضبط `setIsLoading(true)` فقط عند بدء الـ fetch
 - **Batch edit للملفات الكبيرة**: ملف مثل `AGENTS.md` (1525 سطر) لا يُكتب عبر `write` tool (JSON payload overflow). استخدم `edit` tool للتغييرات المستهدفة — update version line + add section at end
+
+### المرحلة 25: Pagination useMemo filter fix
+- **الهدف**: إصلاح إعادة التحميل المتكرر في 7 صفحات paginated بسبب filter objects جديدة في كل render
+- **السبب**: كل صفحة تمرر `filters={{ status: statusFilter }}` كـ inline object → reference جديدة كل render → `usePaginatedList` deps تتغير → `load` يُعاد تشغيل
+- **الإصلاح**: لفّ filter objects بـ `useMemo` في 7 صفحات:
+  - `InvoicesPage`: `useMemo` لـ `createdBy` filter
+  - `PurchaseOrdersPage`/`PurchaseReturnsPage`: `useMemo` لـ `status` filter
+  - `LeadsPage`: `useMemo` لـ `status` filter
+  - `OpportunitiesPage`: `useMemo` لـ `stage` filter
+  - `ProductsPage`: `useMemo` لـ `productTypeId` filter
+  - `EmployeesPage`: `useMemo` لـ `isActive` filter
+- **ملاحظة**: هذا الإصلاح وحده غير كافٍ — السبب الجذري كان `fetchFn` inline arrow في `usePaginatedList` (انظر Phase 26)
+- Commit: `fa1b63f`
+
+### المرحلة 26: إصلاح usePaginatedList Infinite Re-fetch Loop (useRef)
+- **الهدف**: حل السبب الجذري لإعادة التحميل اللانهائي في كل الصفحات الـ paginated
+- **السبب الجذري**: `usePaginatedList` كان يضع `fetchFn` في `useCallback` deps لـ `load`. كل الـ 11 paginated hooks تمرر **inline arrow functions** كـ `fetchFn` → reference جديدة كل render → `load` يتغير كل render → `useEffect` يشتغل كل render → infinite re-fetch loop
+- **الإصلاح** في `src/core/hooks/usePaginatedList.ts`:
+  - `useRef(fetchFn)` + `useEffect(() => { fetchFnRef.current = fetchFn; })` لتتبع آخر `fetchFn` بدون إضافته لـ `load` deps
+  - `load` يعتمد فقط على `[page, pageSize]` (primitives ثابتة)
+  - `load` يقرأ `fetchFnRef.current` بدلاً من closure-captured `fetchFn`
+  - **Zero changes في أي من الـ 11 hook files** — الإصلاح في المصدر فقط
+- **react-hooks/refs compliance**: ref update داخل `useEffect` (ليس خلال render) — يرضي ESLint rule
+- **الـ 11 hooks المتأثرة** (كلها تعمل بدون تعديل):
+  - `useInvoicesPaginated`، `useQuotationsPaginated`، `useReturnsPaginated` (sales)
+  - `usePurchaseInvoicesPaginated`، `usePurchaseOrdersPaginated`، `usePurchaseReturnsPaginated`، `useSuppliersPaginated` (purchases)
+  - `useEmployeesPaginated` (hr)
+  - `useProductsPaginated` (inventory)
+  - `useLeadsPaginated`، `useOpportunitiesPaginated` (crm)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - Commit: `daf87a7`
+
+### قواعد ذهبية مضافة (Phase 26)
+- **`useRef` + `useEffect` لـ unstable function deps**: لو callback يعتمد على function تُمرَّر كـ inline arrow من caller، استخدم `useRef(fn)` + `useEffect(() => { ref.current = fn; })` بدل وضع `fn` في `useCallback` deps. هذا يمنع infinite re-render loop بدون الحاجة لتعديل كل caller
+- **`useCallback` deps = primitives فقط**: `load` يعتمد على `[page, pageSize]` (أرقام). لو dep = function/object/array، وأتي من parent كـ inline → reference تتغير كل render → loop
+- **`useMemo` filters مفيد لكنه وحده لا يكفي**: `useMemo` يمنع filter object من التغير، لكن الـ `fetchFn` نفسه كان inline arrow → يتغير كل render بشكل مستقل عن الـ filters
+- **`react-hooks/refs` rule**: لا تكتب `ref.current = value` خلال render (خارج hooks). استخدم `useEffect(() => { ref.current = value; })` بدلاً من ذلك
+- **الإصلاح في المصدر يمنع تكرار المشكلة**: بدل إصلاح 11 hook فردي، إصلاح `usePaginatedList` نفسه يحل المشكلة للجميع دفعة واحدة
 
