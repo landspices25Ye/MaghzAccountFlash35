@@ -1,21 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { LogOut, Plus, Printer, Calculator } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { useEndOfServices, useEmployees } from '../hooks/useHr';
+import { useEndOfServicesPaginated, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { EndOfService } from '../types';
 
 export const EndOfServicePage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { items, isLoading, create, updateStatus, remove } = useEndOfServices(companyId);
-  const { filtered: filteredItems, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(items, 'hr');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const eosFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { items, total, page, pageSize, isLoading, goToPage, changePageSize, create, updateStatus, remove } = useEndOfServicesPaginated(companyId, eosFilters);
   const { employees } = useEmployees(companyId);
   const { formatCurrency } = useFormatters(companyId);
 
@@ -119,7 +118,16 @@ export const EndOfServicePage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="form-control w-auto"
+          title="تصفية حسب الحالة"
+        >
+          <option value="">الكل</option>
+          <option value="draft">مسودة</option>
+          <option value="approved">معتمد</option>
+        </select>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>حساب جديد</Button>
       </div>
     </div>
@@ -127,15 +135,18 @@ export const EndOfServicePage: React.FC = () => {
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : filteredItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState icon="file" title="لا توجد سجلات" description="يمكنك إنشاء حساب نهاية خدمة جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>حساب جديد</Button>} />
         ) : (
-          <Table<EndOfService>
-            data={filteredItems}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage="لا توجد سجلات"
-          />
+          <>
+            <Table<EndOfService>
+              data={items}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage="لا توجد سجلات"
+            />
+            <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
+          </>
         )}
       </Card>
 

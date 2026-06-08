@@ -1341,7 +1341,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.24*
+*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.25*
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1695,4 +1695,26 @@ npx drizzle-kit migrate
 - **`useMemo` لـ filter objects**: يمنع re-render loop من inline objects في deps
 - **Zero `useState(true)` في src/**: كل الـ hooks تستخدم `useState(false)` الآن
 - **Server-side pagination = 16 pages**: Invoices + PurchaseInvoices + Quotations + SalesReturns + Suppliers + PurchaseOrders + PurchaseReturns + Products + Leads + Opportunities + Employees + **Customers** + **JournalEntries** + **ReceiptVouchers** + **PaymentVouchers** + **InventoryTransactions**
+
+### المرحلة 30: HR Server-side Pagination (3 صفحات)
+- **الهدف**: تحويل 3 صفحات HR متبقية إلى server-side pagination
+- **APIs الجديدة** (3 methods في `hr/api.ts`):
+  - `getLeavesPaginated(filters: {status?})`
+  - `getPayrollRunsPaginated(filters: {status?})`
+  - `getEndOfServicesPaginated(filters: {status?})`
+- **Hooks الجديدة** (3 hooks في `useHr.ts`):
+  - `useLeavesPaginated(companyId, filters?)` — mutations: create, updateStatus, remove
+  - `usePayrollRunsPaginated(companyId, filters?)` — mutations: create, post
+  - `useEndOfServicesPaginated(companyId, filters?)` — mutations: create, updateStatus, remove
+- **UI Refactors** (3 pages):
+  - `LeavesPage`: `useLeaves` → `useLeavesPaginated` + status filter + removed `useOwnerFilter`/`OwnerFilterToggle`
+  - `PayrollPage`: `usePayrollRuns` → `usePayrollRunsPaginated` + status filter + removed client-side filters
+  - `EndOfServicePage`: `useEndOfServices` → `useEndOfServicesPaginated` + status filter + removed client-side filters
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 21.80s** ✓
+  - `npx playwright test`: **10/10 passed** ✓
+  - **19 pages** server-side paginated total
 

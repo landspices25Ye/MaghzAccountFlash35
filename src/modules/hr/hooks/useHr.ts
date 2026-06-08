@@ -108,6 +108,42 @@ export function usePayrollRuns(companyId: string) {
   return { payrolls, isLoading, refresh, create, post };
 }
 
+export interface PayrollFilters {
+  status?: string;
+}
+
+export function usePayrollRunsPaginated(companyId: string, filters?: PayrollFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<PayrollRun>(
+    (page, pageSize) => hrApi.getPayrollRunsPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status]
+  );
+
+  const create = useCallback(async (data: Omit<PayrollRun, 'id'>) => {
+    const res = await hrApi.createPayrollRun(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const post = useCallback(async (id: string) => {
+    const res = await hrApi.postPayrollRun(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    payrolls: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    post,
+    reload: reloadList,
+  };
+}
+
 export function useLeaves(companyId: string) {
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -152,6 +188,49 @@ export function useLeaves(companyId: string) {
   return { leaves, isLoading, refresh, create, updateStatus, remove };
 }
 
+export interface LeaveFilters {
+  status?: string;
+}
+
+export function useLeavesPaginated(companyId: string, filters?: LeaveFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Leave>(
+    (page, pageSize) => hrApi.getLeavesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status]
+  );
+
+  const create = useCallback(async (data: Omit<Leave, 'id'>) => {
+    const res = await hrApi.createLeave(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const updateStatus = useCallback(async (id: string, status: Leave['status'], approvedBy?: string) => {
+    const res = await hrApi.updateLeaveStatus(id, companyId, status, approvedBy);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await hrApi.deleteLeave(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    leaves: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    updateStatus,
+    remove,
+    reload: reloadList,
+  };
+}
+
 export function useEndOfServices(companyId: string) {
   const [items, setItems] = useState<EndOfService[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -194,6 +273,49 @@ export function useEndOfServices(companyId: string) {
   }, [refresh, companyId]);
 
   return { items, isLoading, refresh, create, updateStatus, remove };
+}
+
+export interface EndOfServiceFilters {
+  status?: string;
+}
+
+export function useEndOfServicesPaginated(companyId: string, filters?: EndOfServiceFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<EndOfService>(
+    (page, pageSize) => hrApi.getEndOfServicesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status]
+  );
+
+  const create = useCallback(async (data: Omit<EndOfService, 'id'>) => {
+    const res = await hrApi.createEndOfService(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const updateStatus = useCallback(async (id: string, status: EndOfService['status']) => {
+    const res = await hrApi.updateEndOfServiceStatus(id, companyId, status);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await hrApi.deleteEndOfService(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    items: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    updateStatus,
+    remove,
+    reload: reloadList,
+  };
 }
 
 export interface EmployeeFilters {

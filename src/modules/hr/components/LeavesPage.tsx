@@ -1,20 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Calendar, Plus, CheckCircle, XCircle } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { useLeaves, useEmployees } from '../hooks/useHr';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { useLeavesPaginated, useEmployees } from '../hooks/useHr';
 import type { Leave } from '../types';
 
 export const LeavesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { leaves, isLoading, create, updateStatus, remove } = useLeaves(companyId);
-  const { filtered: filteredLeaves, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(leaves, 'hr');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const leaveFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { leaves, total, page, pageSize, isLoading, goToPage, changePageSize, create, updateStatus, remove } = useLeavesPaginated(companyId, leaveFilters);
   const { employees } = useEmployees(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,7 +88,17 @@ export const LeavesPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="form-control w-auto"
+          title="تصفية حسب الحالة"
+        >
+          <option value="">الكل</option>
+          <option value="pending">قيد الانتظار</option>
+          <option value="approved">موافق</option>
+          <option value="rejected">مرفوض</option>
+        </select>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>طلب إجازة</Button>
       </div>
     </div>
@@ -97,15 +106,18 @@ export const LeavesPage: React.FC = () => {
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : filteredLeaves.length === 0 ? (
+        ) : leaves.length === 0 ? (
           <EmptyState icon="inbox" title="لا توجد إجازات" description="يمكنك تقديم طلب إجازة جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsModalOpen(true)}>طلب إجازة</Button>} />
         ) : (
-          <Table<Leave>
-            data={filteredLeaves}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage="لا توجد إجازات"
-          />
+          <>
+            <Table<Leave>
+              data={leaves}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage="لا توجد إجازات"
+            />
+            <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
+          </>
         )}
       </Card>
 

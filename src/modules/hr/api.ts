@@ -221,6 +221,52 @@ export const hrApi = {
     }
   },
 
+  async getPayrollRunsPaginated(
+    companyId: string,
+    page: number = 1,
+    pageSize: number = 25,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<PayrollRun>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['pr.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`pr.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM payroll_runs pr WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps, offset);
+      const dataResult = await adapter.query(
+        `SELECT pr.* FROM payroll_runs pr
+         WHERE ${where}
+         ORDER BY pr.year DESC, pr.month DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+      const runs = (dataResult.rows || []).map((r: Record<string, unknown>) => mapPayrollRunRow(r));
+      for (const run of runs) {
+        const linesRes = await adapter.query('SELECT * FROM payroll_lines WHERE payroll_run_id = $1', [run.id]);
+        run.lines = (linesRes.rows || []).map((r: Record<string, unknown>) => mapPayrollLineRow(r));
+      }
+      return { success: true, data: paginatedResult(runs, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async createPayrollRun(data: Omit<PayrollRun, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
       const cidValidation = validateInput(companyIdSchema, data.companyId);
@@ -272,6 +318,50 @@ export const hrApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getLeavesPaginated(
+    companyId: string,
+    page: number = 1,
+    pageSize: number = 25,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<Leave>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['l.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`l.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM leaves l WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps, offset);
+      const dataResult = await adapter.query(
+        `SELECT l.*, e.full_name as employee_name
+         FROM leaves l JOIN employees e ON l.employee_id = e.id
+         WHERE ${where}
+         ORDER BY l.created_at DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapLeaveRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -335,6 +425,50 @@ export const hrApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getEndOfServicesPaginated(
+    companyId: string,
+    page: number = 1,
+    pageSize: number = 25,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<EndOfService>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['e.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`e.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM end_of_service e WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps, offset);
+      const dataResult = await adapter.query(
+        `SELECT e.*, emp.full_name as employee_name
+         FROM end_of_service e JOIN employees emp ON e.employee_id = emp.id
+         WHERE ${where}
+         ORDER BY e.created_at DESC
+         LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapEosRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

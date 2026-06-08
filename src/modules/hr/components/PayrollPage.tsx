@@ -1,20 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Banknote, Plus, Calculator, Printer } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { usePayrollRuns, useEmployees } from '../hooks/useHr';
+import { usePayrollRunsPaginated, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PayrollLine } from '../types';
 
 export const PayrollPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { payrolls, isLoading, create, post } = usePayrollRuns(companyId);
-  const { filtered: filteredPayrolls, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(payrolls, 'hr');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const payrollFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
+  const { payrolls, total, page, pageSize, isLoading, goToPage, changePageSize, create, post } = usePayrollRunsPaginated(companyId, payrollFilters);
   const { employees } = useEmployees(companyId);
   const { formatCurrency } = useFormatters(companyId);
 
@@ -94,7 +93,16 @@ export const PayrollPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="form-control w-auto"
+          title="تصفية حسب الحالة"
+        >
+          <option value="">الكل</option>
+          <option value="draft">مسودة</option>
+          <option value="posted">مرحل</option>
+        </select>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>
           مسير جديد
         </Button>
@@ -104,15 +112,18 @@ export const PayrollPage: React.FC = () => {
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
-        ) : filteredPayrolls.length === 0 ? (
+        ) : payrolls.length === 0 ? (
           <EmptyState icon="file" title="لا يوجد مسير رواتب" description="يمكنك إنشاء مسير جديد" action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>مسير جديد</Button>} />
         ) : (
-          <Table
-            data={filteredPayrolls}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage="لا يوجد مسير رواتب"
-          />
+          <>
+            <Table
+              data={payrolls}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage="لا يوجد مسير رواتب"
+            />
+            <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
+          </>
         )}
       </Card>
 
