@@ -82,7 +82,7 @@ function App() {
               calendar: companyResult.data.calendar || 'gregorian',
             }
           );
-          console.log('[App] Company loaded:', companyResult.data.name);
+          // Company loaded successfully
         } else {
           console.error('[App] Could not load company');
         }

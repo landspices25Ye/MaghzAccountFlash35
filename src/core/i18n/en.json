@@ -27,15 +27,78 @@
   "optional": "Optional",
   "sidebar": {
     "dashboard": "Dashboard",
-    "accounting": "Accounting",
-    "inventory": "Inventory",
-    "sales": "Sales",
-    "purchases": "Purchases",
-    "manufacturing": "Manufacturing",
-    "hr": "HR",
-    "crm": "CRM",
-    "reports": "Reports",
-    "settings": "Settings"
+    "accounting": {
+      "title": "Accounting",
+      "chartOfAccounts": "Chart of Accounts",
+      "journalEntries": "Journal Entries",
+      "trialBalance": "Trial Balance",
+      "balanceSheet": "Balance Sheet",
+      "profitLoss": "Profit & Loss",
+      "cashFlow": "Cash Flow",
+      "receiptVouchers": "Receipt Vouchers",
+      "paymentVouchers": "Payment Vouchers"
+    },
+    "inventory": {
+      "title": "Inventory",
+      "products": "Products",
+      "warehouses": "Warehouses",
+      "stock": "Stock",
+      "transactions": "Inventory Transactions",
+      "adjustments": "Adjustments"
+    },
+    "sales": {
+      "title": "Sales",
+      "invoices": "Sales Invoices",
+      "customers": "Customers",
+      "quotations": "Quotations",
+      "returns": "Sales Returns"
+    },
+    "purchases": {
+      "title": "Purchases",
+      "invoices": "Purchase Invoices",
+      "suppliers": "Suppliers",
+      "orders": "Purchase Orders",
+      "returns": "Purchase Returns"
+    },
+    "manufacturing": {
+      "title": "Manufacturing",
+      "boms": "Bills of Materials",
+      "workOrders": "Work Orders"
+    },
+    "hr": {
+      "title": "HR",
+      "employees": "Employees",
+      "attendance": "Attendance",
+      "payroll": "Payroll",
+      "leaves": "Leaves",
+      "endOfService": "End of Service"
+    },
+    "crm": {
+      "title": "CRM",
+      "leads": "Leads",
+      "opportunities": "Opportunities",
+      "tasks": "Tasks",
+      "activities": "Activities"
+    },
+    "reports": {
+      "title": "Reports",
+      "hub": "Reports Hub",
+      "salesAnalysis": "Sales Analysis",
+      "inventoryAnalysis": "Inventory Analysis",
+      "customerStatement": "Customer Statement",
+      "supplierStatement": "Supplier Statement",
+      "profitAnalysis": "Profit Analysis",
+      "customBuilder": "Custom Report Builder"
+    },
+    "settings": {
+      "title": "Settings",
+      "company": "Company Setup",
+      "currencies": "Currencies",
+      "vat": "VAT",
+      "branches": "Branches",
+      "users": "Users",
+      "roles": "Roles"
+    }
   },
   "auth": {
     "login": "Login",
@@ -1519,5 +1582,43 @@
       "noParent": "None (Root Center)",
       "empty": "No cost centers found"
     }
+  },
+  "status": {
+    "draft": "Draft",
+    "posted": "Posted",
+    "paid": "Paid",
+    "partiallyPaid": "Partially Paid",
+    "cancelled": "Cancelled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "completed": "Completed",
+    "rejected": "Rejected",
+    "approved": "Approved",
+    "open": "Open",
+    "closed": "Closed",
+    "planned": "Planned",
+    "inProgress": "In Progress",
+    "new": "New",
+    "contacted": "Contacted",
+    "qualified": "Qualified",
+    "converted": "Converted",
+    "lost": "Lost",
+    "proposal": "Proposal",
+    "negotiation": "Negotiation",
+    "won": "Won",
+    "annual": "Annual",
+    "sick": "Sick",
+    "emergency": "Emergency",
+    "unpaid": "Unpaid"
+  },
+  "header": {
+    "toggleSidebar": "Collapse",
+    "expandSidebar": "Expand",
+    "switchToEnglish": "Switch to English",
+    "switchToArabic": "التبديل إلى العربية",
+    "lightMode": "Light Mode",
+    "darkMode": "Dark Mode",
+    "logout": "Logout"
   }
 }

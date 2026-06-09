@@ -27,15 +27,78 @@
   "optional": "اختياري",
   "sidebar": {
     "dashboard": "لوحة التحكم",
-    "accounting": "الحسابات",
-    "inventory": "المخازن",
-    "sales": "المبيعات",
-    "purchases": "المشتريات",
-    "manufacturing": "التصنيع",
-    "hr": "الموظفين",
-    "crm": "العملاء",
-    "reports": "التقارير",
-    "settings": "الإعدادات"
+    "accounting": {
+      "title": "الحسابات",
+      "chartOfAccounts": "شجرة الحسابات",
+      "journalEntries": "القيود اليومية",
+      "trialBalance": "ميزان المراجعة",
+      "balanceSheet": "الميزانية العمومية",
+      "profitLoss": "قائمة الدخل",
+      "cashFlow": "التدفقات النقدية",
+      "receiptVouchers": "سندات القبض",
+      "paymentVouchers": "سندات الصرف"
+    },
+    "inventory": {
+      "title": "المخازن",
+      "products": "المنتجات",
+      "warehouses": "المستودعات",
+      "stock": "المخزون",
+      "transactions": "الحركات المخزنية",
+      "adjustments": "التسويات"
+    },
+    "sales": {
+      "title": "المبيعات",
+      "invoices": "فواتير المبيعات",
+      "customers": "العملاء",
+      "quotations": "عروض الأسعار",
+      "returns": "مردودات المبيعات"
+    },
+    "purchases": {
+      "title": "المشتريات",
+      "invoices": "فواتير المشتريات",
+      "suppliers": "الموردين",
+      "orders": "أوامر الشراء",
+      "returns": "مردودات المشتريات"
+    },
+    "manufacturing": {
+      "title": "التصنيع",
+      "boms": "فاتير المواد",
+      "workOrders": "أوامر التشغيل"
+    },
+    "hr": {
+      "title": "الموظفين",
+      "employees": "الموظفين",
+      "attendance": "الحضور",
+      "payroll": "الرواتب",
+      "leaves": "الإجازات",
+      "endOfService": "نهاية الخدمة"
+    },
+    "crm": {
+      "title": "العملاء",
+      "leads": "العملاء المحتملين",
+      "opportunities": "الفرص",
+      "tasks": "المهام",
+      "activities": "النشاطات"
+    },
+    "reports": {
+      "title": "التقارير",
+      "hub": "مركز التقارير",
+      "salesAnalysis": "تحليل المبيعات",
+      "inventoryAnalysis": "تحليل المخزون",
+      "customerStatement": "كشف حساب عميل",
+      "supplierStatement": "كشف حساب مورد",
+      "profitAnalysis": "تحليل الأرباح",
+      "customBuilder": "تقرير مخصص"
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "company": "بيانات الشركة",
+      "currencies": "العملات",
+      "vat": "الضريبة",
+      "branches": "الفروع",
+      "users": "المستخدمين",
+      "roles": "الأدوار"
+    }
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -1519,5 +1582,43 @@
       "noParent": "بدون (مركز رئيسي)",
       "empty": "لا توجد مراكز تكلفة"
     }
+  },
+  "status": {
+    "draft": "مسودة",
+    "posted": "مرحّلة",
+    "paid": "مدفوعة",
+    "partiallyPaid": "مدفوعة جزئياً",
+    "cancelled": "ملغاة",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "معلّق",
+    "completed": "مكتمل",
+    "rejected": "مرفوض",
+    "approved": "معتمد",
+    "open": "مفتوح",
+    "closed": "مغلق",
+    "planned": "مخطط",
+    "inProgress": "قيد التنفيذ",
+    "new": "جديد",
+    "contacted": "تم التواصل",
+    "qualified": "مؤهل",
+    "converted": "محوّل",
+    "lost": "مفقود",
+    "proposal": "عرض سعر",
+    "negotiation": "تفاوض",
+    "won": "ربح",
+    "annual": "سنوية",
+    "sick": "مرضية",
+    "emergency": "طارئة",
+    "unpaid": "بدون راتب"
+  },
+  "header": {
+    "toggleSidebar": "طي القائمة",
+    "expandSidebar": "توسيع القائمة",
+    "switchToEnglish": "Switch to English",
+    "switchToArabic": "التبديل إلى العربية",
+    "lightMode": "الوضع الفاتح",
+    "darkMode": "الوضع الداكن",
+    "logout": "تسجيل الخروج"
   }
 }

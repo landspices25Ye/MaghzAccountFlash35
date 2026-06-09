@@ -24,149 +24,151 @@ import {
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useCanAccessModule } from '@/modules/auth/hooks/usePermission';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
 import type { Permission } from '@/modules/auth/types';
 
 interface MenuItem {
   id: string;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
   module: 'core' | 'accounting' | 'inventory' | 'sales' | 'purchases' | 'manufacturing' | 'hr' | 'crm' | 'reports' | 'settings';
-  children?: { label: string; path: string; permission?: Permission }[];
+  children?: { labelKey: string; path: string; permission?: Permission }[];
 }
 
 const menuItems: MenuItem[] = [
-  { id: 'dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, path: '/', module: 'core' },
+  { id: 'dashboard', labelKey: 'sidebar.dashboard', icon: LayoutDashboard, path: '/', module: 'core' },
   {
     id: 'accounting',
-    label: 'الحسابات',
+    labelKey: 'sidebar.accounting.title',
     icon: Calculator,
     path: '/accounting',
     module: 'accounting',
     children: [
-      { label: 'شجرة الحسابات', path: '/accounting/chart' },
-      { label: 'القيود اليومية', path: '/accounting/journal' },
-      { label: 'ميزان المراجعة', path: '/accounting/trial' },
-      { label: 'الميزانية العمومية', path: '/accounting/balance' },
-      { label: 'قائمة الدخل', path: '/accounting/profit' },
-      { label: 'التدفقات النقدية', path: '/accounting/cashflow' },
-      { label: 'سندات القبض', path: '/accounting/receipt-vouchers' },
-      { label: 'سندات الصرف', path: '/accounting/payment-vouchers' },
+      { labelKey: 'sidebar.accounting.chartOfAccounts', path: '/accounting/chart' },
+      { labelKey: 'sidebar.accounting.journalEntries', path: '/accounting/journal' },
+      { labelKey: 'sidebar.accounting.trialBalance', path: '/accounting/trial' },
+      { labelKey: 'sidebar.accounting.balanceSheet', path: '/accounting/balance' },
+      { labelKey: 'sidebar.accounting.profitLoss', path: '/accounting/profit' },
+      { labelKey: 'sidebar.accounting.cashFlow', path: '/accounting/cashflow' },
+      { labelKey: 'sidebar.accounting.receiptVouchers', path: '/accounting/receipt-vouchers' },
+      { labelKey: 'sidebar.accounting.paymentVouchers', path: '/accounting/payment-vouchers' },
     ],
   },
   {
     id: 'inventory',
-    label: 'المخازن',
+    labelKey: 'sidebar.inventory.title',
     icon: Package,
     path: '/inventory',
     module: 'inventory',
     children: [
-      { label: 'المنتجات', path: '/inventory/products' },
-      { label: 'المستودعات', path: '/inventory/warehouses' },
-      { label: 'المخزون', path: '/inventory/stock' },
-      { label: 'الحركات المخزنية', path: '/inventory/transactions' },
-      { label: 'التسويات', path: '/inventory/adjustments' },
+      { labelKey: 'sidebar.inventory.products', path: '/inventory/products' },
+      { labelKey: 'sidebar.inventory.warehouses', path: '/inventory/warehouses' },
+      { labelKey: 'sidebar.inventory.stock', path: '/inventory/stock' },
+      { labelKey: 'sidebar.inventory.transactions', path: '/inventory/transactions' },
+      { labelKey: 'sidebar.inventory.adjustments', path: '/inventory/adjustments' },
     ],
   },
   {
     id: 'sales',
-    label: 'المبيعات',
+    labelKey: 'sidebar.sales.title',
     icon: ShoppingCart,
     path: '/sales',
     module: 'sales',
     children: [
-      { label: 'فواتير المبيعات', path: '/sales/invoices' },
-      { label: 'العملاء', path: '/sales/customers' },
-      { label: 'عروض الأسعار', path: '/sales/quotations' },
-      { label: 'مردودات المبيعات', path: '/sales/returns' },
+      { labelKey: 'sidebar.sales.invoices', path: '/sales/invoices' },
+      { labelKey: 'sidebar.sales.customers', path: '/sales/customers' },
+      { labelKey: 'sidebar.sales.quotations', path: '/sales/quotations' },
+      { labelKey: 'sidebar.sales.returns', path: '/sales/returns' },
     ],
   },
   {
     id: 'purchases',
-    label: 'المشتريات',
+    labelKey: 'sidebar.purchases.title',
     icon: Store,
     path: '/purchases',
     module: 'purchases',
     children: [
-      { label: 'فواتير المشتريات', path: '/purchases/invoices' },
-      { label: 'الموردين', path: '/purchases/suppliers' },
-      { label: 'أوامر الشراء', path: '/purchases/orders' },
-      { label: 'مردودات المشتريات', path: '/purchases/returns' },
+      { labelKey: 'sidebar.purchases.invoices', path: '/purchases/invoices' },
+      { labelKey: 'sidebar.purchases.suppliers', path: '/purchases/suppliers' },
+      { labelKey: 'sidebar.purchases.orders', path: '/purchases/orders' },
+      { labelKey: 'sidebar.purchases.returns', path: '/purchases/returns' },
     ],
   },
   {
     id: 'manufacturing',
-    label: 'التصنيع',
+    labelKey: 'sidebar.manufacturing.title',
     icon: Factory,
     path: '/manufacturing',
     module: 'manufacturing',
     children: [
-      { label: 'فاتير المواد', path: '/manufacturing/bom' },
-      { label: 'أوامر التشغيل', path: '/manufacturing/work-orders' },
+      { labelKey: 'sidebar.manufacturing.boms', path: '/manufacturing/bom' },
+      { labelKey: 'sidebar.manufacturing.workOrders', path: '/manufacturing/work-orders' },
     ],
   },
   {
     id: 'hr',
-    label: 'الموظفين',
+    labelKey: 'sidebar.hr.title',
     icon: Users,
     path: '/hr',
     module: 'hr',
     children: [
-      { label: 'الموظفين', path: '/hr/employees' },
-      { label: 'الحضور', path: '/hr/attendance' },
-      { label: 'الرواتب', path: '/hr/payroll' },
-      { label: 'الإجازات', path: '/hr/leaves' },
-      { label: 'نهاية الخدمة', path: '/hr/end-of-service' },
+      { labelKey: 'sidebar.hr.employees', path: '/hr/employees' },
+      { labelKey: 'sidebar.hr.attendance', path: '/hr/attendance' },
+      { labelKey: 'sidebar.hr.payroll', path: '/hr/payroll' },
+      { labelKey: 'sidebar.hr.leaves', path: '/hr/leaves' },
+      { labelKey: 'sidebar.hr.endOfService', path: '/hr/end-of-service' },
     ],
   },
   {
     id: 'crm',
-    label: 'العملاء',
+    labelKey: 'sidebar.crm.title',
     icon: HeartHandshake,
     path: '/crm',
     module: 'crm',
     children: [
-      { label: 'العملاء المحتملين', path: '/crm/leads' },
-      { label: 'الفرص', path: '/crm/opportunities' },
-      { label: 'المهام', path: '/crm/tasks' },
-      { label: 'النشاطات', path: '/crm/activities' },
+      { labelKey: 'sidebar.crm.leads', path: '/crm/leads' },
+      { labelKey: 'sidebar.crm.opportunities', path: '/crm/opportunities' },
+      { labelKey: 'sidebar.crm.tasks', path: '/crm/tasks' },
+      { labelKey: 'sidebar.crm.activities', path: '/crm/activities' },
     ],
   },
   {
     id: 'reports',
-    label: 'التقارير',
+    labelKey: 'sidebar.reports.title',
     icon: BarChart3,
     path: '/reports',
     module: 'reports',
     children: [
-      { label: 'مركز التقارير', path: '/reports' },
-      { label: 'تحليل المبيعات', path: '/reports/sales-analysis' },
-      { label: 'تحليل المخزون', path: '/reports/inventory-analysis' },
-      { label: 'كشف حساب عميل', path: '/reports/customer-statement' },
-      { label: 'كشف حساب مورد', path: '/reports/supplier-statement' },
-      { label: 'تحليل الأرباح', path: '/reports/profit-analysis' },
-      { label: 'تقرير مخصص', path: '/reports/custom-builder' },
+      { labelKey: 'sidebar.reports.hub', path: '/reports' },
+      { labelKey: 'sidebar.reports.salesAnalysis', path: '/reports/sales-analysis' },
+      { labelKey: 'sidebar.reports.inventoryAnalysis', path: '/reports/inventory-analysis' },
+      { labelKey: 'sidebar.reports.customerStatement', path: '/reports/customer-statement' },
+      { labelKey: 'sidebar.reports.supplierStatement', path: '/reports/supplier-statement' },
+      { labelKey: 'sidebar.reports.profitAnalysis', path: '/reports/profit-analysis' },
+      { labelKey: 'sidebar.reports.customBuilder', path: '/reports/custom-builder' },
     ],
   },
   {
     id: 'settings',
-    label: 'الإعدادات',
+    labelKey: 'sidebar.settings.title',
     icon: Settings,
     path: '/settings',
     module: 'settings',
     children: [
-      { label: 'بيانات الشركة', path: '/settings/company' },
-      { label: 'العملات', path: '/settings/currencies' },
-      { label: 'الضريبة', path: '/settings/vat' },
-      { label: 'الفروع', path: '/settings/branches' },
-      { label: 'المستخدمين', path: '/settings/users' },
-      { label: 'الأدوار', path: '/roles' },
+      { labelKey: 'sidebar.settings.company', path: '/settings/company' },
+      { labelKey: 'sidebar.settings.currencies', path: '/settings/currencies' },
+      { labelKey: 'sidebar.settings.vat', path: '/settings/vat' },
+      { labelKey: 'sidebar.settings.branches', path: '/settings/branches' },
+      { labelKey: 'sidebar.settings.users', path: '/settings/users' },
+      { labelKey: 'sidebar.settings.roles', path: '/roles' },
     ],
   },
 ];
 
 function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boolean }) {
+  const { t } = useTranslation();
   const location = useLocation();
   const canView = useCanAccessModule(item.module);
   const user = useAuthStore((state) => state.user);
@@ -198,12 +200,12 @@ function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boole
             ? 'bg-primary-600/20 text-primary-400'
             : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
         )}
-        title={!sidebarOpen ? item.label : undefined}
+        title={!sidebarOpen ? t(item.labelKey) : undefined}
       >
         <item.icon size={20} className="shrink-0" />
         {sidebarOpen && (
           <>
-            <span className="text-sm font-medium flex-1">{item.label}</span>
+            <span className="text-sm font-medium flex-1">{t(item.labelKey)}</span>
             {hasChildren && (
               <ChevronDown
                 size={14}
@@ -229,7 +231,7 @@ function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boole
                     : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
                 )}
               >
-                {child.label}
+                {t(child.labelKey)}
               </Link>
             );
           })}
@@ -240,6 +242,7 @@ function SidebarItem({ item, sidebarOpen }: { item: MenuItem; sidebarOpen: boole
 }
 
 export const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
   const sidebarOpen = useAppStore((state) => state.sidebarOpen);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
 
@@ -257,7 +260,7 @@ export const Sidebar: React.FC = () => {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Building2 size={18} className="text-white" />
             </div>
-            <span className="font-bold text-lg">محاسبة المهذب</span>
+            <span className="font-bold text-lg">{t('appSubtitle')}</span>
           </div>
         ) : (
           <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mx-auto">
@@ -278,6 +281,8 @@ export const Sidebar: React.FC = () => {
         <button
           onClick={toggleSidebar}
           className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-100 transition-colors"
+          title={sidebarOpen ? t('header.collapseSidebar') : t('header.expandSidebar')}
+          aria-label={sidebarOpen ? t('header.collapseSidebar') : t('header.expandSidebar')}
         >
           {sidebarOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
         </button>
@@ -335,12 +340,16 @@ export const Header: React.FC = () => {
         <button
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+          title={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+          aria-label={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
         >
           <Globe size={18} />
         </button>
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+          title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+          aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>

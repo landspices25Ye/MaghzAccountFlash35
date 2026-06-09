@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
 
 interface StatusBadgeProps {
@@ -7,41 +8,35 @@ interface StatusBadgeProps {
   className?: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  // Document statuses
-  draft: { label: 'مسودة', className: 'badge-draft' },
-  posted: { label: 'مرحّلة', className: 'badge-posted' },
-  paid: { label: 'مدفوعة', className: 'badge-paid' },
-  partially_paid: { label: 'مدفوعة جزئياً', className: 'badge-partial' },
-  cancelled: { label: 'ملغاة', className: 'badge-cancelled' },
-  cancelled_mfg: { label: 'ملغى', className: 'badge-cancelled' },
-  // General
-  active: { label: 'نشط', className: 'badge-posted' },
-  inactive: { label: 'غير نشط', className: 'badge-draft' },
-  pending: { label: 'معلّق', className: 'badge-partial' },
-  completed: { label: 'مكتمل', className: 'badge-paid' },
-  rejected: { label: 'مرفوض', className: 'badge-cancelled' },
-  approved: { label: 'معتمد', className: 'badge-paid' },
-  open: { label: 'مفتوح', className: 'badge-draft' },
-  closed: { label: 'مغلق', className: 'badge-posted' },
-  // Manufacturing
-  planned: { label: 'مخطط', className: 'badge-draft' },
-  in_progress: { label: 'قيد التنفيذ', className: 'badge-partial' },
-  // CRM Leads
-  new: { label: 'جديد', className: 'badge-draft' },
-  contacted: { label: 'تم التواصل', className: 'badge-partial' },
-  qualified: { label: 'مؤهل', className: 'badge-posted' },
-  converted: { label: 'محوّل', className: 'badge-paid' },
-  lost: { label: 'مفقود', className: 'badge-cancelled' },
-  // CRM Opportunities
-  proposal: { label: 'عرض سعر', className: 'badge-partial' },
-  negotiation: { label: 'تفاوض', className: 'badge-partial' },
-  won: { label: 'ربح', className: 'badge-paid' },
-  // HR Leaves
-  annual: { label: 'سنوية', className: 'badge-draft' },
-  sick: { label: 'مرضية', className: 'badge-partial' },
-  emergency: { label: 'طارئة', className: 'badge-partial' },
-  unpaid: { label: 'بدون راتب', className: 'badge-cancelled' },
+const STATUS_KEYS: Record<string, { key: string; className: string }> = {
+  draft: { key: 'status.draft', className: 'badge-draft' },
+  posted: { key: 'status.posted', className: 'badge-posted' },
+  paid: { key: 'status.paid', className: 'badge-paid' },
+  partially_paid: { key: 'status.partiallyPaid', className: 'badge-partial' },
+  cancelled: { key: 'status.cancelled', className: 'badge-cancelled' },
+  cancelled_mfg: { key: 'status.cancelled', className: 'badge-cancelled' },
+  active: { key: 'status.active', className: 'badge-posted' },
+  inactive: { key: 'status.inactive', className: 'badge-draft' },
+  pending: { key: 'status.pending', className: 'badge-partial' },
+  completed: { key: 'status.completed', className: 'badge-paid' },
+  rejected: { key: 'status.rejected', className: 'badge-cancelled' },
+  approved: { key: 'status.approved', className: 'badge-paid' },
+  open: { key: 'status.open', className: 'badge-draft' },
+  closed: { key: 'status.closed', className: 'badge-posted' },
+  planned: { key: 'status.planned', className: 'badge-draft' },
+  in_progress: { key: 'status.inProgress', className: 'badge-partial' },
+  new: { key: 'status.new', className: 'badge-draft' },
+  contacted: { key: 'status.contacted', className: 'badge-partial' },
+  qualified: { key: 'status.qualified', className: 'badge-posted' },
+  converted: { key: 'status.converted', className: 'badge-paid' },
+  lost: { key: 'status.lost', className: 'badge-cancelled' },
+  proposal: { key: 'status.proposal', className: 'badge-partial' },
+  negotiation: { key: 'status.negotiation', className: 'badge-partial' },
+  won: { key: 'status.won', className: 'badge-paid' },
+  annual: { key: 'status.annual', className: 'badge-draft' },
+  sick: { key: 'status.sick', className: 'badge-partial' },
+  emergency: { key: 'status.emergency', className: 'badge-partial' },
+  unpaid: { key: 'status.unpaid', className: 'badge-cancelled' },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
@@ -49,21 +44,19 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   size = 'sm',
   className,
 }) => {
-  const config = STATUS_CONFIG[status] || {
-    label: status,
-    className: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  };
+  const { t } = useTranslation();
+  const config = STATUS_KEYS[status];
 
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full font-medium',
         size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-sm',
-        config.className,
+        config?.className ?? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
         className
       )}
     >
-      {config.label}
+      {config ? t(config.key) : status}
     </span>
   );
 };
