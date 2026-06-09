@@ -121,8 +121,8 @@ export const WarehousesPage: React.FC = () => {
         {warehouses.length === 0 && !isLoading ? (
           <EmptyState
             icon="inbox"
-            title="لا توجد مستودعات"
-            description="أضف مستودعات جديدة لإدارة مخزونك"
+            title={t('inventory.empty.warehouses.title')}
+            description={t('inventory.empty.warehouses.description')}
             action={<Can action="create" module="inventory"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newWarehouse')}</Button></Can>}
           />
         ) : (
@@ -181,7 +181,7 @@ export const WarehousesPage: React.FC = () => {
         footer={<Button variant="secondary" onClick={() => setIsStockModalOpen(false)}>{t('close')}</Button>}
       >
         {warehouseStock.length === 0 ? (
-          <EmptyState icon="inbox" title="لا يوجد مخزون" description="لا توجد منتجات في هذا المستودع حالياً" />
+          <EmptyState icon="inbox" title={t('inventory.empty.stock.title')} description={t('inventory.empty.warehouseProducts.description')} />
         ) : (
           <Table
             data={warehouseStock}

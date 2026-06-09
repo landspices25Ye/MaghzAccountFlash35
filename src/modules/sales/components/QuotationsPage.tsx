@@ -29,16 +29,15 @@ interface QuotationLineForm {
   discountPercent: number;
 }
 
-const STATUS_FLOW: Record<string, string> = {
-  open: 'مفتوحة',
-  accepted: 'مقبولة',
-  rejected: 'مرفوضة',
-  expired: 'منتهية',
-  converted: 'محوّلة',
-};
-
 export const QuotationsPage: React.FC = () => {
   const { t } = useTranslation();
+  const STATUS_FLOW = useMemo(() => ({
+    open: t('sales.status.open'),
+    accepted: t('sales.status.accepted'),
+    rejected: t('sales.status.rejected'),
+    expired: t('sales.status.expired'),
+    converted: t('sales.status.converted'),
+  }), [t]);
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
   const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
@@ -191,7 +190,7 @@ export const QuotationsPage: React.FC = () => {
           totalAmount: q.totalAmount,
           paidAmount: 0,
           status: 'draft' as const,
-          notes: `محوّل من عرض السعر ${q.quotationNumber}`,
+          notes: `${t('sales.quotation.convertedNote')} ${q.quotationNumber}`,
           lines: q.lines.map(l => ({
             productId: l.productId,
             productName: l.productName,
@@ -241,7 +240,7 @@ export const QuotationsPage: React.FC = () => {
       { key: 'date', header: t('sales.date') || 'التاريخ' },
       { key: 'expiryDate', header: t('sales.quotation.expiry') || 'تاريخ الانتهاء' },
       { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
-      { key: 'status', header: t('sales.status') || 'الحالة' },
+      { key: 'status', header: t('sales.status.label') || 'الحالة' },
     ];
     exportToExcel(quotations.map(q => ({ quotationNumber: q.quotationNumber, customerName: q.customer?.name || q.customerId, date: q.date, expiryDate: q.expiryDate || '-', totalAmount: q.totalAmount, status: STATUS_FLOW[q.status] || q.status })), cols, `quotations_${new Date().toISOString().split('T')[0]}`);
   };
@@ -252,7 +251,7 @@ export const QuotationsPage: React.FC = () => {
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
     { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? formatDate(row.expiryDate) : '-' },
     { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
-    { key: 'status', header: t('sales.status') || 'الحالة', render: (row: Quotation) => <StatusBadge status={row.status} /> },
+    { key: 'status', header: t('sales.status.label') || 'الحالة', render: (row: Quotation) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '220px', render: (row: Quotation) => (
       <div className="flex items-center gap-1">
         <ActionButtons
@@ -390,7 +389,7 @@ export const QuotationsPage: React.FC = () => {
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status.label') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.quotation.expiry') || 'الانتهاء'}</p><p className="font-semibold">{viewing.expiryDate || '-'}</p></div>
             </div>

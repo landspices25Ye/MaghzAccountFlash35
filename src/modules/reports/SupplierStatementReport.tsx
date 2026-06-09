@@ -54,23 +54,23 @@ export const SupplierStatementReport: React.FC = () => {
 
   const handleExportExcel = async () => {
     const cols = [
-      { key: 'supplier', header: 'المورد' },
-      { key: 'phone', header: 'الهاتف' },
-      { key: 'bucket0to30', header: '0-30 يوم' },
-      { key: 'bucket31to60', header: '31-60 يوم' },
-      { key: 'bucket61to90', header: '61-90 يوم' },
-      { key: 'bucket90plus', header: '+90 يوم' },
-      { key: 'totalOutstanding', header: 'الإجمالي' },
-      { key: 'invoiceCount', header: 'الفواتير' },
+      { key: 'supplier', header: t('reports.supplier') },
+      { key: 'phone', header: t('reports.phone') },
+      { key: 'bucket0to30', header: t('reports.agingBucket0to30') },
+      { key: 'bucket31to60', header: t('reports.agingBucket31to60') },
+      { key: 'bucket61to90', header: t('reports.agingBucket61to90') },
+      { key: 'bucket90plus', header: t('reports.agingBucket90plus') },
+      { key: 'totalOutstanding', header: t('reports.total') },
+      { key: 'invoiceCount', header: t('reports.invoicesCount') },
     ];
     await exportToExcel(suppliers, cols, 'Supplier_Aging');
   };
 
   const handleExportPDF = async () => {
     const cols = [
-      { key: 'supplier', header: 'المورد', width: 25 },
-      { key: 'phone', header: 'الهاتف', width: 15 },
-      { key: 'totalOutstanding', header: 'الإجمالي', width: 15 },
+      { key: 'supplier', header: t('reports.supplier'), width: 25 },
+      { key: 'phone', header: t('reports.phone'), width: 15 },
+      { key: 'totalOutstanding', header: t('reports.total'), width: 15 },
     ];
     await exportToPDF(suppliers, cols, 'Supplier_Aging', {
       title: t('reports.supplierStatement'),
@@ -96,11 +96,11 @@ export const SupplierStatementReport: React.FC = () => {
     return (
       <EmptyState
         icon="search"
-        title="لا يوجد موردين"
-        description="لم يتم العثور على موردين ضمن الفلاتر المحددة"
+        title={t('reports.supplierStatement.emptyTitle')}
+        description={t('reports.supplierStatement.emptyDesc')}
         action={
           <Button variant="secondary" onClick={clearFilters} leftIcon={<RotateCcw size={16} />}>
-            مسح الفلاتر
+            {t('reports.clearFilter')}
           </Button>
         }
       />
@@ -114,7 +114,7 @@ export const SupplierStatementReport: React.FC = () => {
           <Truck size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.supplierStatement')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">أرصدة الموردين وتوزيع أعمار الالتزامات</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.supplierStatement.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -142,7 +142,7 @@ export const SupplierStatementReport: React.FC = () => {
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">تاريخ الاستحقاق المرجعي</label>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.referenceDueDate')}</label>
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value || todayIso())} />
             </div>
             <div className="flex items-end">
@@ -157,7 +157,7 @@ export const SupplierStatementReport: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المستحق</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.totalOutstanding')}</p>
             <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totals.totalOutstanding)}</p>
           </div>
         </Card>
@@ -168,9 +168,9 @@ export const SupplierStatementReport: React.FC = () => {
           return (
             <Card key={bucket.label}>
               <div className="p-4 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} يوم</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} {t('reports.days')}</p>
                 <p className={`text-xl font-bold text-${color}-600 dark:text-${color}-400`}>{formatCurrency(total)}</p>
-                <p className="text-xs text-slate-400 mt-1">{count} مورد</p>
+                <p className="text-xs text-slate-400 mt-1">{count} {t('reports.supplierCount')}</p>
               </div>
             </Card>
           );
@@ -179,18 +179,18 @@ export const SupplierStatementReport: React.FC = () => {
 
       <Card>
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">توزيع أعمار الالتزامات لكل مورد</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.supplierStatement.agingDetails')}</h3>
           <Table
             data={suppliers}
             columns={[
-              { key: 'supplier', header: 'المورد' },
-              { key: 'phone', header: 'الهاتف' },
+              { key: 'supplier', header: t('reports.supplier') },
+              { key: 'phone', header: t('reports.phone') },
               { key: 'bucket0to30', header: '0-30', align: 'right', render: (row) => formatCurrency(row.bucket0to30) },
               { key: 'bucket31to60', header: '31-60', align: 'right', render: (row) => formatCurrency(row.bucket31to60) },
               { key: 'bucket61to90', header: '61-90', align: 'right', render: (row) => formatCurrency(row.bucket61to90) },
               { key: 'bucket90plus', header: '90+', align: 'right', render: (row) => formatCurrency(row.bucket90plus) },
-              { key: 'totalOutstanding', header: 'الإجمالي', align: 'right', render: (row) => <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(row.totalOutstanding)}</span> },
-              { key: 'invoiceCount', header: 'فواتير', align: 'right' },
+              { key: 'totalOutstanding', header: t('reports.total'), align: 'right', render: (row) => <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(row.totalOutstanding)}</span> },
+              { key: 'invoiceCount', header: t('reports.invoicesCount'), align: 'right' },
             ]}
             keyExtractor={(row) => row.supplierId}
           />

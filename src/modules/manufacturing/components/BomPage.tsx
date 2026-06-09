@@ -12,6 +12,7 @@ import { useAppStore } from '@/core/store';
 import { useBomsPaginated } from '../hooks/useManufacturing';
 import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { BOM, BOMLine } from '../types';
 
 interface BomFormLine {
@@ -22,6 +23,7 @@ interface BomFormLine {
 }
 
 export const BomPage: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { items: boms, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useBomsPaginated(companyId);
@@ -106,7 +108,7 @@ export const BomPage: React.FC = () => {
     if (!viewing) return;
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-    const html = generateBomPrintHtml(viewing.bom, viewing.lines, formatCurrency);
+    const html = generateBomPrintHtml(viewing.bom, viewing.lines, formatCurrency, t);
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
@@ -119,11 +121,11 @@ export const BomPage: React.FC = () => {
   const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index));
 
   const columns = [
-    { key: 'productName', header: 'المنتج' },
-    { key: 'version', header: 'الإصدار', width: '100px' },
-    { key: 'lines', header: 'المواد', width: '100px', render: (_row: BOM) => _row.linesCount !== undefined ? `${_row.linesCount} مادة` : '—' },
-    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: BOM) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
-    { key: 'isActive', header: 'الحالة', width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
+    { key: 'productName', header: t('manufacturing.table.product') },
+    { key: 'version', header: t('manufacturing.table.version'), width: '100px' },
+    { key: 'lines', header: t('manufacturing.table.materials'), width: '100px', render: (_row: BOM) => _row.linesCount !== undefined ? `${_row.linesCount} ${t('manufacturing.bom.material')}` : '—' },
+    { key: 'totalCost', header: t('manufacturing.table.cost'), align: 'right' as const, render: (row: BOM) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
+    { key: 'isActive', header: t('manufacturing.table.status'), width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: BOM) => (
       <ActionButtons
         onView={() => openView(row)}
@@ -140,24 +142,24 @@ export const BomPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <GitBranch size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">فاتير المواد</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Bill of Materials - إدارة تكوين المنتجات</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('manufacturing.bom.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Bill of Materials - {t('manufacturing.bom.subtitle')}</p>
           </div>
         </div>
         <Can action="create" module="manufacturing">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-            BOM جديد
+            {t('manufacturing.bom.newBom')}
           </Button>
         </Can>
       </div>
 
       <Card>
         {isLoading ? (
-          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+          <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
         ) : boms.length === 0 ? (
-          <EmptyState icon="file" title="لا توجد BOMs" description="يمكنك إضافة BOM جديد للبدء" action={
+          <EmptyState icon="file" title={t('manufacturing.bom.emptyTitle')} description={t('manufacturing.bom.emptyDescription')} action={
             <Can action="create" module="manufacturing">
-              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>BOM جديد</Button>
+              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('manufacturing.bom.newBom')}</Button>
             </Can>
           } />
         ) : (
@@ -166,7 +168,7 @@ export const BomPage: React.FC = () => {
               data={boms}
               columns={columns}
               keyExtractor={(row) => row.id}
-              emptyMessage="لا توجد BOMs"
+              emptyMessage={t('manufacturing.bom.emptyTitle')}
             />
             <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
           </>
@@ -177,47 +179,47 @@ export const BomPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); resetForm(); }}
-        title={editing ? 'تعديل BOM' : 'BOM جديد'}
+        title={editing ? t('manufacturing.bom.editBom') : t('manufacturing.bom.newBom')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
-            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>{t('settings.common.cancel')}</Button>
+            <Button variant="primary" onClick={handleSave}>{t('settings.common.save')}</Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج النهائي</label>
-              <ProductSelect companyId={companyId} value={formData.productId} onChange={(v) => setFormData((prev) => ({ ...prev, productId: typeof v === 'string' ? v : '' }))} placeholder="اختر المنتج النهائي..." />
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('manufacturing.form.finishedProduct')}</label>
+              <ProductSelect companyId={companyId} value={formData.productId} onChange={(v) => setFormData((prev) => ({ ...prev, productId: typeof v === 'string' ? v : '' }))} placeholder={t('manufacturing.form.selectFinishedProduct')} />
             </div>
-            <Input label="الإصدار" value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
+            <Input label={t('manufacturing.form.version')} value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2 pt-6">
               <input type="checkbox" id="isActive" checked={formData.isActive} onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))} className="rounded" />
-              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">نشط</label>
+              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">{t('settings.common.active')}</label>
             </div>
-            <Input label="ملاحظات" value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder="ملاحظات اختيارية..." />
+            <Input label={t('manufacturing.form.notes')} value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder={t('manufacturing.form.notesPlaceholder')} />
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">مواد التصنيع</h4>
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('manufacturing.bom.materials')}</h4>
             <div className="space-y-2">
               {lines.map((line, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
-                    <ProductSelect companyId={companyId} value={line.materialId} onChange={(v) => updateLine(idx, 'materialId', typeof v === 'string' ? v : '')} placeholder={idx === 0 ? 'اختر المادة...' : ''} />
+                    <ProductSelect companyId={companyId} value={line.materialId} onChange={(v) => updateLine(idx, 'materialId', typeof v === 'string' ? v : '')} placeholder={idx === 0 ? t('manufacturing.bom.selectMaterial') : ''} />
                   </div>
                   <div className="col-span-3">
-                    <Input label={idx === 0 ? 'اسم المادة' : ''} value={line.materialName} onChange={(e) => updateLine(idx, 'materialName', e.target.value)} />
+                    <Input label={idx === 0 ? t('manufacturing.bom.materialName') : ''} value={line.materialName} onChange={(e) => updateLine(idx, 'materialName', e.target.value)} />
                   </div>
                   <div className="col-span-2">
-                    <Input label={idx === 0 ? 'الكمية' : ''} type="number" value={String(line.quantity)} onChange={(e) => updateLine(idx, 'quantity', Number(e.target.value))} />
+                    <Input label={idx === 0 ? t('manufacturing.bom.quantity') : ''} type="number" value={String(line.quantity)} onChange={(e) => updateLine(idx, 'quantity', Number(e.target.value))} />
                   </div>
                   <div className="col-span-2">
-                    <Input label={idx === 0 ? 'سعر الوحدة' : ''} type="number" value={String(line.unitCost)} onChange={(e) => updateLine(idx, 'unitCost', Number(e.target.value))} />
+                    <Input label={idx === 0 ? t('manufacturing.bom.unitCost') : ''} type="number" value={String(line.unitCost)} onChange={(e) => updateLine(idx, 'unitCost', Number(e.target.value))} />
                   </div>
                   {lines.length > 1 && (
                     <div className="col-span-1">
@@ -229,9 +231,9 @@ export const BomPage: React.FC = () => {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" className="mt-3" onClick={addLine}>+ إضافة مادة</Button>
+            <Button variant="secondary" className="mt-3" onClick={addLine}>+ {t('manufacturing.actions.addMaterial')}</Button>
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة المقدرة:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{t('manufacturing.bom.estimatedCost')}:</span>
               <span className="font-bold text-primary-600 tabular-nums">{formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
@@ -242,12 +244,12 @@ export const BomPage: React.FC = () => {
       <Modal
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setViewing(null); }}
-        title="تفاصيل BOM"
+        title={t('manufacturing.bom.details')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); }}>إغلاق</Button>
-            <Button variant="primary" leftIcon={<Printer size={16} />} onClick={handlePrint}>طباعة</Button>
+            <Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); }}>{t('settings.common.close')}</Button>
+            <Button variant="primary" leftIcon={<Printer size={16} />} onClick={handlePrint}>{t('settings.common.print')}</Button>
           </div>
         }
       >
@@ -255,26 +257,26 @@ export const BomPage: React.FC = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-3">
-                <span className="text-slate-500">المنتج:</span>
+                <span className="text-slate-500">{t('manufacturing.form.product')}:</span>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.bom.productName || viewing.bom.productId}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-3">
-                <span className="text-slate-500">الإصدار:</span>
+                <span className="text-slate-500">{t('manufacturing.form.version')}:</span>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.bom.version}</p>
               </div>
             </div>
             <Table<BOMLine>
               data={viewing.lines}
               columns={[
-                { key: 'materialName', header: 'المادة' },
-                { key: 'quantity', header: 'الكمية', width: '100px' },
-                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
-                { key: 'totalCost', header: 'الإجمالي', align: 'right' as const, render: (row) => formatCurrency((row.quantity || 0) * (row.unitCost || 0)) },
+                { key: 'materialName', header: t('manufacturing.bom.materialName') },
+                { key: 'quantity', header: t('manufacturing.bom.quantity'), width: '100px' },
+                { key: 'unitCost', header: t('manufacturing.bom.unitCost'), align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
+                { key: 'totalCost', header: t('manufacturing.bom.total'), align: 'right' as const, render: (row) => formatCurrency((row.quantity || 0) * (row.unitCost || 0)) },
               ]}
               keyExtractor={(row) => row.id}
             />
             <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
-              <span className="font-bold text-slate-700 dark:text-slate-200">التكلفة الإجمالية:</span>
+              <span className="font-bold text-slate-700 dark:text-slate-200">{t('manufacturing.bom.totalCost')}:</span>
               <span className="font-bold text-primary-600">{viewing.bom.totalCost !== undefined ? formatCurrency(viewing.bom.totalCost) : formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
@@ -285,15 +287,15 @@ export const BomPage: React.FC = () => {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="حذف BOM"
-        message="هل أنت متأكد من حذف قائمة المواد هذه؟ لا يمكن التراجع عن هذا الإجراء."
+        title={t('manufacturing.bom.deleteTitle')}
+        message={t('manufacturing.bom.deleteMessage')}
         variant="danger"
       />
     </div>
   );
 };
 
-function generateBomPrintHtml(bom: BOM, lines: BOMLine[], formatCurrency: (value: number | string) => string): string {
+function generateBomPrintHtml(bom: BOM, lines: BOMLine[], formatCurrency: (value: number | string) => string, t: (key: string) => string): string {
   const rows = lines.map((l, i) => `
     <tr>
       <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
@@ -307,11 +309,11 @@ function generateBomPrintHtml(bom: BOM, lines: BOMLine[], formatCurrency: (value
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>BOM - ${bom.productName}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
   <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}td{border:1px solid #e2e8f0}.total{font-weight:700;color:#1e40af;font-size:16px;text-align:left;margin-top:12px}</style></head><body>
-  <div class="page"><h2>فاتير المواد (BOM)</h2>
-  <p><strong>المنتج:</strong> ${bom.productName || bom.productId}</p>
-  <p><strong>الإصدار:</strong> ${bom.version}</p>
-  <table><thead><tr><th>#</th><th>المادة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="total">التكلفة الإجمالية: ${bom.totalCost !== undefined ? formatCurrency(bom.totalCost) : '—'} ر.ي</div>
+  <div class="page"><h2>${t('manufacturing.bom.title')} (BOM)</h2>
+  <p><strong>${t('manufacturing.form.product')}:</strong> ${bom.productName || bom.productId}</p>
+  <p><strong>${t('manufacturing.form.version')}:</strong> ${bom.version}</p>
+  <table><thead><tr><th>#</th><th>${t('manufacturing.bom.materialName')}</th><th>${t('manufacturing.bom.quantity')}</th><th>${t('manufacturing.bom.unitCost')}</th><th>${t('manufacturing.bom.total')}</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="total">${t('manufacturing.bom.totalCost')}: ${bom.totalCost !== undefined ? formatCurrency(bom.totalCost) : '—'} ر.ي</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
   </div></body></html>`;
 }

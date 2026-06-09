@@ -141,7 +141,7 @@ export const JournalEntriesPage: React.FC = () => {
       docNumber: tx.reference || tx.id,
       date: tx.date,
       partyName: activeCompany?.name || '',
-      partyLabel: 'الشركة',
+      partyLabel: t('accounting.company'),
       lines: tx.entries.map(e => ({
         description: `${e.account?.nameAr || e.accountId} - ${e.memo || ''}`,
         total: e.debit || e.credit,
@@ -162,10 +162,10 @@ export const JournalEntriesPage: React.FC = () => {
     { key: 'totalAmount', header: t('accounting.amount'), align: 'right' as const, render: (row: Transaction) => 
       formatCurrency(row.totalAmount)
     },
-    { key: 'status', header: t('sales.status'), render: (row: Transaction) => (
+    { key: 'status', header: t('sales.status.label'), render: (row: Transaction) => (
       <StatusBadge status={row.status} size="sm" />
     )},
-    { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: Transaction) => (
+    { key: 'createdBy', header: t('accounting.createdBy'), width: '110px', render: (row: Transaction) => (
       <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.createdBy)}</span>
     ) },
     { key: 'actions', header: t('edit'), render: (row: Transaction) => (
@@ -197,11 +197,11 @@ export const JournalEntriesPage: React.FC = () => {
           className="input text-sm"
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          title={t('sales.status') || 'الحالة'}
+          title={t('accounting.status')}
         >
-          <option value="">{t('all') || 'الكل'}</option>
-          <option value="draft">{t('accounting.draft') || 'مسودة'}</option>
-          <option value="posted">{t('accounting.posted') || 'مرحل'}</option>
+          <option value="">{t('accounting.all')}</option>
+          <option value="draft">{t('accounting.draft')}</option>
+          <option value="posted">{t('accounting.posted')}</option>
         </select>
         <Can action="create" module="accounting">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { resetForm(); setIsModalOpen(true); }}>
@@ -362,7 +362,7 @@ export const JournalEntriesPage: React.FC = () => {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div><span className="text-slate-500">{t('accounting.date')}:</span> {selectedTx.date ? formatDate(selectedTx.date) : '-'}</div>
               <div><span className="text-slate-500">{t('accounting.reference')}:</span> {selectedTx.reference || '-'}</div>
-              <div><span className="text-slate-500">{t('sales.status')}:</span> <StatusBadge status={selectedTx.status} size="sm" /></div>
+              <div><span className="text-slate-500">{t('sales.status.label')}:</span> <StatusBadge status={selectedTx.status} size="sm" /></div>
             </div>
             <div className="text-sm"><span className="text-slate-500">{t('accounting.description')}:</span> {selectedTx.description || '-'}</div>
             
@@ -407,7 +407,7 @@ export const JournalEntriesPage: React.FC = () => {
           }
         }}
         title={t('delete')}
-        message={`هل أنت متأكد من حذف القيد "${confirmDelete?.reference || confirmDelete?.id}"؟`}
+        message={`${t('accounting.deleteConfirm')} "${confirmDelete?.reference || confirmDelete?.id}"?`}
         variant="danger"
       />
     </div>

@@ -12,6 +12,7 @@ import { useWorkOrdersPaginated, useWorkOrderVariance } from '../hooks/useManufa
 import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { WorkOrder, WorkOrderLine } from '../types';
 
 interface WorkOrderFormLine {
@@ -23,6 +24,7 @@ interface WorkOrderFormLine {
 const STATUS_FLOW: WorkOrder['status'][] = ['planned', 'in_progress', 'completed', 'cancelled'];
 
 export const WorkOrdersPage: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState('');
@@ -146,18 +148,18 @@ export const WorkOrdersPage: React.FC = () => {
   };
 
   const statusActionLabel: Record<string, string> = {
-    planned: 'بدء التنفيذ',
-    in_progress: 'إكمال',
+    planned: t('manufacturing.status.startExecution'),
+    in_progress: t('manufacturing.status.complete'),
     completed: '',
     cancelled: '',
   };
 
   const columns = [
-    { key: 'orderNumber', header: 'رقم الأمر', width: '130px' },
-    { key: 'productName', header: 'المنتج', render: (row: WorkOrder) => row.productName || row.productId },
-    { key: 'quantity', header: 'الكمية', width: '90px' },
-    { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: WorkOrder) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
-    { key: 'status', header: 'الحالة', width: '120px', render: (row: WorkOrder) => <StatusBadge status={row.status} /> },
+    { key: 'orderNumber', header: t('manufacturing.table.orderNumber'), width: '130px' },
+    { key: 'productName', header: t('manufacturing.table.product'), render: (row: WorkOrder) => row.productName || row.productId },
+    { key: 'quantity', header: t('manufacturing.table.quantity'), width: '90px' },
+    { key: 'totalCost', header: t('manufacturing.table.cost'), align: 'right' as const, render: (row: WorkOrder) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
+    { key: 'status', header: t('manufacturing.table.status'), width: '120px', render: (row: WorkOrder) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: '', width: '180px', render: (row: WorkOrder) => (
       <div className="flex items-center gap-1">
         <ActionButtons onView={() => openView(row)} onEdit={() => openEdit(row)} onDelete={() => setConfirmDelete(row.id)} showPrint={false} />
@@ -167,7 +169,7 @@ export const WorkOrdersPage: React.FC = () => {
           </Button>
         )}
         {row.status === 'completed' && (
-          <Button variant="ghost" size="sm" title="تقرير التباين" onClick={() => openVariance(row.id)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+          <Button variant="ghost" size="sm" title={t('manufacturing.actions.varianceReport')} onClick={() => openVariance(row.id)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
             <FileBarChart size={14} />
           </Button>
         )}
@@ -181,21 +183,21 @@ export const WorkOrdersPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Wrench size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">أوامر التشغيل</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة أوامر التشغيل والإنتاج</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('manufacturing.workOrders.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('manufacturing.workOrders.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} title="تصفية حسب الحالة" aria-label="تصفية حسب الحالة" className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
-            <option value="">الكل</option>
-            <option value="planned">مخطط</option>
-            <option value="in_progress">قيد التنفيذ</option>
-            <option value="completed">مكتمل</option>
-            <option value="cancelled">ملغى</option>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} title={t('manufacturing.workOrders.filterByStatus')} aria-label={t('manufacturing.workOrders.filterByStatus')} className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+            <option value="">{t('settings.common.all')}</option>
+            <option value="planned">{t('manufacturing.status.planned')}</option>
+            <option value="in_progress">{t('manufacturing.status.inProgress')}</option>
+            <option value="completed">{t('manufacturing.status.completed')}</option>
+            <option value="cancelled">{t('manufacturing.status.cancelled')}</option>
           </select>
           <Can action="create" module="manufacturing">
             <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-              أمر تشغيل جديد
+              {t('manufacturing.workOrders.newWorkOrder')}
             </Button>
           </Can>
         </div>
@@ -203,11 +205,11 @@ export const WorkOrdersPage: React.FC = () => {
 
       <Card>
         {isLoading ? (
-          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+          <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
         ) : workOrders.length === 0 ? (
-          <EmptyState icon="file" title="لا توجد أوامر تشغيل" description="يمكنك إضافة أمر تشغيل جديد" action={
+          <EmptyState icon="file" title={t('manufacturing.workOrders.emptyTitle')} description={t('manufacturing.workOrders.emptyDescription')} action={
             <Can action="create" module="manufacturing">
-              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>أمر تشغيل جديد</Button>
+              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('manufacturing.workOrders.newWorkOrder')}</Button>
             </Can>
           } />
         ) : (
@@ -216,7 +218,7 @@ export const WorkOrdersPage: React.FC = () => {
               data={workOrders}
               columns={columns}
               keyExtractor={(row) => row.id}
-              emptyMessage="لا توجد أوامر تشغيل"
+              emptyMessage={t('manufacturing.workOrders.emptyTitle')}
             />
             <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
           </>
@@ -227,20 +229,20 @@ export const WorkOrdersPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); resetForm(); }}
-        title={editing ? 'تعديل أمر تشغيل' : 'أمر تشغيل جديد'}
+        title={editing ? t('manufacturing.workOrders.editWorkOrder') : t('manufacturing.workOrders.newWorkOrder')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
-            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>{t('settings.common.cancel')}</Button>
+            <Button variant="primary" onClick={handleSave}>{t('settings.common.save')}</Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="رقم الأمر" value={formData.orderNumber} onChange={(e) => setFormData((prev) => ({ ...prev, orderNumber: e.target.value }))} />
+            <Input label={t('manufacturing.workOrders.orderNumber')} value={formData.orderNumber} onChange={(e) => setFormData((prev) => ({ ...prev, orderNumber: e.target.value }))} />
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('manufacturing.form.product')}</label>
               <ProductSelect companyId={companyId} value={formData.productId} onChange={async (v) => {
                 const productId = typeof v === 'string' ? v : '';
                 setFormData((prev) => ({ ...prev, productId, bomId: '' }));
@@ -251,41 +253,41 @@ export const WorkOrdersPage: React.FC = () => {
                 } else {
                   setAvailableBoms([]);
                 }
-              }} placeholder="اختر المنتج..." />
+              }} placeholder={t('manufacturing.form.selectProduct')} />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">BOM</label>
               <select value={formData.bomId} onChange={(e) => setFormData((prev) => ({ ...prev, bomId: e.target.value }))} disabled={availableBoms.length === 0} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
-                <option value="">{availableBoms.length === 0 ? 'لا يوجد BOM' : 'بدون BOM'}</option>
+                <option value="">{availableBoms.length === 0 ? t('manufacturing.workOrders.noBom') : t('manufacturing.workOrders.withoutBom')}</option>
                 {availableBoms.map((b) => (
-                  <option key={b.id} value={b.id}>الإصدار {b.version}</option>
+                  <option key={b.id} value={b.id}>{t('manufacturing.form.version')} {b.version}</option>
                 ))}
               </select>
             </div>
-            <Input label="الكمية" type="number" value={formData.quantity} onChange={(e) => setFormData((prev) => ({ ...prev, quantity: e.target.value }))} />
-            <Input label="التكلفة الإجمالية" type="number" value={formData.totalCost} onChange={(e) => setFormData((prev) => ({ ...prev, totalCost: e.target.value }))} />
+            <Input label={t('manufacturing.bom.quantity')} type="number" value={formData.quantity} onChange={(e) => setFormData((prev) => ({ ...prev, quantity: e.target.value }))} />
+            <Input label={t('manufacturing.workOrders.totalCost')} type="number" value={formData.totalCost} onChange={(e) => setFormData((prev) => ({ ...prev, totalCost: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="تاريخ البداية المخطط" type="date" value={formData.plannedStartDate} onChange={(e) => setFormData((prev) => ({ ...prev, plannedStartDate: e.target.value }))} />
-            <Input label="تاريخ الانتهاء المخطط" type="date" value={formData.plannedEndDate} onChange={(e) => setFormData((prev) => ({ ...prev, plannedEndDate: e.target.value }))} />
+            <Input label={t('manufacturing.workOrders.plannedStartDate')} type="date" value={formData.plannedStartDate} onChange={(e) => setFormData((prev) => ({ ...prev, plannedStartDate: e.target.value }))} />
+            <Input label={t('manufacturing.workOrders.plannedEndDate')} type="date" value={formData.plannedEndDate} onChange={(e) => setFormData((prev) => ({ ...prev, plannedEndDate: e.target.value }))} />
           </div>
-          <Input label="ملاحظات" value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder="ملاحظات اختيارية..." />
+          <Input label={t('manufacturing.form.notes')} value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder={t('manufacturing.form.notesPlaceholder')} />
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">مواد التصنيع المخططة</h4>
+            <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('manufacturing.workOrders.plannedMaterials')}</h4>
             <div className="space-y-2">
               {lines.map((line, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5">
-                    <ProductSelect companyId={companyId} value={line.materialId} onChange={(v) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, materialId: typeof v === 'string' ? v : '' } : l))} placeholder={idx === 0 ? 'اختر المادة...' : ''} />
+                    <ProductSelect companyId={companyId} value={line.materialId} onChange={(v) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, materialId: typeof v === 'string' ? v : '' } : l))} placeholder={idx === 0 ? t('manufacturing.bom.selectMaterial') : ''} />
                   </div>
                   <div className="col-span-3">
-                    <Input label={idx === 0 ? 'الكمية' : ''} type="number" value={String(line.plannedQuantity)} onChange={(e) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, plannedQuantity: Number(e.target.value) } : l))} />
+                    <Input label={idx === 0 ? t('manufacturing.bom.quantity') : ''} type="number" value={String(line.plannedQuantity)} onChange={(e) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, plannedQuantity: Number(e.target.value) } : l))} />
                   </div>
                   <div className="col-span-3">
-                    <Input label={idx === 0 ? 'سعر الوحدة' : ''} type="number" value={String(line.unitCost)} onChange={(e) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, unitCost: Number(e.target.value) } : l))} />
+                    <Input label={idx === 0 ? t('manufacturing.bom.unitCost') : ''} type="number" value={String(line.unitCost)} onChange={(e) => setLines((prev) => prev.map((l, i) => i === idx ? { ...l, unitCost: Number(e.target.value) } : l))} />
                   </div>
                   {lines.length > 1 && (
                     <div className="col-span-1">
@@ -297,9 +299,9 @@ export const WorkOrdersPage: React.FC = () => {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" className="mt-3" onClick={() => setLines((prev) => [...prev, { materialId: '', plannedQuantity: 1, unitCost: 0 }])}>+ إضافة مادة</Button>
+            <Button variant="secondary" className="mt-3" onClick={() => setLines((prev) => [...prev, { materialId: '', plannedQuantity: 1, unitCost: 0 }])}>+ {t('manufacturing.actions.addMaterial')}</Button>
             <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-between">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">التكلفة المقدرة (تلقائية):</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{t('manufacturing.workOrders.estimatedCostAuto')}:</span>
               <span className="font-bold text-primary-600 tabular-nums">{formatCurrency(estimatedTotal)}</span>
             </div>
           </div>
@@ -310,7 +312,7 @@ export const WorkOrdersPage: React.FC = () => {
       <Modal
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setViewing(null); setIsEditingActual(false); }}
-        title="تفاصيل أمر التشغيل"
+        title={t('manufacturing.workOrders.details')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
@@ -334,7 +336,7 @@ export const WorkOrdersPage: React.FC = () => {
                   setIsEditingActual(true);
                 }
               }}>
-                {isEditingActual ? 'حفظ الفعلي' : 'تسجيل الفعلي'}
+                {isEditingActual ? t('manufacturing.workOrders.saveActual') : t('manufacturing.workOrders.recordActual')}
               </Button>
             )}
             <Button variant="secondary" leftIcon={<Printer size={16} />} onClick={() => {
@@ -343,34 +345,34 @@ export const WorkOrdersPage: React.FC = () => {
               if (!win) return;
               const rows = viewing.lines.map((l, i) => `<tr><td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td><td style="padding:8px;border:1px solid #e2e8f0">${l.materialName || l.materialId}</td><td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.plannedQuantity}</td><td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.actualQuantity ?? '—'}</td><td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${formatCurrency(l.unitCost)}</td></tr>`).join('');
               win.document.open();
-              win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أمر تشغيل ${viewing.workOrder.orderNumber}</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"><style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}</style></head><body><div class="page"><h2>أمر تشغيل #${viewing.workOrder.orderNumber}</h2><p><strong>المنتج:</strong> ${viewing.workOrder.productName || viewing.workOrder.productId}</p><p><strong>الحالة:</strong> ${viewing.workOrder.status}</p><p><strong>الكمية المخططة:</strong> ${viewing.workOrder.quantity}</p><table><thead><tr><th>#</th><th>المادة</th><th>المخطط</th><th>الفعلي</th><th>سعر الوحدة</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div></div></body></html>`);
+              win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${t('manufacturing.workOrders.title')} ${viewing.workOrder.orderNumber}</title><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"><style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}</style></head><body><div class="page"><h2>${t('manufacturing.workOrders.title')} #${viewing.workOrder.orderNumber}</h2><p><strong>${t('manufacturing.form.product')}:</strong> ${viewing.workOrder.productName || viewing.workOrder.productId}</p><p><strong>${t('manufacturing.table.status')}:</strong> ${viewing.workOrder.status}</p><p><strong>${t('manufacturing.workOrders.plannedQuantity')}:</strong> ${viewing.workOrder.quantity}</p><table><thead><tr><th>#</th><th>${t('manufacturing.bom.materialName')}</th><th>${t('manufacturing.status.planned')}</th><th>${t('manufacturing.status.actual')}</th><th>${t('manufacturing.bom.unitCost')}</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div></div></body></html>`);
               win.document.close();
-            }}>طباعة</Button>
-            <Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); setIsEditingActual(false); }}>إغلاق</Button>
+            }}>{t('settings.common.print')}</Button>
+            <Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); setIsEditingActual(false); }}>{t('settings.common.close')}</Button>
           </div>
         }
       >
         {viewing && (
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4 text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">رقم الأمر:</span><p className="font-semibold">{viewing.workOrder.orderNumber}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">المنتج:</span><p className="font-semibold">{viewing.workOrder.productName || viewing.workOrder.productId}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">الحالة:</span><p className="font-semibold"><StatusBadge status={viewing.workOrder.status} /></p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">{t('manufacturing.workOrders.orderNumber')}:</span><p className="font-semibold">{viewing.workOrder.orderNumber}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">{t('manufacturing.form.product')}:</span><p className="font-semibold">{viewing.workOrder.productName || viewing.workOrder.productId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-3"><span className="text-slate-500">{t('manufacturing.table.status')}:</span><p className="font-semibold"><StatusBadge status={viewing.workOrder.status} /></p></div>
             </div>
             {viewing.workOrder.notes && (
               <div className="bg-slate-50 dark:bg-slate-800 rounded p-3 text-sm">
-                <span className="text-slate-500">ملاحظات:</span>
+                <span className="text-slate-500">{t('manufacturing.form.notes')}:</span>
                 <p className="mt-1 text-slate-700 dark:text-slate-300">{viewing.workOrder.notes}</p>
               </div>
             )}
             <Table<WorkOrderLine>
               data={viewing.lines}
               columns={[
-                { key: 'materialName', header: 'المادة' },
-                { key: 'plannedQuantity', header: 'المخطط', width: '100px' },
+                { key: 'materialName', header: t('manufacturing.bom.materialName') },
+                { key: 'plannedQuantity', header: t('manufacturing.status.planned'), width: '100px' },
                 {
                   key: 'actualQuantity',
-                  header: 'الفعلي',
+                  header: t('manufacturing.status.actual'),
                   width: '120px',
                   render: (row) => isEditingActual && (viewing.workOrder.status === 'in_progress' || viewing.workOrder.status === 'completed')
                     ? <input id={`actual-qty-${row.id}`} type="number" defaultValue={row.actualQuantity ?? 0} className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-sm" />
@@ -378,10 +380,10 @@ export const WorkOrdersPage: React.FC = () => {
                       ? formatCurrency(row.actualQuantity)
                       : '—',
                 },
-                { key: 'unitCost', header: 'سعر الوحدة', align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
+                { key: 'unitCost', header: t('manufacturing.bom.unitCost'), align: 'right' as const, render: (row) => formatCurrency(row.unitCost || 0) },
                 {
                   key: 'actualUnitCost',
-                  header: 'سعر الفعلي',
+                  header: t('manufacturing.workOrders.actualUnitCost'),
                   align: 'right' as const,
                   width: '120px',
                   render: (row) => isEditingActual && (viewing.workOrder.status === 'in_progress' || viewing.workOrder.status === 'completed')
@@ -401,9 +403,9 @@ export const WorkOrdersPage: React.FC = () => {
       <Modal
         isOpen={isVarianceOpen}
         onClose={() => { setIsVarianceOpen(false); setSelectedVarianceId(null); }}
-        title="تقرير تباين أمر التشغيل"
+        title={t('manufacturing.workOrders.varianceReport')}
         size="lg"
-        footer={<Button variant="secondary" onClick={() => { setIsVarianceOpen(false); setSelectedVarianceId(null); }}>إغلاق</Button>}
+        footer={<Button variant="secondary" onClick={() => { setIsVarianceOpen(false); setSelectedVarianceId(null); }}>{t('settings.common.close')}</Button>}
       >
         {selectedVarianceId && <VarianceTable workOrderId={selectedVarianceId} companyId={companyId} />}
       </Modal>
@@ -412,8 +414,8 @@ export const WorkOrdersPage: React.FC = () => {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="حذف أمر التشغيل"
-        message="هل أنت متأكد من حذف أمر التشغيل هذا؟"
+        title={t('manufacturing.workOrders.deleteTitle')}
+        message={t('manufacturing.workOrders.deleteMessage')}
         variant="danger"
       />
 
@@ -421,13 +423,13 @@ export const WorkOrdersPage: React.FC = () => {
       <Modal
         isOpen={!!confirmStatus}
         onClose={() => { setConfirmStatus(null); setProducedQty(''); }}
-        title="تغيير الحالة"
+        title={t('manufacturing.workOrders.changeStatus')}
         size="sm"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setConfirmStatus(null); setProducedQty(''); }}>إلغاء</Button>
+            <Button variant="secondary" onClick={() => { setConfirmStatus(null); setProducedQty(''); }}>{t('settings.common.cancel')}</Button>
             <Button variant="primary" onClick={handleStatusChange}>
-              {confirmStatus?.status === 'in_progress' ? 'بدء التنفيذ' : confirmStatus?.status === 'completed' ? 'إكمال' : 'تأكيد'}
+              {confirmStatus?.status === 'in_progress' ? t('manufacturing.status.startExecution') : confirmStatus?.status === 'completed' ? t('manufacturing.status.complete') : t('settings.common.save')}
             </Button>
           </div>
         }
@@ -435,16 +437,16 @@ export const WorkOrdersPage: React.FC = () => {
         {confirmStatus && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-300">
-              هل تريد تغيير الحالة إلى <span className="font-semibold">"{statusLabel(confirmStatus.status)}"</span>؟
+              {t('manufacturing.workOrders.changeStatusTo')} <span className="font-semibold">"{statusLabel(confirmStatus.status, t)}"</span>?
             </p>
             {confirmStatus.status === 'completed' && (
               <div>
                 <Input
-                  label="الكمية المنتجة الفعلية"
+                  label={t('manufacturing.workOrders.actualProducedQuantity')}
                   type="number"
                   value={producedQty}
                   onChange={(e) => setProducedQty(e.target.value)}
-                  placeholder="أدخل الكمية الفعلية..."
+                  placeholder={t('manufacturing.workOrders.enterActualQuantity')}
                 />
               </div>
             )}
@@ -456,34 +458,35 @@ export const WorkOrdersPage: React.FC = () => {
 };
 
 function VarianceTable({ workOrderId, companyId }: { workOrderId: string; companyId: string }) {
+  const { t } = useTranslation();
   const { variances, isLoading } = useWorkOrderVariance(workOrderId, companyId);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  if (isLoading) return <div className="py-8 text-center text-slate-500">جارٍ التحميل...</div>;
-  if (variances.length === 0) return <EmptyState title="لا يوجد تباين" description="لم يتم تسجيل فروقات لهذا الأمر" />;
+  if (isLoading) return <div className="py-8 text-center text-slate-500">{t('settings.common.loading')}</div>;
+  if (variances.length === 0) return <EmptyState title={t('manufacturing.variance.emptyTitle')} description={t('manufacturing.variance.emptyDescription')} />;
   return (
     <Table
       data={variances}
       columns={[
-        { key: 'materialName', header: 'المادة' },
-        { key: 'plannedQty', header: 'المخطط', width: '90px' },
-        { key: 'actualQty', header: 'الفعلي', width: '90px' },
-        { key: 'varianceQty', header: 'الفروق', width: '90px', render: (row) => <span className={row.varianceQty > 0 ? 'text-rose-600' : row.varianceQty < 0 ? 'text-emerald-600' : ''}>{formatCurrency(row.varianceQty)}</span> },
-        { key: 'plannedCost', header: 'التكلفة المخططة', align: 'right' as const, render: (row) => formatCurrency(row.plannedCost) },
-        { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row) => formatCurrency(row.actualCost) },
-        { key: 'varianceCost', header: 'فرق التكلفة', align: 'right' as const, render: (row) => <span className={row.varianceCost > 0 ? 'text-rose-600 font-semibold' : row.varianceCost < 0 ? 'text-emerald-600 font-semibold' : ''}>{formatCurrency(row.varianceCost)}</span> },
+        { key: 'materialName', header: t('manufacturing.bom.materialName') },
+        { key: 'plannedQty', header: t('manufacturing.status.planned'), width: '90px' },
+        { key: 'actualQty', header: t('manufacturing.status.actual'), width: '90px' },
+        { key: 'varianceQty', header: t('manufacturing.variance.quantityDifference'), width: '90px', render: (row) => <span className={row.varianceQty > 0 ? 'text-rose-600' : row.varianceQty < 0 ? 'text-emerald-600' : ''}>{formatCurrency(row.varianceQty)}</span> },
+        { key: 'plannedCost', header: t('manufacturing.variance.plannedCost'), align: 'right' as const, render: (row) => formatCurrency(row.plannedCost) },
+        { key: 'actualCost', header: t('manufacturing.variance.actualCost'), align: 'right' as const, render: (row) => formatCurrency(row.actualCost) },
+        { key: 'varianceCost', header: t('manufacturing.variance.costDifference'), align: 'right' as const, render: (row) => <span className={row.varianceCost > 0 ? 'text-rose-600 font-semibold' : row.varianceCost < 0 ? 'text-emerald-600 font-semibold' : ''}>{formatCurrency(row.varianceCost)}</span> },
       ]}
       keyExtractor={(row, i) => `${row.materialName}-${i}`}
     />
   );
 }
 
-function statusLabel(status: WorkOrder['status']): string {
+function statusLabel(status: WorkOrder['status'], t: (key: string) => string): string {
   const labels: Record<string, string> = {
-    planned: 'مخطط',
-    in_progress: 'قيد التنفيذ',
-    completed: 'مكتمل',
-    cancelled: 'ملغى',
+    planned: t('manufacturing.status.planned'),
+    in_progress: t('manufacturing.status.inProgress'),
+    completed: t('manufacturing.status.completed'),
+    cancelled: t('manufacturing.status.cancelled'),
   };
   return labels[status] || status;
 }

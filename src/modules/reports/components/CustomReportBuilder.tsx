@@ -18,60 +18,60 @@ interface TableMeta {
 const AVAILABLE_TABLES: TableMeta[] = [
   {
     name: 'sales_invoices',
-    label: 'فواتير المبيعات',
+    label: 'reports.customBuilder.table.salesInvoices',
     columns: [
-      { key: 'id', label: 'المعرف', type: 'string' },
-      { key: 'invoice_number', label: 'رقم الفاتورة', type: 'string' },
-      { key: 'customer_id', label: 'معرف العميل', type: 'string' },
-      { key: 'date', label: 'التاريخ', type: 'date' },
-      { key: 'total', label: 'الإجمالي', type: 'number' },
-      { key: 'status', label: 'الحالة', type: 'string' },
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'invoice_number', label: 'reports.customBuilder.col.invoiceNumber', type: 'string' },
+      { key: 'customer_id', label: 'reports.customBuilder.col.customerId', type: 'string' },
+      { key: 'date', label: 'reports.customBuilder.col.date', type: 'date' },
+      { key: 'total', label: 'reports.customBuilder.col.total', type: 'number' },
+      { key: 'status', label: 'reports.customBuilder.col.status', type: 'string' },
     ],
   },
   {
     name: 'purchase_invoices',
-    label: 'فواتير المشتريات',
+    label: 'reports.customBuilder.table.purchaseInvoices',
     columns: [
-      { key: 'id', label: 'المعرف', type: 'string' },
-      { key: 'invoice_number', label: 'رقم الفاتورة', type: 'string' },
-      { key: 'supplier_id', label: 'معرف المورد', type: 'string' },
-      { key: 'date', label: 'التاريخ', type: 'date' },
-      { key: 'total', label: 'الإجمالي', type: 'number' },
-      { key: 'status', label: 'الحالة', type: 'string' },
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'invoice_number', label: 'reports.customBuilder.col.invoiceNumber', type: 'string' },
+      { key: 'supplier_id', label: 'reports.customBuilder.col.supplierId', type: 'string' },
+      { key: 'date', label: 'reports.customBuilder.col.date', type: 'date' },
+      { key: 'total', label: 'reports.customBuilder.col.total', type: 'number' },
+      { key: 'status', label: 'reports.customBuilder.col.status', type: 'string' },
     ],
   },
   {
     name: 'products',
-    label: 'المنتجات',
+    label: 'reports.customBuilder.table.products',
     columns: [
-      { key: 'id', label: 'المعرف', type: 'string' },
-      { key: 'name', label: 'الاسم', type: 'string' },
-      { key: 'sku', label: 'الرمز', type: 'string' },
-      { key: 'cost', label: 'التكلفة', type: 'number' },
-      { key: 'price', label: 'السعر', type: 'number' },
-      { key: 'stock', label: 'المخزون', type: 'number' },
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'name', label: 'reports.customBuilder.col.name', type: 'string' },
+      { key: 'sku', label: 'reports.customBuilder.col.sku', type: 'string' },
+      { key: 'cost', label: 'reports.customBuilder.col.cost', type: 'number' },
+      { key: 'price', label: 'reports.customBuilder.col.price', type: 'number' },
+      { key: 'stock', label: 'reports.customBuilder.col.stock', type: 'number' },
     ],
   },
   {
     name: 'contacts',
-    label: 'العملاء والموردين',
+    label: 'reports.customBuilder.table.contacts',
     columns: [
-      { key: 'id', label: 'المعرف', type: 'string' },
-      { key: 'name', label: 'الاسم', type: 'string' },
-      { key: 'type', label: 'النوع', type: 'string' },
-      { key: 'phone', label: 'الهاتف', type: 'string' },
-      { key: 'balance', label: 'الرصيد', type: 'number' },
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'name', label: 'reports.customBuilder.col.name', type: 'string' },
+      { key: 'type', label: 'reports.customBuilder.col.type', type: 'string' },
+      { key: 'phone', label: 'reports.customBuilder.col.phone', type: 'string' },
+      { key: 'balance', label: 'reports.customBuilder.col.balance', type: 'number' },
     ],
   },
   {
     name: 'accounts',
-    label: 'الحسابات',
+    label: 'reports.customBuilder.table.accounts',
     columns: [
-      { key: 'id', label: 'المعرف', type: 'string' },
-      { key: 'code', label: 'الكود', type: 'string' },
-      { key: 'name_ar', label: 'الاسم', type: 'string' },
-      { key: 'type', label: 'النوع', type: 'string' },
-      { key: 'balance', label: 'الرصيد', type: 'number' },
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'code', label: 'reports.customBuilder.col.code', type: 'string' },
+      { key: 'name_ar', label: 'reports.customBuilder.col.name', type: 'string' },
+      { key: 'type', label: 'reports.customBuilder.col.type', type: 'string' },
+      { key: 'balance', label: 'reports.customBuilder.col.balance', type: 'number' },
     ],
   },
 ];
@@ -215,7 +215,7 @@ export const CustomReportBuilder: React.FC = () => {
         <Settings size={28} className="text-primary-600 dark:text-primary-400" />
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.customReportBuilder')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">بناء تقارير مخصصة من الجداول المتاحة</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.customReportBuilder.subtitle')}</p>
         </div>
       </div>
 
@@ -257,7 +257,7 @@ export const CustomReportBuilder: React.FC = () => {
                         : 'border-slate-200 dark:border-slate-700 hover:border-primary-300 dark:hover:border-primary-700'
                     )}
                   >
-                    <p className="font-medium text-slate-900 dark:text-slate-50">{table.label}</p>
+                    <p className="font-medium text-slate-900 dark:text-slate-50">{t(table.label)}</p>
                     <p className="text-xs text-slate-500 mt-1">{table.columns.length} {t('reports.selectColumns')}</p>
                   </button>
                 ))}
@@ -282,14 +282,14 @@ export const CustomReportBuilder: React.FC = () => {
                           : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                       )}
                     >
-                      {col.label}
+                      {t(col.label)}
                     </button>
                   );
                 })}
               </div>
               {selectedColumns.length > 0 && (
                 <div className="mt-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg text-sm text-slate-600 dark:text-slate-300">
-                  {selectedColumns.length} {t('reports.selectColumns')} محددة
+                  {selectedColumns.length} {t('reports.selectColumns')} {t('reports.customBuilder.selected')}
                 </div>
               )}
             </div>
@@ -312,7 +312,7 @@ export const CustomReportBuilder: React.FC = () => {
                       onChange={(e) => updateFilter(i, 'column', e.target.value)}
                     >
                       {selectedTable.columns.map((c) => (
-                        <option key={c.key} value={c.key}>{c.label}</option>
+                        <option key={c.key} value={c.key}>{t(c.label)}</option>
                       ))}
                     </select>
                     <select
@@ -321,7 +321,7 @@ export const CustomReportBuilder: React.FC = () => {
                       onChange={(e) => updateFilter(i, 'operator', e.target.value)}
                     >
                       <option value="equals">=</option>
-                      <option value="contains">يحتوي</option>
+                      <option value="contains">{t('reports.customBuilder.contains')}</option>
                       <option value="gt">&gt;</option>
                       <option value="lt">&lt;</option>
                       <option value="gte">&gt;=</option>
@@ -330,17 +330,17 @@ export const CustomReportBuilder: React.FC = () => {
                     <input
                       type="text"
                       className="flex-1 min-w-[120px] px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600"
-                      placeholder="القيمة..."
+                      placeholder={t('reports.customBuilder.valuePlaceholder')}
                       value={f.value}
                       onChange={(e) => updateFilter(i, 'value', e.target.value)}
                     />
                     <Button variant="ghost" size="sm" onClick={() => removeFilter(i)}>
-                      حذف
+                      {t('settings.common.delete')}
                     </Button>
                   </div>
                 ))}
                 {filters.length === 0 && (
-                  <p className="text-sm text-slate-400">لا توجد فلاتر. اضغط "+ تصفية" لإضافة فلتر.</p>
+                  <p className="text-sm text-slate-400">{t('reports.customBuilder.noFilters')}</p>
                 )}
               </div>
             </div>
@@ -351,7 +351,7 @@ export const CustomReportBuilder: React.FC = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-semibold text-slate-900 dark:text-slate-50">{t('reports.preview')}</h3>
-                  <p className="text-sm text-slate-500">{previewData.length} سجل</p>
+                  <p className="text-sm text-slate-500">{previewData.length} {t('reports.customBuilder.records')}</p>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -394,7 +394,7 @@ export const CustomReportBuilder: React.FC = () => {
                 </div>
               )}
               {!isLoading && previewData.length === 0 && (
-                <EmptyState icon="search" title="لا توجد نتائج" description="جرب تعديل الفلاتر أو اختيار جدول آخر" />
+                <EmptyState icon="search" title={t('reports.emptyResults.title')} description={t('reports.customBuilder.tryDifferent')} />
               )}
             </div>
           )}

@@ -151,12 +151,12 @@ ${filtered.map(tx => `<tr>
             onChange={e => setSearch(e.target.value)}
           className="w-48"
         />
-        <select className="input text-sm" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} title={t('inventory.type') || 'النوع'}>
-          <option value="">{t('all') || 'الكل'}</option>
-          <option value="in">{t('inventory.in') || 'وارد'}</option>
-          <option value="out">{t('inventory.out') || 'صادر'}</option>
-          <option value="adjustment">{t('inventory.adjustment') || 'تسوية'}</option>
-          <option value="transfer">{t('inventory.transfer') || 'تحويل'}</option>
+        <select className="input text-sm" value={typeFilter} onChange={e => setTypeFilter(e.target.value)} title={t('inventory.type')}>
+          <option value="">{t('all')}</option>
+          <option value="in">{t('inventory.in')}</option>
+          <option value="out">{t('inventory.out')}</option>
+          <option value="adjustment">{t('inventory.adjustment')}</option>
+          <option value="transfer">{t('inventory.transfer')}</option>
         </select>
         <Button variant="secondary" size="sm" leftIcon={<Printer size={16} />} onClick={handlePrint}>
             {t('print')}
@@ -177,7 +177,7 @@ ${filtered.map(tx => `<tr>
 
       <Card>
         {filtered.length === 0 && !isLoading ? (
-          <EmptyState icon="inbox" title="لا توجد حركات" description="لم يتم تسجيل أي حركات مخزنية" />
+          <EmptyState icon="inbox" title={t('inventory.empty.transactions.title')} description={t('inventory.empty.transactions.description')} />
         ) : (
           <Table<InventoryTransaction>
             data={filtered}

@@ -33,16 +33,15 @@ interface InvoiceLineForm {
   vatPercent: number;
 }
 
-const STATUS_FLOW: Record<string, string> = {
-  draft: 'مسودة',
-  posted: 'مرحّلة',
-  partially_paid: 'مدفوعة جزئياً',
-  paid: 'مدفوعة',
-  cancelled: 'ملغاة',
-};
-
 export const InvoicesPage: React.FC = () => {
   const { t } = useTranslation();
+  const STATUS_FLOW = useMemo(() => ({
+    draft: t('sales.status.draft'),
+    posted: t('sales.status.posted'),
+    partially_paid: t('sales.status.partially_paid'),
+    paid: t('sales.status.paid'),
+    cancelled: t('sales.status.cancelled'),
+  }), [t]);
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
   const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
@@ -273,7 +272,7 @@ export const InvoicesPage: React.FC = () => {
           await post(invoice.id);
           await logAudit({ userId: currentUser?.id || 'system', action: 'post', tableName: 'sales_invoices', recordId: invoice.id, companyId: activeCompany.id });
         } else {
-          alert(`فشل ترحيل الفاتورة: ${postResult.error || 'خطأ غير معروف'}`);
+          alert(`${t('sales.invoice.postFailed')}: ${postResult.error || t('sales.invoice.unknownError')}`);
         }
         setPostingId(null);
       },
@@ -309,7 +308,7 @@ export const InvoicesPage: React.FC = () => {
       { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة' },
       { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
       { key: 'date', header: t('sales.date') || 'التاريخ' },
-      { key: 'status', header: t('sales.status') || 'الحالة' },
+      { key: 'status', header: t('sales.status.label') || 'الحالة' },
       { key: 'subtotal', header: t('sales.subtotal') || 'المجموع' },
       { key: 'vatAmount', header: t('sales.vat') || 'الضريبة' },
       { key: 'totalAmount', header: t('sales.total') || 'الإجمالي' },
@@ -331,7 +330,7 @@ export const InvoicesPage: React.FC = () => {
       { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: 30 },
       { key: 'customerName', header: t('sales.customer.title') || 'العميل', width: 40 },
       { key: 'date', header: t('sales.date') || 'التاريخ', width: 20 },
-      { key: 'status', header: t('sales.status') || 'الحالة', width: 20 },
+      { key: 'status', header: t('sales.status.label') || 'الحالة', width: 20 },
       { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', width: 20 },
     ];
     const data = invoices.map(i => ({
@@ -363,7 +362,7 @@ export const InvoicesPage: React.FC = () => {
       </span>
     ) },
     { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
-    { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
+    { key: 'status', header: t('sales.status.label') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
     { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: SalesInvoice) => (
       <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.createdBy)}</span>
     ) },
@@ -590,7 +589,7 @@ export const InvoicesPage: React.FC = () => {
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.customer?.name || viewing.customerId}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.status.label') || 'الحالة'}</p>
                 <StatusBadge status={viewing.status} />
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">

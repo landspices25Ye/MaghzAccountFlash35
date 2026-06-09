@@ -63,17 +63,17 @@ export const CashFlowReport: React.FC = () => {
       
       // Build operating section
       const ops: CFRow[] = [];
-      if (netProfit !== 0) ops.push({ activity: 'صافي الربح', amount: netProfit });
+      if (netProfit !== 0) ops.push({ activity: t('accounting.cashFlow.netProfit'), amount: netProfit });
       
       // Get depreciation (approximate from expense accounts with depreciation in name)
       if (plResult.success && plResult.data) {
         const accounts = plResult.data as Account[];
         const depreciationAcc = accounts.find(a => a.nameAr?.includes('إهلاك') || a.nameAr?.includes('اهلاك'));
-        if (depreciationAcc) ops.push({ activity: 'الإهلاك', amount: Math.abs(depreciationAcc.balance) });
+        if (depreciationAcc) ops.push({ activity: t('accounting.cashFlow.depreciation'), amount: Math.abs(depreciationAcc.balance) });
       }
       
-      if (arChange !== 0) ops.push({ activity: 'التغير في العملاء', amount: -arChange });
-      if (apChange !== 0) ops.push({ activity: 'التغير في الموردين', amount: apChange });
+      if (arChange !== 0) ops.push({ activity: t('accounting.cashFlow.receivablesChange'), amount: -arChange });
+      if (apChange !== 0) ops.push({ activity: t('accounting.cashFlow.payablesChange'), amount: apChange });
       
       // Inventory change (approximate)
       let inventoryChange = 0;
@@ -82,10 +82,10 @@ export const CashFlowReport: React.FC = () => {
         const inventoryAcc = accounts.find(a => a.nameAr?.includes('مخزون') || a.nameAr?.includes('مخزن'));
         if (inventoryAcc) inventoryChange = inventoryAcc.balance;
       }
-      if (inventoryChange !== 0) ops.push({ activity: 'التغير في المخزون', amount: -inventoryChange });
+      if (inventoryChange !== 0) ops.push({ activity: t('accounting.cashFlow.inventoryChange'), amount: -inventoryChange });
       
       const opsTotal = ops.reduce((s, r) => s + r.amount, 0);
-      if (ops.length > 0) ops.push({ activity: 'صافي التدفق النقدي من العمليات', amount: opsTotal, isTotal: true });
+      if (ops.length > 0) ops.push({ activity: t('accounting.cashFlow.netOperating'), amount: opsTotal, isTotal: true });
       setOperating(ops);
       
       // Investing section (fixed assets)
@@ -94,10 +94,10 @@ export const CashFlowReport: React.FC = () => {
         const accounts = bsResult.data as Account[];
         const fixedAssets = accounts.filter(a => a.type === 'asset' && (a.nameAr?.includes('أصول ثابتة') || a.nameAr?.includes('أصول') || a.nameAr?.includes('عقار')));
         const faTotal = fixedAssets.reduce((s, a) => s + Math.abs(a.balance), 0);
-        if (faTotal > 0) inv.push({ activity: 'شراء أصول ثابتة', amount: -faTotal });
+        if (faTotal > 0) inv.push({ activity: t('accounting.cashFlow.fixedAssetsPurchase'), amount: -faTotal });
       }
       const invTotal = inv.reduce((s, r) => s + r.amount, 0);
-      if (inv.length > 0) inv.push({ activity: 'صافي التدفق النقدي من الاستثمار', amount: invTotal, isTotal: true });
+      if (inv.length > 0) inv.push({ activity: t('accounting.cashFlow.netInvesting'), amount: invTotal, isTotal: true });
       setInvesting(inv);
       
       // Financing section (loans, equity)
@@ -108,11 +108,11 @@ export const CashFlowReport: React.FC = () => {
         const equity = accounts.filter(a => a.type === 'equity');
         const loanTotal = loans.reduce((s, a) => s + a.balance, 0);
         const equityTotal = equity.reduce((s, a) => s + a.balance, 0);
-        if (loanTotal !== 0) fin.push({ activity: 'سداد قرض / قروض جديدة', amount: loanTotal });
-        if (equityTotal !== 0) fin.push({ activity: 'مساهمات رأس المال', amount: equityTotal });
+        if (loanTotal !== 0) fin.push({ activity: t('accounting.cashFlow.loanRepayment'), amount: loanTotal });
+        if (equityTotal !== 0) fin.push({ activity: t('accounting.cashFlow.equityContributions'), amount: equityTotal });
       }
       const finTotal = fin.reduce((s, r) => s + r.amount, 0);
-      if (fin.length > 0) fin.push({ activity: 'صافي التدفق النقدي من التمويل', amount: finTotal, isTotal: true });
+      if (fin.length > 0) fin.push({ activity: t('accounting.cashFlow.netFinancing'), amount: finTotal, isTotal: true });
       setFinancing(fin);
       
       setNetChange(opsTotal + invTotal + finTotal);
@@ -164,9 +164,9 @@ export const CashFlowReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <Banknote size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">التدفقات النقدية</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.cashFlow.title')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              {startDate && endDate ? `الفترة: ${startDate} - ${endDate}` : 'الفترة: الكل'}
+              {startDate && endDate ? `${t('accounting.period')}: ${startDate} - ${endDate}` : `${t('accounting.period')}: ${t('accounting.all')}`}
             </p>
           </div>
         </div>
@@ -174,11 +174,11 @@ export const CashFlowReport: React.FC = () => {
           <Button variant="secondary" size="sm" leftIcon={<Calendar size={14} />} onClick={() => setShowFilters(!showFilters)}>
             {t('filter')}
           </Button>
-          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToExcel(allRows.map(r => ({ النشاط: r.activity, المبلغ: r.amount })), [
-            { key: 'النشاط', header: 'النشاط', width: 40 },
-            { key: 'المبلغ', header: 'المبلغ', width: 15 },
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToExcel(allRows.map(r => ({ [t('accounting.cashFlow.activity')]: r.activity, [t('accounting.amount')]: r.amount })), [
+            { key: t('accounting.cashFlow.activity'), header: t('accounting.cashFlow.activity'), width: 40 },
+            { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
           ], 'CashFlow_Report')}>Excel</Button>
-          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToPdf('cf-print', 'CashFlow_Report', 'التدفقات النقدية')}>PDF</Button>
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToPdf('cf-print', 'CashFlow_Report', t('accounting.cashFlow.title'))}>PDF</Button>
         </div>
       </div>
 
@@ -197,22 +197,22 @@ export const CashFlowReport: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
-          <h3 className="font-bold text-lg text-emerald-700 dark:text-emerald-300 mb-4">العمليات التشغيلية</h3>
-          {operating.length > 0 ? renderRows(operating) : <p className="text-slate-400 text-center py-4">لا توجد بيانات</p>}
+          <h3 className="font-bold text-lg text-emerald-700 dark:text-emerald-300 mb-4">{t('accounting.cashFlow.operating')}</h3>
+          {operating.length > 0 ? renderRows(operating) : <p className="text-slate-400 text-center py-4">{t('accounting.noData')}</p>}
         </Card>
         <Card>
-          <h3 className="font-bold text-lg text-blue-700 dark:text-blue-300 mb-4">الاستثمار</h3>
-          {investing.length > 0 ? renderRows(investing) : <p className="text-slate-400 text-center py-4">لا توجد بيانات</p>}
+          <h3 className="font-bold text-lg text-blue-700 dark:text-blue-300 mb-4">{t('accounting.cashFlow.investing')}</h3>
+          {investing.length > 0 ? renderRows(investing) : <p className="text-slate-400 text-center py-4">{t('accounting.noData')}</p>}
         </Card>
         <Card>
-          <h3 className="font-bold text-lg text-purple-700 dark:text-purple-300 mb-4">التمويل</h3>
-          {financing.length > 0 ? renderRows(financing) : <p className="text-slate-400 text-center py-4">لا توجد بيانات</p>}
+          <h3 className="font-bold text-lg text-purple-700 dark:text-purple-300 mb-4">{t('accounting.cashFlow.financing')}</h3>
+          {financing.length > 0 ? renderRows(financing) : <p className="text-slate-400 text-center py-4">{t('accounting.noData')}</p>}
         </Card>
       </div>
 
       <Card>
         <div className="flex justify-between py-3 px-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
-          <span className="font-bold text-primary-700 dark:text-primary-300">صافي التغير في النقدية</span>
+          <span className="font-bold text-primary-700 dark:text-primary-300">{t('accounting.cashFlow.netChange')}</span>
           <span className={`font-bold tabular-nums ${netChange >= 0 ? 'text-primary-700 dark:text-primary-300' : 'text-rose-600'}`}>
             {netChange >= 0 ? '+' : '-'}{formatNumber(netChange)}
           </span>
@@ -222,7 +222,7 @@ export const CashFlowReport: React.FC = () => {
       {/* Hidden printable table */}
       <div id="cf-print" className="hidden">
         <table>
-          <thead><tr><th>النشاط</th><th>المبلغ</th></tr></thead>
+          <thead><tr><th>{t('accounting.cashFlow.activity')}</th><th>{t('accounting.amount')}</th></tr></thead>
           <tbody>
             {allRows.map((row, idx) => (
               <tr key={idx} className={row.isTotal ? 'total-row' : ''}>

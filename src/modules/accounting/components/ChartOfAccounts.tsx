@@ -10,12 +10,12 @@ import { Can } from '@/core/ui/components/PermissionGate';
 import { useFormatters } from '@/core/utils/useFormatters';
 import type { Account } from '../types';
 
-const TYPE_LABELS: Record<string, string> = {
-  asset: 'أصول',
-  liability: 'التزامات',
-  equity: 'حقوق ملكية',
-  revenue: 'إيرادات',
-  expense: 'مصروفات',
+const TYPE_LABELS_KEYS: Record<string, string> = {
+  asset: 'accounting.asset',
+  liability: 'accounting.liability',
+  equity: 'accounting.equity',
+  revenue: 'accounting.revenue',
+  expense: 'accounting.expense',
 };
 
 const NATURE_COLORS: Record<string, string> = {
@@ -33,6 +33,7 @@ interface AccountTreeItemProps {
 }
 
 function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete, formatCurrency }: AccountTreeItemProps) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = account.children && account.children.length > 0;
   const isMatch = searchQuery === '' || 
@@ -73,10 +74,10 @@ function AccountTreeItem({ account, level = 0, searchQuery, onEdit, onDelete, fo
         
         <div className="flex items-center gap-4 text-sm">
           <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300">
-            {TYPE_LABELS[account.type]}
+            {t(TYPE_LABELS_KEYS[account.type])}
           </span>
           <span className={cn('font-mono', NATURE_COLORS[account.nature])}>
-            {account.nature === 'debit' ? 'مدين' : 'دائن'}
+            {account.nature === 'debit' ? t('accounting.debit') : t('accounting.credit')}
           </span>
           <StatusBadge status={account.isActive ? 'active' : 'inactive'} size="sm" />
           {!account.isGroup && (
@@ -276,8 +277,8 @@ export const ChartOfAccounts: React.FC = () => {
       >
         <div className="space-y-4">
           <Input label={t('accounting.accountCode')} value={formData.code || ''} onChange={e => setFormData(prev => ({ ...prev, code: e.target.value }))} />
-          <Input label={`${t('accounting.accountName')} (عربي)`} value={formData.nameAr || ''} onChange={e => setFormData(prev => ({ ...prev, nameAr: e.target.value }))} />
-          <Input label={`${t('accounting.accountName')} (إنجليزي)`} value={formData.nameEn || ''} onChange={e => setFormData(prev => ({ ...prev, nameEn: e.target.value }))} />
+          <Input label={`${t('accounting.accountName')} (${t('accounting.arabic')})`} value={formData.nameAr || ''} onChange={e => setFormData(prev => ({ ...prev, nameAr: e.target.value }))} />
+          <Input label={`${t('accounting.accountName')} (${t('accounting.english')})`} value={formData.nameEn || ''} onChange={e => setFormData(prev => ({ ...prev, nameEn: e.target.value }))} />
           <div>
             <label className="text-xs font-semibold text-slate-500 block mb-1.5">{t('accounting.accountType')}</label>
             <select

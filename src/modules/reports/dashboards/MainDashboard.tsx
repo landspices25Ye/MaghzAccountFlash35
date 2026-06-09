@@ -45,19 +45,19 @@ const MainDashboard: React.FC = () => {
   const handleExportDashboardPdf = async () => {
     if (!data) return;
     const rows = [
-      { metric: 'إجمالي الإيرادات', value: formatCurrency(data.current.totalRevenue) },
-      { metric: 'إجمالي المصروفات', value: formatCurrency(data.current.totalExpenses) },
-      { metric: 'صافي الربح', value: formatCurrency(data.current.netProfit) },
-      { metric: 'عدد الفواتير', value: data.current.invoicesCount },
-      { metric: 'المنتجات', value: data.current.productsCount },
-      { metric: 'العملاء', value: data.current.customersCount },
+      { metric: t('reports.totalRevenue'), value: formatCurrency(data.current.totalRevenue) },
+      { metric: t('reports.totalExpenses'), value: formatCurrency(data.current.totalExpenses) },
+      { metric: t('reports.netProfit'), value: formatCurrency(data.current.netProfit) },
+      { metric: t('reports.invoicesCount'), value: data.current.invoicesCount },
+      { metric: t('reports.productsCount'), value: data.current.productsCount },
+      { metric: t('reports.customersCount'), value: data.current.customersCount },
     ];
     await exportToPDF(rows, [
-      { key: 'metric', header: 'المؤشر', width: 30 },
-      { key: 'value', header: 'القيمة', width: 20 },
+      { key: 'metric', header: t('reports.kpiMetric'), width: 30 },
+      { key: 'value', header: t('reports.kpiValue'), width: 20 },
     ], `Dashboard_${formatDate(new Date())}`, {
-      title: 'لوحة التحكم',
-      subtitle: activeCompany?.name || 'شركة المغزى',
+      title: t('sidebar.dashboard'),
+      subtitle: activeCompany?.name || t('reports.defaultCompany'),
       companyName: activeCompany?.name,
       rtl: true,
     });
@@ -85,14 +85,14 @@ const MainDashboard: React.FC = () => {
       <EmptyState
         icon="inbox"
         title={t('reports.noData')}
-        description="لا توجد بيانات متاحة للفترة المحددة"
+        description={t('reports.dashboard.noDataDesc')}
         action={
           <button
             onClick={() => setFilters({ period: 'month', comparePrevious: false })}
             className="btn btn-primary"
           >
             <RotateCcw size={16} className="ml-2" />
-            إعادة تعيين
+            {t('reports.resetFilters')}
           </button>
         }
       />

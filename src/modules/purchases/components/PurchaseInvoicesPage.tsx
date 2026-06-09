@@ -301,11 +301,11 @@ export const PurchaseInvoicesPage: React.FC = () => {
         companyId: activeCompany.id,
       });
     } else {
-      alert(`فشل ترحيل الفاتورة: ${result.error || 'خطأ غير معروف'}`);
+      alert(`${t('purchases.invoice.postFailed')}: ${result.error || t('purchases.invoice.postErrorUnknown')}`);
     }
     setPostingId(null);
     setConfirmPost(null);
-  }, [confirmPost, activeCompany, invoices, post, user]);
+  }, [confirmPost, activeCompany, invoices, post, user, t]);
 
   const handlePrint = useCallback((invoice: PurchaseInvoice) => {
     printDocument({

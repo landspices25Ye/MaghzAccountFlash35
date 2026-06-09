@@ -36,32 +36,32 @@ export const ProfitLossReport: React.FC = () => {
 
       const revenues = accounts.filter(a => a.type === 'revenue');
       if (revenues.length > 0) {
-        rows.push({ section: 'header', account: 'الإيرادات', accountId: '', amount: 0, isHeader: true });
+        rows.push({ section: 'header', account: t('accounting.profitLoss.revenue'), accountId: '', amount: 0, isHeader: true });
         let totalRev = 0;
         for (const acc of revenues) {
           const amt = Math.abs(acc.balance);
           rows.push({ section: 'revenue', account: acc.nameAr, accountId: acc.id, amount: amt });
           totalRev += amt;
         }
-        rows.push({ section: 'revenue', account: 'إجمالي الإيرادات', accountId: '', amount: totalRev, isTotal: true });
+        rows.push({ section: 'revenue', account: t('accounting.profitLoss.totalRevenue'), accountId: '', amount: totalRev, isTotal: true });
       }
 
       const expenses = accounts.filter(a => a.type === 'expense');
       if (expenses.length > 0) {
-        rows.push({ section: 'header', account: 'المصروفات', accountId: '', amount: 0, isHeader: true });
+        rows.push({ section: 'header', account: t('accounting.profitLoss.expenses'), accountId: '', amount: 0, isHeader: true });
         let totalExp = 0;
         for (const acc of expenses) {
           const amt = Math.abs(acc.balance);
           rows.push({ section: 'expense', account: acc.nameAr, accountId: acc.id, amount: amt });
           totalExp += amt;
         }
-        rows.push({ section: 'expense', account: 'إجمالي المصروفات', accountId: '', amount: totalExp, isTotal: true });
+        rows.push({ section: 'expense', account: t('accounting.profitLoss.totalExpenses'), accountId: '', amount: totalExp, isTotal: true });
       }
 
       const totalRevenue = revenues.reduce((s, a) => s + Math.abs(a.balance), 0);
       const totalExpense = expenses.reduce((s, a) => s + Math.abs(a.balance), 0);
       const netProfit = totalRevenue - totalExpense;
-      rows.push({ section: 'net', account: 'صافي الربح', accountId: '', amount: netProfit, isTotal: true });
+      rows.push({ section: 'net', account: t('accounting.profitLoss.netProfit'), accountId: '', amount: netProfit, isTotal: true });
 
       return rows;
     },
@@ -71,19 +71,19 @@ export const ProfitLossReport: React.FC = () => {
 
   const handleExportExcel = () => {
     const pnlData = pnlDataResult ?? [];
-    exportToExcel(pnlData.map(r => ({ البند: r.account, المبلغ: r.amount })), [
-      { key: 'البند', header: 'البند', width: 40 },
-      { key: 'المبلغ', header: 'المبلغ', width: 15 },
+    exportToExcel(pnlData.map(r => ({ [t('accounting.profitLoss.item')]: r.account, [t('accounting.amount')]: r.amount })), [
+      { key: t('accounting.profitLoss.item'), header: t('accounting.profitLoss.item'), width: 40 },
+      { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
     ], 'ProfitLoss');
   };
 
   const handleExportPDF = () => {
     const pnlData = pnlDataResult ?? [];
     exportToPDF(pnlData.map(r => ({ item: r.account, amount: r.amount })), [
-      { key: 'item', header: 'البند' },
-      { key: 'amount', header: 'المبلغ' },
+      { key: 'item', header: t('accounting.profitLoss.item') },
+      { key: 'amount', header: t('accounting.amount') },
     ], 'ProfitLoss', {
-      title: t('accounting.profitLoss'),
+      title: t('accounting.profitLoss.title'),
       subtitle: activeCompany?.name,
       rtl: true,
     });
@@ -103,9 +103,9 @@ export const ProfitLossReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <BarChart3 size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.profitLoss')}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.profitLoss.title')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              {startDate && endDate ? `الفترة: ${startDate} - ${endDate}` : 'الفترة: الكل'}
+              {startDate && endDate ? `${t('accounting.period')}: ${startDate} - ${endDate}` : `${t('accounting.period')}: ${t('accounting.all')}`}
             </p>
           </div>
         </div>

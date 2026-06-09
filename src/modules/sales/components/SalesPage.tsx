@@ -2,25 +2,27 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { FileText, Users, Tag, Undo2 } from 'lucide-react';
 import { cn } from '@/core/utils';
-
-const salesMenu = [
-  { id: 'invoices', label: 'فواتير المبيعات', icon: FileText, path: '/sales/invoices' },
-  { id: 'customers', label: 'العملاء', icon: Users, path: '/sales/customers' },
-  { id: 'quotations', label: 'عروض الأسعار', icon: Tag, path: '/sales/quotations' },
-  { id: 'returns', label: 'مردودات المبيعات', icon: Undo2, path: '/sales/returns' },
-];
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const SalesPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const isRoot = location.pathname === '/sales';
+
+  const salesMenu = [
+    { id: 'invoices', label: t('sales.tabs.invoices'), icon: FileText, path: '/sales/invoices' },
+    { id: 'customers', label: t('sales.tabs.customers'), icon: Users, path: '/sales/customers' },
+    { id: 'quotations', label: t('sales.tabs.quotations'), icon: Tag, path: '/sales/quotations' },
+    { id: 'returns', label: t('sales.tabs.returns'), icon: Undo2, path: '/sales/returns' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">المبيعات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة فواتير المبيعات والعملاء وعروض الأسعار</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.page.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('sales.page.subtitle')}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -9,16 +9,17 @@ import { useAppStore } from '@/core/store';
 import { useOpportunitiesPaginated } from '../hooks/useCrm';
 import type { Opportunity } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 const STAGES: Opportunity['stage'][] = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
-const STAGE_LABELS: Record<string, string> = {
-  new: 'جديد',
-  qualified: 'مؤهل',
-  proposal: 'عرض سعر',
-  negotiation: 'تفاوض',
-  won: 'ربح',
-  lost: 'خسارة',
+const STAGE_KEYS: Record<string, string> = {
+  new: 'crm.stage.new',
+  qualified: 'crm.stage.qualified',
+  proposal: 'crm.stage.proposal',
+  negotiation: 'crm.stage.negotiation',
+  won: 'crm.stage.won',
+  lost: 'crm.stage.lost',
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -31,6 +32,7 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 export const OpportunitiesPage: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
@@ -102,20 +104,20 @@ export const OpportunitiesPage: React.FC = () => {
   const funnelData = useMemo(() => {
     return STAGES.map((stage) => {
       const stageOpps = opportunities.filter((o) => o.stage === stage);
-      return { stage, label: STAGE_LABELS[stage], count: stageOpps.length, value: stageOpps.reduce((s, o) => s + o.value, 0) };
+      return { stage, label: t(STAGE_KEYS[stage]), count: stageOpps.length, value: stageOpps.reduce((s, o) => s + o.value, 0) };
     });
-  }, [opportunities]);
+  }, [opportunities, t]);
 
   const listColumns = [
-    { key: 'name', header: 'الفرصة' },
-    { key: 'value', header: 'القيمة', align: 'right' as const, render: (row: Opportunity) => formatCurrency(row.value) },
-    { key: 'stage', header: 'المرحلة', render: (row: Opportunity) => <StatusBadge status={row.stage} /> },
-    { key: 'probability', header: 'الاحتمالية', render: (row: Opportunity) => `${row.probability || 0}%` },
-    { key: 'expectedCloseDate', header: 'تاريخ الإغلاق المتوقع', width: '160px' },
+    { key: 'name', header: t('crm.opportunity.name') },
+    { key: 'value', header: t('crm.opportunity.value'), align: 'right' as const, render: (row: Opportunity) => formatCurrency(row.value) },
+    { key: 'stage', header: t('crm.opportunity.stage'), render: (row: Opportunity) => <StatusBadge status={row.stage} /> },
+    { key: 'probability', header: t('crm.opportunity.probability'), render: (row: Opportunity) => `${row.probability || 0}%` },
+    { key: 'expectedCloseDate', header: t('crm.opportunity.expectedCloseDate'), width: '160px' },
     { key: 'actions', header: '', width: '120px', render: (row: Opportunity) => (
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => openEdit(row)}>تعديل</Button>
-        <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => setConfirmDelete(row.id)}>حذف</Button>
+        <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => openEdit(row)}>{t('settings.common.edit')}</Button>
+        <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => setConfirmDelete(row.id)}>{t('settings.common.delete')}</Button>
       </div>
     )},
   ];
@@ -126,51 +128,51 @@ export const OpportunitiesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <CheckSquare size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الفرص</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة فرص المبيعات ولوحة Kanban</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('crm.opportunities.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('crm.opportunities.description')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-            <button onClick={() => setViewMode('kanban')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>Kanban</button>
-            <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قائمة</button>
-            <button onClick={() => setViewMode('funnel')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'funnel' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>قمع</button>
+            <button onClick={() => setViewMode('kanban')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>{t('crm.viewMode.kanban')}</button>
+            <button onClick={() => setViewMode('list')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>{t('crm.viewMode.list')}</button>
+            <button onClick={() => setViewMode('funnel')} className={`px-3 py-1 rounded-md text-sm ${viewMode === 'funnel' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-slate-500'}`}>{t('crm.viewMode.funnel')}</button>
           </div>
-          <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button></Can>
+          <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.opportunity.new')}</Button></Can>
         </div>
       </div>
 
       <Card>
         <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600 dark:text-slate-300">المرحلة:</label>
+            <label className="text-sm text-slate-600 dark:text-slate-300">{t('crm.opportunity.stageFilter')}:</label>
             <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
-              <option value="">الكل</option>
-              {STAGES.map((s) => (<option key={s} value={s}>{STAGE_LABELS[s]}</option>))}
+              <option value="">{t('settings.common.all')}</option>
+              {STAGES.map((s) => (<option key={s} value={s}>{t(STAGE_KEYS[s])}</option>))}
             </select>
           </div>
-          <span className="text-xs text-slate-500">إجمالي: {total}</span>
+          <span className="text-xs text-slate-500">{t('crm.total')}: {total}</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
           <div className="card flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center text-white"><TrendingUp size={20} /></div>
-            <div><p className="text-2xl font-bold">{opportunities.length}</p><p className="text-sm text-slate-500">الفرص المعروضة</p></div>
+            <div><p className="text-2xl font-bold">{opportunities.length}</p><p className="text-sm text-slate-500">{t('crm.opportunity.displayed')}</p></div>
           </div>
           <div className="card flex items-center gap-3">
             <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white"><CheckSquare size={20} /></div>
-            <div><p className="text-2xl font-bold">{formatCurrency(totalValue)}</p><p className="text-sm text-slate-500">إجمالي القيمة</p></div>
+            <div><p className="text-2xl font-bold">{formatCurrency(totalValue)}</p><p className="text-sm text-slate-500">{t('crm.opportunity.totalValue')}</p></div>
           </div>
           <div className="card flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center text-white"><BarChart3 size={20} /></div>
-            <div><p className="text-2xl font-bold">{formatCurrency(Math.round(weightedValue))}</p><p className="text-sm text-slate-500">القيمة المرجحة</p></div>
+            <div><p className="text-2xl font-bold">{formatCurrency(Math.round(weightedValue))}</p><p className="text-sm text-slate-500">{t('crm.opportunity.weightedValue')}</p></div>
           </div>
         </div>
       </Card>
 
       {isLoading ? (
-        <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+        <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
       ) : opportunities.length === 0 ? (
-        <EmptyState icon="inbox" title="لا توجد فرص" description="يمكنك إضافة فرصة جديدة" action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>فرصة جديدة</Button></Can>} />
+        <EmptyState icon="inbox" title={t('crm.opportunity.empty')} description={t('crm.opportunity.emptyDescription')} action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.opportunity.new')}</Button></Can>} />
       ) : viewMode === 'kanban' ? (
         <div className="flex gap-4 overflow-x-auto pb-4">
           {STAGES.map((stage) => (
@@ -181,7 +183,7 @@ export const OpportunitiesPage: React.FC = () => {
               onDrop={() => onDrop(stage)}
             >
               <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <span className="font-semibold text-sm">{STAGE_LABELS[stage]}</span>
+                <span className="font-semibold text-sm">{t(STAGE_KEYS[stage])}</span>
                 <span className="text-xs bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full">{opportunities.filter((o) => o.stage === stage).length}</span>
               </div>
               <div className="p-3 space-y-3">
@@ -216,7 +218,7 @@ export const OpportunitiesPage: React.FC = () => {
             data={opportunities}
             columns={listColumns}
             keyExtractor={(row) => row.id}
-            emptyMessage="لا توجد فرص"
+            emptyMessage={t('crm.opportunity.empty')}
           />
           <Pagination
             page={page}
@@ -229,7 +231,7 @@ export const OpportunitiesPage: React.FC = () => {
       ) : (
         <Card>
           <div className="space-y-4 p-4">
-            <h3 className="font-bold text-lg">تقرير قمع المبيعات</h3>
+            <h3 className="font-bold text-lg">{t('crm.opportunity.funnelReport')}</h3>
             <div className="space-y-3">
               {funnelData.map((f) => (
                 <div key={f.stage} className="flex items-center gap-4">
@@ -240,7 +242,7 @@ export const OpportunitiesPage: React.FC = () => {
                       style={{ width: `${f.count > 0 ? Math.min(100, (f.count / Math.max(1, opportunities.length)) * 100 * STAGES.length) : 0}%` }}
                     />
                     <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-700 dark:text-slate-200">
-                      {f.count} فرص ({formatCurrency(f.value)})
+                      {f.count} {t('crm.opportunity.count')} ({formatCurrency(f.value)})
                     </span>
                   </div>
                 </div>
@@ -253,32 +255,32 @@ export const OpportunitiesPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); resetForm(); }}
-        title={editing ? 'تعديل فرصة' : 'فرصة جديدة'}
+        title={editing ? t('crm.opportunity.edit') : t('crm.opportunity.new')}
         size="md"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
-            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>{t('settings.common.cancel')}</Button>
+            <Button variant="primary" onClick={handleSave}>{t('settings.common.save')}</Button>
           </div>
         }
       >
         <div className="space-y-4">
-          <Input label="اسم الفرصة" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
-          <Input label="القيمة" type="number" value={formData.value} onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))} />
+          <Input label={t('crm.opportunity.name')} value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
+          <Input label={t('crm.opportunity.value')} type="number" value={formData.value} onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))} />
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المرحلة</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('crm.opportunity.stage')}</label>
               <select value={formData.stage} onChange={(e) => setFormData((prev) => ({ ...prev, stage: e.target.value as Opportunity['stage'] }))} className="form-control">
-                {STAGES.map((s) => (<option key={s} value={s}>{STAGE_LABELS[s]}</option>))}
+                {STAGES.map((s) => (<option key={s} value={s}>{t(STAGE_KEYS[s])}</option>))}
               </select>
             </div>
-            <Input label="الاحتمالية (%)" type="number" value={formData.probability} onChange={(e) => setFormData((prev) => ({ ...prev, probability: e.target.value }))} />
+            <Input label={t('crm.opportunity.probability')} type="number" value={formData.probability} onChange={(e) => setFormData((prev) => ({ ...prev, probability: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="تاريخ الإغلاق المتوقع" type="date" value={formData.expectedCloseDate} onChange={(e) => setFormData((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} />
-            <Input label="المكلف" value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
+            <Input label={t('crm.opportunity.expectedCloseDate')} type="date" value={formData.expectedCloseDate} onChange={(e) => setFormData((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} />
+            <Input label={t('crm.opportunity.assignedTo')} value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
           </div>
-          <Input label="ملاحظات" value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} />
+          <Input label={t('crm.form.notes')} value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} />
         </div>
       </Modal>
 
@@ -286,8 +288,8 @@ export const OpportunitiesPage: React.FC = () => {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="حذف الفرصة"
-        message="هل أنت متأكد من حذف هذه الفرصة؟"
+        title={t('crm.opportunity.deleteTitle')}
+        message={t('crm.opportunity.deleteMessage')}
         variant="danger"
       />
     </div>

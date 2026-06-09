@@ -2,26 +2,28 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Package, Warehouse, Boxes, ArrowRightLeft, Scale } from 'lucide-react';
 import { cn } from '@/core/utils';
-
-const inventoryMenu = [
-  { id: 'products', label: 'المنتجات', icon: Package, path: '/inventory/products' },
-  { id: 'warehouses', label: 'المستودعات', icon: Warehouse, path: '/inventory/warehouses' },
-  { id: 'stock', label: 'المخزون', icon: Boxes, path: '/inventory/stock' },
-  { id: 'transactions', label: 'الحركات المخزنية', icon: ArrowRightLeft, path: '/inventory/transactions' },
-  { id: 'adjustments', label: 'تسويات المخزون', icon: Scale, path: '/inventory/adjustments' },
-];
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const InventoryPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const isRoot = location.pathname === '/inventory';
+
+  const inventoryMenu = [
+    { id: 'products', label: t('inventory.products'), icon: Package, path: '/inventory/products' },
+    { id: 'warehouses', label: t('inventory.warehouses'), icon: Warehouse, path: '/inventory/warehouses' },
+    { id: 'stock', label: t('inventory.stock'), icon: Boxes, path: '/inventory/stock' },
+    { id: 'transactions', label: t('inventory.transactions'), icon: ArrowRightLeft, path: '/inventory/transactions' },
+    { id: 'adjustments', label: t('inventory.adjustments'), icon: Scale, path: '/inventory/adjustments' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">المخازن</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة المنتجات والمستودعات والمخزون</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('inventory.page.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('inventory.page.subtitle')}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

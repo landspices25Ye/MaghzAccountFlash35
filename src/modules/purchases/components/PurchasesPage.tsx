@@ -2,16 +2,18 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Store, FileText, ClipboardList, Undo2 } from 'lucide-react';
 import { cn } from '@/core/utils';
-
-const purchasesMenu = [
-  { id: 'invoices', label: 'فواتير المشتريات', icon: FileText, path: '/purchases/invoices' },
-  { id: 'orders', label: 'أوامر الشراء', icon: ClipboardList, path: '/purchases/orders' },
-  { id: 'suppliers', label: 'الموردين', icon: Store, path: '/purchases/suppliers' },
-  { id: 'returns', label: 'مردودات المشتريات', icon: Undo2, path: '/purchases/returns' },
-];
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const PurchasesPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
+
+  const purchasesMenu = [
+    { id: 'invoices', label: t('purchases.tabs.invoices'), icon: FileText, path: '/purchases/invoices' },
+    { id: 'orders', label: t('purchases.tabs.orders'), icon: ClipboardList, path: '/purchases/orders' },
+    { id: 'suppliers', label: t('purchases.tabs.suppliers'), icon: Store, path: '/purchases/suppliers' },
+    { id: 'returns', label: t('purchases.tabs.returns'), icon: Undo2, path: '/purchases/returns' },
+  ];
   const isRoot = location.pathname === '/purchases';
 
   return (
@@ -19,8 +21,8 @@ export const PurchasesPage: React.FC = () => {
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">المشتريات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة المشتريات والموردين</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('purchases.page.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('purchases.page.subtitle')}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

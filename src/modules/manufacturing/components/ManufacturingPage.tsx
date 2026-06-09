@@ -2,24 +2,26 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { GitBranch, Wrench, BarChart3 } from 'lucide-react';
 import { cn } from '@/core/utils';
-
-const mfgMenu = [
-  { id: 'work-orders', label: 'أوامر التشغيل', icon: Wrench, path: '/manufacturing/work-orders' },
-  { id: 'bom', label: 'فاتير المواد', icon: GitBranch, path: '/manufacturing/bom' },
-  { id: 'cost-report', label: 'تحليل التكاليف', icon: BarChart3, path: '/manufacturing/cost-report' },
-];
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const ManufacturingPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const isRoot = location.pathname === '/manufacturing';
+
+  const mfgMenu = [
+    { id: 'work-orders', label: t('manufacturing.tabs.workOrders'), icon: Wrench, path: '/manufacturing/work-orders' },
+    { id: 'bom', label: t('manufacturing.tabs.boms'), icon: GitBranch, path: '/manufacturing/bom' },
+    { id: 'cost-report', label: t('manufacturing.tabs.costReport'), icon: BarChart3, path: '/manufacturing/cost-report' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">التصنيع</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة الإنتاج وفاتير المواد</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('manufacturing.page.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('manufacturing.page.subtitle')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {mfgMenu.map(item => {

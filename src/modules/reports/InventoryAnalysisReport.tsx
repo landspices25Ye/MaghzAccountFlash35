@@ -146,30 +146,30 @@ export const InventoryAnalysisReport: React.FC = () => {
   const slowMovingCount = items.filter((i) => i.turnoverDays > 90).length;
 
   const statusChart = [
-    { name: 'متوفر', value: items.filter((i) => i.status === 'good').length },
-    { name: 'منخفض', value: lowStockCount },
-    { name: 'نفذ', value: outOfStock },
+    { name: t('reports.good'), value: items.filter((i) => i.status === 'good').length },
+    { name: t('reports.low'), value: lowStockCount },
+    { name: t('reports.out'), value: outOfStock },
   ];
 
   const handleExportExcel = async () => {
     const cols = [
-      { key: 'product', header: 'المنتج' },
-      { key: 'sku', header: 'الرمز' },
-      { key: 'warehouse', header: 'المستودع' },
-      { key: 'quantity', header: 'الكمية' },
-      { key: 'minStock', header: 'الحد الأدنى' },
-      { key: 'status', header: 'الحالة' },
-      { key: 'value', header: 'القيمة' },
+      { key: 'product', header: t('reports.product') },
+      { key: 'sku', header: t('reports.sku') },
+      { key: 'warehouse', header: t('reports.warehouse') },
+      { key: 'quantity', header: t('reports.quantity') },
+      { key: 'minStock', header: t('reports.minStock') },
+      { key: 'status', header: t('reports.status') },
+      { key: 'value', header: t('reports.amount') },
     ];
     await exportToExcel(view === 'abc' ? abcData : filteredItems, cols, 'Inventory_Analysis');
   };
 
   const handleExportPDF = async () => {
     const cols = [
-      { key: 'product', header: 'المنتج', width: 25 },
-      { key: 'sku', header: 'الرمز', width: 15 },
-      { key: 'quantity', header: 'الكمية', width: 12 },
-      { key: 'value', header: 'القيمة', width: 15 },
+      { key: 'product', header: t('reports.product'), width: 25 },
+      { key: 'sku', header: t('reports.sku'), width: 15 },
+      { key: 'quantity', header: t('reports.quantity'), width: 12 },
+      { key: 'value', header: t('reports.amount'), width: 15 },
     ];
     await exportToPDF(view === 'abc' ? abcData : filteredItems, cols, 'Inventory_Analysis', {
       title: t('reports.inventoryAnalysis'),
@@ -194,7 +194,7 @@ export const InventoryAnalysisReport: React.FC = () => {
           <Package size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.inventoryAnalysis')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">تقرير شامل لحالة المخزون والمنتجات</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.inventoryAnalysis.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -213,7 +213,7 @@ export const InventoryAnalysisReport: React.FC = () => {
       {/* View Tabs */}
       <div className="flex gap-2 flex-wrap">
         {([
-          { key: 'all', label: 'الكل' },
+          { key: 'all', label: t('reports.all') },
           { key: 'lowStock', label: t('reports.lowStockItems') },
           { key: 'slowMoving', label: t('reports.slowMoving') },
           { key: 'abc', label: t('reports.abcAnalysis') },
@@ -239,10 +239,10 @@ export const InventoryAnalysisReport: React.FC = () => {
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.status')}</label>
               <select className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}>
-                <option value="all">الكل</option>
-                <option value="good">متوفر</option>
-                <option value="low">منخفض</option>
-                <option value="out">نفذ</option>
+                <option value="all">{t('reports.all')}</option>
+                <option value="good">{t('reports.good')}</option>
+                <option value="low">{t('reports.low')}</option>
+                <option value="out">{t('reports.out')}</option>
               </select>
             </div>
             <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={() => setStatusFilter('all')}>
@@ -290,7 +290,7 @@ export const InventoryAnalysisReport: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">توزيع الحالة</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.inventoryAnalysis.statusDistribution')}</h3>
             <div style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -308,7 +308,7 @@ export const InventoryAnalysisReport: React.FC = () => {
         </Card>
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">أعلى 10 منتجات قيمة</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.topProductsByValue')}</h3>
             <div style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={items.sort((a, b) => b.value - a.value).slice(0, 10)} layout="vertical">
@@ -328,18 +328,18 @@ export const InventoryAnalysisReport: React.FC = () => {
       <Card>
         <div className="p-4">
           <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">
-            {view === 'abc' ? t('reports.abcAnalysis') : 'تفاصيل المخزون'}
+            {view === 'abc' ? t('reports.abcAnalysis') : t('reports.inventoryAnalysis.details')}
           </h3>
           {view === 'abc' ? (
             <Table
               data={abcData}
               columns={[
-                { key: 'product', header: 'المنتج' },
-                { key: 'sku', header: 'الرمز' },
-                { key: 'quantity', header: 'الكمية', align: 'right' },
-                { key: 'stockValue', header: 'القيمة', align: 'right', render: (row) => formatCurrency(row.stockValue) },
-                { key: 'cumPct', header: 'تراكمي %', align: 'right', render: (row) => `${row.cumPct}%` },
-                { key: 'grade', header: 'الدرجة', align: 'center', render: (row) => (
+                { key: 'product', header: t('reports.product') },
+                { key: 'sku', header: t('reports.sku') },
+                { key: 'quantity', header: t('reports.quantity'), align: 'right' },
+                { key: 'stockValue', header: t('reports.amount'), align: 'right', render: (row) => formatCurrency(row.stockValue) },
+                { key: 'cumPct', header: t('reports.abcAnalysis.cumulativePercent'), align: 'right', render: (row) => `${row.cumPct}%` },
+                { key: 'grade', header: t('reports.abcAnalysis.grade'), align: 'center', render: (row) => (
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-bold ${
                     row.grade === 'A' ? 'bg-emerald-100 text-emerald-700' :
                     row.grade === 'B' ? 'bg-blue-100 text-blue-700' :
@@ -353,22 +353,22 @@ export const InventoryAnalysisReport: React.FC = () => {
             <Table
               data={filteredItems}
               columns={[
-                { key: 'product', header: 'المنتج' },
-                { key: 'sku', header: 'الرمز' },
-                { key: 'warehouse', header: 'المستودع' },
-                { key: 'quantity', header: 'الكمية', align: 'right' },
-                { key: 'minStock', header: 'الحد الأدنى', align: 'right' },
-                { key: 'status', header: 'الحالة', render: (row) => (
+                { key: 'product', header: t('reports.product') },
+                { key: 'sku', header: t('reports.sku') },
+                { key: 'warehouse', header: t('reports.warehouse') },
+                { key: 'quantity', header: t('reports.quantity'), align: 'right' },
+                { key: 'minStock', header: t('reports.minStock'), align: 'right' },
+                { key: 'status', header: t('reports.status'), render: (row) => (
                   <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                     row.status === 'good' ? 'bg-emerald-100 text-emerald-700' :
                     row.status === 'low' ? 'bg-amber-100 text-amber-700' :
                     'bg-rose-100 text-rose-700'
                   }`}>
-                    {row.status === 'good' ? 'متوفر' : row.status === 'low' ? 'منخفض' : 'نفذ'}
+                    {row.status === 'good' ? t('reports.good') : row.status === 'low' ? t('reports.low') : t('reports.out')}
                   </span>
                 )},
-                { key: 'value', header: 'القيمة', align: 'right', render: (row) => formatCurrency(row.value) },
-                { key: 'turnoverDays', header: 'أيام الدوران', align: 'right' },
+                { key: 'value', header: t('reports.amount'), align: 'right', render: (row) => formatCurrency(row.value) },
+                { key: 'turnoverDays', header: t('reports.turnoverDays'), align: 'right' },
               ]}
               keyExtractor={(row, i) => `${row.sku}-${i}`}
             />

@@ -1,31 +1,33 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { GitBranch, BookOpen, Scale, FileText, BarChart3, Banknote, ArrowLeftCircle, ArrowRightCircle, BookOpenText } from 'lucide-react';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
 
-const accountingMenu = [
-  { id: 'chart', label: 'شجرة الحسابات', icon: GitBranch, path: '/accounting/chart' },
-  { id: 'journal', label: 'القيود اليومية', icon: BookOpen, path: '/accounting/journal' },
-  { id: 'ledger', label: 'دفتر الأستاذ', icon: BookOpenText, path: '/accounting/ledger' },
-  { id: 'trial', label: 'ميزان المراجعة', icon: Scale, path: '/accounting/trial' },
-  { id: 'balance', label: 'الميزانية العمومية', icon: FileText, path: '/accounting/balance' },
-  { id: 'profit', label: 'قائمة الدخل', icon: BarChart3, path: '/accounting/profit' },
-  { id: 'cashflow', label: 'التدفقات النقدية', icon: Banknote, path: '/accounting/cashflow' },
-  { id: 'receipt', label: 'سندات القبض', icon: ArrowLeftCircle, path: '/accounting/receipt-vouchers' },
-  { id: 'payment', label: 'سندات الصرف', icon: ArrowRightCircle, path: '/accounting/payment-vouchers' },
-];
-
 export const AccountingPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const isRoot = location.pathname === '/accounting';
+
+  const accountingMenu = [
+    { id: 'chart', label: t('accounting.tabs.chart'), icon: GitBranch, path: '/accounting/chart' },
+    { id: 'journal', label: t('accounting.tabs.journal'), icon: BookOpen, path: '/accounting/journal' },
+    { id: 'ledger', label: t('accounting.tabs.ledger'), icon: BookOpenText, path: '/accounting/ledger' },
+    { id: 'trial', label: t('accounting.tabs.trial'), icon: Scale, path: '/accounting/trial' },
+    { id: 'balance', label: t('accounting.tabs.balanceSheet'), icon: FileText, path: '/accounting/balance' },
+    { id: 'profit', label: t('accounting.tabs.profitLoss'), icon: BarChart3, path: '/accounting/profit' },
+    { id: 'cashflow', label: t('accounting.tabs.cashFlow'), icon: Banknote, path: '/accounting/cashflow' },
+    { id: 'receipt', label: t('accounting.tabs.receiptVouchers'), icon: ArrowLeftCircle, path: '/accounting/receipt-vouchers' },
+    { id: 'payment', label: t('accounting.tabs.paymentVouchers'), icon: ArrowRightCircle, path: '/accounting/payment-vouchers' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الحسابات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">النظام المحاسبي المزدوج والتقارير المالية</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('accounting.subtitle')}</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

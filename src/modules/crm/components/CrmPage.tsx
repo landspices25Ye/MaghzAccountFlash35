@@ -2,25 +2,28 @@ import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Target, CheckSquare, Activity } from 'lucide-react';
 import { cn } from '@/core/utils';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
-const crmMenu = [
-  { id: 'leads', label: 'العملاء المحتملين', icon: Target, path: '/crm/leads' },
-  { id: 'opportunities', label: 'الفرص', icon: CheckSquare, path: '/crm/opportunities' },
-  { id: 'tasks', label: 'المهام', icon: CheckSquare, path: '/crm/tasks' },
-  { id: 'activities', label: 'النشاطات', icon: Activity, path: '/crm/activities' },
+const crmMenuItems = [
+  { id: 'leads', key: 'leads' as const, icon: Target, path: '/crm/leads' },
+  { id: 'opportunities', key: 'opportunities' as const, icon: CheckSquare, path: '/crm/opportunities' },
+  { id: 'tasks', key: 'tasks' as const, icon: CheckSquare, path: '/crm/tasks' },
+  { id: 'activities', key: 'activities' as const, icon: Activity, path: '/crm/activities' },
 ];
 
 export const CrmPage: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const isRoot = location.pathname === '/crm';
+  const crmMenu = crmMenuItems.map(item => ({ ...item, label: t(`crm.tabs.${item.key}`) }));
 
   return (
     <div className="space-y-6 animate-fade-in">
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">العملاء</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة علاقات العملاء</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('crm.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('crm.description')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {crmMenu.map(item => {

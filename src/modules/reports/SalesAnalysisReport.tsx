@@ -86,7 +86,7 @@ export const SalesAnalysisReport: React.FC = () => {
         [companyId]
       );
       const dbRows = (result.rows || []) as Record<string, unknown>[];
-      const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+      const months = [t('reports.months.jan'),t('reports.months.feb'),t('reports.months.mar'),t('reports.months.apr'),t('reports.months.may'),t('reports.months.jun'),t('reports.months.jul'),t('reports.months.aug'),t('reports.months.sep'),t('reports.months.oct'),t('reports.months.nov'),t('reports.months.dec')];
 
       // Group lines by invoice so invoices with no lines still appear with productName='-'.
       const invoiceMap = new Map<string, {
@@ -104,7 +104,7 @@ export const SalesAnalysisReport: React.FC = () => {
           entry = {
             invoiceId: invId,
             date: String(r.date || ''),
-            customerName: String(r.customer_name || 'غير معروف'),
+            customerName: String(r.customer_name || t('reports.unknown')),
             currencyCode: String(r.currency_code || YER_CODE),
             lines: [],
           };
@@ -157,7 +157,7 @@ export const SalesAnalysisReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id, currencies]);
+  }, [activeCompany?.id, currencies, t]);
 
   const filteredData = useMemo(() => {
     return rawData.filter((row) => {
@@ -215,22 +215,22 @@ export const SalesAnalysisReport: React.FC = () => {
 
   const handleExportExcel = async () => {
     const cols = [
-      { key: 'month', header: 'الشهر' },
-      { key: 'customerName', header: 'العميل' },
-      { key: 'productName', header: 'المنتج' },
-      { key: 'repName', header: 'المندوب' },
-      { key: 'revenue', header: 'الإيرادات' },
-      { key: 'invoiceCount', header: 'عدد الفواتير' },
+      { key: 'month', header: t('reports.month') },
+      { key: 'customerName', header: t('reports.customer') },
+      { key: 'productName', header: t('reports.product') },
+      { key: 'repName', header: t('reports.salesRep') },
+      { key: 'revenue', header: t('reports.revenue') },
+      { key: 'invoiceCount', header: t('reports.invoicesCount') },
     ];
     await exportToExcel(filteredData, cols, 'Sales_Analysis');
   };
 
   const handleExportPDF = async () => {
     const cols = [
-      { key: 'month', header: 'الشهر', width: 12 },
-      { key: 'customerName', header: 'العميل', width: 20 },
-      { key: 'productName', header: 'المنتج', width: 20 },
-      { key: 'revenue', header: 'الإيرادات', width: 15 },
+      { key: 'month', header: t('reports.month'), width: 12 },
+      { key: 'customerName', header: t('reports.customer'), width: 20 },
+      { key: 'productName', header: t('reports.product'), width: 20 },
+      { key: 'revenue', header: t('reports.revenue'), width: 15 },
     ];
     await exportToPDF(filteredData, cols, 'Sales_Analysis', {
       title: t('reports.salesAnalysis'),
@@ -260,11 +260,11 @@ export const SalesAnalysisReport: React.FC = () => {
     return (
       <EmptyState
         icon="search"
-        title="لا توجد نتائج"
-        description="جرب تعديل الفلاتر أو إضافة بيانات"
+        title={t('reports.emptyResults.title')}
+        description={t('reports.emptyResults.description')}
         action={
           <Button variant="secondary" onClick={clearFilters} leftIcon={<RotateCcw size={16} />}>
-            مسح الفلاتر
+            {t('reports.clearFilter')}
           </Button>
         }
       />
@@ -279,7 +279,7 @@ export const SalesAnalysisReport: React.FC = () => {
           <TrendingUp size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.salesAnalysis')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">تقرير تحليلي شامل لأداء المبيعات</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.salesAnalysis.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -309,23 +309,23 @@ export const SalesAnalysisReport: React.FC = () => {
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.customer')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم العميل..." value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} />
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.customerName')} value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.product')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم المنتج..." value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.productName')} value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.salesRep')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder="اسم المندوب..." value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
+              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.repName')} value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">{t('reports.pivotTable')}</label>
               <select className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={pivotBy} onChange={(e) => setPivotBy(e.target.value as 'none' | 'customer' | 'product' | 'month')}>
-                <option value="none">بدون</option>
-                <option value="customer">حسب العميل</option>
-                <option value="product">حسب المنتج</option>
-                <option value="month">حسب الشهر</option>
+                <option value="none">{t('reports.pivotNone')}</option>
+                <option value="customer">{t('reports.pivotByCustomer')}</option>
+                <option value="product">{t('reports.pivotByProduct')}</option>
+                <option value="month">{t('reports.pivotByMonth')}</option>
               </select>
             </div>
             <div className="flex items-end">
@@ -379,7 +379,7 @@ export const SalesAnalysisReport: React.FC = () => {
         </Card>
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">التوزيع</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.distribution')}</h3>
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -401,16 +401,16 @@ export const SalesAnalysisReport: React.FC = () => {
       <Card>
         <div className="p-4">
           <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">
-            {pivotBy !== 'none' ? t('reports.pivotTable') : 'تفاصيل المبيعات'}
+            {pivotBy !== 'none' ? t('reports.pivotTable') : t('reports.salesAnalysis.details')}
           </h3>
           {pivotBy !== 'none' ? (
             <Table
               data={pivotData}
               columns={[
-                { key: 'dimension', header: pivotBy === 'customer' ? 'العميل' : pivotBy === 'product' ? 'المنتج' : 'الشهر' },
-                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
-                { key: 'invoiceCount', header: 'الفواتير', align: 'right' },
-                { key: 'avgValue', header: 'المتوسط', align: 'right', render: (row) => formatCurrency(row.avgValue) },
+                { key: 'dimension', header: pivotBy === 'customer' ? t('reports.customer') : pivotBy === 'product' ? t('reports.product') : t('reports.month') },
+                { key: 'revenue', header: t('reports.revenue'), align: 'right', render: (row) => formatCurrency(row.revenue) },
+                { key: 'invoiceCount', header: t('reports.invoicesCount'), align: 'right' },
+                { key: 'avgValue', header: t('reports.average'), align: 'right', render: (row) => formatCurrency(row.avgValue) },
               ]}
               keyExtractor={(row) => row.dimension}
             />
@@ -418,12 +418,12 @@ export const SalesAnalysisReport: React.FC = () => {
             <Table
               data={filteredData.slice(0, 200)}
               columns={[
-                { key: 'date', header: 'التاريخ' },
-                { key: 'customerName', header: 'العميل' },
-                { key: 'productName', header: 'المنتج' },
-                { key: 'repName', header: 'المندوب' },
-                { key: 'currencyCode', header: 'العملة', align: 'right', render: (row) => <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{row.currencyCode}</span> },
-                { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
+                { key: 'date', header: t('reports.date') },
+                { key: 'customerName', header: t('reports.customer') },
+                { key: 'productName', header: t('reports.product') },
+                { key: 'repName', header: t('reports.salesRep') },
+                { key: 'currencyCode', header: t('reports.currency'), align: 'right', render: (row) => <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{row.currencyCode}</span> },
+                { key: 'revenue', header: t('reports.revenue'), align: 'right', render: (row) => formatCurrency(row.revenue) },
               ]}
               keyExtractor={(row, i) => `${row.customerName}-${i}`}
             />
@@ -433,7 +433,7 @@ export const SalesAnalysisReport: React.FC = () => {
 
       {/* Currency Breakdown */}
       {currencyBreakdown.items.length > 0 && (
-        <CurrencyBreakdown result={currencyBreakdown} title="الإيرادات حسب العملة" />
+        <CurrencyBreakdown result={currencyBreakdown} title={t('reports.revenueByCurrency')} />
       )}
     </div>
   );

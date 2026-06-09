@@ -49,7 +49,7 @@ export const BalanceSheetReport: React.FC = () => {
             }
           }
           if (total > 0) {
-            rows.push({ account: 'الإجمالي', accountId: '', amount: total, isTotal: true });
+            rows.push({ account: t('accounting.balanceSheet.total'), accountId: '', amount: total, isTotal: true });
           }
           return rows;
         };
@@ -61,23 +61,23 @@ export const BalanceSheetReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id, asOfDate]);
+  }, [activeCompany?.id, asOfDate, t]);
 
   const allRows = [...assets, ...liabilities, ...equity];
 
   const handleExportExcel = () => {
-    exportToExcel(allRows.map(r => ({ البند: r.account, المبلغ: r.amount })), [
-      { key: 'البند', header: 'البند', width: 40 },
-      { key: 'المبلغ', header: 'المبلغ', width: 15 },
+    exportToExcel(allRows.map(r => ({ [t('accounting.profitLoss.item')]: r.account, [t('accounting.amount')]: r.amount })), [
+      { key: t('accounting.profitLoss.item'), header: t('accounting.profitLoss.item'), width: 40 },
+      { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
     ], 'BalanceSheet');
   };
 
   const handleExportPDF = () => {
     exportToPDF(allRows.map(r => ({ item: r.account, amount: r.amount })), [
-      { key: 'item', header: 'البند' },
-      { key: 'amount', header: 'المبلغ' },
+      { key: 'item', header: t('accounting.profitLoss.item') },
+      { key: 'amount', header: t('accounting.amount') },
     ], 'BalanceSheet', {
-      title: t('accounting.balanceSheet'),
+      title: t('accounting.balanceSheet.title'),
       subtitle: activeCompany?.name,
       rtl: true,
     });
@@ -122,9 +122,9 @@ export const BalanceSheetReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <Scale size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.balanceSheet')}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.balanceSheet.title')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
-              {asOfDate ? `تاريخ: ${asOfDate}` : 'تاريخ: اليوم'}
+              {asOfDate ? `${t('accounting.date')}: ${asOfDate}` : `${t('accounting.date')}: ${t('accounting.balanceSheet.today')}`}
             </p>
           </div>
         </div>
@@ -151,17 +151,17 @@ export const BalanceSheetReport: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">الأصول</h3>
+          <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">{t('accounting.balanceSheet.assets')}</h3>
           {renderRows(assets)}
         </Card>
 
         <div className="space-y-6">
           <Card>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">الالتزامات</h3>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">{t('accounting.balanceSheet.liabilities')}</h3>
             {renderRows(liabilities)}
           </Card>
           <Card>
-            <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">حقوق الملكية</h3>
+            <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50 mb-4">{t('accounting.balanceSheet.equity')}</h3>
             {renderRows(equity)}
           </Card>
         </div>

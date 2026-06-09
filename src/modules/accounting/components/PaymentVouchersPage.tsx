@@ -43,9 +43,9 @@ export const PaymentVouchersPage: React.FC = () => {
       docNumber: voucher.voucherNumber,
       date: voucher.date,
       partyName: voucher.supplierName || voucher.notes || '',
-      partyLabel: 'المستفيد',
+      partyLabel: t('accounting.beneficiary'),
       lines: [{
-        description: voucher.notes || 'سند صرف',
+        description: voucher.notes || t('accounting.paymentVouchers'),
         total: voucher.amount,
       }],
       subtotal: voucher.amount,
@@ -72,18 +72,18 @@ export const PaymentVouchersPage: React.FC = () => {
     if (result.success) {
       await update(voucher.id, { status: 'posted' });
     } else {
-      alert(`فشل ترحيل السند: ${result.error || 'خطأ غير معروف'}`);
+      alert(`${t('accounting.postFailed')}: ${result.error || t('error')}`);
     }
   };
 
   const handleSave = async () => {
     if (!activeCompany?.id) return;
     if (!form.amount || Number(form.amount) <= 0) {
-      alert('يرجى إدخال المبلغ بشكل صحيح');
+      alert(t('accounting.enterAmount'));
       return;
     }
     if (!form.supplierId && !form.expenseAccountId) {
-      alert('يرجى اختيار المورد أو حساب المصروف');
+      alert(t('accounting.selectSupplierOrExpense'));
       return;
     }
     setIsSaving(true);
@@ -165,7 +165,7 @@ export const PaymentVouchersPage: React.FC = () => {
         {row.paymentMethod === 'cash' ? t('accounting.cash') : row.paymentMethod === 'bank' ? t('accounting.bank') : t('accounting.check')}
       </Badge>
     )},
-    { key: 'status', header: t('sales.status'), render: (row: PaymentVoucher) => (
+    { key: 'status', header: t('sales.status.label'), render: (row: PaymentVoucher) => (
       <StatusBadge status={row.status} size="sm" />
     )},
     { key: 'actions', header: t('edit'), render: (row: PaymentVoucher) => (
@@ -189,7 +189,7 @@ export const PaymentVouchersPage: React.FC = () => {
             onClick={() => handlePost(row)}
             disabled={postingId === row.id}
           >
-            {postingId === row.id ? 'جارٍ الترحيل...' : t('accounting.posted')}
+            {postingId === row.id ? t('accounting.posting') : t('accounting.posted')}
           </Button>
         )}
       </div>
@@ -207,10 +207,10 @@ export const PaymentVouchersPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <select className="input text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} title={t('sales.status') || 'الحالة'}>
-          <option value="">{t('all') || 'الكل'}</option>
-          <option value="draft">{t('accounting.draft') || 'مسودة'}</option>
-          <option value="posted">{t('accounting.posted') || 'مرحل'}</option>
+        <select className="input text-sm" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} title={t('accounting.status')}>
+          <option value="">{t('accounting.all')}</option>
+          <option value="draft">{t('accounting.draft')}</option>
+          <option value="posted">{t('accounting.posted')}</option>
         </select>
         <Can action="create" module="accounting">
           <Button leftIcon={<Plus size={18} />} onClick={() => { resetForm(); setIsOpen(true); }}>{t('accounting.newPaymentVoucher')}</Button>
@@ -221,19 +221,19 @@ export const PaymentVouchersPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي الصرف النقدي</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.totalCashPayments')}</p>
             <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalCash)} {currencySymbol}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي الصرف البنكي</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.totalBankPayments')}</p>
             <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalBank)} {currencySymbol}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">عدد السندات</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.voucherCount')}</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{vouchers.length}</p>
           </div>
         </Card>
@@ -301,7 +301,7 @@ export const PaymentVouchersPage: React.FC = () => {
           )}
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.expenseAccount')}</label>
-            <AccountSelect companyId={activeCompany?.id || ''} value={form.expenseAccountId || ''} onChange={v => setForm({ ...form, expenseAccountId: v || '' })} filterType="expense" placeholder="اختر حساب المصروف..." />
+            <AccountSelect companyId={activeCompany?.id || ''} value={form.expenseAccountId || ''} onChange={v => setForm({ ...form, expenseAccountId: v || '' })} filterType="expense" placeholder={t('accounting.selectExpenseAccount')} />
           </div>
           <Input label={t('accounting.notes')} value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex justify-end gap-2">
@@ -321,7 +321,7 @@ export const PaymentVouchersPage: React.FC = () => {
           }
         }}
         title={t('delete')}
-        message={`هل أنت متأكد من حذف سند الصرف "${confirmDelete?.voucherNumber}"؟`}
+        message={`${t('accounting.deletePaymentVoucherConfirm')} "${confirmDelete?.voucherNumber}"?`}
         variant="danger"
       />
     </div>

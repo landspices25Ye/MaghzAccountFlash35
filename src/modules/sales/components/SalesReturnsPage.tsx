@@ -219,7 +219,7 @@ export const SalesReturnsPage: React.FC = () => {
       { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
       { key: 'date', header: t('sales.date') || 'التاريخ' },
       { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
-      { key: 'status', header: t('sales.status') || 'الحالة' },
+      { key: 'status', header: t('sales.status.label') || 'الحالة' },
     ];
     exportToExcel(returns.map(r => ({ returnNumber: r.returnNumber, invoiceNumber: r.invoice?.invoiceNumber || r.invoiceId, customerName: r.customer?.name || r.customerId, date: r.date, totalAmount: r.totalAmount, status: r.status })), cols, `sales_returns_${new Date().toISOString().split('T')[0]}`);
   };
@@ -233,7 +233,7 @@ export const SalesReturnsPage: React.FC = () => {
     { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
     { key: 'reason', header: t('sales.return.reason') || 'السبب' },
     { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: SalesReturn) => formatCurrency(row.totalAmount) },
-    { key: 'status', header: t('sales.status') || 'الحالة', render: (row: SalesReturn) => <StatusBadge status={row.status} /> },
+    { key: 'status', header: t('sales.status.label') || 'الحالة', render: (row: SalesReturn) => <StatusBadge status={row.status} /> },
     { key: 'actions', header: t('sales.actions') || 'إجراء', width: '200px', render: (row: SalesReturn) => (
       <div className="flex items-center gap-1">
         <ActionButtons
@@ -400,7 +400,7 @@ export const SalesReturnsPage: React.FC = () => {
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status.label') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.originalInvoice') || 'الفاتورة الأصلية'}</p><p className="font-semibold flex items-center gap-1"><FileText size={14} /> {viewing.invoice?.invoiceNumber || viewing.invoiceId}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.return.reason') || 'السبب'}</p><p className="font-semibold">{viewing.reason}</p></div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>

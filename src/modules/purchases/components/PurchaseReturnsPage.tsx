@@ -273,10 +273,10 @@ export const PurchaseReturnsPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
-          <option value="">كل الحالات</option>
-          <option value="draft">مسودة</option>
-          <option value="posted">مرحل</option>
-          <option value="cancelled">ملغي</option>
+          <option value="">{t('purchases.filter.all')}</option>
+          <option value="draft">{t('purchases.filter.draft')}</option>
+          <option value="posted">{t('purchases.filter.posted')}</option>
+          <option value="cancelled">{t('purchases.filter.cancelled')}</option>
         </select>
         <Can action="create" module="purchases">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
@@ -399,11 +399,11 @@ export const PurchaseReturnsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
               <p className="text-emerald-700 dark:text-emerald-400 font-medium">{t('purchases.return.accountingEffect')}</p>
-              <p className="text-emerald-600 dark:text-emerald-300 text-xs mt-1">{t('accounting.postEntry')}: دائنون تجاريون / بضاعة</p>
+              <p className="text-emerald-600 dark:text-emerald-300 text-xs mt-1">{t('accounting.postEntry')}: {t('purchases.return.accountingEffectDesc')}</p>
             </div>
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-blue-700 dark:text-blue-400 font-medium">{t('purchases.return.inventoryEffect')}</p>
-              <p className="text-blue-600 dark:text-blue-300 text-xs mt-1">{t('inventory.out')}: صادر مخزني</p>
+              <p className="text-blue-600 dark:text-blue-300 text-xs mt-1">{t('inventory.out')}: {t('purchases.return.inventoryEffectDesc')}</p>
             </div>
           </div>
 

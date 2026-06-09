@@ -254,11 +254,11 @@ export const PurchaseOrdersPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
-          <option value="">كل الحالات</option>
-          <option value="draft">مسودة</option>
-          <option value="confirmed">مؤكد</option>
-          <option value="invoiced">مفوتر</option>
-          <option value="cancelled">ملغي</option>
+          <option value="">{t('purchases.filter.all')}</option>
+          <option value="draft">{t('purchases.filter.draft')}</option>
+          <option value="confirmed">{t('purchases.filter.confirmed')}</option>
+          <option value="invoiced">{t('purchases.filter.invoiced')}</option>
+          <option value="cancelled">{t('purchases.filter.cancelled')}</option>
         </select>
         <Can action="create" module="purchases">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>

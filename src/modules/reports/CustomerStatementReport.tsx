@@ -55,23 +55,23 @@ export const CustomerStatementReport: React.FC = () => {
 
   const handleExportExcel = async () => {
     const cols = [
-      { key: 'customer', header: 'العميل' },
-      { key: 'phone', header: 'الهاتف' },
-      { key: 'bucket0to30', header: '0-30 يوم' },
-      { key: 'bucket31to60', header: '31-60 يوم' },
-      { key: 'bucket61to90', header: '61-90 يوم' },
-      { key: 'bucket90plus', header: '+90 يوم' },
-      { key: 'totalOutstanding', header: 'الإجمالي' },
-      { key: 'invoiceCount', header: 'الفواتير' },
+      { key: 'customer', header: t('reports.customer') },
+      { key: 'phone', header: t('reports.phone') },
+      { key: 'bucket0to30', header: t('reports.agingBucket0to30') },
+      { key: 'bucket31to60', header: t('reports.agingBucket31to60') },
+      { key: 'bucket61to90', header: t('reports.agingBucket61to90') },
+      { key: 'bucket90plus', header: t('reports.agingBucket90plus') },
+      { key: 'totalOutstanding', header: t('reports.total') },
+      { key: 'invoiceCount', header: t('reports.invoicesCount') },
     ];
     await exportToExcel(customers, cols, 'Customer_Aging');
   };
 
   const handleExportPDF = async () => {
     const cols = [
-      { key: 'customer', header: 'العميل', width: 25 },
-      { key: 'phone', header: 'الهاتف', width: 15 },
-      { key: 'totalOutstanding', header: 'الإجمالي', width: 15 },
+      { key: 'customer', header: t('reports.customer'), width: 25 },
+      { key: 'phone', header: t('reports.phone'), width: 15 },
+      { key: 'totalOutstanding', header: t('reports.total'), width: 15 },
     ];
     await exportToPDF(customers, cols, 'Customer_Aging', {
       title: t('reports.customerStatement'),
@@ -97,11 +97,11 @@ export const CustomerStatementReport: React.FC = () => {
     return (
       <EmptyState
         icon="search"
-        title="لا يوجد عملاء"
-        description="لم يتم العثور على عملاء ضمن الفلاتر المحددة"
+        title={t('reports.customerStatement.emptyTitle')}
+        description={t('reports.customerStatement.emptyDesc')}
         action={
           <Button variant="secondary" onClick={clearFilters} leftIcon={<RotateCcw size={16} />}>
-            مسح الفلاتر
+            {t('reports.clearFilter')}
           </Button>
         }
       />
@@ -115,7 +115,7 @@ export const CustomerStatementReport: React.FC = () => {
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.customerStatement')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">أرصدة العملاء وتوزيع أعمار الديون</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.customerStatement.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -143,7 +143,7 @@ export const CustomerStatementReport: React.FC = () => {
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
             <div>
-              <label className="block text-xs text-slate-500 mb-1">تاريخ الاستحقاق المرجعي</label>
+              <label className="block text-xs text-slate-500 mb-1">{t('reports.referenceDueDate')}</label>
               <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value || todayIso())} />
             </div>
             <div className="flex items-end">
@@ -158,7 +158,7 @@ export const CustomerStatementReport: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">إجمالي المستحق</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.totalOutstanding')}</p>
             <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totals.totalOutstanding)}</p>
             <p className="text-xs text-slate-400 mt-1">{totalInvoiced > 0 ? '' : ''}</p>
           </div>
@@ -170,9 +170,9 @@ export const CustomerStatementReport: React.FC = () => {
           return (
             <Card key={bucket.label}>
               <div className="p-4 text-center">
-                <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} يوم</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} {t('reports.days')}</p>
                 <p className={`text-xl font-bold text-${color}-600 dark:text-${color}-400`}>{formatCurrency(total)}</p>
-                <p className="text-xs text-slate-400 mt-1">{count} عميل</p>
+                <p className="text-xs text-slate-400 mt-1">{count} {t('reports.customerCount')}</p>
               </div>
             </Card>
           );
@@ -181,18 +181,18 @@ export const CustomerStatementReport: React.FC = () => {
 
       <Card>
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">توزيع أعمار الديون لكل عميل</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.customerStatement.agingDetails')}</h3>
           <Table
             data={customers}
             columns={[
-              { key: 'customer', header: 'العميل' },
-              { key: 'phone', header: 'الهاتف' },
+              { key: 'customer', header: t('reports.customer') },
+              { key: 'phone', header: t('reports.phone') },
               { key: 'bucket0to30', header: '0-30', align: 'right', render: (row) => formatCurrency(row.bucket0to30) },
               { key: 'bucket31to60', header: '31-60', align: 'right', render: (row) => formatCurrency(row.bucket31to60) },
               { key: 'bucket61to90', header: '61-90', align: 'right', render: (row) => formatCurrency(row.bucket61to90) },
               { key: 'bucket90plus', header: '90+', align: 'right', render: (row) => formatCurrency(row.bucket90plus) },
-              { key: 'totalOutstanding', header: 'الإجمالي', align: 'right', render: (row) => <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(row.totalOutstanding)}</span> },
-              { key: 'invoiceCount', header: 'فواتير', align: 'right' },
+              { key: 'totalOutstanding', header: t('reports.total'), align: 'right', render: (row) => <span className="font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(row.totalOutstanding)}</span> },
+              { key: 'invoiceCount', header: t('reports.invoicesCount'), align: 'right' },
             ]}
             keyExtractor={(row) => row.customerId}
           />

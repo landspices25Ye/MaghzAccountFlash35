@@ -53,7 +53,7 @@ export const AccountLedgerPage: React.FC = () => {
       docNumber: accountId,
       date: `${startDate} - ${endDate}`,
       partyName: activeCompany?.name || '',
-      partyLabel: 'الشركة',
+      partyLabel: t('accounting.company'),
       lines: rows.map(r => ({
         description: `${r.date} | ${r.reference || '-'} | ${r.description || '-'}`,
         total: r.debit || r.credit,

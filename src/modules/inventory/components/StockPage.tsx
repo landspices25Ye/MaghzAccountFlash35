@@ -101,7 +101,7 @@ export const StockPage: React.FC = () => {
 
       <Card>
         {stock.length === 0 && !isLoading ? (
-          <EmptyState icon="inbox" title="لا يوجد مخزون" description="المخزون فارغ حالياً" />
+          <EmptyState icon="inbox" title={t('inventory.empty.stock.title')} description={t('inventory.empty.stock.description')} />
         ) : (
           <Table<StockItem>
             data={stock}
@@ -121,7 +121,7 @@ export const StockPage: React.FC = () => {
         </h2>
         <Card>
           {transfers.length === 0 ? (
-            <EmptyState icon="inbox" title="لا توجد تحويلات" description="لم يتم إنشاء تحويلات مخزنية بعد" />
+            <EmptyState icon="inbox" title={t('inventory.empty.transfers.title')} description={t('inventory.empty.transfers.description')} />
           ) : (
             <Table<StockTransfer>
               data={transfers}

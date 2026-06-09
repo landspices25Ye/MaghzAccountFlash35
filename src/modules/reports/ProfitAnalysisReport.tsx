@@ -42,7 +42,7 @@ interface PeriodData {
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
-const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const MONTHS_AR_KEYS = ['reports.months.jan','reports.months.feb','reports.months.mar','reports.months.apr','reports.months.may','reports.months.jun','reports.months.jul','reports.months.aug','reports.months.sep','reports.months.oct','reports.months.nov','reports.months.dec'];
 
 function defaultFromDate(): string {
   const d = new Date();
@@ -281,7 +281,7 @@ export const ProfitAnalysisReport: React.FC = () => {
           const cogs = toNumber(r.cogs);
           const exp = toNumber(r.exp);
           return {
-            month: MONTHS_AR[i] || String(i + 1),
+            month: t(MONTHS_AR_KEYS[i]) || String(i + 1),
             profit: revenue - cogs - exp,
           };
         });
@@ -320,7 +320,7 @@ export const ProfitAnalysisReport: React.FC = () => {
       setIsLoading(false);
     }
     load();
-  }, [activeCompany?.id, fromDate, toDate, compareMode, currencies]);
+  }, [activeCompany?.id, fromDate, toDate, compareMode, currencies, t]);
 
   const comparisonChart = useMemo(() => {
     if (!currentPeriod) return [];
@@ -337,9 +337,9 @@ export const ProfitAnalysisReport: React.FC = () => {
   const handleExportExcel = async () => {
     if (!currentPeriod) return;
     const cols = [
-      { key: 'category', header: 'التصنيف' },
-      { key: 'amount', header: 'المبلغ' },
-      { key: 'percent', header: 'النسبة' },
+      { key: 'category', header: t('reports.category') },
+      { key: 'amount', header: t('reports.amount') },
+      { key: 'percent', header: t('reports.percentage') },
     ];
     await exportToExcel(currentPeriod.expenses, cols, 'Profit_Analysis');
   };
@@ -347,9 +347,9 @@ export const ProfitAnalysisReport: React.FC = () => {
   const handleExportPDF = async () => {
     if (!currentPeriod) return;
     const cols = [
-      { key: 'category', header: 'التصنيف', width: 25 },
-      { key: 'amount', header: 'المبلغ', width: 15 },
-      { key: 'percent', header: 'النسبة', width: 12 },
+      { key: 'category', header: t('reports.category'), width: 25 },
+      { key: 'amount', header: t('reports.amount'), width: 15 },
+      { key: 'percent', header: t('reports.percentage'), width: 12 },
     ];
     await exportToPDF(currentPeriod.expenses, cols, 'Profit_Analysis', {
       title: t('reports.profitAnalysis'),
@@ -371,7 +371,7 @@ export const ProfitAnalysisReport: React.FC = () => {
       <EmptyState
         icon="inbox"
         title={t('reports.noData')}
-        description="لا توجد بيانات للفترة المحددة"
+        description={t('reports.profitAnalysis.noDataDesc')}
       />
     );
   }
@@ -383,7 +383,7 @@ export const ProfitAnalysisReport: React.FC = () => {
           <PieChart size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.profitAnalysis')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">هوامش الربح وتحليل المصروفات</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.profitAnalysis.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -438,7 +438,7 @@ export const ProfitAnalysisReport: React.FC = () => {
         </Card>
         <Card>
           <div className="p-4 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">تكلفة المبيعات</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('reports.costOfGoodsSold')}</p>
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(currentPeriod.totalCogs)}</p>
             {compareMode && previousPeriod && (
               <p className="text-xs text-slate-400 mt-1">{t('reports.previousPeriod')}: {formatCurrency(previousPeriod.totalCogs)}</p>
@@ -492,7 +492,7 @@ export const ProfitAnalysisReport: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">توزيع المصروفات</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.expenseDistribution')}</h3>
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <RePieChart>
@@ -518,13 +518,13 @@ export const ProfitAnalysisReport: React.FC = () => {
 
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">تفاصيل المصروفات</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.expenseDetails')}</h3>
             <Table
               data={currentPeriod.expenses}
               columns={[
-                { key: 'category', header: 'البند' },
-                { key: 'amount', header: 'المبلغ', align: 'right', render: (row) => formatCurrency(row.amount) },
-                { key: 'percent', header: 'النسبة', align: 'right', render: (row) => `${row.percent}%` },
+                { key: 'category', header: t('reports.expenseItem') },
+                { key: 'amount', header: t('reports.amount'), align: 'right', render: (row) => formatCurrency(row.amount) },
+                { key: 'percent', header: t('reports.percentage'), align: 'right', render: (row) => `${row.percent}%` },
               ]}
               keyExtractor={(row) => row.category}
             />
@@ -534,15 +534,15 @@ export const ProfitAnalysisReport: React.FC = () => {
 
       <Card>
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">أعلى 10 منتجات مبيعاً (للإيرادات)</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.topSellingProducts')}</h3>
           <Table
             data={currentPeriod.products}
             columns={[
-              { key: 'product', header: 'المنتج' },
-              { key: 'revenue', header: 'الإيرادات', align: 'right', render: (row) => formatCurrency(row.revenue) },
-              { key: 'cost', header: 'التكلفة', align: 'right', render: (row) => formatCurrency(row.cost) },
-              { key: 'profit', header: 'الربح', align: 'right', render: (row) => formatCurrency(row.profit) },
-              { key: 'margin', header: 'الهامش %', align: 'right', render: (row) => (
+              { key: 'product', header: t('reports.product') },
+              { key: 'revenue', header: t('reports.revenue'), align: 'right', render: (row) => formatCurrency(row.revenue) },
+              { key: 'cost', header: t('reports.cost'), align: 'right', render: (row) => formatCurrency(row.cost) },
+              { key: 'profit', header: t('reports.profit'), align: 'right', render: (row) => formatCurrency(row.profit) },
+              { key: 'margin', header: t('reports.margin'), align: 'right', render: (row) => (
                 <span className={`font-medium ${row.margin >= 30 ? 'text-emerald-600' : row.margin >= 15 ? 'text-amber-600' : 'text-rose-600'}`}>
                   {row.margin}%
                 </span>
@@ -556,8 +556,8 @@ export const ProfitAnalysisReport: React.FC = () => {
       {/* Currency Breakdown */}
       {(currentPeriod.revenueBreakdown.items.length > 0 || currentPeriod.cogsBreakdown.items.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <CurrencyBreakdown result={currentPeriod.revenueBreakdown} title="الإيرادات حسب العملة" />
-          <CurrencyBreakdown result={currentPeriod.cogsBreakdown} title="تكلفة المبيعات حسب العملة" />
+          <CurrencyBreakdown result={currentPeriod.revenueBreakdown} title={t('reports.revenueByCurrency')} />
+          <CurrencyBreakdown result={currentPeriod.cogsBreakdown} title={t('reports.costOfGoodsSoldByCurrency')} />
         </div>
       )}
     </div>

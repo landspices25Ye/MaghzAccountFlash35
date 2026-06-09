@@ -252,10 +252,10 @@ export const ProductsPage: React.FC = () => {
             value={filterCategoryId}
             onChange={e => setFilterCategoryId(e.target.value)}
             className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            aria-label="فلترة حسب التصنيف"
-            title="تصفية حسب التصنيف"
+            aria-label={t('inventory.filterByCategory')}
+            title={t('inventory.filterByCategory')}
           >
-            <option value="">كل التصنيفات</option>
+            <option value="">{t('inventory.allCategories')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
@@ -264,10 +264,10 @@ export const ProductsPage: React.FC = () => {
             value={filterTypeId}
             onChange={e => setFilterTypeId(e.target.value)}
             className="h-10 px-3 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            aria-label="فلترة حسب النوع"
-            title="تصفية حسب النوع"
+            aria-label={t('inventory.filterByType')}
+            title={t('inventory.filterByType')}
           >
-            <option value="">كل الأنواع</option>
+            <option value="">{t('inventory.allTypes')}</option>
             {productTypes.map((t: ProductType) => (
               <option key={t.id} value={t.id}>{t.nameAr}</option>
             ))}
@@ -284,8 +284,8 @@ export const ProductsPage: React.FC = () => {
         {filteredProducts.length === 0 && !isLoading ? (
           <EmptyState
             icon="search"
-            title="لا توجد منتجات"
-            description="أضف منتجات جديدة للبدء"
+            title={t('inventory.empty.products.title')}
+            description={t('inventory.empty.products.description')}
             action={<Can action="create" module="inventory"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newProduct')}</Button></Can>}
           />
         ) : (
@@ -368,7 +368,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
           <Input label={t('inventory.productName')} value={formData.nameAr} onChange={e => setFormData(prev => ({ ...prev, nameAr: e.target.value }))} />
-          <Input label="Name (English)" value={formData.nameEn} onChange={e => setFormData(prev => ({ ...prev, nameEn: e.target.value }))} />
+          <Input label={t('inventory.nameEnglish')} value={formData.nameEn} onChange={e => setFormData(prev => ({ ...prev, nameEn: e.target.value }))} />
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('inventory.sku')} value={formData.sku} onChange={e => setFormData(prev => ({ ...prev, sku: e.target.value }))} />
           </div>
@@ -388,7 +388,7 @@ export const ProductsPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">نوع المنتج</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('inventory.productType')}</label>
             <ProductTypeSelect
               companyId={activeCompany?.id || ''}
               value={formData.productTypeId}

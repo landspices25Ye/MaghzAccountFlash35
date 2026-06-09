@@ -206,7 +206,7 @@ ${filtered.map(a => `<tr>
 
       <Card>
         {filtered.length === 0 && !isLoading ? (
-          <EmptyState icon="inbox" title="لا توجد تسويات" description="لم يتم إنشاء تسويات مخزنية بعد" />
+          <EmptyState icon="inbox" title={t('inventory.empty.adjustments.title')} description={t('inventory.empty.adjustments.description')} />
         ) : (
           <Table<StockAdjustment>
             data={filtered}
@@ -330,7 +330,7 @@ ${filtered.map(a => `<tr>
         onClose={() => setConfirmApprove(null)}
         onConfirm={() => confirmApprove && handleApprove(confirmApprove)}
         title={t('inventory.approve')}
-        message="هل أنت متأكد من اعتماد هذه التسوية؟"
+        message={t('inventory.approveConfirm')}
         variant="info"
       />
       <ConfirmDialog

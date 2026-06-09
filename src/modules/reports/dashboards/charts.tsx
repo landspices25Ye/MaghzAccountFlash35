@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, Legend
@@ -37,9 +38,10 @@ interface MonthlyRevenueProps {
 export const MonthlyRevenueChart: React.FC<MonthlyRevenueProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const chartData = data?.length ? data : [{ month: 'لا يوجد', revenue: 0, expenses: 0 }];
+  const { t } = useTranslation();
+  const chartData = data?.length ? data : [{ month: t('reports.none'), revenue: 0, expenses: 0 }];
   return (
-    <ChartCard title="المبيعات والمصروفات الشهرية">
+    <ChartCard title={t('reports.charts.monthlySalesAndExpenses')}>
       <BarChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -49,8 +51,8 @@ export const MonthlyRevenueChart: React.FC<MonthlyRevenueProps> = ({ data }) => 
           contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
         />
         <Legend />
-        <Bar dataKey="revenue" fill="#3b82f6" name="الإيرادات" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="expenses" fill="#ef4444" name="المصروفات" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="revenue" fill="#3b82f6" name={t('reports.revenue')} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="expenses" fill="#ef4444" name={t('reports.totalExpenses')} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ChartCard>
   );
@@ -64,9 +66,10 @@ interface TopProductsProps {
 export const TopProductsChart: React.FC<TopProductsProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const chartData = data?.length ? data : [{ name: 'لا يوجد', value: 0 }];
+  const { t } = useTranslation();
+  const chartData = data?.length ? data : [{ name: t('reports.none'), value: 0 }];
   return (
-    <ChartCard title="أعلى المنتجات مبيعاً">
+    <ChartCard title={t('reports.topSellingProducts')}>
       <PieChart>
         <Pie
           data={chartData}
@@ -97,15 +100,16 @@ interface ArAgingProps {
 export const ArAgingChart: React.FC<ArAgingProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { t } = useTranslation();
   const chartData = data?.length ? data : [{ range: '0-30', amount: 0 }];
   return (
-    <ChartCard title="عمر الديون (A/R)">
+    <ChartCard title={t('reports.charts.arAging')}>
       <BarChart data={chartData} layout="vertical">
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis type="number" tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
         <YAxis dataKey="range" type="category" tick={{ fontSize: 12 }} width={60} />
         <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
-        <Bar dataKey="amount" fill="#8b5cf6" radius={[0, 4, 4, 0]} name="المبلغ" />
+        <Bar dataKey="amount" fill="#8b5cf6" radius={[0, 4, 4, 0]} name={t('reports.amount')} />
       </BarChart>
     </ChartCard>
   );
@@ -119,17 +123,18 @@ interface CashFlowProps {
 export const CashFlowChart: React.FC<CashFlowProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const chartData = data?.length ? data : [{ month: 'يناير', inflow: 0, outflow: 0 }];
+  const { t } = useTranslation();
+  const chartData = data?.length ? data : [{ month: t('reports.months.jan'), inflow: 0, outflow: 0 }];
   return (
-    <ChartCard title="التدفقات النقدية">
+    <ChartCard title={t('reports.charts.cashFlow')}>
       <AreaChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="month" tick={{ fontSize: 12 }} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
         <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend />
-        <Area type="monotone" dataKey="inflow" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="الوارد" />
-        <Area type="monotone" dataKey="outflow" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} name="الصادر" />
+        <Area type="monotone" dataKey="inflow" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name={t('reports.cashInflow')} />
+        <Area type="monotone" dataKey="outflow" stroke="#ef4444" fill="#ef4444" fillOpacity={0.2} name={t('reports.cashOutflow')} />
       </AreaChart>
     </ChartCard>
   );
@@ -143,17 +148,18 @@ interface SalesTrendProps {
 export const SalesTrendChart: React.FC<SalesTrendProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { t } = useTranslation();
   const chartData = data?.length ? data : [{ date: '-', sales: 0, purchases: 0 }];
   return (
-    <ChartCard title="اتجاه المبيعات والمشتريات">
+    <ChartCard title={t('reports.charts.salesAndPurchasesTrend')}>
       <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={50} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
         <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
         <Legend />
-        <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} dot={false} name="المبيعات" />
-        <Line type="monotone" dataKey="purchases" stroke="#f59e0b" strokeWidth={2} dot={false} name="المشتريات" />
+        <Line type="monotone" dataKey="sales" stroke="#3b82f6" strokeWidth={2} dot={false} name={t('reports.sales')} />
+        <Line type="monotone" dataKey="purchases" stroke="#f59e0b" strokeWidth={2} dot={false} name={t('reports.purchases')} />
       </LineChart>
     </ChartCard>
   );
@@ -167,15 +173,16 @@ interface ProfitTrendProps {
 export const ProfitTrendChart: React.FC<ProfitTrendProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { t } = useTranslation();
   const chartData = data?.length ? data : [{ date: '-', profit: 0 }];
   return (
-    <ChartCard title="اتجاه الربحية">
+    <ChartCard title={t('reports.charts.profitTrend')}>
       <AreaChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={50} />
         <YAxis tickFormatter={(v: number | string) => `${(Number(v) / 1000).toFixed(0)}K`} />
         <Tooltip formatter={(value: unknown) => formatCurrency(Number(value))} />
-        <Area type="monotone" dataKey="profit" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name="الربح" />
+        <Area type="monotone" dataKey="profit" stroke="#10b981" fill="#10b981" fillOpacity={0.2} name={t('reports.profit')} />
       </AreaChart>
     </ChartCard>
   );
@@ -189,9 +196,10 @@ interface CategoryShareProps {
 export const CategoryShareChart: React.FC<CategoryShareProps> = ({ data }) => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const chartData = data?.length ? data : [{ name: 'لا يوجد', value: 0 }];
+  const { t } = useTranslation();
+  const chartData = data?.length ? data : [{ name: t('reports.none'), value: 0 }];
   return (
-    <ChartCard title="توزيع المخزون حسب التصنيف">
+    <ChartCard title={t('reports.charts.inventoryByCategory')}>
       <PieChart>
         <Pie
           data={chartData}
