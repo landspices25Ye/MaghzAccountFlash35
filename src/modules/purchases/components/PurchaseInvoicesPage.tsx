@@ -385,7 +385,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
     },
     {
       accessorKey: 'createdBy',
-      header: t('common.createdBy') || 'أنشأها',
+      header: t('common.createdBy'),
       size: 110,
       cell: ({ row }) => (
         <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.original.createdBy)}</span>

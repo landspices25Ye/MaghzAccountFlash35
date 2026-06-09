@@ -153,8 +153,8 @@ export const QuotationsPage: React.FC = () => {
 
   const handleDelete = (q: Quotation) => {
     setConfirmConfig({
-      title: t('sales.quotation.deleteTitle') || 'حذف عرض السعر',
-      message: `${t('sales.quotation.deleteConfirm') || 'هل أنت متأكد من حذف عرض السعر'} ${q.quotationNumber}؟`,
+      title: t('sales.quotation.deleteTitle'),
+      message: `${t('sales.quotation.deleteConfirm')} ${q.quotationNumber}؟`,
       variant: 'danger',
       onConfirm: async () => {
         setConfirmOpen(false);
@@ -169,10 +169,10 @@ export const QuotationsPage: React.FC = () => {
 
   const handleConvertToInvoice = (q: Quotation) => {
     setConfirmConfig({
-      title: t('sales.quotation.convertTitle') || 'تحويل إلى فاتورة',
-      message: `${t('sales.quotation.convertConfirm') || 'سيتم إنشاء فاتورة مبيعات بناءً على هذا العرض. هل أنت متأكد؟'}`,
+      title: t('sales.quotation.convertTitle'),
+      message: `${t('sales.quotation.convertConfirm')}`,
       variant: 'warning',
-      confirmText: t('sales.quotation.convert') || 'تحويل',
+      confirmText: t('sales.quotation.convert'),
       onConfirm: async () => {
         setConfirmOpen(false);
         if (!activeCompany?.id) return;
@@ -217,7 +217,7 @@ export const QuotationsPage: React.FC = () => {
       date: q.date,
       dueDate: q.expiryDate,
       partyName: q.customer?.name || q.customerId,
-      partyLabel: t('sales.customer.title') || 'العميل',
+      partyLabel: t('sales.customer.title'),
       lines: q.lines.map(l => ({
         description: l.productName || l.productId,
         quantity: l.quantity,
@@ -235,24 +235,24 @@ export const QuotationsPage: React.FC = () => {
 
   const handleExportExcel = () => {
     const cols = [
-      { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم' },
-      { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
-      { key: 'date', header: t('sales.date') || 'التاريخ' },
-      { key: 'expiryDate', header: t('sales.quotation.expiry') || 'تاريخ الانتهاء' },
-      { key: 'totalAmount', header: t('sales.total') || 'المبلغ' },
-      { key: 'status', header: t('sales.status.label') || 'الحالة' },
+      { key: 'quotationNumber', header: t('sales.quotation.number') },
+      { key: 'customerName', header: t('sales.customer.title') },
+      { key: 'date', header: t('sales.date') },
+      { key: 'expiryDate', header: t('sales.quotation.expiry') },
+      { key: 'totalAmount', header: t('sales.total') },
+      { key: 'status', header: t('sales.status.label') },
     ];
     exportToExcel(quotations.map(q => ({ quotationNumber: q.quotationNumber, customerName: q.customer?.name || q.customerId, date: q.date, expiryDate: q.expiryDate || '-', totalAmount: q.totalAmount, status: STATUS_FLOW[q.status] || q.status })), cols, `quotations_${new Date().toISOString().split('T')[0]}`);
   };
 
   const tableColumns = [
-    { key: 'quotationNumber', header: t('sales.quotation.number') || 'الرقم', width: '120px' },
-    { key: 'customerName', header: t('sales.customer.title') || 'العميل', render: (row: Quotation) => row.customer?.name || row.customerId },
-    { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px' },
-    { key: 'expiryDate', header: t('sales.quotation.expiry') || 'الانتهاء', width: '110px', render: (row: Quotation) => row.expiryDate ? formatDate(row.expiryDate) : '-' },
-    { key: 'totalAmount', header: t('sales.total') || 'المبلغ', align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
-    { key: 'status', header: t('sales.status.label') || 'الحالة', render: (row: Quotation) => <StatusBadge status={row.status} /> },
-    { key: 'actions', header: t('sales.actions') || 'إجراء', width: '220px', render: (row: Quotation) => (
+    { key: 'quotationNumber', header: t('sales.quotation.number'), width: '120px' },
+    { key: 'customerName', header: t('sales.customer.title'), render: (row: Quotation) => row.customer?.name || row.customerId },
+    { key: 'date', header: t('sales.date'), width: '110px' },
+    { key: 'expiryDate', header: t('sales.quotation.expiry'), width: '110px', render: (row: Quotation) => row.expiryDate ? formatDate(row.expiryDate) : '-' },
+    { key: 'totalAmount', header: t('sales.total'), align: 'right' as const, render: (row: Quotation) => formatCurrency(row.totalAmount) },
+    { key: 'status', header: t('sales.status.label'), render: (row: Quotation) => <StatusBadge status={row.status} /> },
+    { key: 'actions', header: t('sales.actions'), width: '220px', render: (row: Quotation) => (
       <div className="flex items-center gap-1">
         <ActionButtons
           onView={() => { setViewing(row); setDetailOpen(true); }}
@@ -266,7 +266,7 @@ export const QuotationsPage: React.FC = () => {
         />
         {row.status === 'open' && (
           <Button size="sm" variant="secondary" onClick={() => handleConvertToInvoice(row)} leftIcon={<ArrowRightLeft size={14} />}>
-            {t('sales.quotation.convert') || 'تحويل'}
+            {t('sales.quotation.convert')}
           </Button>
         )}
       </div>
@@ -279,17 +279,17 @@ export const QuotationsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Tag size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.quotations') || 'عروض الأسعار'}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.quotationsSubtitle') || 'إدارة عروض الأسعار للعملاء'}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.quotations')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.quotationsSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير'}>
+          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export')}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
           <Can action="create" module="sales">
-            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button>
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create')}</Button>
           </Can>
         </div>
       </div>
@@ -302,9 +302,9 @@ export const QuotationsPage: React.FC = () => {
         ) : quotations.length === 0 ? (
           <EmptyState
             icon="inbox"
-            title={t('sales.quotation.emptyTitle') || 'لا توجد عروض أسعار'}
-            description={t('sales.quotation.emptyDesc') || 'يمكنك إنشاء عرض سعر جديد الآن'}
-            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create') || 'عرض جديد'}</Button></Can>}
+            title={t('sales.quotation.emptyTitle')}
+            description={t('sales.quotation.emptyDesc')}
+            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.quotation.create')}</Button></Can>}
           />
         ) : (
           <>
@@ -321,31 +321,31 @@ export const QuotationsPage: React.FC = () => {
       </Card>
 
       {/* Form Modal */}
-      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="xl" title={editingId ? (t('sales.quotation.edit') || 'تعديل عرض') : (t('sales.quotation.new') || 'عرض سعر جديد')}>
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="xl" title={editingId ? (t('sales.quotation.edit')) : (t('sales.quotation.new'))}>
         <div className="space-y-4 p-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title') || 'العميل'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title')}</label>
               <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(p => ({ ...p, customerId: v || '' }))} />
             </div>
-            <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(p => ({ ...p, date: e.target.value }))} />
-            <Input label={t('sales.quotation.expiry') || 'تاريخ الانتهاء'} type="date" value={header.expiryDate} onChange={e => setHeader(p => ({ ...p, expiryDate: e.target.value }))} />
+            <Input label={t('sales.date')} type="date" value={header.date} onChange={e => setHeader(p => ({ ...p, date: e.target.value }))} />
+            <Input label={t('sales.quotation.expiry')} type="date" value={header.expiryDate} onChange={e => setHeader(p => ({ ...p, expiryDate: e.target.value }))} />
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
-              <h4 className="font-semibold text-sm">{t('sales.invoice.lines') || 'سطور العرض'}</h4>
-              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>{t('sales.invoice.addLine') || 'إضافة سطر'}</Button>
+              <h4 className="font-semibold text-sm">{t('sales.invoice.lines')}</h4>
+              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>{t('sales.invoice.addLine')}</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   <tr>
-                    <th className="px-2 py-1 text-right">{t('inventory.productName') || 'المنتج'}</th>
-                    <th className="px-2 py-1 text-right w-20">{t('inventory.quantity') || 'الكمية'}</th>
-                    <th className="px-2 py-1 text-right w-24">{t('inventory.unitPrice') || 'السعر'}</th>
-                    <th className="px-2 py-1 text-right w-20">{t('sales.discount') || 'الخصم %'}</th>
-                    <th className="px-2 py-1 text-right w-24">{t('sales.total') || 'الإجمالي'}</th>
+                    <th className="px-2 py-1 text-right">{t('inventory.productName')}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('inventory.quantity')}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('inventory.unitPrice')}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('sales.discount')}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('sales.total')}</th>
                     <th className="px-2 py-1 w-10"></th>
                   </tr>
                 </thead>
@@ -369,33 +369,33 @@ export const QuotationsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))} />
+            <Input label={t('sales.notes')} value={header.notes} onChange={e => setHeader(p => ({ ...p, notes: e.target.value }))} />
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 flex items-center justify-between">
-              <span className="text-slate-600 dark:text-slate-300 font-medium">{t('sales.total') || 'الإجمالي'}</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">{t('sales.total')}</span>
               <span className="text-xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(calculations.totalAmount)}</span>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel') || 'إلغاء'}</Button>
-            <Button onClick={handleSave} isLoading={saving} leftIcon={<CheckSquare size={16} />}>{editingId ? (t('save') || 'حفظ') : (t('create') || 'إنشاء')}</Button>
+            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel')}</Button>
+            <Button onClick={handleSave} isLoading={saving} leftIcon={<CheckSquare size={16} />}>{editingId ? (t('save')) : (t('create'))}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Detail Modal */}
-      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="lg" title={`${t('sales.quotation.details') || 'تفاصيل عرض السعر'} - ${viewing?.quotationNumber}`}>
+      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="lg" title={`${t('sales.quotation.details')} - ${viewing?.quotationNumber}`}>
         {viewing && (
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status.label') || 'الحالة'}</p><StatusBadge status={viewing.status} /></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p><p className="font-semibold">{viewing.date}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.quotation.expiry') || 'الانتهاء'}</p><p className="font-semibold">{viewing.expiryDate || '-'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title')}</p><p className="font-semibold">{viewing.customer?.name || viewing.customerId}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.status.label')}</p><StatusBadge status={viewing.status} /></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.date')}</p><p className="font-semibold">{viewing.date}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3"><p className="text-slate-500 dark:text-slate-400">{t('sales.quotation.expiry')}</p><p className="font-semibold">{viewing.expiryDate || '-'}</p></div>
             </div>
             <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><tr><th className="px-3 py-2 text-right">#</th><th className="px-3 py-2 text-right">{t('inventory.productName') || 'المنتج'}</th><th className="px-3 py-2 text-right">{t('inventory.quantity') || 'الكمية'}</th><th className="px-3 py-2 text-right">{t('inventory.unitPrice') || 'السعر'}</th><th className="px-3 py-2 text-right">{t('sales.total') || 'الإجمالي'}</th></tr></thead>
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><tr><th className="px-3 py-2 text-right">#</th><th className="px-3 py-2 text-right">{t('inventory.productName')}</th><th className="px-3 py-2 text-right">{t('inventory.quantity')}</th><th className="px-3 py-2 text-right">{t('inventory.unitPrice')}</th><th className="px-3 py-2 text-right">{t('sales.total')}</th></tr></thead>
                 <tbody>
                   {(viewing.lines || []).map((l, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
@@ -410,12 +410,12 @@ export const QuotationsPage: React.FC = () => {
               </table>
             </div>
             <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-              <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.total') || 'الإجمالي'}</p>
+              <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.total')}</p>
               <p className="text-xl font-bold text-primary-600 dark:text-primary-400">{formatCurrency(viewing.totalAmount)}</p>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close') || 'إغلاق'}</Button>
-              <Button variant="primary" onClick={() => handlePrint(viewing)} leftIcon={<Printer size={16} />}>{t('print') || 'طباعة'}</Button>
+              <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close')}</Button>
+              <Button variant="primary" onClick={() => handlePrint(viewing)} leftIcon={<Printer size={16} />}>{t('print')}</Button>
             </div>
           </div>
         )}
@@ -428,8 +428,8 @@ export const QuotationsPage: React.FC = () => {
         title={confirmConfig?.title || ''}
         message={confirmConfig?.message || ''}
         variant={confirmConfig?.variant || 'warning'}
-        confirmText={confirmConfig?.confirmText || (t('confirm') || 'تأكيد')}
-        cancelText={t('cancel') || 'إلغاء'}
+        confirmText={confirmConfig?.confirmText || (t('confirm'))}
+        cancelText={t('cancel')}
       />
     </div>
   );

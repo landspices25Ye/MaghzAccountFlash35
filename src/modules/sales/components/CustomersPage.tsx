@@ -93,8 +93,8 @@ export const CustomersPage: React.FC = () => {
 
   const handleDelete = (c: Customer) => {
     setConfirmConfig({
-      title: t('sales.customer.deleteTitle') || 'حذف العميل',
-      message: `${t('sales.customer.deleteConfirm') || 'هل أنت متأكد من حذف العميل'} "${c.name}"؟`,
+      title: t('sales.customer.deleteTitle'),
+      message: `${t('sales.customer.deleteConfirm')} "${c.name}"؟`,
       variant: 'danger',
       onConfirm: async () => {
         setConfirmOpen(false);
@@ -109,29 +109,29 @@ export const CustomersPage: React.FC = () => {
 
   const handleExportExcel = () => {
     const cols = [
-      { key: 'name', header: t('sales.customer.name') || 'الاسم' },
-      { key: 'phone', header: t('sales.customer.phone') || 'الهاتف' },
-      { key: 'email', header: t('sales.customer.email') || 'البريد' },
-      { key: 'address', header: t('sales.customer.address') || 'العنوان' },
-      { key: 'balance', header: t('accounting.balance') || 'الرصيد' },
+      { key: 'name', header: t('sales.customer.name') },
+      { key: 'phone', header: t('sales.customer.phone') },
+      { key: 'email', header: t('sales.customer.email') },
+      { key: 'address', header: t('sales.customer.address') },
+      { key: 'balance', header: t('accounting.balance') },
     ];
     exportToExcel(customers.map(c => ({ name: c.name, phone: c.phone || '-', email: c.email || '-', address: c.address || '-', balance: c.balance })), cols, `customers_${new Date().toISOString().split('T')[0]}`);
   };
 
   const customerColumns = [
-    { key: 'code', header: t('sales.customer.code') || 'الكود', width: '100px', render: (row: Customer) => row.code || '-' },
-    { key: 'name', header: t('sales.customer.name') || 'الاسم' },
-    { key: 'phone', header: t('sales.customer.phone') || 'الهاتف', render: (row: Customer) => (
+    { key: 'code', header: t('sales.customer.code'), width: '100px', render: (row: Customer) => row.code || '-' },
+    { key: 'name', header: t('sales.customer.name') },
+    { key: 'phone', header: t('sales.customer.phone'), render: (row: Customer) => (
       <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300"><Phone size={14} /> {row.phone || '-'}</span>
     )},
-    { key: 'email', header: t('sales.customer.email') || 'البريد', render: (row: Customer) => (
+    { key: 'email', header: t('sales.customer.email'), render: (row: Customer) => (
       <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300"><Mail size={14} /> {row.email || '-'}</span>
     )},
-    { key: 'balance', header: t('accounting.balance') || 'الرصيد', align: 'right' as const, render: (row: Customer) => (
+    { key: 'balance', header: t('accounting.balance'), align: 'right' as const, render: (row: Customer) => (
       <span className={row.balance > 0 ? 'text-rose-600 font-semibold' : 'text-slate-700 dark:text-slate-200'}>{formatCurrency(row.balance)}</span>
     )},
-    { key: 'isActive', header: t('sales.customer.isActive') || 'الحالة', render: (row: Customer) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
-    { key: 'actions', header: t('sales.actions') || 'إجراء', width: '140px', render: (row: Customer) => (
+    { key: 'isActive', header: t('sales.customer.isActive'), render: (row: Customer) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
+    { key: 'actions', header: t('sales.actions'), width: '140px', render: (row: Customer) => (
       <ActionButtons
         onView={() => openDetail(row)}
         onEdit={() => openEdit(row)}
@@ -152,28 +152,28 @@ export const CustomersPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.customers') || 'العملاء'}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.customersSubtitle') || 'إدارة بيانات العملاء وكشوفات الحسابات'}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.customers')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.customersSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Input
-            placeholder={t('search') || 'بحث...'}
+            placeholder={t('search')}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="max-w-xs"
           />
-          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير Excel'}>
+          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export')}>
             <FileText size={16} className="text-emerald-600" />
           </Button>
-          <Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button></Can>
+          <Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create')}</Button></Can>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total') || 'إجمالي العملاء'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.active') || 'العملاء النشطون'}</p><p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || YER_CODE}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total')}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.active')}</p><p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance')}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || YER_CODE}</span></p></div></Card>
       </div>
 
       <Card>
@@ -184,9 +184,9 @@ export const CustomersPage: React.FC = () => {
         ) : customers.length === 0 ? (
           <EmptyState
             icon="inbox"
-            title={t('sales.customer.emptyTitle') || 'لا يوجد عملاء'}
-            description={t('sales.customer.emptyDesc') || 'يمكنك إضافة عميل جديد للبدء'}
-            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create') || 'عميل جديد'}</Button></Can>}
+            title={t('sales.customer.emptyTitle')}
+            description={t('sales.customer.emptyDesc')}
+            action={<Can action="create" module="sales"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('sales.customer.create')}</Button></Can>}
           />
         ) : (
           <>
@@ -203,41 +203,41 @@ export const CustomersPage: React.FC = () => {
       </Card>
 
       {/* Form Modal */}
-      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="md" title={editingId ? (t('sales.customer.edit') || 'تعديل عميل') : (t('sales.customer.new') || 'عميل جديد')}>
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="md" title={editingId ? (t('sales.customer.edit')) : (t('sales.customer.new'))}>
         <div className="space-y-4 p-1">
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('sales.customer.code') || 'الكود'} value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
-            <Input label={t('sales.customer.name') || 'الاسم *'} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+            <Input label={t('sales.customer.code')} value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
+            <Input label={t('sales.customer.name')} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('sales.customer.phone') || 'الهاتف'} value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
-            <Input label={t('sales.customer.email') || 'البريد الإلكتروني'} type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+            <Input label={t('sales.customer.phone')} value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
+            <Input label={t('sales.customer.email')} type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
           </div>
-          <Input label={t('sales.customer.address') || 'العنوان'} value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))} />
+          <Input label={t('sales.customer.address')} value={formData.address} onChange={e => setFormData(p => ({ ...p, address: e.target.value }))} />
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('sales.customer.taxNumber') || 'الرقم الضريبي'} value={formData.taxNumber} onChange={e => setFormData(p => ({ ...p, taxNumber: e.target.value }))} />
-            <Input label={t('sales.customer.creditLimit') || 'حد الائتمان'} type="number" value={formData.creditLimit} onChange={e => setFormData(p => ({ ...p, creditLimit: e.target.value }))} />
+            <Input label={t('sales.customer.taxNumber')} value={formData.taxNumber} onChange={e => setFormData(p => ({ ...p, taxNumber: e.target.value }))} />
+            <Input label={t('sales.customer.creditLimit')} type="number" value={formData.creditLimit} onChange={e => setFormData(p => ({ ...p, creditLimit: e.target.value }))} />
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" id="isActive" checked={formData.isActive} onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))} className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
-            <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">{t('sales.customer.isActive') || 'نشط'}</label>
+            <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">{t('sales.customer.isActive')}</label>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel') || 'إلغاء'}</Button>
-            <Button onClick={handleSave} isLoading={saving}>{editingId ? (t('save') || 'حفظ') : (t('create') || 'إنشاء')}</Button>
+            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel')}</Button>
+            <Button onClick={handleSave} isLoading={saving}>{editingId ? (t('save')) : (t('create'))}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Detail Modal */}
-      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="xl" title={viewing ? `${t('sales.customer.card') || 'بطاقة العميل'} - ${viewing.name}` : ''}>
+      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="xl" title={viewing ? `${t('sales.customer.card')} - ${viewing.name}` : ''}>
         {viewing && (
           <div className="space-y-4 p-1">
             <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
               {([
-                { key: 'details', label: t('sales.customer.details') || 'التفاصيل' },
-                { key: 'statement', label: t('sales.customer.statement') || 'كشف الحساب' },
-                { key: 'aging', label: t('sales.customer.aging') || 'A/R Aging' },
+                { key: 'details', label: t('sales.customer.details') },
+                { key: 'statement', label: t('sales.customer.statement') },
+                { key: 'aging', label: t('sales.customer.aging') },
               ] as { key: TabKey; label: string }[]).map(tab => (
                 <button
                   key={tab.key}
@@ -265,16 +265,16 @@ export const CustomersPage: React.FC = () => {
                     <p className="flex items-center gap-2"><Phone size={16} className="text-slate-400" /> {viewing.phone || '-'}</p>
                     <p className="flex items-center gap-2"><Mail size={16} className="text-slate-400" /> {viewing.email || '-'}</p>
                     <p className="flex items-center gap-2"><MapPin size={16} className="text-slate-400" /> {viewing.address || '-'}</p>
-                    <p className="flex items-center gap-2"><Receipt size={16} className="text-slate-400" /> {t('sales.customer.taxNumber') || 'الرقم الضريبي'}: {viewing.taxNumber || '-'}</p>
+                    <p className="flex items-center gap-2"><Receipt size={16} className="text-slate-400" /> {t('sales.customer.taxNumber')}: {viewing.taxNumber || '-'}</p>
                   </div>
                 </Card>
                 <div className="space-y-4">
                   <Card className="p-4">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.balance') || 'الرصيد الحالي'}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.balance')}</p>
                     <p className={`text-2xl font-bold ${viewing.balance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(viewing.balance)} {activeCompany?.currency || YER_CODE}</p>
                   </Card>
                   <Card className="p-4">
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.creditLimit') || 'حد الائتمان'}</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.creditLimit')}</p>
                     <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(viewing.creditLimit || 0)} {activeCompany?.currency || YER_CODE}</p>
                   </Card>
                 </div>
@@ -306,12 +306,12 @@ function CustomerStatementTab({ customerId }: { customerId: string }) {
   const { rows, isLoading } = useCustomerStatement(customerId);
 
   const columns = [
-    { key: 'date', header: t('sales.date') || 'التاريخ' },
-    { key: 'documentType', header: t('sales.documentType') || 'نوع المستند' },
-    { key: 'documentNumber', header: t('sales.documentNumber') || 'رقم المستند' },
-    { key: 'debit', header: t('accounting.debit') || 'مدين', align: 'right' as const, render: (row: typeof rows[0]) => row.debit > 0 ? formatCurrency(row.debit) : '-' },
-    { key: 'credit', header: t('accounting.credit') || 'دائن', align: 'right' as const, render: (row: typeof rows[0]) => row.credit > 0 ? formatCurrency(row.credit) : '-' },
-    { key: 'balance', header: t('accounting.balance') || 'الرصيد', align: 'right' as const, render: (row: typeof rows[0]) => formatCurrency(row.balance) },
+    { key: 'date', header: t('sales.date') },
+    { key: 'documentType', header: t('sales.documentType') },
+    { key: 'documentNumber', header: t('sales.documentNumber') },
+    { key: 'debit', header: t('accounting.debit'), align: 'right' as const, render: (row: typeof rows[0]) => row.debit > 0 ? formatCurrency(row.debit) : '-' },
+    { key: 'credit', header: t('accounting.credit'), align: 'right' as const, render: (row: typeof rows[0]) => row.credit > 0 ? formatCurrency(row.credit) : '-' },
+    { key: 'balance', header: t('accounting.balance'), align: 'right' as const, render: (row: typeof rows[0]) => formatCurrency(row.balance) },
   ];
 
   return (
@@ -321,7 +321,7 @@ function CustomerStatementTab({ customerId }: { customerId: string }) {
           {[1,2,3].map(i => <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />)}
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState icon="search" title={t('sales.customer.noTransactions') || 'لا توجد حركات'} description={t('sales.customer.noTransactionsDesc') || 'لم يتم العثور على أي حركات لهذا العميل'} />
+        <EmptyState icon="search" title={t('sales.customer.noTransactions')} description={t('sales.customer.noTransactionsDesc')} />
       ) : (
         <Table data={rows} columns={columns} keyExtractor={(_r, i) => String(i)} />
       )}
@@ -333,22 +333,22 @@ function CustomerAgingTab({ aging }: { aging?: { customerId: string; customerNam
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  if (!aging) return <EmptyState icon="search" title={t('sales.customer.noAging') || 'لا توجد بيانات Aging'} description={t('sales.customer.noAgingDesc') || 'لا توجد فواتير مستحقة لهذا العميل'} />;
+  if (!aging) return <EmptyState icon="search" title={t('sales.customer.noAging')} description={t('sales.customer.noAgingDesc')} />;
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {aging.buckets.map(b => (
           <Card key={b.period} className="p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{b.period} {t('sales.customer.days') || 'يوم'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{b.period} {t('sales.customer.days')}</p>
             <p className="text-xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(b.amount)}</p>
-            <p className="text-xs text-slate-400">{b.count} {t('sales.customer.invoices') || 'فاتورة'}</p>
+            <p className="text-xs text-slate-400">{b.count} {t('sales.customer.invoices')}</p>
           </Card>
         ))}
       </div>
       <Card className="p-4">
         <div className="flex items-center justify-between">
-          <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.customer.totalDue') || 'إجمالي المستحق'}</p>
+          <p className="text-slate-700 dark:text-slate-200 font-medium">{t('sales.customer.totalDue')}</p>
           <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(aging.totalDue)}</p>
         </div>
       </Card>

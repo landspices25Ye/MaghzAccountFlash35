@@ -234,10 +234,10 @@ export const InvoicesPage: React.FC = () => {
   const handleDelete = (invoice: SalesInvoice) => {
     if (invoice.status !== 'draft') return;
     setConfirmConfig({
-      title: t('sales.invoice.deleteTitle') || 'حذف الفاتورة',
-      message: `${t('sales.invoice.deleteConfirm') || 'هل أنت متأكد من حذف الفاتورة'} ${invoice.invoiceNumber}؟`,
+      title: t('sales.invoice.deleteTitle'),
+      message: `${t('sales.invoice.deleteConfirm')} ${invoice.invoiceNumber}؟`,
       variant: 'danger',
-      confirmText: t('delete') || 'حذف',
+      confirmText: t('delete'),
       onConfirm: async () => {
         setConfirmOpen(false);
         const res = await remove(invoice.id);
@@ -252,10 +252,10 @@ export const InvoicesPage: React.FC = () => {
   const handlePost = (invoice: SalesInvoice) => {
     if (invoice.status !== 'draft') return;
     setConfirmConfig({
-      title: t('sales.invoice.postTitle') || 'ترحيل الفاتورة',
-      message: `${t('sales.invoice.postConfirm') || 'سيتم ترحيل الفاتورة وتوليد القيد اليومي تلقائياً. هل أنت متأكد؟'}`,
+      title: t('sales.invoice.postTitle'),
+      message: `${t('sales.invoice.postConfirm')}`,
       variant: 'warning',
-      confirmText: t('sales.invoice.post') || 'ترحيل',
+      confirmText: t('sales.invoice.post'),
       onConfirm: async () => {
         setConfirmOpen(false);
         if (!activeCompany?.id) return;
@@ -287,7 +287,7 @@ export const InvoicesPage: React.FC = () => {
       date: invoice.date,
       dueDate: invoice.dueDate,
       partyName: invoice.customer?.name || invoice.customerId,
-      partyLabel: t('sales.customer.title') || 'العميل',
+      partyLabel: t('sales.customer.title'),
       lines: invoice.lines.map(l => ({
         description: l.productName || l.productId,
         quantity: l.quantity,
@@ -305,13 +305,13 @@ export const InvoicesPage: React.FC = () => {
 
   const handleExportExcel = () => {
     const exportColumns = [
-      { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة' },
-      { key: 'customerName', header: t('sales.customer.title') || 'العميل' },
-      { key: 'date', header: t('sales.date') || 'التاريخ' },
-      { key: 'status', header: t('sales.status.label') || 'الحالة' },
-      { key: 'subtotal', header: t('sales.subtotal') || 'المجموع' },
-      { key: 'vatAmount', header: t('sales.vat') || 'الضريبة' },
-      { key: 'totalAmount', header: t('sales.total') || 'الإجمالي' },
+      { key: 'invoiceNumber', header: t('sales.invoiceNumber') },
+      { key: 'customerName', header: t('sales.customer.title') },
+      { key: 'date', header: t('sales.date') },
+      { key: 'status', header: t('sales.status.label') },
+      { key: 'subtotal', header: t('sales.subtotal') },
+      { key: 'vatAmount', header: t('sales.vat') },
+      { key: 'totalAmount', header: t('sales.total') },
     ];
     const data = invoices.map(i => ({
       invoiceNumber: i.invoiceNumber,
@@ -327,11 +327,11 @@ export const InvoicesPage: React.FC = () => {
 
   const handleExportPDF = () => {
     const exportColumns = [
-      { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: 30 },
-      { key: 'customerName', header: t('sales.customer.title') || 'العميل', width: 40 },
-      { key: 'date', header: t('sales.date') || 'التاريخ', width: 20 },
-      { key: 'status', header: t('sales.status.label') || 'الحالة', width: 20 },
-      { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', width: 20 },
+      { key: 'invoiceNumber', header: t('sales.invoiceNumber'), width: 30 },
+      { key: 'customerName', header: t('sales.customer.title'), width: 40 },
+      { key: 'date', header: t('sales.date'), width: 20 },
+      { key: 'status', header: t('sales.status.label'), width: 20 },
+      { key: 'totalAmount', header: t('sales.total'), width: 20 },
     ];
     const data = invoices.map(i => ({
       invoiceNumber: i.invoiceNumber,
@@ -341,19 +341,19 @@ export const InvoicesPage: React.FC = () => {
       totalAmount: formatCurrency(i.totalAmount),
     }));
     exportToPDF(data, exportColumns, `sales_invoices_${new Date().toISOString().split('T')[0]}`, {
-      title: t('sales.invoices') || 'فواتير المبيعات',
+      title: t('sales.invoices'),
       rtl: true,
     });
   };
 
   const tableColumns = [
-    { key: 'invoiceNumber', header: t('sales.invoiceNumber') || 'رقم الفاتورة', width: '130px' },
-    { key: 'customerName', header: t('sales.customer.title') || 'العميل', render: (row: SalesInvoice) => row.customer?.name || row.customerId },
-    { key: 'date', header: t('sales.date') || 'التاريخ', width: '110px', render: (row: SalesInvoice) => formatDate(row.date) },
-    { key: 'dueDate', header: t('sales.dueDate') || 'الاستحقاق', width: '110px', render: (row: SalesInvoice) => row.dueDate ? formatDate(row.dueDate) : '-' },
-    { key: 'subtotal', header: t('sales.subtotal') || 'المجموع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.subtotal) },
-    { key: 'vatAmount', header: t('sales.vat') || 'الضريبة', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.vatAmount) },
-    { key: 'totalAmount', header: t('sales.total') || 'الإجمالي', align: 'right' as const, render: (row: SalesInvoice) => (
+    { key: 'invoiceNumber', header: t('sales.invoiceNumber'), width: '130px' },
+    { key: 'customerName', header: t('sales.customer.title'), render: (row: SalesInvoice) => row.customer?.name || row.customerId },
+    { key: 'date', header: t('sales.date'), width: '110px', render: (row: SalesInvoice) => formatDate(row.date) },
+    { key: 'dueDate', header: t('sales.dueDate'), width: '110px', render: (row: SalesInvoice) => row.dueDate ? formatDate(row.dueDate) : '-' },
+    { key: 'subtotal', header: t('sales.subtotal'), align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.subtotal) },
+    { key: 'vatAmount', header: t('sales.vat'), align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.vatAmount) },
+    { key: 'totalAmount', header: t('sales.total'), align: 'right' as const, render: (row: SalesInvoice) => (
       <span>
         {formatCurrency(row.totalAmount)}
         {row.currencyCode && row.currencyCode !== currencySymbol && (
@@ -361,12 +361,12 @@ export const InvoicesPage: React.FC = () => {
         )}
       </span>
     ) },
-    { key: 'paidAmount', header: t('sales.paid') || 'المدفوع', align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
-    { key: 'status', header: t('sales.status.label') || 'الحالة', render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
-    { key: 'createdBy', header: t('common.createdBy') || 'أنشأها', width: '110px', render: (row: SalesInvoice) => (
+    { key: 'paidAmount', header: t('sales.paid'), align: 'right' as const, render: (row: SalesInvoice) => formatCurrency(row.paidAmount) },
+    { key: 'status', header: t('sales.status.label'), render: (row: SalesInvoice) => <StatusBadge status={row.status} /> },
+    { key: 'createdBy', header: t('common.createdBy'), width: '110px', render: (row: SalesInvoice) => (
       <span className="text-xs text-slate-600 dark:text-slate-400">{getUserName(row.createdBy)}</span>
     ) },
-    { key: 'actions', header: t('sales.actions') || 'إجراء', width: '180px', render: (row: SalesInvoice) => (
+    { key: 'actions', header: t('sales.actions'), width: '180px', render: (row: SalesInvoice) => (
       <div className="flex items-center gap-1">
         <ActionButtons
           onView={() => { setViewing(row); setDetailOpen(true); }}
@@ -386,7 +386,7 @@ export const InvoicesPage: React.FC = () => {
             disabled={postingId === row.id}
             leftIcon={<CheckSquare size={14} />}
           >
-            {postingId === row.id ? (t('loading') || 'جارٍ...') : (t('sales.invoice.post') || 'ترحيل')}
+            {postingId === row.id ? (t('loading')) : (t('sales.invoice.post'))}
           </Button>
         )}
       </div>
@@ -408,21 +408,21 @@ export const InvoicesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <FileText size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.invoices') || 'فواتير المبيعات'}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.invoicesSubtitle') || 'إدارة فواتير المبيعات والضريبة'}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('sales.invoices')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sales.invoicesSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
-          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export') || 'تصدير Excel'}>
+          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('export')}>
             <Download size={16} className="text-emerald-600" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={handleExportPDF} title={t('reports.exportPdf') || 'تصدير PDF'}>
+          <Button size="sm" variant="ghost" onClick={handleExportPDF} title={t('reports.exportPdf')}>
             <Printer size={16} className="text-rose-600" />
           </Button>
           <Can action="create" module="sales">
             <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-              {t('sales.invoice.create') || 'فاتورة جديدة'}
+              {t('sales.invoice.create')}
             </Button>
           </Can>
         </div>
@@ -432,25 +432,25 @@ export const InvoicesPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <div className="p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.invoice.totalInvoices') || 'عدد الفواتير'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.invoice.totalInvoices')}</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p>
           </div>
         </Card>
         <Card>
           <div className="p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.total') || 'الإجمالي'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.total')}</p>
             <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
           </div>
         </Card>
         <Card>
           <div className="p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.paid') || 'المدفوع'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.paid')}</p>
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stats.paid)} <span className="text-sm font-normal text-slate-500">{currencySymbol}</span></p>
           </div>
         </Card>
         <Card>
           <div className="p-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.invoice.drafts') || 'مسودات'}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.invoice.drafts')}</p>
             <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p>
           </div>
         </Card>
@@ -459,15 +459,15 @@ export const InvoicesPage: React.FC = () => {
       {/* Table */}
       <Card>
         {isLoading ? (
-          <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('loading') || 'جاري التحميل...'}</div>
+          <div className="p-8 text-center text-slate-500 dark:text-slate-400">{t('loading')}</div>
         ) : invoices.length === 0 ? (
           <EmptyState
             icon="file"
-            title={t('sales.invoice.emptyTitle') || 'لا توجد فواتير'}
-            description={t('sales.invoice.emptyDescription') || 'ابدأ بإنشاء فاتورة جديدة'}
+            title={t('sales.invoice.emptyTitle')}
+            description={t('sales.invoice.emptyDescription')}
             action={
               <Can action="create" module="sales">
-                <Button onClick={openCreate} leftIcon={<Plus size={16} />}>{t('sales.invoice.create') || 'فاتورة جديدة'}</Button>
+                <Button onClick={openCreate} leftIcon={<Plus size={16} />}>{t('sales.invoice.create')}</Button>
               </Can>
             }
           />
@@ -486,24 +486,24 @@ export const InvoicesPage: React.FC = () => {
       </Card>
 
       {/* Form Modal */}
-      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="xl" title={editingId ? (t('sales.invoice.edit') || 'تعديل فاتورة') : (t('sales.invoice.new') || 'فاتورة مبيعات جديدة')}>
+      <Modal isOpen={formOpen} onClose={() => { setFormOpen(false); resetForm(); }} size="xl" title={editingId ? (t('sales.invoice.edit')) : (t('sales.invoice.new'))}>
         <div className="space-y-4 p-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title') || 'العميل'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.customer.title')}</label>
               <CustomerSelect companyId={activeCompany?.id || ''} value={header.customerId} onChange={v => setHeader(prev => ({ ...prev, customerId: v || '' }))} />
             </div>
-            <Input label={t('sales.date') || 'التاريخ'} type="date" value={header.date} onChange={e => setHeader(prev => ({ ...prev, date: e.target.value }))} />
-            <Input label={t('sales.dueDate') || 'تاريخ الاستحقاق'} type="date" value={header.dueDate} onChange={e => setHeader(prev => ({ ...prev, dueDate: e.target.value }))} />
+            <Input label={t('sales.date')} type="date" value={header.date} onChange={e => setHeader(prev => ({ ...prev, date: e.target.value }))} />
+            <Input label={t('sales.dueDate')} type="date" value={header.dueDate} onChange={e => setHeader(prev => ({ ...prev, dueDate: e.target.value }))} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency') || 'العملة'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency')}</label>
               <CurrencySelect companyId={activeCompany?.id || ''} value={currencyCode} onChange={handleCurrencyChange} />
             </div>
             <Input
-              label={t('sales.exchangeRate') || 'سعر الصرف'}
+              label={t('sales.exchangeRate')}
               type="number"
               min={0}
               step="0.0001"
@@ -511,7 +511,7 @@ export const InvoicesPage: React.FC = () => {
               onChange={e => setExchangeRate(Number(e.target.value) || 1)}
             />
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency') || 'المعادل بالأساسية'}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency')}</label>
               <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200">
                 {formatCurrency(calculations.totalAmount * exchangeRate)} <span className="text-slate-500">{currencySymbol}</span>
               </div>
@@ -520,19 +520,19 @@ export const InvoicesPage: React.FC = () => {
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
             <div className="flex justify-between items-center">
-              <h4 className="font-semibold text-sm">{t('sales.invoice.lines') || 'سطور الفاتورة'}</h4>
-              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>{t('sales.invoice.addLine') || 'إضافة سطر'}</Button>
+              <h4 className="font-semibold text-sm">{t('sales.invoice.lines')}</h4>
+              <Button size="sm" variant="secondary" onClick={addLine} leftIcon={<Plus size={14} />}>{t('sales.invoice.addLine')}</Button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   <tr>
-                    <th className="px-2 py-1 text-right">{t('inventory.productName') || 'المنتج'}</th>
-                    <th className="px-2 py-1 text-right w-20">{t('inventory.quantity') || 'الكمية'}</th>
-                    <th className="px-2 py-1 text-right w-24">{t('inventory.unitPrice') || 'السعر'}</th>
-                    <th className="px-2 py-1 text-right w-20">{t('sales.discount') || 'الخصم %'}</th>
-                    <th className="px-2 py-1 text-right w-20">{t('sales.vat') || 'الضريبة %'}</th>
-                    <th className="px-2 py-1 text-right w-24">{t('sales.total') || 'الإجمالي'}</th>
+                    <th className="px-2 py-1 text-right">{t('inventory.productName')}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('inventory.quantity')}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('inventory.unitPrice')}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('sales.discount')}</th>
+                    <th className="px-2 py-1 text-right w-20">{t('sales.vat')}</th>
+                    <th className="px-2 py-1 text-right w-24">{t('sales.total')}</th>
                     <th className="px-2 py-1 w-10"></th>
                   </tr>
                 </thead>
@@ -560,44 +560,44 @@ export const InvoicesPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label={t('sales.notes') || 'الملاحظات'} value={header.notes} onChange={e => setHeader(prev => ({ ...prev, notes: e.target.value }))} />
+            <Input label={t('sales.notes')} value={header.notes} onChange={e => setHeader(prev => ({ ...prev, notes: e.target.value }))} />
             <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3 space-y-1 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.subtotal') || 'المجموع'}</span><span className="font-medium">{formatCurrency(calculations.subtotal)}</span></div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.discount') || 'الخصم'}</span><span className="font-medium">{formatCurrency(calculations.discountAmount)}</span></div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.vat') || 'الضريبة'}</span><span className="font-medium">{formatCurrency(calculations.vatAmount)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.subtotal')}</span><span className="font-medium">{formatCurrency(calculations.subtotal)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.discount')}</span><span className="font-medium">{formatCurrency(calculations.discountAmount)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('sales.vat')}</span><span className="font-medium">{formatCurrency(calculations.vatAmount)}</span></div>
               <div className="flex justify-between text-lg font-bold text-primary-600 dark:text-primary-400 pt-1 border-t border-slate-200 dark:border-slate-700">
-                <span>{t('sales.total') || 'الإجمالي'}</span>
+                <span>{t('sales.total')}</span>
                 <span>{formatCurrency(calculations.totalAmount)}</span>
               </div>
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
-            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel') || 'إلغاء'}</Button>
-            <Button onClick={handleSave} isLoading={saving} leftIcon={<CheckSquare size={16} />}>{editingId ? (t('save') || 'حفظ') : (t('sales.invoice.saveDraft') || 'حفظ كمسودة')}</Button>
+            <Button variant="secondary" onClick={() => { setFormOpen(false); resetForm(); }}>{t('cancel')}</Button>
+            <Button onClick={handleSave} isLoading={saving} leftIcon={<CheckSquare size={16} />}>{editingId ? (t('save')) : (t('sales.invoice.saveDraft'))}</Button>
           </div>
         </div>
       </Modal>
 
       {/* Detail Modal */}
-      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="lg" title={`${t('sales.invoice.details') || 'تفاصيل الفاتورة'} - ${viewing?.invoiceNumber}`}>
+      <Modal isOpen={detailOpen} onClose={() => setDetailOpen(false)} size="lg" title={`${t('sales.invoice.details')} - ${viewing?.invoiceNumber}`}>
         {viewing && (
           <div className="space-y-4 p-1">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title') || 'العميل'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.customer.title')}</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.customer?.name || viewing.customerId}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.status.label') || 'الحالة'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.status.label')}</p>
                 <StatusBadge status={viewing.status} />
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.date') || 'التاريخ'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.date')}</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{formatDate(viewing.date)}</p>
               </div>
               <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.dueDate') || 'الاستحقاق'}</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.dueDate')}</p>
                 <p className="font-semibold text-slate-900 dark:text-slate-50">{viewing.dueDate ? formatDate(viewing.dueDate) : '-'}</p>
               </div>
             </div>
@@ -606,10 +606,10 @@ export const InvoicesPage: React.FC = () => {
                 <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   <tr>
                     <th className="px-3 py-2 text-right">#</th>
-                    <th className="px-3 py-2 text-right">{t('inventory.productName') || 'المنتج'}</th>
-                    <th className="px-3 py-2 text-right">{t('inventory.quantity') || 'الكمية'}</th>
-                    <th className="px-3 py-2 text-right">{t('inventory.unitPrice') || 'السعر'}</th>
-                    <th className="px-3 py-2 text-right">{t('sales.total') || 'الإجمالي'}</th>
+                    <th className="px-3 py-2 text-right">{t('inventory.productName')}</th>
+                    <th className="px-3 py-2 text-right">{t('inventory.quantity')}</th>
+                    <th className="px-3 py-2 text-right">{t('inventory.unitPrice')}</th>
+                    <th className="px-3 py-2 text-right">{t('sales.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -627,22 +627,22 @@ export const InvoicesPage: React.FC = () => {
             </div>
             <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
               <div className="space-y-1 text-sm">
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal') || 'المجموع'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.subtotal)}</span></p>
-                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat') || 'الضريبة'}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.vatAmount)}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.subtotal')}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.subtotal)}</span></p>
+                <p className="text-slate-500 dark:text-slate-400">{t('sales.vat')}: <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.vatAmount)}</span></p>
                 {viewing.baseCurrencyAmount !== undefined && viewing.baseCurrencyAmount > 0 && viewing.currencyCode !== currencySymbol && (
-                  <p className="text-slate-500 dark:text-slate-400">{t('sales.baseCurrency') || 'المعادل بالأساسية'} ({currencySymbol}): <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.baseCurrencyAmount)}</span></p>
+                  <p className="text-slate-500 dark:text-slate-400">{t('sales.baseCurrency')} ({currencySymbol}): <span className="font-medium text-slate-900 dark:text-slate-50">{formatCurrency(viewing.baseCurrencyAmount)}</span></p>
                 )}
               </div>
               <div className="text-xl font-bold text-primary-600 dark:text-primary-400">
-                {t('sales.total') || 'الإجمالي'}: {formatCurrency(viewing.totalAmount)}
+                {t('sales.total')}: {formatCurrency(viewing.totalAmount)}
                 {viewing.currencyCode && viewing.currencyCode !== currencySymbol && (
                   <span className="text-sm font-normal text-slate-500 mr-2">({viewing.currencyCode})</span>
                 )}
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close') || 'إغلاق'}</Button>
-              <Button variant="primary" onClick={() => { handlePrint(viewing); }} leftIcon={<Printer size={16} />}>{t('print') || 'طباعة'}</Button>
+              <Button variant="secondary" onClick={() => setDetailOpen(false)}>{t('close')}</Button>
+              <Button variant="primary" onClick={() => { handlePrint(viewing); }} leftIcon={<Printer size={16} />}>{t('print')}</Button>
             </div>
           </div>
         )}
@@ -656,8 +656,8 @@ export const InvoicesPage: React.FC = () => {
         title={confirmConfig?.title || ''}
         message={confirmConfig?.message || ''}
         variant={confirmConfig?.variant || 'warning'}
-        confirmText={confirmConfig?.confirmText || (t('confirm') || 'تأكيد')}
-        cancelText={t('cancel') || 'إلغاء'}
+        confirmText={confirmConfig?.confirmText || (t('confirm'))}
+        cancelText={t('cancel')}
       />
     </div>
   );

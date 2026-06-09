@@ -22,10 +22,10 @@ export const OwnerFilterToggle: React.FC<OwnerFilterToggleProps> = ({ isOwnOnly,
           ? 'bg-primary-50 text-primary-700 border-primary-200 dark:bg-primary-900/30 dark:text-primary-300 dark:border-primary-700'
           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'
       }`}
-      title={isOwnOnly ? (t('filter.showAll') || 'عرض الكل') : (t('filter.myDocsOnly') || 'مستنداتي فقط')}
+      title={isOwnOnly ? (t('filter.showAll')) : (t('filter.myDocsOnly'))}
     >
       <UserCheck size={14} />
-      {isOwnOnly ? (t('filter.myDocsOnly') || 'مستنداتي فقط') : (t('filter.allDocs') || 'الكل')}
+      {isOwnOnly ? (t('filter.myDocsOnly')) : (t('filter.allDocs'))}
     </button>
   );
 };
