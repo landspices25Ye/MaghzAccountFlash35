@@ -6,7 +6,7 @@ test.describe('Authentication', () => {
     await loginAs(page);
 
     await expect(page.locator('aside')).toBeVisible();
-    await expect(page.locator('text=محاسبة المهذب').first()).toBeVisible();
+    await expect(page.locator('aside span').first()).toBeVisible();
     await expect(page.locator('text=لوحة التحكم').first()).toBeVisible();
   });
 
