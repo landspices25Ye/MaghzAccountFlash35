@@ -46,7 +46,7 @@ export const CompanySetup: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.company')}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة بيانات المؤسسة</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('settings.company.description')}</p>
         </div>
         {!isEditing ? (
           <Button variant="primary" leftIcon={<Upload size={16} />} onClick={() => setIsEditing(true)}>
@@ -77,42 +77,42 @@ export const CompanySetup: React.FC = () => {
 
         <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-4', !isEditing && 'opacity-75')}>
           <Input
-            label="اسم الشركة (عربي)"
+            label={t('settings.company.nameAr')}
             value={formData?.name || ''}
             onChange={e => handleChange('name', e.target.value)}
             disabled={!isEditing}
           />
           <Input
-            label="اسم الشركة (إنجليزي)"
+            label={t('settings.company.nameEn')}
             value={formData?.nameEn || ''}
             onChange={e => handleChange('nameEn', e.target.value)}
             disabled={!isEditing}
           />
           <Input
-            label="العملة الافتراضية"
+            label={t('settings.company.defaultCurrency')}
             value={formData?.currency || YER_CODE}
             disabled
           />
           <Input
-            label="الرقم الضريبي"
+            label={t('settings.company.taxNumber')}
             value={formData?.taxNumber || ''}
             onChange={e => handleChange('taxNumber', e.target.value)}
             disabled={!isEditing}
           />
           <Input
-            label="العنوان"
+            label={t('settings.company.address')}
             value={formData?.address || ''}
             onChange={e => handleChange('address', e.target.value)}
             disabled={!isEditing}
           />
           <Input
-            label="الهاتف"
+            label={t('settings.company.phone')}
             value={formData?.phone || ''}
             onChange={e => handleChange('phone', e.target.value)}
             disabled={!isEditing}
           />
           <Input
-            label="البريد الإلكتروني"
+            label={t('settings.company.email')}
             value={formData?.email || ''}
             onChange={e => handleChange('email', e.target.value)}
             disabled={!isEditing}

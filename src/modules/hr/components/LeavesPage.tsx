@@ -106,7 +106,7 @@ export const LeavesPage: React.FC = () => {
     <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${new Date().toLocaleDateString('ar-YE')}</p>
     <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${leaves.length}</p>
     <table><thead><tr><th>#</th><th>${t('hr.leaves.employee')}</th><th>${t('hr.leaves.leaveType')}</th><th>${t('hr.leaves.from')}</th><th>${t('hr.leaves.to')}</th><th>${t('hr.leaves.days')}</th><th>${t('hr.leaves.status')}</th></tr></thead><tbody>${rows}</tbody></table>
-    <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا التقرير من نظام maghzaccount-pro</div>
+    <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printReportFooter')}</div>
     </div></body></html>`;
     printWindow.document.open();
     printWindow.document.write(html);

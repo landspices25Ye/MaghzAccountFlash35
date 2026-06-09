@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Check, ChevronDown, X, Plus, Search, Loader2 } from 'lucide-react';
 import { Button, Modal, Input } from '@/core/ui/components';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export interface SmartSelectItem {
   id: string;
@@ -34,11 +35,11 @@ export function SmartSelect<T extends SmartSelectItem>({
   onChange,
   options,
   isLoading = false,
-  placeholder = 'اختر...',
-  searchPlaceholder = 'بحث...',
-  emptyMessage = 'لا توجد نتائج',
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
   creatable = false,
-  creatableLabel = 'إضافة جديد',
+  creatableLabel,
   onCreate,
   multiple = false,
   disabled = false,
@@ -48,6 +49,11 @@ export function SmartSelect<T extends SmartSelectItem>({
   renderItem,
   renderTrigger,
 }: SmartSelectProps<T>) {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.default.placeholder');
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('select.default.search');
+  const resolvedEmptyMessage = emptyMessage ?? t('select.default.empty');
+  const resolvedCreatableLabel = creatableLabel ?? t('select.default.addNew');
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
@@ -187,7 +193,7 @@ export function SmartSelect<T extends SmartSelectItem>({
         </div>
       );
     }
-    return <span className="text-slate-400">{placeholder}</span>;
+    return <span className="text-slate-400">{resolvedPlaceholder}</span>;
   };
 
   return (
@@ -216,7 +222,7 @@ export function SmartSelect<T extends SmartSelectItem>({
             <span
               role="button"
               tabIndex={0}
-              title="مسح"
+              title={t('common.clear')}
               onClick={(e) => { e.stopPropagation(); handleClear(e as unknown as React.MouseEvent); }}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); handleClear(e as unknown as React.MouseEvent); } }}
               className="p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
@@ -237,7 +243,7 @@ export function SmartSelect<T extends SmartSelectItem>({
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={resolvedSearchPlaceholder}
               className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
               autoFocus
             />
@@ -246,7 +252,7 @@ export function SmartSelect<T extends SmartSelectItem>({
                 type="button"
                 onClick={() => setCreating(true)}
                 className="p-1 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-md text-primary-600 transition-colors"
-                title={creatableLabel}
+                title={resolvedCreatableLabel}
               >
                 <Plus size={14} />
               </button>
@@ -264,10 +270,10 @@ export function SmartSelect<T extends SmartSelectItem>({
                     className="flex items-center justify-center gap-2 w-full text-primary-600 hover:text-primary-700"
                   >
                     <Plus size={14} />
-                    {creatableLabel} &quot;{search}&quot;
+                    {resolvedCreatableLabel} &quot;{search}&quot;
                   </button>
                 ) : (
-                  emptyMessage
+                  resolvedEmptyMessage
                 )}
               </div>
             ) : (
@@ -316,21 +322,21 @@ export function SmartSelect<T extends SmartSelectItem>({
         <Modal
           isOpen={creating}
           onClose={() => { setCreating(false); setNewValue(''); }}
-          title={creatableLabel}
+          title={resolvedCreatableLabel}
           size="sm"
           footer={
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={() => { setCreating(false); setNewValue(''); }}>إلغاء</Button>
-              <Button size="sm" onClick={handleCreate} isLoading={createLoading} leftIcon={<Plus size={14} />}>إنشاء</Button>
+              <Button variant="secondary" size="sm" onClick={() => { setCreating(false); setNewValue(''); }}>{t('common.cancel')}</Button>
+              <Button size="sm" onClick={handleCreate} isLoading={createLoading} leftIcon={<Plus size={14} />}>{t('common.create')}</Button>
             </div>
           }
         >
           <Input
-            label="الاسم"
+            label={t('common.name')}
             value={newValue}
             onChange={e => setNewValue(e.target.value)}
             autoFocus
-            placeholder="أدخل الاسم..."
+            placeholder={t('common.enterName')}
           />
         </Modal>
       )}

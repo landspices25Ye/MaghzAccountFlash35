@@ -8,7 +8,7 @@ export function useTranslation() {
   const language = useAppStore((state) => state.language);
   const currentTranslations = translations[language] as Record<string, unknown>;
   
-  const t = (key: string): string => {
+  const t = (key: string, params?: Record<string, string | number>): string => {
     const keys = key.split('.');
     let value: unknown = currentTranslations;
     for (const k of keys) {
@@ -18,7 +18,11 @@ export function useTranslation() {
         return key;
       }
     }
-    return typeof value === 'string' ? value : key;
+    if (typeof value !== 'string') return key;
+    if (!params) return value;
+    return value.replace(/\{\{(\w+)\}\}/g, (_, paramKey) =>
+      paramKey in params ? String(params[paramKey]) : `{{${paramKey}}}`
+    );
   };
   
   return { t, language };

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useCostCenters } from '@/core/hooks/useSettings';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface CostCenterSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface CostCenterSelectProps {
 }
 
 export const CostCenterSelect: React.FC<CostCenterSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر مركز التكلفة...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.costCenter.placeholder');
   const { centers, isLoading } = useCostCenters(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const CostCenterSelect: React.FC<CostCenterSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في المراكز..."
-      emptyMessage="لا يوجد مراكز تكلفة"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.costCenter.search')}
+      emptyMessage={t('select.costCenter.empty')}
       disabled={disabled}
       size={size}
       className={className}

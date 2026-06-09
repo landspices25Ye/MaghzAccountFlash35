@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useBranches } from '@/modules/core/hooks/useCore';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface BranchSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface BranchSelectProps {
 }
 
 export const BranchSelect: React.FC<BranchSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الفرع...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.branch.placeholder');
   const { branches, isLoading } = useBranches(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const BranchSelect: React.FC<BranchSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الفروع..."
-      emptyMessage="لا يوجد فروع"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.branch.search')}
+      emptyMessage={t('select.branch.empty')}
       disabled={disabled}
       size={size}
       className={className}

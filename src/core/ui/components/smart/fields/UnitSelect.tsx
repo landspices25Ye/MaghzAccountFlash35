@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useUnits } from '@/core/hooks/useSettings';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface UnitSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface UnitSelectProps {
 }
 
 export const UnitSelect: React.FC<UnitSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الوحدة...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.unit.placeholder');
   const { units, isLoading } = useUnits(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const UnitSelect: React.FC<UnitSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الوحدات..."
-      emptyMessage="لا توجد وحدات"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.unit.search')}
+      emptyMessage={t('select.unit.empty')}
       disabled={disabled}
       size={size}
       className={className}

@@ -5,6 +5,7 @@ import { useProductTypes } from '@/core/hooks/useSettings';
 import { filterProductsByModule, type ProductModule } from '@/core/utils/productTypeFilter';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface ProductSelectProps {
   companyId: string;
@@ -21,8 +22,10 @@ interface ProductSelectProps {
 }
 
 export const ProductSelect: React.FC<ProductSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر المنتج...', disabled, size, className, multiple = false, showPrice = true, module, categoryId,
+  companyId, value, onChange, placeholder, disabled, size, className, multiple = false, showPrice = true, module, categoryId,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.product.placeholder');
   const { products, isLoading } = useProducts(companyId);
   const { types: productTypes } = useProductTypes(companyId);
   const { activeCompany } = useAppStore();
@@ -54,9 +57,9 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : multiple ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في المنتجات..."
-      emptyMessage="لا توجد منتجات"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.product.search')}
+      emptyMessage={t('select.product.empty')}
       disabled={disabled}
       size={size}
       className={className}

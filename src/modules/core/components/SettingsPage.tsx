@@ -21,35 +21,37 @@ import {
   Target,
 } from 'lucide-react';
 import { cn } from '@/core/utils';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface SettingsMenuItem {
   id: string;
-  label: string;
+  labelKey: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   path: string;
 }
 
 const menuItems: SettingsMenuItem[] = [
-  { id: 'company', label: 'بيانات الشركة', icon: Building2, path: '/settings/company' },
-  { id: 'currencies', label: 'العملات', icon: Coins, path: '/settings/currencies' },
-  { id: 'vat', label: 'إعدادات الضريبة', icon: Receipt, path: '/settings/vat' },
-  { id: 'branches', label: 'الفروع', icon: GitBranch, path: '/settings/branches' },
-  { id: 'document-sequences', label: 'الترقيم المتسلسل', icon: Hash, path: '/settings/document-sequences' },
-  { id: 'default-accounts', label: 'الحسابات الافتراضية', icon: BookOpen, path: '/settings/default-accounts' },
-  { id: 'product-types', label: 'أنواع المنتجات', icon: Layers, path: '/settings/product-types' },
-  { id: 'product-categories', label: 'تصنيفات المنتجات', icon: Tag, path: '/settings/product-categories' },
-  { id: 'units', label: 'الوحدات', icon: Ruler, path: '/settings/units' },
-  { id: 'cash-boxes', label: 'الصناديق والخزائن', icon: Vault, path: '/settings/cash-boxes' },
-  { id: 'banks', label: 'البنوك والحسابات', icon: Landmark, path: '/settings/banks' },
-  { id: 'cost-centers', label: 'مراكز التكلفة', icon: Target, path: '/settings/cost-centers' },
-  { id: 'users', label: 'المستخدمين', icon: Users, path: '/settings/users' },
-  { id: 'roles', label: 'الأدوار والصلاحيات', icon: Shield, path: '/roles' },
-  { id: 'backup', label: 'النسخ الاحتياطي', icon: DatabaseBackup, path: '/settings/backup' },
-  { id: 'reset', label: 'إعادة التهيئة', icon: RefreshCcw, path: '/settings/reset' },
+  { id: 'company', labelKey: 'settings.menu.company', icon: Building2, path: '/settings/company' },
+  { id: 'currencies', labelKey: 'settings.menu.currencies', icon: Coins, path: '/settings/currencies' },
+  { id: 'vat', labelKey: 'settings.menu.vat', icon: Receipt, path: '/settings/vat' },
+  { id: 'branches', labelKey: 'settings.menu.branches', icon: GitBranch, path: '/settings/branches' },
+  { id: 'document-sequences', labelKey: 'settings.menu.documentSequences', icon: Hash, path: '/settings/document-sequences' },
+  { id: 'default-accounts', labelKey: 'settings.menu.defaultAccounts', icon: BookOpen, path: '/settings/default-accounts' },
+  { id: 'product-types', labelKey: 'settings.menu.productTypes', icon: Layers, path: '/settings/product-types' },
+  { id: 'product-categories', labelKey: 'settings.menu.productCategories', icon: Tag, path: '/settings/product-categories' },
+  { id: 'units', labelKey: 'settings.menu.units', icon: Ruler, path: '/settings/units' },
+  { id: 'cash-boxes', labelKey: 'settings.menu.cashBoxes', icon: Vault, path: '/settings/cash-boxes' },
+  { id: 'banks', labelKey: 'settings.menu.banks', icon: Landmark, path: '/settings/banks' },
+  { id: 'cost-centers', labelKey: 'settings.menu.costCenters', icon: Target, path: '/settings/cost-centers' },
+  { id: 'users', labelKey: 'settings.menu.users', icon: Users, path: '/settings/users' },
+  { id: 'roles', labelKey: 'settings.menu.roles', icon: Shield, path: '/roles' },
+  { id: 'backup', labelKey: 'settings.menu.backup', icon: DatabaseBackup, path: '/settings/backup' },
+  { id: 'reset', labelKey: 'settings.menu.reset', icon: RefreshCcw, path: '/settings/reset' },
 ];
 
 export const SettingsPage: React.FC = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -57,8 +59,8 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Settings size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الإعدادات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة إعدادات النظام والشركة</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.pageTitle')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.pageSubtitle')}</p>
           </div>
         </div>
       </div>
@@ -82,7 +84,7 @@ export const SettingsPage: React.FC = () => {
                   )}
                 >
                   <Icon size={18} />
-                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm">{t(item.labelKey)}</span>
                   {isActive && <ChevronLeft size={16} className="mr-auto" />}
                 </Link>
               );

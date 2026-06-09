@@ -239,7 +239,7 @@ function handlePrintPayroll(payroll: { month: number; year: number; totalAmount:
   <p><strong>${t('hr.payroll.printMonthYear')}</strong> ${payroll.month}/${payroll.year}</p>
   <table><thead><tr><th>#</th><th>${t('hr.payroll.employee')}</th><th>${t('hr.payroll.baseSalary')}</th><th>${t('hr.payroll.allowances')}</th><th>${t('hr.payroll.deductions')}</th><th>${t('hr.payroll.overtime')}</th><th>${t('hr.payroll.netSalary')}</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="total">${t('hr.payroll.grandTotal')} ${formatCurrency(payroll.totalAmount)} ر.ي</div>
-  <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">تم إصدار هذا المستند من نظام maghzaccount-pro</div>
+  <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printFooter')}</div>
   </div></body></html>`;
   printWindow.document.open();
   printWindow.document.write(html);

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useBoms } from '@/modules/manufacturing/hooks/useManufacturing';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface BOMSelectProps {
   companyId: string;
@@ -13,18 +14,20 @@ interface BOMSelectProps {
 }
 
 export const BOMSelect: React.FC<BOMSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر قائمة المواد...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.bom.placeholder');
   const { boms, isLoading } = useBoms(companyId);
 
   const options = useMemo(() => {
     return boms.map(b => ({
       label: b.productName || `BOM ${b.version}`,
-      sublabel: `الإصدار: ${b.version}`,
+      sublabel: `${t('select.bom.version')}: ${b.version}`,
       disabled: !b.isActive,
       ...b,
     })) as SmartSelectItem[];
-  }, [boms]);
+  }, [boms, t]);
 
   return (
     <SmartSelect
@@ -32,9 +35,9 @@ export const BOMSelect: React.FC<BOMSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في BOM..."
-      emptyMessage="لا توجد قوائم مواد"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.bom.search')}
+      emptyMessage={t('select.bom.empty')}
       disabled={disabled}
       size={size}
       className={className}

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useProductTypes } from '@/core/hooks/useSettings';
 import type { ProductType } from '@/core/types';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface ProductTypeSelectProps {
   companyId: string;
@@ -15,8 +16,10 @@ interface ProductTypeSelectProps {
 }
 
 export const ProductTypeSelect: React.FC<ProductTypeSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر نوع المنتج...', disabled, size, className, filterModule,
+  companyId, value, onChange, placeholder, disabled, size, className, filterModule,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.productType.placeholder');
   const { types, isLoading } = useProductTypes(companyId);
 
   const options = useMemo(() => {
@@ -44,9 +47,9 @@ export const ProductTypeSelect: React.FC<ProductTypeSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الأنواع..."
-      emptyMessage="لا يوجد أنواع"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.productType.search')}
+      emptyMessage={t('select.productType.empty')}
       disabled={disabled}
       size={size}
       className={className}

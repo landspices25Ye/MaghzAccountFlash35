@@ -5,24 +5,16 @@ import { Card, Button, Input, Modal, Badge } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
-
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAuthStore } from '../store';
 import { useUsers } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
 import type { User } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'مدير النظام',
-  admin: 'أدمن',
-  manager: 'مدير',
-  accountant: 'محاسب',
-  sales_rep: 'مندوب مبيعات',
-  viewer: 'مشاهد فقط',
-};
-
 export const UsersPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const hasPermission = useAuthStore((state) => state.hasPermission);
@@ -111,8 +103,8 @@ export const UsersPage: React.FC = () => {
   const handleDelete = (user: User) => {
     setConfirmDialog({
       open: true,
-      title: 'حذف المستخدم',
-      message: `هل أنت متأكد من حذف المستخدم "${user.username}"؟ لا يمكن التراجع عن هذا الإجراء.`,
+      title: t('auth.users.deleteTitle'),
+      message: t('auth.users.deleteConfirm', { name: user.username }),
       variant: 'danger',
       onConfirm: async () => {
         await remove(user.id);
@@ -122,11 +114,13 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleToggleActive = (user: User) => {
-    const action = user.isActive ? 'تعطيل' : 'تفعيل';
+    const action = user.isActive ? t('auth.users.deactivateTitle') : t('auth.users.activateTitle');
     setConfirmDialog({
       open: true,
-      title: `${action} المستخدم`,
-      message: `هل أنت متأكد من ${action} حساب المستخدم "${user.username}"؟`,
+      title: action,
+      message: user.isActive
+        ? t('auth.users.deactivateConfirm', { name: user.username })
+        : t('auth.users.activateConfirm', { name: user.username }),
       variant: 'warning',
       onConfirm: async () => {
         await toggleActive(user.id, !user.isActive);
@@ -143,10 +137,19 @@ export const UsersPage: React.FC = () => {
     setSelectedUser(null);
   };
 
+  const ROLE_LABELS: Record<string, string> = {
+    super_admin: t('auth.users.role_super_admin'),
+    admin: t('auth.users.role_admin'),
+    manager: t('auth.users.role_manager'),
+    accountant: t('auth.users.role_accountant'),
+    sales_rep: t('auth.users.role_sales_rep'),
+    viewer: t('auth.users.role_viewer'),
+  };
+
   const columns: ColumnDef<User>[] = [
     {
       accessorKey: 'username',
-      header: 'اسم المستخدم',
+      header: t('auth.users.formUsername'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 flex items-center justify-center font-bold text-xs">
@@ -158,12 +161,12 @@ export const UsersPage: React.FC = () => {
     },
     {
       accessorKey: 'email',
-      header: 'البريد الإلكتروني',
+      header: t('auth.users.formEmail'),
       cell: ({ row }) => row.original.email || '-',
     },
     {
       accessorKey: 'role',
-      header: 'الدور',
+      header: t('auth.users.role'),
       cell: ({ row }) => (
         <Badge className="text-xs bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
           {ROLE_LABELS[row.original.role] || row.original.role}
@@ -172,12 +175,12 @@ export const UsersPage: React.FC = () => {
     },
     {
       accessorKey: 'branchName',
-      header: 'الفرع',
+      header: t('auth.users.branch'),
       cell: ({ row }) => row.original.branchName || row.original.branchId || '-',
     },
     {
       accessorKey: 'isActive',
-      header: 'الحالة',
+      header: t('auth.users.status'),
       cell: ({ row }) => (
         <StatusBadge status={row.original.isActive ? 'active' : 'inactive'} />
       ),
@@ -201,7 +204,7 @@ export const UsersPage: React.FC = () => {
               size="sm"
               variant="ghost"
               onClick={() => { setSelectedUser(user); setIsResetPasswordOpen(true); }}
-              title="إعادة تعيين كلمة المرور"
+              title={t('auth.users.resetPassword')}
               className="text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20"
               disabled={isCurrentUser}
             >
@@ -211,7 +214,7 @@ export const UsersPage: React.FC = () => {
               size="sm"
               variant="ghost"
               onClick={() => handleToggleActive(user)}
-              title={user.isActive ? 'تعطيل' : 'تفعيل'}
+              title={user.isActive ? t('auth.users.deactivateTitle') : t('auth.users.activateTitle')}
               className={user.isActive ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'}
               disabled={isCurrentUser}
             >
@@ -232,12 +235,12 @@ export const UsersPage: React.FC = () => {
             <Users size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">المستخدمين</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة المستخدمين والأدوار والصلاحيات</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('auth.users.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('auth.users.subtitle')}</p>
           </div>
         </div>
         <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-          مستخدم جديد
+          {t('auth.users.newButton')}
         </Button>
       </div>
 

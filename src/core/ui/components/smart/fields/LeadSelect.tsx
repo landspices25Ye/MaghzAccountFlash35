@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useLeads } from '@/modules/crm/hooks/useCrm';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface LeadSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface LeadSelectProps {
 }
 
 export const LeadSelect: React.FC<LeadSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر العميل المحتمل...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.lead.placeholder');
   const { leads, isLoading } = useLeads(companyId);
 
   const options = useMemo(() => {
@@ -31,9 +34,9 @@ export const LeadSelect: React.FC<LeadSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في العملاء المحتملين..."
-      emptyMessage="لا يوجد عملاء محتملين"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.lead.search')}
+      emptyMessage={t('select.lead.empty')}
       disabled={disabled}
       size={size}
       className={className}

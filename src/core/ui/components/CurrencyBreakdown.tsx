@@ -3,6 +3,7 @@ import { Coins } from 'lucide-react';
 import { Card } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { CurrencyBreakdownResult } from '@/core/utils/currencyBreakdown';
 
 interface Props {
@@ -14,13 +15,14 @@ interface Props {
 
 export const CurrencyBreakdown: React.FC<Props> = ({ result, title, emptyText, showBaseEquivalent = true }) => {
   const { currencies, formatWithCurrency, isLoading } = useCurrencyDisplay();
+  const { t } = useTranslation();
 
   if (result.items.length === 0) {
     return (
       <Card>
         <div className="p-4">
           {title && <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{title}</h3>}
-          <EmptyState icon="inbox" title={emptyText || 'لا توجد بيانات'} description="" />
+          <EmptyState icon="inbox" title={emptyText || t('common.noData')} description="" />
         </div>
       </Card>
     );
@@ -34,8 +36,8 @@ export const CurrencyBreakdown: React.FC<Props> = ({ result, title, emptyText, s
             <Coins size={18} className="text-primary-600 dark:text-primary-400" />
             <h3 className="font-semibold text-slate-900 dark:text-slate-50">{title}</h3>
             {result.hasMultipleCurrencies && (
-              <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded">
-                متعدد العملات
+                <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded">
+                {t('common.multiCurrency')}
               </span>
             )}
           </div>
@@ -44,16 +46,16 @@ export const CurrencyBreakdown: React.FC<Props> = ({ result, title, emptyText, s
           <table className="w-full text-sm">
             <thead>
               <tr className="text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                <th className="text-right py-2 px-2">العملة</th>
-                <th className="text-right py-2 px-2">المبلغ</th>
+                <th className="text-right py-2 px-2">{t('common.currency')}</th>
+                <th className="text-right py-2 px-2">{t('common.amount')}</th>
                 {showBaseEquivalent && result.hasMultipleCurrencies && (
                   <>
-                    <th className="text-right py-2 px-2">المعادل بالأساسية</th>
-                    <th className="text-right py-2 px-2">النسبة</th>
+                    <th className="text-right py-2 px-2">{t('common.baseEquivalent')}</th>
+                    <th className="text-right py-2 px-2">{t('common.percentage')}</th>
                   </>
                 )}
                 {showBaseEquivalent && !result.hasMultipleCurrencies && (
-                  <th className="text-right py-2 px-2">النسبة</th>
+                  <th className="text-right py-2 px-2">{t('common.percentage')}</th>
                 )}
               </tr>
             </thead>
@@ -98,7 +100,7 @@ export const CurrencyBreakdown: React.FC<Props> = ({ result, title, emptyText, s
             {showBaseEquivalent && result.hasMultipleCurrencies && result.items.length > 1 && (
               <tfoot>
                 <tr className="border-t-2 border-slate-200 dark:border-slate-700 font-semibold">
-                  <td className="py-2 px-2 text-slate-700 dark:text-slate-200">الإجمالي بالأساسية</td>
+                  <td className="py-2 px-2 text-slate-700 dark:text-slate-200">{t('common.totalInBase')}</td>
                   <td className="py-2 px-2"></td>
                   <td className="py-2 px-2 text-slate-700 dark:text-slate-200">
                     {isLoading ? '...' : formatWithCurrency(result.totalInBase)}

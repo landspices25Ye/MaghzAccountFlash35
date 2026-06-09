@@ -9,6 +9,7 @@ import { getDbAdapter } from './core/database/adapters';
 import { initAuth } from './modules/auth/store';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button, ErrorBoundary } from './core/ui/components';
+import { useTranslation } from './core/i18n/useTranslation';
 
 // Set RTL and Arabic as default
 document.documentElement.dir = 'rtl';
@@ -20,6 +21,7 @@ document.documentElement.lang = 'ar';
 initAuth();
 
 function DbErrorScreen({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4" dir="rtl">
       <div className="max-w-md w-full text-center space-y-6">
@@ -27,13 +29,13 @@ function DbErrorScreen({ onRetry }: { onRetry: () => void }) {
           <AlertTriangle size={32} className="text-rose-600 dark:text-rose-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">تعذر الاتصال بقاعدة البيانات</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">{t('common.dbError')}</h1>
           <p className="text-slate-500 dark:text-slate-400">
-            النظام يتطلب اتصال PostgreSQL ليعمل. تأكد من تشغيل Electron وقاعدة البيانات.
+            {t('common.dbErrorDesc')}
           </p>
         </div>
         <Button variant="primary" leftIcon={<RefreshCw size={16} />} onClick={onRetry}>
-          إعادة المحاولة
+          {t('common.retry')}
         </Button>
       </div>
     </div>

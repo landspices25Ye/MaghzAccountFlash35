@@ -3,6 +3,7 @@ import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useWorkOrders } from '@/modules/manufacturing/hooks/useManufacturing';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface WorkOrderSelectProps {
   companyId: string;
@@ -15,8 +16,10 @@ interface WorkOrderSelectProps {
 }
 
 export const WorkOrderSelect: React.FC<WorkOrderSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر أمر الإنتاج...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.workOrder.placeholder');
   const { workOrders, isLoading } = useWorkOrders(companyId);
   const { activeCompany } = useAppStore();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -35,9 +38,9 @@ export const WorkOrderSelect: React.FC<WorkOrderSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في أوامر الإنتاج..."
-      emptyMessage="لا توجد أوامر إنتاج"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.workOrder.search')}
+      emptyMessage={t('select.workOrder.empty')}
       disabled={disabled}
       size={size}
       className={className}

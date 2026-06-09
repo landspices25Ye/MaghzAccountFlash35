@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useWarehouses } from '@/modules/inventory/hooks/useInventory';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface WarehouseSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface WarehouseSelectProps {
 }
 
 export const WarehouseSelect: React.FC<WarehouseSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر المخزن...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.warehouse.placeholder');
   const { warehouses, isLoading } = useWarehouses(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const WarehouseSelect: React.FC<WarehouseSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في المخازن..."
-      emptyMessage="لا يوجد مخازن"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.warehouse.search')}
+      emptyMessage={t('select.warehouse.empty')}
       disabled={disabled}
       size={size}
       className={className}

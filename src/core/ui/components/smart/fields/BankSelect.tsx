@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useBanks } from '@/core/hooks/useSettings';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface BankSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface BankSelectProps {
 }
 
 export const BankSelect: React.FC<BankSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر البنك...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.bank.placeholder');
   const { banks, isLoading } = useBanks(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const BankSelect: React.FC<BankSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في البنوك..."
-      emptyMessage="لا يوجد بنوك"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.bank.search')}
+      emptyMessage={t('select.bank.empty')}
       disabled={disabled}
       size={size}
       className={className}

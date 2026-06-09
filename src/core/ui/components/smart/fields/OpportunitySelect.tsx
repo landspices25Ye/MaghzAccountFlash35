@@ -3,6 +3,7 @@ import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useOpportunities } from '@/modules/crm/hooks/useCrm';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface OpportunitySelectProps {
   companyId: string;
@@ -15,8 +16,10 @@ interface OpportunitySelectProps {
 }
 
 export const OpportunitySelect: React.FC<OpportunitySelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الفرصة...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.opportunity.placeholder');
   const { opportunities, isLoading } = useOpportunities(companyId);
   const { activeCompany } = useAppStore();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -35,9 +38,9 @@ export const OpportunitySelect: React.FC<OpportunitySelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الفرص..."
-      emptyMessage="لا توجد فرص"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.opportunity.search')}
+      emptyMessage={t('select.opportunity.empty')}
       disabled={disabled}
       size={size}
       className={className}

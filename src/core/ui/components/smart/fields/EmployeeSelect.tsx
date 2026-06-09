@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useEmployees } from '@/modules/hr/hooks/useHr';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface EmployeeSelectProps {
   companyId: string;
@@ -14,8 +15,10 @@ interface EmployeeSelectProps {
 }
 
 export const EmployeeSelect: React.FC<EmployeeSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الموظف...', disabled, size, className, filterActive = true,
+  companyId, value, onChange, placeholder, disabled, size, className, filterActive = true,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.employee.placeholder');
   const { employees, isLoading } = useEmployees(companyId);
 
   const options = useMemo(() => {
@@ -35,9 +38,9 @@ export const EmployeeSelect: React.FC<EmployeeSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الموظفين..."
-      emptyMessage="لا يوجد موظفين"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.employee.search')}
+      emptyMessage={t('select.employee.empty')}
       disabled={disabled}
       size={size}
       className={className}

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useCashBoxes } from '@/core/hooks/useSettings';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface CashBoxSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface CashBoxSelectProps {
 }
 
 export const CashBoxSelect: React.FC<CashBoxSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الصندوق...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.cashBox.placeholder');
   const { boxes, isLoading } = useCashBoxes(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const CashBoxSelect: React.FC<CashBoxSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الصناديق..."
-      emptyMessage="لا يوجد صناديق"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.cashBox.search')}
+      emptyMessage={t('select.cashBox.empty')}
       disabled={disabled}
       size={size}
       className={className}

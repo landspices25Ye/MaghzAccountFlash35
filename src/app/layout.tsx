@@ -292,6 +292,7 @@ export const Sidebar: React.FC = () => {
 };
 
 export const Header: React.FC = () => {
+  const { t } = useTranslation();
   const theme = useAppStore((state) => state.theme);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const language = useAppStore((state) => state.language);
@@ -328,7 +329,7 @@ export const Header: React.FC = () => {
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
-              title="تسجيل الخروج"
+              title={t('header.logout')}
             >
               <LogOut size={18} />
             </button>

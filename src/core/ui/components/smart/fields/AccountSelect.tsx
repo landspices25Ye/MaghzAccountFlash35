@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useAccounts } from '@/modules/accounting/hooks/useAccounting';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface AccountSelectProps {
   companyId: string;
@@ -15,9 +16,11 @@ interface AccountSelectProps {
 }
 
 export const AccountSelect: React.FC<AccountSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر الحساب...',
+  companyId, value, onChange, placeholder,
   filterType = 'all', excludeGroups = true, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.account.placeholder');
   const { accounts, isLoading } = useAccounts(companyId);
 
   const flattenedAccounts = useMemo(() => {
@@ -52,9 +55,9 @@ export const AccountSelect: React.FC<AccountSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الحسابات..."
-      emptyMessage="لا توجد حسابات"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.account.search')}
+      emptyMessage={t('select.account.empty')}
       disabled={disabled}
       size={size}
       className={className}

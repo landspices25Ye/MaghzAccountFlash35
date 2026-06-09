@@ -3,6 +3,7 @@ import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useSuppliers } from '@/modules/purchases/hooks/usePurchases';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface SupplierSelectProps {
   companyId: string;
@@ -16,8 +17,10 @@ interface SupplierSelectProps {
 }
 
 export const SupplierSelect: React.FC<SupplierSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر المورد...', disabled, size, className, showBalance = true,
+  companyId, value, onChange, placeholder, disabled, size, className, showBalance = true,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.supplier.placeholder');
   const { suppliers, isLoading } = useSuppliers(companyId);
   const { activeCompany } = useAppStore();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -25,11 +28,11 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
   const options = useMemo(() => {
     return suppliers.map(s => ({
       label: s.name,
-      sublabel: showBalance ? `الرصيد: ${formatCurrency(s.balance)}` : s.phone || undefined,
+      sublabel: showBalance ? `${t('select.supplier.balance')}: ${formatCurrency(s.balance)}` : s.phone || undefined,
       disabled: !s.isActive,
       ...s,
     })) as SmartSelectItem[];
-  }, [suppliers, showBalance, formatCurrency]);
+  }, [suppliers, showBalance, formatCurrency, t]);
 
   return (
     <SmartSelect
@@ -37,9 +40,9 @@ export const SupplierSelect: React.FC<SupplierSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في الموردين..."
-      emptyMessage="لا يوجد موردين"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.supplier.search')}
+      emptyMessage={t('select.supplier.empty')}
       disabled={disabled}
       size={size}
       className={className}

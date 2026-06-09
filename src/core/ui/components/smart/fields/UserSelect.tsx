@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useUsers } from '@/modules/auth/hooks/useAuth';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface UserSelectProps {
   companyId: string;
@@ -13,8 +14,10 @@ interface UserSelectProps {
 }
 
 export const UserSelect: React.FC<UserSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر المستخدم...', disabled, size, className,
+  companyId, value, onChange, placeholder, disabled, size, className,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.user.placeholder');
   const { users, isLoading } = useUsers(companyId);
 
   const options = useMemo(() => {
@@ -32,9 +35,9 @@ export const UserSelect: React.FC<UserSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في المستخدمين..."
-      emptyMessage="لا يوجد مستخدمين"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.user.search')}
+      emptyMessage={t('select.user.empty')}
       disabled={disabled}
       size={size}
       className={className}

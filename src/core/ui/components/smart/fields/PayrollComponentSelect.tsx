@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { usePayrollComponents } from '@/core/hooks/useSettings';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface PayrollComponentSelectProps {
   companyId: string;
@@ -15,8 +16,10 @@ interface PayrollComponentSelectProps {
 }
 
 export const PayrollComponentSelect: React.FC<PayrollComponentSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر المكون...', disabled, size, className, multiple = false, filterType,
+  companyId, value, onChange, placeholder, disabled, size, className, multiple = false, filterType,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.payrollComponent.placeholder');
   const { components, isLoading } = usePayrollComponents(companyId);
 
   const options = useMemo(() => {
@@ -36,9 +39,9 @@ export const PayrollComponentSelect: React.FC<PayrollComponentSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في المكونات..."
-      emptyMessage="لا توجد مكونات"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.payrollComponent.search')}
+      emptyMessage={t('select.payrollComponent.empty')}
       disabled={disabled}
       size={size}
       className={className}

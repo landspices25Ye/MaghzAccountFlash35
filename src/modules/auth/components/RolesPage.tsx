@@ -5,6 +5,7 @@ import { Card, Button, Input, Modal, Badge } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { usePermission } from '../hooks/usePermission';
 import { useRoles } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
@@ -12,6 +13,7 @@ import { PERMISSION_GROUPS } from '../types';
 import type { Role, Permission } from '../types';
 
 export const RolesPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const canManageRoles = usePermission('settings.roles');
@@ -80,8 +82,8 @@ export const RolesPage: React.FC = () => {
     if (role.isSystem) return;
     setConfirmDialog({
       open: true,
-      title: 'حذف الدور',
-      message: `هل أنت متأكد من حذف الدور "${role.name}"؟`,
+      title: t('auth.roles.deleteTitle'),
+      message: t('auth.roles.deleteConfirm', { name: role.name }),
       onConfirm: async () => {
         await remove(role.id);
         setConfirmDialog((prev) => ({ ...prev, open: false }));
@@ -92,7 +94,7 @@ export const RolesPage: React.FC = () => {
   const handleClone = (role: Role) => {
     setEditingRole(null);
     setFormData({
-      name: `${role.name} - نسخة`,
+      name: `${role.name} - ${t('auth.roles.cloneSuffix')}`,
       description: role.description || '',
       permissions: [...role.permissions],
     });
@@ -144,13 +146,13 @@ export const RolesPage: React.FC = () => {
             <Shield size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الأدوار والصلاحيات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة أدوار المستخدمين وشبكة الصلاحيات</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('auth.roles.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('auth.roles.subtitle')}</p>
           </div>
         </div>
         <Can action="edit" module="settings">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-            دور جديد
+            {t('auth.roles.new')}
           </Button>
         </Can>
       </div>
@@ -162,7 +164,7 @@ export const RolesPage: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="بحث في الأدوار..."
+          placeholder={t('auth.roles.searchPlaceholder')}
           className="form-control pr-9 w-full"
         />
       </div>
@@ -177,11 +179,11 @@ export const RolesPage: React.FC = () => {
       ) : roles.length === 0 ? (
         <EmptyState
           icon="inbox"
-          title="لا توجد أدوار"
-          description="يمكنك إنشاء دور جديد لتحديد صلاحيات المستخدمين"
+          title={t('auth.roles.emptyTitle')}
+          description={t('auth.roles.emptyDesc')}
           action={
             <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-              دور جديد
+              {t('auth.roles.new')}
             </Button>
           }
         />
@@ -199,7 +201,7 @@ export const RolesPage: React.FC = () => {
                 {role.isSystem && (
                   <Badge className="text-[10px] bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400 flex items-center gap-1">
                     <Lock size={10} />
-                    نظامي
+                    {t('auth.roles.system')}
                   </Badge>
                 )}
               </div>
@@ -226,7 +228,7 @@ export const RolesPage: React.FC = () => {
                     className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                   >
                     <Pencil size={14} />
-                    <span className="mr-1">تعديل</span>
+                    <span className="mr-1">{t('auth.roles.edit')}</span>
                   </Button>
                 </Can>
                 <Can action="edit" module="settings">
@@ -237,7 +239,7 @@ export const RolesPage: React.FC = () => {
                     className="text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-900/20"
                   >
                     <Plus size={14} />
-                    <span className="mr-1">نسخ</span>
+                    <span className="mr-1">{t('auth.roles.clone')}</span>
                   </Button>
                 </Can>
                 {!role.isSystem && (
@@ -249,7 +251,7 @@ export const RolesPage: React.FC = () => {
                       className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
                     >
                       <Trash2 size={14} />
-                      <span className="mr-1">حذف</span>
+                      <span className="mr-1">{t('auth.roles.delete')}</span>
                     </Button>
                   </Can>
                 )}
@@ -263,19 +265,19 @@ export const RolesPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingRole ? 'تعديل الدور' : 'دور جديد'}
+        title={editingRole ? t('auth.roles.edit') : t('auth.roles.new')}
         size="xl"
         className="max-w-4xl"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>إلغاء</Button>
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>{t('cancel')}</Button>
             <Button
               variant="primary"
               leftIcon={<Save size={16} />}
               onClick={handleSave}
               disabled={editingRole?.isSystem}
             >
-              {editingRole?.isSystem ? 'للقراءة فقط' : 'حفظ'}
+              {editingRole?.isSystem ? t('auth.roles.readOnly') : t('save')}
             </Button>
           </div>
         }
@@ -285,9 +287,9 @@ export const RolesPage: React.FC = () => {
             <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-200">
               <Lock size={16} className="mt-0.5 shrink-0" />
               <div className="text-sm">
-                <p className="font-medium mb-1">دور نظامي — للقراءة فقط</p>
+                <p className="font-medium mb-1">{t('auth.roles.systemRole')}</p>
                 <p className="text-xs text-amber-700 dark:text-amber-300">
-                  لا يمكن تعديل صلاحيات هذا الدور لأنه جزء من النظام. يمكنك نسخه لإنشاء دور جديد.
+                  {t('auth.roles.systemRoleDesc')}
                 </p>
               </div>
             </div>
@@ -296,14 +298,14 @@ export const RolesPage: React.FC = () => {
           {/* Role Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="اسم الدور"
+              label={t('auth.roles.name')}
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               required
               disabled={editingRole?.isSystem}
             />
             <Input
-              label="الوصف"
+              label={t('auth.roles.description')}
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               disabled={editingRole?.isSystem}
@@ -313,9 +315,9 @@ export const RolesPage: React.FC = () => {
           {/* Permission Grid */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">شبكة الصلاحيات</h4>
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">{t('auth.roles.permissionGrid')}</h4>
               <span className="text-xs text-slate-500">
-                {formData.permissions.length} صلاحية محددة
+                {t('auth.roles.selectedPermissions', { count: formData.permissions.length })}
               </span>
             </div>
 
@@ -323,10 +325,10 @@ export const RolesPage: React.FC = () => {
               {/* Grid Header */}
               <div className="grid grid-cols-[180px_1fr] bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                 <div className="p-3 text-xs font-bold text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700">
-                  الوحدة / العملية
+                  {t('auth.roles.moduleAction')}
                 </div>
                 <div className="p-3 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  الصلاحيات
+                  {t('auth.roles.permissionsLabel')}
                 </div>
               </div>
 

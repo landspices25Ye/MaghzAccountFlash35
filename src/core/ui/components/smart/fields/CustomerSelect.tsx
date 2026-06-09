@@ -3,6 +3,7 @@ import { SmartSelect, type SmartSelectItem } from '../SmartSelect';
 import { useCustomers } from '@/modules/sales/hooks/useSales';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface CustomerSelectProps {
   companyId: string;
@@ -16,8 +17,10 @@ interface CustomerSelectProps {
 }
 
 export const CustomerSelect: React.FC<CustomerSelectProps> = ({
-  companyId, value, onChange, placeholder = 'اختر العميل...', disabled, size, className, showBalance = true,
+  companyId, value, onChange, placeholder, disabled, size, className, showBalance = true,
 }) => {
+  const { t } = useTranslation();
+  const resolvedPlaceholder = placeholder ?? t('select.customer.placeholder');
   const { customers, isLoading } = useCustomers(companyId);
   const { activeCompany } = useAppStore();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -25,11 +28,11 @@ export const CustomerSelect: React.FC<CustomerSelectProps> = ({
   const options = useMemo(() => {
     return customers.map(c => ({
       label: c.name,
-      sublabel: showBalance ? `الرصيد: ${formatCurrency(c.balance)}` : c.phone || undefined,
+      sublabel: showBalance ? `${t('select.customer.balance')}: ${formatCurrency(c.balance)}` : c.phone || undefined,
       disabled: !c.isActive,
       ...c,
     })) as SmartSelectItem[];
-  }, [customers, showBalance, formatCurrency]);
+  }, [customers, showBalance, formatCurrency, t]);
 
   return (
     <SmartSelect
@@ -37,9 +40,9 @@ export const CustomerSelect: React.FC<CustomerSelectProps> = ({
       onChange={(v) => onChange(typeof v === 'string' ? v : null)}
       options={options}
       isLoading={isLoading}
-      placeholder={placeholder}
-      searchPlaceholder="بحث في العملاء..."
-      emptyMessage="لا يوجد عملاء"
+      placeholder={resolvedPlaceholder}
+      searchPlaceholder={t('select.customer.search')}
+      emptyMessage={t('select.customer.empty')}
       disabled={disabled}
       size={size}
       className={className}
