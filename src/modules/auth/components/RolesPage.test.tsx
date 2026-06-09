@@ -106,7 +106,7 @@ describe('RolesPage', () => {
     expect(screen.getAllByText('الأدوار والصلاحيات').length).toBeGreaterThan(0);
   });
 
-  it('admin cannot access roles page (admin lacks settings.roles)', () => {
+  it('admin can access roles page', () => {
     setUser(makeUser('admin'));
     mockUseRoles.mockReturnValue({
       roles: [CUSTOM_ROLE],
@@ -116,7 +116,7 @@ describe('RolesPage', () => {
       remove: vi.fn(),
     });
     renderPage();
-    expect(screen.getByText('HOME')).toBeInTheDocument();
+    expect(screen.getAllByText('الأدوار والصلاحيات').length).toBeGreaterThan(0);
   });
 
   it('shows create button for super_admin', () => {

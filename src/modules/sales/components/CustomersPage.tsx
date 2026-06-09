@@ -12,6 +12,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { logAudit } from '@/core/utils/auditLogger';
 import type { Customer } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
@@ -172,7 +173,7 @@ export const CustomersPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.total') || 'إجمالي العملاء'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.active') || 'العملاء النشطون'}</p><p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{activeCount}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.totalBalance') || 'إجمالي الذمم'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalBalance)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || YER_CODE}</span></p></div></Card>
       </div>
 
       <Card>
@@ -270,11 +271,11 @@ export const CustomersPage: React.FC = () => {
                 <div className="space-y-4">
                   <Card className="p-4">
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t('accounting.balance') || 'الرصيد الحالي'}</p>
-                    <p className={`text-2xl font-bold ${viewing.balance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(viewing.balance)} {activeCompany?.currency || 'YER'}</p>
+                    <p className={`text-2xl font-bold ${viewing.balance > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(viewing.balance)} {activeCompany?.currency || YER_CODE}</p>
                   </Card>
                   <Card className="p-4">
                     <p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.customer.creditLimit') || 'حد الائتمان'}</p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(viewing.creditLimit || 0)} {activeCompany?.currency || 'YER'}</p>
+                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatCurrency(viewing.creditLimit || 0)} {activeCompany?.currency || YER_CODE}</p>
                   </Card>
                 </div>
               </div>

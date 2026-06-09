@@ -11,6 +11,7 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useCurrencies } from '@/core/utils/useCurrencyDisplay';
 import { buildCurrencyBreakdown, type CurrencyBreakdownResult } from '@/core/utils/currencyBreakdown';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import type { Currency } from '@/modules/core/types';
 
 interface ExpenseBreakdown {
@@ -108,7 +109,7 @@ export const ProfitAnalysisReport: React.FC = () => {
         );
         const revBreakdown = buildCurrencyBreakdown(
           ((revByCurrencyResult.rows || []) as Record<string, unknown>[]).map((r) => ({
-            code: String(r.currency_code || 'YER'),
+            code: String(r.currency_code || YER_CODE),
             amount: toNumber(r.amount),
           })),
           activeCurrencies,
@@ -135,7 +136,7 @@ export const ProfitAnalysisReport: React.FC = () => {
         );
         const cogsBreakdown = buildCurrencyBreakdown(
           ((cogsByCurrencyResult.rows || []) as Record<string, unknown>[]).map((r) => ({
-            code: String(r.currency_code || 'YER'),
+            code: String(r.currency_code || YER_CODE),
             amount: toNumber(r.amount),
           })),
           activeCurrencies,

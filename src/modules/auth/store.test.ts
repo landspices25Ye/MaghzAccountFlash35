@@ -47,7 +47,8 @@ describe('Auth Store', () => {
       const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
       useAuthStore.getState().login(user);
       expect(useAuthStore.getState().hasPermission('core.view')).toBe(true);
-      expect(useAuthStore.getState().hasPermission('settings.roles')).toBe(false);
+      expect(useAuthStore.getState().hasPermission('settings.roles')).toBe(true);
+      expect(useAuthStore.getState().hasPermission('core.edit')).toBe(false);
     });
 
     it('accountant has accounting permissions', () => {

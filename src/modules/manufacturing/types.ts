@@ -7,6 +7,7 @@ version: string;
 isActive: boolean;
 totalCost?: number;
 notes?: string;
+linesCount?: number;
 createdBy?: string;
 updatedBy?: string;
 }
@@ -22,35 +23,34 @@ totalCost?: number;
 }
 
 export interface WorkOrder {
-id: string;
-companyId: string;
-orderNumber: string;
-productId: string;
-productName?: string;
-bomId?: string;
-quantity: number;
-producedQuantity?: number;
-status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
-plannedStartDate?: string;
-plannedEndDate?: string;
-actualStartDate?: string;
-actualEndDate?: string;
-estimatedCost?: number;
-actualCost?: number;
-notes?: string;
-createdBy?: string;
-updatedBy?: string;
+  id: string;
+  companyId: string;
+  orderNumber: string;
+  productId: string;
+  productName?: string;
+  bomId?: string;
+  quantity: number;
+  producedQuantity?: number;
+  status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  plannedStartDate?: string;
+  plannedEndDate?: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  totalCost?: number;
+  notes?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface WorkOrderLine {
 id: string;
 workOrderId: string;
-materialId: string;
-materialName?: string;
-plannedQuantity: number;
-actualQuantity?: number;
-unitCost?: number;
-actualUnitCost?: number;
+  materialId: string;
+  materialName?: string;
+  plannedQuantity: number;
+  actualQuantity?: number;
+  unitCost: number;
+  actualUnitCost?: number;
 }
 
 export interface WorkOrderVariance {

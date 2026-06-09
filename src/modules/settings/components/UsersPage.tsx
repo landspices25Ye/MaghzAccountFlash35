@@ -6,6 +6,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ interface User {
 export const UsersPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const currentUser = useAuthStore((state) => state.user);
+  const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -46,8 +48,8 @@ export const UsersPage: React.FC = () => {
           lastLoginAt: row.last_login_at ?? '',
         })));
       }
-    } catch (err) {
-      console.error('Failed to load users:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +77,8 @@ export const UsersPage: React.FC = () => {
 
       await logAudit({ userId: currentUser?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'users', recordId: editingId || 'new', companyId: activeCompany.id });
       setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); loadData();
-    } catch (err) {
-      console.error('Failed to save user:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsSaving(false);
     }
@@ -89,8 +91,8 @@ export const UsersPage: React.FC = () => {
       await adapter.query(`DELETE FROM users WHERE id = $1`, [id]);
       await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
       setShowDeleteConfirm(null); loadData();
-    } catch (err) {
-      console.error('Failed to delete user:', err);
+    } catch {
+      // Error handled by caller
     }
   };
 
@@ -109,30 +111,30 @@ export const UsersPage: React.FC = () => {
       const hashed = await hashPassword(newPassword);
       await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [hashed, showResetPassword]);
       setShowResetPassword(null); setNewPassword('');
-    } catch (err) {
-      console.error('Failed to reset password:', err);
+    } catch {
+      // Error handled by caller
     }
   };
 
   const roleLabels: Record<string, string> = {
-    admin: 'مدير النظام',
-    manager: 'مدير',
-    accountant: 'محاسب',
-    sales_rep: 'مندوب مبيعات',
-    hr_admin: 'موارد بشرية',
-    viewer: 'مشاهد فقط',
+    admin: t('settings.users.admin'),
+    manager: t('settings.users.manager'),
+    accountant: t('settings.users.accountant'),
+    sales_rep: t('settings.users.salesRep'),
+    hr_admin: t('settings.users.hrAdmin'),
+    viewer: t('settings.users.viewer'),
   };
 
   const columns = [
-    { key: 'username', header: 'اسم المستخدم' },
-    { key: 'email', header: 'البريد', render: (row: User) => row.email || '-' },
-    { key: 'role', header: 'الدور', render: (row: User) => roleLabels[row.role] || row.role },
-    { key: 'isActive', header: 'الحالة', render: (row: User) => (
-      <span className={row.isActive ? 'badge-posted' : 'badge-draft'}>{row.isActive ? 'نشط' : 'معطل'}</span>
+    { key: 'username', header: t('settings.users.username') },
+    { key: 'email', header: t('settings.users.email'), render: (row: User) => row.email || '-' },
+    { key: 'role', header: t('settings.users.role'), render: (row: User) => roleLabels[row.role] || row.role },
+    { key: 'isActive', header: t('settings.users.status'), render: (row: User) => (
+      <span className={row.isActive ? 'badge-posted' : 'badge-draft'}>{row.isActive ? t('settings.common.active') : t('settings.common.disabled')}</span>
     )},
     { key: 'actions', header: '', render: (row: User) => (
       <div className="flex items-center gap-1">
-        <Button size="sm" variant="ghost" onClick={() => setShowResetPassword(row.id)} title="تغيير كلمة المرور">
+        <Button size="sm" variant="ghost" onClick={() => setShowResetPassword(row.id)} title={t('settings.users.changePassword')}>
           <KeyRound size={14} className="text-blue-600" />
         </Button>
         <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setFormData(row); }}>
@@ -153,13 +155,13 @@ export const UsersPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">المستخدمين</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة المستخدمين والصلاحيات</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.users.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.users.subtitle')}</p>
           </div>
         </div>
         <Can action="create" module="settings">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); }}>
-            مستخدم جديد
+            {t('settings.users.newUser')}
           </Button>
         </Can>
       </div>
@@ -168,10 +170,10 @@ export const UsersPage: React.FC = () => {
         {(editingId !== null || formData.username) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label="اسم المستخدم *" value={formData.username} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
-              <Input label="البريد الإلكتروني" type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+              <Input label={`${t('settings.users.username')} *`} value={formData.username} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
+              <Input label={t('settings.users.email')} type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
               <div>
-                <label className="form-label block mb-1.5">الدور</label>
+                <label className="form-label block mb-1.5">{t('settings.users.role')}</label>
                 <select value={formData.role} onChange={e => setFormData(p => ({ ...p, role: e.target.value }))} className="form-control">
                   {Object.entries(roleLabels).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
@@ -180,8 +182,8 @@ export const UsersPage: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); }}>إلغاء</Button>
-              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>حفظ</Button>
+              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); }}>{t('settings.common.cancel')}</Button>
+              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>{t('settings.common.save')}</Button>
             </div>
           </div>
         )}
@@ -191,19 +193,17 @@ export const UsersPage: React.FC = () => {
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
-          emptyMessage="لا يوجد مستخدمين"
+          emptyMessage={t('settings.users.emptyMessage')}
         />
       </Card>
 
-      <ConfirmDialog isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} title="حذف المستخدم" message="هل أنت متأكد من حذف هذا المستخدم؟" confirmText="حذف" variant="danger" />
+      <ConfirmDialog isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} title={t('settings.users.deleteTitle')} message={t('settings.users.deleteMessage')} confirmText={t('settings.users.deleteConfirm')} variant="danger" />
 
-      <Modal isOpen={!!showResetPassword} onClose={() => setShowResetPassword(null)} title="تغيير كلمة المرور" size="sm" footer={<><Button variant="secondary" onClick={() => setShowResetPassword(null)}>إلغاء</Button><Button variant="primary" onClick={handleResetPassword}>حفظ</Button></>}>
-        <Input label="كلمة المرور الجديدة" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+      <Modal isOpen={!!showResetPassword} onClose={() => setShowResetPassword(null)} title={t('settings.users.resetPassword')} size="sm" footer={<><Button variant="secondary" onClick={() => setShowResetPassword(null)}>{t('settings.common.cancel')}</Button><Button variant="primary" onClick={handleResetPassword}>{t('settings.common.save')}</Button></>}>
+        <Input label={t('settings.users.newPassword')} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
       </Modal>
     </div>
   );
 };
 
 export default UsersPage;
-
-

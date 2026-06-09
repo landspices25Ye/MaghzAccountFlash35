@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Scale, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Table, Modal, Input, Can } from '@/core/ui/components';
 import { useUnits } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { Unit } from '@/core/types';
 
 export const UnitsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { units, isLoading, create, update, remove } = useUnits(activeCompany?.id || '');
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Unit>>({ nameAr: '', nameEn: '', code: '', conversionFactor: 1 });
@@ -35,10 +37,10 @@ export const UnitsPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'nameAr', header: 'الاسم', render: (row: Unit) => <span className="font-medium">{row.nameAr}</span> },
-    { key: 'nameEn', header: 'الإنجليزي', render: (row: Unit) => <span className="text-slate-500 text-sm">{row.nameEn}</span> },
-    { key: 'code', header: 'الرمز', width: '100px', render: (row: Unit) => <span className="font-mono text-xs">{row.code}</span> },
-    { key: 'conversionFactor', header: 'معامل التحويل', width: '120px', render: (row: Unit) => <span>{row.conversionFactor}</span> },
+    { key: 'nameAr', header: t('settings.units.nameHeader'), render: (row: Unit) => <span className="font-medium">{row.nameAr}</span> },
+    { key: 'nameEn', header: t('settings.units.nameEnHeader'), render: (row: Unit) => <span className="text-slate-500 text-sm">{row.nameEn}</span> },
+    { key: 'code', header: t('settings.units.codeHeader'), width: '100px', render: (row: Unit) => <span className="font-mono text-xs">{row.code}</span> },
+    { key: 'conversionFactor', header: t('settings.units.conversionFactor'), width: '120px', render: (row: Unit) => <span>{row.conversionFactor}</span> },
     { key: 'actions', header: '', width: '100px', render: (row: Unit) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
@@ -53,29 +55,31 @@ export const UnitsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Scale size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">وحدات القياس</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة وحدات المنتجات والتحويلات</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.units.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.units.subtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>وحدة جديدة</Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>{t('settings.units.newUnit')}</Button>
+        </Can>
       </div>
 
       <Card>
-        <Table<Unit> data={units} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage="لا توجد وحدات" />
+        <Table<Unit> data={units} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage={t('settings.units.emptyMessage')} />
       </Card>
 
       {isOpen && (
-        <Modal isOpen={isOpen} title={editingId ? 'تعديل الوحدة' : 'وحدة جديدة'} onClose={() => setIsOpen(false)} size="md">
+        <Modal isOpen={isOpen} title={editingId ? t('settings.units.editUnit') : t('settings.units.newUnit')} onClose={() => setIsOpen(false)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="الاسم (عربي) *" value={form.nameAr || ''} onChange={e => setForm({ ...form, nameAr: e.target.value })} />
-              <Input label="الاسم (إنجليزي)" value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
-              <Input label="الرمز" value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
-              <Input label="معامل التحويل" type="number" value={String(form.conversionFactor || 1)} onChange={e => setForm({ ...form, conversionFactor: Number(e.target.value) })} />
+              <Input label={t('settings.units.nameAr')} value={form.nameAr || ''} onChange={e => setForm({ ...form, nameAr: e.target.value })} />
+              <Input label={t('settings.units.nameEn')} value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
+              <Input label={t('settings.units.code')} value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
+              <Input label={t('settings.units.conversionFactor')} type="number" value={String(form.conversionFactor || 1)} onChange={e => setForm({ ...form, conversionFactor: Number(e.target.value) })} />
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الوحدة الأساسية</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.units.baseUnit')}</label>
                 <select className="form-control" value={form.baseUnitId || ''} onChange={e => setForm({ ...form, baseUnitId: e.target.value || undefined })}>
-                  <option value="">بدون</option>
+                  <option value="">{t('settings.common.none')}</option>
                   {units.filter(u => u.id !== editingId).map(u => (
                     <option key={u.id} value={u.id}>{u.nameAr} ({u.code})</option>
                   ))}
@@ -83,8 +87,8 @@ export const UnitsPage: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
+              <Button variant="secondary" onClick={() => setIsOpen(false)}>{t('settings.common.cancel')}</Button>
+              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>{t('settings.common.save')}</Button>
             </div>
           </div>
         </Modal>

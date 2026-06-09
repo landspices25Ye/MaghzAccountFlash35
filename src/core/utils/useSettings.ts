@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getDbAdapter } from '@/core/database/adapters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 
 interface AppSettings {
   vatRate: number;
@@ -59,8 +60,8 @@ export function useSettings(companyId: string) {
         : 15;
 
       const baseCurrency = currResult.success && currResult.rows
-        ? currResult.rows.find((c) => c.is_default)?.code || 'YER'
-        : 'YER';
+        ? currResult.rows.find((c) => c.is_default)?.code || YER_CODE
+        : YER_CODE;
 
       const defaultAccounts: Record<string, string> = {};
       if (defaultAccountsResult.success && defaultAccountsResult.rows) {

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Pencil, Trash2, Save } from 'lucide-react';
-import { Card, Button, Input, Table, ConfirmDialog } from '@/core/ui/components';
+import { Card, Button, Input, Table, ConfirmDialog, Can } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface VatType {
   id: string;
@@ -15,6 +16,7 @@ interface VatType {
 }
 
 export const VatSettingsPage: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const [vatTypes, setVatTypes] = useState<VatType[]>([]);
@@ -36,14 +38,14 @@ export const VatSettingsPage: React.FC = () => {
       if (result.success && result.rows) {
         setVatTypes(result.rows.map((row) => ({
           id: row.id,
-          name: row.name || 'ضريبة القيمة المضافة',
+          name: row.name || t('settings.vat.defaultName'),
           rate: Number(row.vat_rate),
           accountId: row.account_id,
           isActive: row.is_active,
         })));
       }
-    } catch (err) {
-      console.error('Failed to load VAT settings:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsLoading(false);
     }
@@ -80,8 +82,8 @@ export const VatSettingsPage: React.FC = () => {
       setEditingId(null);
       setFormData({ name: '', rate: 15, isActive: true });
       loadData();
-    } catch (err) {
-      console.error('Failed to save VAT settings:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsSaving(false);
     }
@@ -101,17 +103,17 @@ export const VatSettingsPage: React.FC = () => {
       });
       setShowDeleteConfirm(null);
       loadData();
-    } catch (err) {
-      console.error('Failed to delete VAT settings:', err);
+    } catch {
+      // Error handled by caller
     }
   };
 
   const columns = [
-    { key: 'name', header: 'الاسم' },
-    { key: 'rate', header: 'النسبة %', render: (row: VatType) => `${row.rate}%` },
-    { key: 'isActive', header: 'الحالة', render: (row: VatType) => (
+    { key: 'name', header: t('settings.vat.name') },
+    { key: 'rate', header: t('settings.vat.rate'), render: (row: VatType) => `${row.rate}%` },
+    { key: 'isActive', header: t('settings.vat.status'), render: (row: VatType) => (
       <span className={row.isActive ? 'badge-posted' : 'badge-draft'}>
-        {row.isActive ? 'نشط' : 'غير نشط'}
+        {row.isActive ? t('settings.common.active') : t('settings.common.inactive')}
       </span>
     )},
     { key: 'actions', header: '', render: (row: VatType) => (
@@ -132,31 +134,33 @@ export const VatSettingsPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Receipt size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">إعدادات الضريبة</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة أنواع الضريبة ونسبها</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.vat.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.vat.subtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ name: '', rate: 15, isActive: true }); }}>
-          نوع ضريبة جديد
-        </Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ name: '', rate: 15, isActive: true }); }}>
+            {t('settings.vat.new')}
+          </Button>
+        </Can>
       </div>
 
       <Card>
         {(editingId !== null || formData.name) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label="الاسم" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              <Input label="النسبة %" type="number" value={String(formData.rate)} onChange={e => setFormData(p => ({ ...p, rate: Number(e.target.value) }))} />
+              <Input label={t('settings.vat.name')} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+              <Input label={t('settings.vat.rate')} type="number" value={String(formData.rate)} onChange={e => setFormData(p => ({ ...p, rate: Number(e.target.value) }))} />
               <div className="flex items-end gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={formData.isActive} onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))} className="w-4 h-4 rounded" />
-                  <span className="text-sm">نشط</span>
+                  <span className="text-sm">{t('settings.common.active')}</span>
                 </label>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ name: '', rate: 15, isActive: true }); }}>إلغاء</Button>
-              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>حفظ</Button>
+              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ name: '', rate: 15, isActive: true }); }}>{t('settings.common.cancel')}</Button>
+              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>{t('settings.common.save')}</Button>
             </div>
           </div>
         )}
@@ -166,7 +170,7 @@ export const VatSettingsPage: React.FC = () => {
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
-          emptyMessage="لا توجد أنواع ضريبة"
+          emptyMessage={t('settings.vat.empty')}
         />
       </Card>
 
@@ -174,9 +178,9 @@ export const VatSettingsPage: React.FC = () => {
         isOpen={!!showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(null)}
         onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
-        title="حذف نوع الضريبة"
-        message="هل أنت متأكد من حذف هذا النوع؟ لا يمكن التراجع."
-        confirmText="حذف"
+        title={t('settings.vat.deleteTitle')}
+        message={t('settings.vat.deleteMessage')}
+        confirmText={t('settings.common.delete')}
         variant="danger"
       />
     </div>
@@ -184,5 +188,3 @@ export const VatSettingsPage: React.FC = () => {
 };
 
 export default VatSettingsPage;
-
-

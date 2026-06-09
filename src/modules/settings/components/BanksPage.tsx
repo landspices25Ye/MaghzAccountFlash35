@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Landmark, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input, ConfirmDialog } from '@/core/ui/components';
+import { Card, Button, Table, Modal, Input, ConfirmDialog, Can } from '@/core/ui/components';
 import { AccountSelect, BranchSelect } from '@/core/ui/components/smart';
 import { useBanks } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { Bank } from '@/core/types';
 
 export const BanksPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { banks, isLoading, create, update, remove } = useBanks(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -45,11 +47,11 @@ export const BanksPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'name', header: 'اسم الحساب', render: (row: Bank) => <span className="font-medium">{row.name}</span> },
-    { key: 'bankName', header: 'اسم البنك', render: (row: Bank) => <span className="text-slate-500 text-sm">{row.bankName}</span> },
-    { key: 'accountNumber', header: 'رقم الحساب', width: '140px', render: (row: Bank) => <span className="font-mono text-xs">{row.accountNumber}</span> },
-    { key: 'currentBalance', header: 'الرصيد الحالي', width: '140px', align: 'right' as const, render: (row: Bank) => <span>{formatCurrency(row.currentBalance)}</span> },
-    { key: 'isActive', header: 'نشط', width: '80px', render: (row: Bank) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? 'نعم' : 'لا'}</span> },
+    { key: 'name', header: t('settings.banks.accountName'), render: (row: Bank) => <span className="font-medium">{row.name}</span> },
+    { key: 'bankName', header: t('settings.banks.bankName'), render: (row: Bank) => <span className="text-slate-500 text-sm">{row.bankName}</span> },
+    { key: 'accountNumber', header: t('settings.banks.accountNumber'), width: '140px', render: (row: Bank) => <span className="font-mono text-xs">{row.accountNumber}</span> },
+    { key: 'currentBalance', header: t('settings.banks.currentBalance'), width: '140px', align: 'right' as const, render: (row: Bank) => <span>{formatCurrency(row.currentBalance)}</span> },
+    { key: 'isActive', header: t('settings.common.active'), width: '80px', render: (row: Bank) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? t('settings.banks.yes') : t('settings.banks.no')}</span> },
     { key: 'actions', header: '', width: '130px', render: (row: Bank) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
@@ -64,44 +66,46 @@ export const BanksPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Landmark size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">البنوك والحسابات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة الحسابات البنكية</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.banks.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.banks.subtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>حساب بنكي جديد</Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>{t('settings.banks.newBank')}</Button>
+        </Can>
       </div>
 
       <Card>
-        <Table<Bank> data={banks} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage="لا توجد حسابات بنكية" />
+        <Table<Bank> data={banks} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage={t('settings.banks.emptyMessage')} />
       </Card>
 
       {isOpen && (
-        <Modal isOpen={isOpen} title={editingId ? 'تعديل الحساب' : 'حساب بنكي جديد'} onClose={() => setIsOpen(false)} size="md">
+        <Modal isOpen={isOpen} title={editingId ? t('settings.banks.editBank') : t('settings.banks.newBank')} onClose={() => setIsOpen(false)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="اسم الحساب *" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
-              <Input label="اسم البنك" value={form.bankName || ''} onChange={e => setForm({ ...form, bankName: e.target.value })} />
-              <Input label="رقم الحساب" value={form.accountNumber || ''} onChange={e => setForm({ ...form, accountNumber: e.target.value })} />
-              <Input label="الآيبان (IBAN)" value={form.iban || ''} onChange={e => setForm({ ...form, iban: e.target.value })} />
-              <Input label="الرصيد الافتتاحي" type="number" value={String(form.currentBalance || 0)} onChange={e => setForm({ ...form, currentBalance: Number(e.target.value) })} />
+              <Input label={`${t('settings.banks.accountName')} *`} value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} />
+              <Input label={t('settings.banks.bankName')} value={form.bankName || ''} onChange={e => setForm({ ...form, bankName: e.target.value })} />
+              <Input label={t('settings.banks.accountNumber')} value={form.accountNumber || ''} onChange={e => setForm({ ...form, accountNumber: e.target.value })} />
+              <Input label={t('settings.banks.iban')} value={form.iban || ''} onChange={e => setForm({ ...form, iban: e.target.value })} />
+              <Input label={t('settings.banks.openingBalance')} type="number" value={String(form.currentBalance || 0)} onChange={e => setForm({ ...form, currentBalance: Number(e.target.value) })} />
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الحساب المحاسبي</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.banks.accountingAccount')}</label>
                 <AccountSelect companyId={activeCompany?.id || ''} value={form.accountId || ''} onChange={v => setForm({ ...form, accountId: v || undefined })} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">الفرع</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.banks.branch')}</label>
                 <BranchSelect companyId={activeCompany?.id || ''} value={form.branchId || ''} onChange={v => setForm({ ...form, branchId: v || undefined })} />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
+              <Button variant="secondary" onClick={() => setIsOpen(false)}>{t('settings.common.cancel')}</Button>
+              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>{t('settings.common.save')}</Button>
             </div>
           </div>
         </Modal>
       )}
 
-      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title="حذف الحساب البنكي" message="هل أنت متأكد من حذف هذا الحساب البنكي؟" />
+      <ConfirmDialog isOpen={!!deleteId} onClose={() => setDeleteId(null)} onConfirm={handleDelete} title={t('settings.banks.deleteTitle')} message={t('settings.banks.deleteMessage')} />
     </div>
   );
 };

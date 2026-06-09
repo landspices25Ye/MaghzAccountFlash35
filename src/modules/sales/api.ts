@@ -2,6 +2,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createCustomerSchema, createInvoiceSchema, createQuotationSchema, createSalesReturnSchema } from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import type { Customer, SalesInvoice, SalesInvoiceLine, Quotation, QuotationLine, SalesReturn, SalesReturnLine, CustomerStatementRow, CustomerArAging } from './types';
 
 export const salesApi = {
@@ -308,7 +309,7 @@ export const salesApi = {
       const validation = validateInput(createInvoiceSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const currencyCode = data.currencyCode || 'YER';
+      const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
       const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
@@ -370,7 +371,7 @@ export const salesApi = {
       if (data.lines) {
         await adapter.query('DELETE FROM sales_invoice_lines WHERE invoice_id = $1', [id]);
         for (const line of data.lines) {
-          const lineCurrencyCode = line.currencyCode || data.currencyCode || 'YER';
+          const lineCurrencyCode = line.currencyCode || data.currencyCode || YER_CODE;
           const lineExchangeRate = line.exchangeRate ?? data.exchangeRate ?? 1;
           const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
           await adapter.query(
@@ -778,7 +779,7 @@ function mapInvoiceRow(row: Record<string, unknown>): SalesInvoice {
     vatAmount: Number(row.vat_amount) || 0,
     totalAmount: Number(row.total_amount) || 0,
     paidAmount: Number(row.paid_amount) || 0,
-    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    currencyCode: row.currency_code ? String(row.currency_code) : YER_CODE,
     exchangeRate: row.exchange_rate !== undefined ? Number(row.exchange_rate) : 1,
     baseCurrencyAmount: row.base_currency_amount !== undefined ? Number(row.base_currency_amount) : 0,
     baseCurrencyPaid: row.base_currency_paid !== undefined ? Number(row.base_currency_paid) : 0,
@@ -799,7 +800,7 @@ function mapInvoiceLineRow(row: Record<string, unknown>): SalesInvoiceLine {
     discountPercent: Number(row.discount_percent) || 0,
     vatPercent: Number(row.vat_percent) || 0,
     lineTotal: Number(row.line_total) || 0,
-    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    currencyCode: row.currency_code ? String(row.currency_code) : YER_CODE,
     exchangeRate: row.exchange_rate !== undefined ? Number(row.exchange_rate) : 1,
     baseCurrencyLineTotal: row.base_currency_line_total !== undefined ? Number(row.base_currency_line_total) : 0,
   };

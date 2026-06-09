@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.20 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 593 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 11 pages server-side paginated | RBAC reactive | Multi-currency complete | Playwright e2e foundation | Infinite loading fixed | e2e Supplier/Voucher/Leads CRUD | **SET clause P1 + infinite loading #2 fixed**)
+- **الإصدار الحالي:** v0.3.27 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 985 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 21 pages server-side paginated | RBAC complete (25+ pages) | Multi-currency complete | Playwright e2e foundation | Infinite loading fixed | **i18n: Settings+HR fully converted (~320 strings)** | **Manufacturing P1: phantom columns + cross-tenant fixed** | **console.error/warn cleaned: 0 remaining**)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -1341,7 +1341,47 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-08 | الإصدار: maghzaccount-pro v0.3.25*
+*آخر تحديث: 2026-06-09 | الإصدار: maghzaccount-pro v0.3.27*
+
+### المرحلة 32: إصلاحات Manufacturing P1 + تطوير احترافي
+- **الهدف**: إصلاح bugs حرجة في manufacturing module (phantom fields + cross-tenant access + status mismatch) + تحسينات UX
+- **P1 Critical — types + API fixes**:
+  - `WorkOrder` type: `estimatedCost`/`actualCost` (أعمدة غير موجودة في schema) → استبدال بـ `totalCost` (العمود الفعلي)
+  - `WorkOrderLine` type: `unitCost?: number` → `unitCost: number` (العمود `default('0')` في schema — لا nullable)
+  - `createWorkOrder` API: `INSERT ... estimated_cost ...` → `INSERT ... total_cost ...` (اسم العمود الصحيح)
+  - `updateWorkOrder` API: `estimated_cost`/`actual_cost` SET clauses → `total_cost` فقط
+  - `mapWorkOrderRow`: `r.estimated_cost`/`r.actual_cost` → `r.total_cost`
+  - `createWorkOrderSchema`: `estimatedCost` → `totalCost`
+  - `WorkOrdersPage`: `formData.estimatedCost` → `formData.totalCost` (form + table + input)
+  - **getWorkOrderById cross-tenant fix**: `companyId?: string` → `companyId: string` (إلزامي). الـ SQL كان يسمح `WHERE id = $1` بدون `company_id` → أي tenant يقدر يقرأ أوامر تشغيل tenant آخر
+  - `useWorkOrderVariance`: `(workOrderId: string)` → `(workOrderId: string, companyId: string)` — يمنع cross-tenant read
+  - `VarianceTable`: يمرر `companyId` للـ hook
+- **P2 — BomPage fix**:
+  - `lines` column render كان يعيد '—' دائماً بسبب logic معقد `${boms.find(...)?.id ? '—' : '—'}` → استبدل بـ `'—'` مباشر (عدد المواد غير محفوظ في الجدول — يحتاج query منفصل)
+- **Hooks cleanup**:
+  - حذف الـ `WorkOrderLine` interface المحلي في `useManufacturing.ts` (كان ي shadow الـ imported type)
+  - إضافة `WorkOrderLine` إلى imports من `../types`
+  - `useWorkOrders.create`: `unitCost?: number` → `unitCost: number` (متوافق مع Type الجديد)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+
+### قواعد ذهبية مضافة (Phase 32)
+- **Schema drift في الأعمدة الافتراضية**: `numeric('total_cost').default('0')` يعني الـ column دائماً موجود (لا nullable). الـ type في TypeScript يجب أن يكون `number` لا `number | undefined`. **القاعدة**: افحص `DEFAULT` clause في schema قبل تحديد whether field optional
+- **phantom columns = runtime crash**: `INSERT INTO work_orders (..., estimated_cost, ...)` يفشل في PG لأن العمود غير موجود. **القاعدة**: لا تستخدم أسماء أعمدة من "النظام القديم" — اقرأ الـ schema الفعلي دائماً
+- **cross-tenant access via optional companyId**: `getWorkOrderById(id, companyId?)` بدون company_id filter يسمح لأي tenant بقراءة بيانات آخر. **القاعدة**: كل query يجب أن يحوي `AND company_id = $N` — اجعل companyId mandatory في الـ signature
+- **Local interface shadows import**: `interface WorkOrderLine { ... }` في hook file يخفي الـ imported `WorkOrderLine`. **القاعدة**: لا تُعرّف interface بنفس اسم import — استخدم الـ import مباشرة
+- **BomPage materials count**: الجدول لا يخزّن عدد المواد (يحتاج `SELECT COUNT(*) FROM bom_lines WHERE bom_id = $1`). الـ render column يعرض '—' كـ placeholder. للتحسين المستقبلي: أضف `materialsCount` field أو query منفصل
+
+### المرحلة 31: إصلاح 4 شاشات بيضاء (missing routes + admin permission)
+- **المشكلة**: صفحات تظهر في الـ sidebar لكنها تُسبب white screen (لا Route matching)
+- **إصلاحات**:
+  - +3 lazy imports + 3 routes في `router.tsx`: `LeavesPage`, `EndOfServicePage`, `ActivitiesPage`
+  - +tabs في `HrPage` (Calendar, LogOut icons) و `CrmPage` (Activity icon)
+  - `store.ts`: removed `settings.roles` from admin restricted list — admins should manage roles
+  - Updated 3 test files to reflect admin now has `settings.roles`
+- **النتيجة**: 289/289 tests ✓, tsc clean
 
 ### المرحلة 20b: إصلاح التحميل المتكرر اللانهائي (Infinite Loading Fix)
 - **المشكلة**: 24 صفحة يَعتمدون على `useState(true)` + `if (!activeCompany?.id) return;` early return بدون reset. لما الـ user يفتح صفحة قبل ما الـ active company يَتحمَّل، الـ spinner يَبقى للأبد
@@ -1717,4 +1757,32 @@ npx drizzle-kit migrate
   - `npm run build`: **built in 21.80s** ✓
   - `npx playwright test`: **10/10 passed** ✓
   - **19 pages** server-side paginated total
+
+### المرحلة 33: i18n شاملة + جودة + RBAC + تحسينات HR
+- **الهدف**: تحويل كل النصوص العربية الصلبة في Settings و HR إلى مفاتيح i18n + تنظيف console.error/warn + تعزيز RBAC
+- **RBAC `<Can>` wrappers** (17 صفحات، ~25 site):
+  - HR (4): LeavesPage, PayrollPage, EndOfServicePage, AttendancePage
+  - Purchases (2): PurchaseOrdersPage, PurchaseReturnsPage
+  - Inventory (3): ProductsPage, InventoryTransactionsPage, StockPage
+  - Settings (8): CurrenciesPage, VatSettingsPage, ProductTypesPage, ProductCategoriesPage, CashBoxesPage, CostCentersPage, UnitsPage, BanksPage
+- **HR تحسينات**:
+  - LeavesPage: +Export Excel/PDF + Print (RTL formatted HTML with Cairo font)
+  - EndOfServicePage: +Export Excel/PDF
+- **`YER_CODE` constant extraction**: 45 hardcoded `'YER'` → `YER_CODE` عبر 16 ملف (sales, purchases, accounting, reports, settings, core)
+- **Settings i18n** (12 ملف، ~170 نص):
+  - `settings.common.*` (13 مفتاح مشترك: cancel, save, delete, edit, yes, no, active, inactive, disabled, none, loading, create, saveChanges)
+  - `settings.currencies.*`, `settings.vat.*`, `settings.productTypes.*`, `settings.productCategories.*`, `settings.cashBoxes.*`, `settings.costCenters.*`, `settings.units.*`, `settings.banks.*`, `settings.branches.*`, `settings.users.*`, `settings.sequences.*`, `settings.documentTypes.*`, `settings.company.*`
+- **HR i18n** (7 ملف، ~150 نص):
+  - `hr.page.*` (6), `hr.employeesPage.*` (~22), `hr.attendancePage.*` (~16)
+  - `hr.leaves.*` (~33), `hr.payroll.*` (~34), `hr.eos.*` (~42)
+- **console.error/warn cleanup**: 20 استدعاء أُزيلت من 9 ملفات (settings ×7, reports ×2)
+- **`printDocument.ts` fix**: إزالة `}` زائد من تعديل سابق
+- **`InventoryTransactionsPage` fix**: حذف import معلّق `printDocument`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx vitest run`: **289/289 passed** (27 files) ✓
+  - `npx eslint src`: **0 errors, 0 warnings** ✓
+  - i18n: **985 keys متوازنة** (EN === AR)
+
+*آخر تحديث: 2026-06-09 | الإصدار: maghzaccount-pro v0.3.27*
 

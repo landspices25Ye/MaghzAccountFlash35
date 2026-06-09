@@ -10,10 +10,12 @@ import { useFormatters } from '@/core/utils/useFormatters';
 import { useEmployeesPaginated } from '../hooks/useHr';
 import type { Employee } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 export const EmployeesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
+  const { t } = useTranslation();
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
   const employeeFilters = useMemo(() => ({ isActive: isActiveFilter }), [isActiveFilter]);
@@ -118,17 +120,17 @@ export const EmployeesPage: React.FC = () => {
   };
 
   const columns = [
-    { key: 'employeeNumber', header: 'الرقم الوظيفي', width: '120px' },
-    { key: 'fullName', header: 'الاسم', render: (row: Employee) => (
+    { key: 'employeeNumber', header: t('hr.employeesPage.employeeNumber'), width: '120px' },
+    { key: 'fullName', header: t('hr.employeesPage.name'), render: (row: Employee) => (
       <div className="flex items-center gap-2">
         {row.photoUrl ? <img src={row.photoUrl} alt="" className="w-8 h-8 rounded-full object-cover" /> : <User size={18} className="text-slate-400" />}
         <span>{row.fullName}</span>
       </div>
     )},
-    { key: 'position', header: 'المنصب' },
-    { key: 'departmentName', header: 'القسم', render: (row: Employee) => row.departmentName || row.departmentId || '—' },
-    { key: 'baseSalary', header: 'الراتب الأساسي', align: 'right' as const, render: (row: Employee) => formatCurrency(row.baseSalary || 0) || '—' },
-    { key: 'isActive', header: 'الحالة', width: '100px', render: (row: Employee) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
+    { key: 'position', header: t('hr.employeesPage.position') },
+    { key: 'departmentName', header: t('hr.employeesPage.department'), render: (row: Employee) => row.departmentName || row.departmentId || '—' },
+    { key: 'baseSalary', header: t('hr.employeesPage.baseSalary'), align: 'right' as const, render: (row: Employee) => formatCurrency(row.baseSalary || 0) || '—' },
+    { key: 'isActive', header: t('hr.employeesPage.status'), width: '100px', render: (row: Employee) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: Employee) => (
       <ActionButtons onView={() => openView(row)} onEdit={() => openEdit(row)} onDelete={() => setConfirmDelete(row.id)} showPrint={false} />
     )},
@@ -140,17 +142,17 @@ export const EmployeesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الموظفين</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">سجلات الموظفين وإدارة بياناتهم</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('hr.employeesPage.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('hr.employeesPage.subtitle')}</p>
           </div>
         </div>
-    <Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button></Can>
+    <Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('hr.employeesPage.new')}</Button></Can>
       </div>
 
       <Card>
         <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
-            <label className="text-sm text-slate-600 dark:text-slate-300">الحالة:</label>
+            <label className="text-sm text-slate-600 dark:text-slate-300">{t('hr.employeesPage.filterLabel')}</label>
             <select
               value={isActiveFilter === undefined ? 'all' : isActiveFilter ? 'active' : 'inactive'}
               onChange={(e) => {
@@ -159,23 +161,23 @@ export const EmployeesPage: React.FC = () => {
               }}
               className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600"
             >
-              <option value="all">الكل</option>
-              <option value="active">نشط</option>
-              <option value="inactive">غير نشط</option>
+              <option value="all">{t('settings.common.all')}</option>
+              <option value="active">{t('settings.common.active')}</option>
+              <option value="inactive">{t('settings.common.inactive')}</option>
             </select>
           </div>
-          <span className="text-xs text-slate-500">إجمالي: {total}</span>
+          <span className="text-xs text-slate-500">{t('hr.employeesPage.total')} {total}</span>
         </div>
         {isLoading ? (
-          <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+          <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
         ) : employees.length === 0 ? (
-          <EmptyState icon="inbox" title="لا يوجد موظفين" description="يمكنك إضافة موظف جديد" action={<Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>موظف جديد</Button></Can>} />
+          <EmptyState icon="inbox" title={t('hr.employeesPage.emptyTitle')} description={t('hr.employeesPage.emptyDescription')} action={<Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('hr.employeesPage.new')}</Button></Can>} />
         ) : (
           <Table<Employee>
             data={employees}
             columns={columns}
             keyExtractor={(row) => row.id}
-            emptyMessage="لا يوجد موظفين"
+            emptyMessage={t('hr.employeesPage.emptyMessage')}
           />
         )}
         <Pagination
@@ -191,12 +193,12 @@ export const EmployeesPage: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); resetForm(); }}
-        title={editing ? 'تعديل موظف' : 'موظف جديد'}
+        title={editing ? t('hr.employeesPage.edit') : t('hr.employeesPage.new')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>إلغاء</Button>
-            <Button variant="primary" onClick={handleSave}>حفظ</Button>
+            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>{t('settings.common.cancel')}</Button>
+            <Button variant="primary" onClick={handleSave}>{t('settings.common.save')}</Button>
           </div>
         }
       >
@@ -214,30 +216,30 @@ export const EmployeesPage: React.FC = () => {
             <div className="flex-1" />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="الرقم الوظيفي" value={formData.employeeNumber} onChange={(e) => setFormData((prev) => ({ ...prev, employeeNumber: e.target.value }))} />
-            <Input label="الاسم الكامل" value={formData.fullName} onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))} />
+            <Input label={t('hr.employeesPage.employeeNumber')} value={formData.employeeNumber} onChange={(e) => setFormData((prev) => ({ ...prev, employeeNumber: e.target.value }))} />
+            <Input label={t('hr.employeesPage.fullName')} value={formData.fullName} onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="رقم الهوية" value={formData.nationalId} onChange={(e) => setFormData((prev) => ({ ...prev, nationalId: e.target.value }))} />
-            <Input label="الهاتف" value={formData.phone} onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))} />
+            <Input label={t('hr.employeesPage.nationalId')} value={formData.nationalId} onChange={(e) => setFormData((prev) => ({ ...prev, nationalId: e.target.value }))} />
+            <Input label={t('hr.employeesPage.phone')} value={formData.phone} onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="البريد الإلكتروني" type="email" value={formData.email} onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))} />
-            <Input label="العنوان" value={formData.address} onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))} />
+            <Input label={t('hr.employeesPage.email')} type="email" value={formData.email} onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))} />
+            <Input label={t('hr.employeesPage.address')} value={formData.address} onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="المنصب" value={formData.position} onChange={(e) => setFormData((prev) => ({ ...prev, position: e.target.value }))} />
-            <Input label="القسم" value={formData.departmentId} onChange={(e) => setFormData((prev) => ({ ...prev, departmentId: e.target.value }))} />
+            <Input label={t('hr.employeesPage.position')} value={formData.position} onChange={(e) => setFormData((prev) => ({ ...prev, position: e.target.value }))} />
+            <Input label={t('hr.employeesPage.department')} value={formData.departmentId} onChange={(e) => setFormData((prev) => ({ ...prev, departmentId: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="الدرجة الوظيفية" value={formData.grade} onChange={(e) => setFormData((prev) => ({ ...prev, grade: e.target.value }))} />
-            <Input label="الراتب الأساسي" type="number" value={formData.baseSalary} onChange={(e) => setFormData((prev) => ({ ...prev, baseSalary: e.target.value }))} />
+            <Input label={t('hr.employeesPage.grade')} value={formData.grade} onChange={(e) => setFormData((prev) => ({ ...prev, grade: e.target.value }))} />
+            <Input label={t('hr.employeesPage.baseSalary')} type="number" value={formData.baseSalary} onChange={(e) => setFormData((prev) => ({ ...prev, baseSalary: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="تاريخ التعيين" type="date" value={formData.hireDate} onChange={(e) => setFormData((prev) => ({ ...prev, hireDate: e.target.value }))} />
+            <Input label={t('hr.employeesPage.hireDate')} type="date" value={formData.hireDate} onChange={(e) => setFormData((prev) => ({ ...prev, hireDate: e.target.value }))} />
             <div className="flex items-center gap-2 pt-6">
               <input type="checkbox" id="isActive" checked={formData.isActive} onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))} className="rounded" />
-              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">نشط</label>
+              <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">{t('settings.common.active')}</label>
             </div>
           </div>
         </div>
@@ -247,9 +249,9 @@ export const EmployeesPage: React.FC = () => {
       <Modal
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setViewing(null); }}
-        title="بيانات الموظف"
+        title={t('hr.employeesPage.viewTitle')}
         size="md"
-        footer={<Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); }}>إغلاق</Button>}
+        footer={<Button variant="secondary" onClick={() => { setIsDetailOpen(false); setViewing(null); }}>{t('settings.common.close')}</Button>}
       >
         {viewing && (
           <div className="space-y-4">
@@ -261,12 +263,12 @@ export const EmployeesPage: React.FC = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الرقم الوظيفي:</span><p className="font-medium">{viewing.employeeNumber}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">رقم الهوية:</span><p className="font-medium">{viewing.nationalId || '—'}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الهاتف:</span><p className="font-medium">{viewing.phone || '—'}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">البريد:</span><p className="font-medium">{viewing.email || '—'}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">تاريخ التعيين:</span><p className="font-medium">{viewing.hireDate || '—'}</p></div>
-              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">الراتب الأساسي:</span><p className="font-medium">{formatCurrency(viewing.baseSalary || 0) || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.employeeNumberLabel')}</span><p className="font-medium">{viewing.employeeNumber}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.nationalIdLabel')}</span><p className="font-medium">{viewing.nationalId || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.phoneLabel')}</span><p className="font-medium">{viewing.phone || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.emailLabel')}</span><p className="font-medium">{viewing.email || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.hireDateLabel')}</span><p className="font-medium">{viewing.hireDate || '—'}</p></div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded p-2"><span className="text-slate-500">{t('hr.employeesPage.baseSalaryLabel')}</span><p className="font-medium">{formatCurrency(viewing.baseSalary || 0) || '—'}</p></div>
             </div>
           </div>
         )}
@@ -276,8 +278,8 @@ export const EmployeesPage: React.FC = () => {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={handleDelete}
-        title="حذف موظف"
-        message="هل أنت متأكد من حذف هذا الموظف؟"
+        title={t('hr.employeesPage.deleteTitle')}
+        message={t('hr.employeesPage.deleteConfirm')}
         variant="danger"
       />
     </div>

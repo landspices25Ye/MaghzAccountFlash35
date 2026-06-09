@@ -331,7 +331,7 @@ export const createWorkOrderSchema = z.object({
   status: z.enum(['planned', 'in_progress', 'completed', 'cancelled']).default('planned'),
   plannedStartDate: dateSchema.optional(),
   plannedEndDate: dateSchema.optional(),
-  estimatedCost: currencyAmountSchema.optional(),
+  totalCost: currencyAmountSchema.optional(),
   notes: z.string().max(2000).optional(),
   lines: z.array(z.object({
     materialId: uuidSchema,

@@ -11,6 +11,7 @@ import { postPaymentVoucher } from '@/core/utils/journalEntryGenerator';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { Pagination } from '@/core/ui/components/Pagination';
@@ -26,7 +27,7 @@ export const PaymentVouchersPage: React.FC = () => {
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { currencies, defaultCurrency } = useCurrencyDisplay();
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
 
   const [postingId, setPostingId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +102,7 @@ export const PaymentVouchersPage: React.FC = () => {
       supplierName: form.supplierName || '',
       expenseAccountId: form.expenseAccountId,
       amount: Number(form.amount) || 0,
-      currencyCode: form.currencyCode || 'YER',
+      currencyCode: form.currencyCode || YER_CODE,
       exchangeRate: form.exchangeRate ?? 1,
       baseCurrencyAmount: (Number(form.amount) || 0) * (form.exchangeRate ?? 1),
       paymentMethod: form.paymentMethod || 'cash',
@@ -125,7 +126,7 @@ export const PaymentVouchersPage: React.FC = () => {
 
   const handleCurrencyChange = (code: string | null) => {
     if (!code) {
-      setForm(prev => ({ ...prev, currencyCode: 'YER', exchangeRate: 1 }));
+      setForm(prev => ({ ...prev, currencyCode: YER_CODE, exchangeRate: 1 }));
       return;
     }
     const c = currencies.find((x) => x.code === code);
@@ -133,7 +134,7 @@ export const PaymentVouchersPage: React.FC = () => {
   };
 
   const resetForm = () => {
-    setForm({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0], currencyCode: defaultCurrency?.code || 'YER', exchangeRate: 1 });
+    setForm({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0], currencyCode: defaultCurrency?.code || YER_CODE, exchangeRate: 1 });
     setIsEditMode(false);
     setEditingId(null);
   };
@@ -261,7 +262,7 @@ export const PaymentVouchersPage: React.FC = () => {
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency')}</label>
-              <CurrencySelect companyId={activeCompany?.id || ''} value={form.currencyCode || 'YER'} onChange={handleCurrencyChange} />
+              <CurrencySelect companyId={activeCompany?.id || ''} value={form.currencyCode || YER_CODE} onChange={handleCurrencyChange} />
             </div>
             <Input
               label={t('sales.exchangeRate')}

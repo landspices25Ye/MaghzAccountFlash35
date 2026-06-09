@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Boxes, ArrowRightLeft, Plus, Scale, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Can } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { ProductSelect, WarehouseSelect } from '@/core/ui/components/smart';
@@ -91,9 +91,11 @@ export const StockPage: React.FC = () => {
           <Button variant="secondary" leftIcon={<Scale size={16} />} onClick={() => navigate('/inventory/adjustments')}>
             {t('inventory.adjustments')}
           </Button>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsTransferOpen(true)}>
-            {t('inventory.newTransfer')}
-          </Button>
+          <Can action="create" module="inventory">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsTransferOpen(true)}>
+              {t('inventory.newTransfer')}
+            </Button>
+          </Can>
         </div>
       </div>
 

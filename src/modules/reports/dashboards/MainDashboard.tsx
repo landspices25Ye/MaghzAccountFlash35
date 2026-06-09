@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, FileText, Package, ShoppingCart, Users, AlertTriangle,
-  Calendar, ChevronDown, Download, FilePlus, BookOpen, PlusCircle, UserPlus, RotateCcw
+  Calendar, ChevronDown, Download, FilePlus, BookOpen, PlusCircle, UserPlus, RotateCcw, Factory
 } from 'lucide-react';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAppStore } from '@/core/store';
@@ -15,6 +15,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { Link, useNavigate } from 'react-router-dom';
 import { exportToPDF } from '@/core/utils/exportEngine';
 import { cn, formatCurrency, formatDate } from '@/core/utils';
+import { manufacturingApi } from '@/modules/manufacturing/api';
 
 const periodOptions: { key: PeriodFilter; labelKey: string }[] = [
   { key: 'today', labelKey: 'reports.today' },
@@ -275,6 +276,9 @@ const MainDashboard: React.FC = () => {
         <CategoryShareChart data={current.categoryShare} />
       </div>
 
+      {/* Manufacturing KPIs */}
+      <ManufacturingKpiSection companyId={activeCompany?.id || ''} />
+
       {/* Alerts & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
@@ -350,6 +354,38 @@ const MainDashboard: React.FC = () => {
     </div>
   );
 };
+
+function ManufacturingKpiSection({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<{ totalWorkOrders: number; activeOrders: number; completedOrders: number; totalProductionCost: number } | null>(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    manufacturingApi.getManufacturingKpis(companyId).then((res) => {
+      if (!cancelled && res.success && res.data) setKpis(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  if (!kpis) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Factory size={18} className="text-primary-600" />
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">{t('manufacturing.production')}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCardPro title={t('manufacturing.workOrders')} value={kpis.totalWorkOrders} icon={Factory} color="blue" onClick={() => navigate('/manufacturing/work-orders')} />
+        <KpiCardPro title={t('manufacturing.planned')} value={kpis.activeOrders} icon={Factory} color="purple" onClick={() => navigate('/manufacturing/work-orders')} />
+        <KpiCardPro title={t('manufacturing.completed')} value={kpis.completedOrders} icon={TrendingUp} color="emerald" onClick={() => navigate('/manufacturing/work-orders')} />
+        <KpiCardPro title={t('manufacturing.costs')} value={formatCurrency(kpis.totalProductionCost)} icon={DollarSign} color="amber" onClick={() => navigate('/manufacturing/cost-report')} />
+      </div>
+    </div>
+  );
+}
 
 function AlertItem({
   icon: Icon,

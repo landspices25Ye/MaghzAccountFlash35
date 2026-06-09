@@ -6,6 +6,8 @@ import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { EmptyState } from '@/core/ui/components/EmptyState';
+import { YER_CODE } from '@/core/utils/currencyConverter';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface CompanyFormData {
   name: string;
@@ -26,6 +28,7 @@ interface CompanyFormData {
 export const CompanySetupPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
+  const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<CompanyFormData>({
     name: '',
@@ -35,7 +38,7 @@ export const CompanySetupPage: React.FC = () => {
     phone: '',
     email: '',
     fiscalYearStart: '',
-    currency: 'YER',
+    currency: YER_CODE,
     dateFormat: 'yyyy-MM-dd',
     decimalPlaces: 2,
     calendar: 'gregorian',
@@ -52,7 +55,7 @@ export const CompanySetupPage: React.FC = () => {
         email: activeCompany.email || '',
         logoUrl: activeCompany.logoUrl || '',
         fiscalYearStart: activeCompany.fiscalYearStart || '',
-        currency: activeCompany.currency || 'YER',
+        currency: activeCompany.currency || YER_CODE,
         dateFormat: activeCompany.dateFormat || 'yyyy-MM-dd',
         decimalPlaces: activeCompany.decimalPlaces || 2,
         calendar: activeCompany.calendar || 'gregorian',
@@ -110,15 +113,15 @@ export const CompanySetupPage: React.FC = () => {
         decimalPlaces: formData.decimalPlaces,
         calendar: formData.calendar,
       });
-    } catch (error) {
-      console.error('Failed to save company:', error);
+    } catch {
+      // Error saved by caller
     } finally {
       setIsSaving(false);
     }
   };
 
   if (!activeCompany) {
-    return <EmptyState title="لا توجد شركة" description="يرجى إنشاء شركة أولاً" />;
+    return <EmptyState title={t('settings.company.noCompany')} description={t('settings.company.noCompanyDesc')} />;
   }
 
   return (
@@ -127,8 +130,8 @@ export const CompanySetupPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Building2 size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">بيانات الشركة</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة بيانات الشركة والهوية البصرية</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.company.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.company.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -138,7 +141,7 @@ export const CompanySetupPage: React.FC = () => {
             onClick={handleSave}
             isLoading={isSaving}
           >
-            حفظ
+            {t('settings.company.save')}
           </Button>
         </div>
       </div>
@@ -146,10 +149,10 @@ export const CompanySetupPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Logo & Visual Identity */}
         <Card className="lg:col-span-1 space-y-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50">الهوية البصرية</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50">{t('settings.company.visualIdentity')}</h3>
           
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">شعار الشركة</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">{t('settings.company.companyLogo')}</label>
             <div className="flex flex-col items-center gap-3">
               {formData.logoUrl ? (
                 <img src={formData.logoUrl} alt="Logo" className="w-32 h-32 object-contain border rounded-lg" />
@@ -161,7 +164,7 @@ export const CompanySetupPage: React.FC = () => {
               <label className="cursor-pointer">
                 <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
                 <span className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700">
-                  <Upload size={14} /> تحميل شعار
+                  <Upload size={14} /> {t('settings.company.uploadLogo')}
                 </span>
               </label>
             </div>
@@ -170,43 +173,43 @@ export const CompanySetupPage: React.FC = () => {
 
         {/* Company Info */}
         <Card className="lg:col-span-2 space-y-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50">المعلومات الأساسية</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50">{t('settings.company.basicInfo')}</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="اسم الشركة (عربي) *"
+              label={t('settings.company.nameAr')}
               value={formData.name}
               onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               required
             />
             <Input
-              label="اسم الشركة (إنجليزي)"
+              label={t('settings.company.nameEn')}
               value={formData.nameEn}
               onChange={(e) => setFormData((prev) => ({ ...prev, nameEn: e.target.value }))}
             />
             <Input
-              label="الرقم الضريبي"
+              label={t('settings.company.taxNumber')}
               value={formData.taxNumber}
               onChange={(e) => setFormData((prev) => ({ ...prev, taxNumber: e.target.value }))}
             />
             <Input
-              label="العملة الافتراضية"
+              label={t('settings.company.defaultCurrency')}
               value={formData.currency}
               onChange={(e) => setFormData((prev) => ({ ...prev, currency: e.target.value }))}
             />
             <div>
-              <label className="form-label block mb-1.5">التقويم</label>
+              <label className="form-label block mb-1.5">{t('settings.company.calendar')}</label>
               <select
                 value={formData.calendar}
                 onChange={(e) => setFormData((prev) => ({ ...prev, calendar: e.target.value as 'gregorian' | 'hijri' }))}
                 className="form-control"
               >
-                <option value="gregorian">ميلادي</option>
-                <option value="hijri">هجري</option>
+                <option value="gregorian">{t('settings.company.gregorian')}</option>
+                <option value="hijri">{t('settings.company.hijri')}</option>
               </select>
             </div>
             <div>
-              <label className="form-label block mb-1.5">تنسيق التاريخ</label>
+              <label className="form-label block mb-1.5">{t('settings.company.dateFormat')}</label>
               <select
                 value={formData.dateFormat}
                 onChange={(e) => setFormData((prev) => ({ ...prev, dateFormat: e.target.value }))}
@@ -214,13 +217,13 @@ export const CompanySetupPage: React.FC = () => {
               >
                 {formData.calendar === 'hijri' ? (
                   <>
-                    <option value="yyyy/MM/dd">YYYY/MM/DD (هجري)</option>
+                    <option value="yyyy/MM/dd">{t('settings.company.dateFormatHijri')}</option>
                     <option value="dd/MM/yyyy">DD/MM/YYYY</option>
                     <option value="yyyy-MM-dd">YYYY-MM-DD</option>
                   </>
                 ) : (
                   <>
-                    <option value="yyyy-MM-dd">YYYY-MM-DD (ميلادي)</option>
+                    <option value="yyyy-MM-dd">{t('settings.company.dateFormatGregorian')}</option>
                     <option value="dd/MM/yyyy">DD/MM/YYYY</option>
                     <option value="yyyy/MM/dd">YYYY/MM/DD</option>
                   </>
@@ -228,7 +231,7 @@ export const CompanySetupPage: React.FC = () => {
               </select>
             </div>
             <Input
-              label="عدد المنازل العشرية"
+              label={t('settings.company.decimalPlaces')}
               type="number"
               min={0}
               max={6}
@@ -236,24 +239,24 @@ export const CompanySetupPage: React.FC = () => {
               onChange={(e) => setFormData((prev) => ({ ...prev, decimalPlaces: Number(e.target.value) }))}
             />
             <Input
-              label="بداية السنة المالية"
+              label={t('settings.company.fiscalYearStart')}
               type="date"
               value={formData.fiscalYearStart}
               onChange={(e) => setFormData((prev) => ({ ...prev, fiscalYearStart: e.target.value }))}
             />
             <Input
-              label="الهاتف"
+              label={t('settings.company.phone')}
               value={formData.phone}
               onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
             />
             <Input
-              label="البريد الإلكتروني"
+              label={t('settings.company.email')}
               type="email"
               value={formData.email}
               onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
             />
             <div className="md:col-span-2">
-              <label className="form-label block mb-1.5">العنوان</label>
+              <label className="form-label block mb-1.5">{t('settings.company.address')}</label>
               <textarea
                 value={formData.address}
                 onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}

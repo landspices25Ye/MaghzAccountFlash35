@@ -3,7 +3,7 @@ import { Undo2, Plus, CheckSquare, Trash2, Printer, FileText, BookOpen } from 'l
 import { printDocument } from '@/core/utils/printDocument';
 import { logAudit } from '@/core/utils/auditLogger';
 import { postPurchaseReturn } from '@/core/utils/journalEntryGenerator';
-import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination, Can } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -16,6 +16,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseReturn } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 
 interface ReturnFormLine {
   productId: string;
@@ -277,9 +278,11 @@ export const PurchaseReturnsPage: React.FC = () => {
           <option value="posted">مرحل</option>
           <option value="cancelled">ملغي</option>
         </select>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          {t('purchases.return.create')}
-        </Button>
+        <Can action="create" module="purchases">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            {t('purchases.return.create')}
+          </Button>
+        </Can>
       </div>
     </div>
 
@@ -293,7 +296,7 @@ export const PurchaseReturnsPage: React.FC = () => {
         <Card>
           <div className="p-4 text-center">
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchases.return.postedTotal')}</p>
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalPosted)} {activeCompany?.currency || 'YER'}</p>
+            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(totalPosted)} {activeCompany?.currency || YER_CODE}</p>
           </div>
         </Card>
         <Card>

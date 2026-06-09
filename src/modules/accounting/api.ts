@@ -2,6 +2,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { validateInput, idCompanySchema, companyIdSchema, createTransactionSchema, createReceiptVoucherSchema, createPaymentVoucherSchema } from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import type { Account, Transaction, JournalEntry, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from './types';
 
 export const accountingApi = {
@@ -399,7 +400,7 @@ export const accountingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
-      const currencyCode = data.currencyCode || 'YER';
+      const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
@@ -545,7 +546,7 @@ export const accountingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
-      const currencyCode = data.currencyCode || 'YER';
+      const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(

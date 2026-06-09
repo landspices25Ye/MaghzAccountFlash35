@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createBomSchema, createWorkOrderSchema } from '@/core/utils/validation';
+import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { BOM, BOMLine, WorkOrder, WorkOrderLine } from './types';
 
 const workOrderStatusSchema = z.enum(['planned', 'in_progress', 'completed', 'cancelled']);
@@ -168,17 +169,13 @@ export const manufacturingApi = {
     }
   },
 
-  async getWorkOrderById(id: string, companyId?: string): Promise<{ success: boolean; data?: { workOrder: WorkOrder; lines: WorkOrderLine[] }; error?: string }> {
+  async getWorkOrderById(id: string, companyId: string): Promise<{ success: boolean; data?: { workOrder: WorkOrder; lines: WorkOrderLine[] }; error?: string }> {
     try {
-      if (companyId) {
-        const idValidation = validateInput(idCompanySchema, { id, companyId });
-        if (!idValidation.success) return { success: false, error: idValidation.error };
-      }
+      const idValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const sql = companyId
-        ? 'SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 AND w.company_id = $2 LIMIT 1'
-        : 'SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 LIMIT 1';
-      const params = companyId ? [id, companyId] : [id];
+      const sql = 'SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE w.id = $1 AND w.company_id = $2 LIMIT 1';
+      const params = [id, companyId];
       const res = await adapter.query(sql, params);
       if (!res.success || !res.rows?.[0]) return { success: false, error: res.error || 'Not found' };
       const workOrder = mapWorkOrderRow(res.rows[0]);
@@ -190,7 +187,7 @@ export const manufacturingApi = {
         materialName: r.material_name ? String(r.material_name) : undefined,
         plannedQuantity: Number(r.planned_quantity) || 0,
         actualQuantity: r.actual_quantity ? Number(r.actual_quantity) : undefined,
-        unitCost: r.unit_cost ? Number(r.unit_cost) : undefined,
+        unitCost: Number(r.unit_cost) || 0,
         actualUnitCost: r.actual_unit_cost ? Number(r.actual_unit_cost) : undefined,
       }));
       return { success: true, data: { workOrder, lines } };
@@ -205,7 +202,7 @@ export const manufacturingApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const tx = await adapter.transaction([
-        { sql: `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, estimated_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, params: [data.companyId, data.orderNumber, data.productId, data.bomId, data.quantity, data.status, data.plannedStartDate, data.plannedEndDate, data.estimatedCost, data.notes, _userId ?? null] },
+        { sql: `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, total_cost, notes, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, params: [data.companyId, data.orderNumber, data.productId, data.bomId, data.quantity, data.status, data.plannedStartDate, data.plannedEndDate, data.totalCost, data.notes, _userId ?? null] },
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const woId = tx.results[0][0].id as string;
@@ -238,8 +235,7 @@ export const manufacturingApi = {
       if (data.plannedEndDate !== undefined) { fields.push(`planned_end_date = $${idx++}`); values.push(data.plannedEndDate); }
       if (data.actualStartDate !== undefined) { fields.push(`actual_start_date = $${idx++}`); values.push(data.actualStartDate); }
       if (data.actualEndDate !== undefined) { fields.push(`actual_end_date = $${idx++}`); values.push(data.actualEndDate); }
-      if (data.estimatedCost !== undefined) { fields.push(`estimated_cost = $${idx++}`); values.push(data.estimatedCost); }
-      if (data.actualCost !== undefined) { fields.push(`actual_cost = $${idx++}`); values.push(data.actualCost); }
+      if (data.totalCost !== undefined) { fields.push(`total_cost = $${idx++}`); values.push(data.totalCost); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 
       fields.push(`updated_by = $${idx++}`);
@@ -311,6 +307,148 @@ export const manufacturingApi = {
       return { success: false, error: String(e) };
     }
   },
+
+  async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const adapter = await getDbAdapter();
+      const fields: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+      if (data.actualQuantity !== undefined) { fields.push(`actual_quantity = $${idx++}`); values.push(data.actualQuantity); }
+      if (data.actualUnitCost !== undefined) { fields.push(`actual_unit_cost = $${idx++}`); values.push(data.actualUnitCost); }
+      if (fields.length === 0) return { success: true };
+      values.push(consumptionId);
+      const result = await adapter.query(`UPDATE work_order_consumptions SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+      return { success: result.success, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getManufacturingKpis(companyId: string): Promise<{ success: boolean; data?: { totalWorkOrders: number; activeOrders: number; completedOrders: number; totalProductionCost: number }; error?: string }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(
+        `SELECT COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE status = 'in_progress' OR status = 'planned')::int AS active,
+                COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+                COALESCE(SUM(total_cost) FILTER (WHERE status = 'completed'), 0) AS total_cost
+           FROM work_orders WHERE company_id = $1`,
+        [companyId],
+      );
+      const row = result.rows?.[0];
+      return {
+        success: true,
+        data: {
+          totalWorkOrders: Number(row?.total || 0),
+          activeOrders: Number(row?.active || 0),
+          completedOrders: Number(row?.completed || 0),
+          totalProductionCost: Number(row?.total_cost || 0),
+        },
+      };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  // ─── Paginated ────────────────────────────────────────────────────────────
+  async getBomsPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { search?: string; isActive?: boolean }
+  ): Promise<PaginatedQueryResult<BOM>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['b.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(p.name_ar ILIKE $${params.length} OR b.version ILIKE $${params.length})`);
+      }
+      if (filters?.isActive !== undefined) {
+        params.push(filters.isActive);
+        conditions.push(`b.is_active = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM boms b LEFT JOIN products p ON b.product_id = p.id WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const dataResult = await adapter.query(
+        `SELECT b.*, p.name_ar as product_name,
+                (SELECT COUNT(*)::int FROM bom_lines bl WHERE bl.bom_id = b.id) AS lines_count
+           FROM boms b LEFT JOIN products p ON b.product_id = p.id WHERE ${where} ORDER BY b.version DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+      );
+      const rows = (dataResult.rows || []).map((r: Record<string, unknown>) => ({
+        id: String(r.id),
+        companyId: String(r.company_id),
+        productId: String(r.product_id),
+        productName: r.product_name ? String(r.product_name) : undefined,
+        version: String(r.version),
+        isActive: r.is_active === true || r.is_active === 'true',
+        totalCost: r.total_cost ? Number(r.total_cost) : undefined,
+        notes: r.notes ? String(r.notes) : undefined,
+        createdBy: r.created_by ? String(r.created_by) : undefined,
+        updatedBy: r.updated_by ? String(r.updated_by) : undefined,
+        linesCount: r.lines_count ? Number(r.lines_count) : 0,
+      }));
+      return { success: true, data: paginatedResult(rows, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getWorkOrdersPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string }
+  ): Promise<PaginatedQueryResult<WorkOrder>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['w.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`w.status = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM work_orders w WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const dataResult = await adapter.query(
+        `SELECT w.*, p.name_ar as product_name FROM work_orders w LEFT JOIN products p ON w.product_id = p.id WHERE ${where} ORDER BY w.order_number DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+        params
+      );
+      const rows = (dataResult.rows || []).map((r: Record<string, unknown>) => mapWorkOrderRow(r));
+      return { success: true, data: paginatedResult(rows, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
 };
 
 function mapWorkOrderRow(r: Record<string, unknown>): WorkOrder {
@@ -328,8 +466,7 @@ function mapWorkOrderRow(r: Record<string, unknown>): WorkOrder {
     plannedEndDate: r.planned_end_date ? String(r.planned_end_date) : undefined,
     actualStartDate: r.actual_start_date ? String(r.actual_start_date) : undefined,
     actualEndDate: r.actual_end_date ? String(r.actual_end_date) : undefined,
-    estimatedCost: r.estimated_cost ? Number(r.estimated_cost) : undefined,
-    actualCost: r.actual_cost ? Number(r.actual_cost) : undefined,
+    totalCost: r.total_cost ? Number(r.total_cost) : undefined,
     notes: r.notes ? String(r.notes) : undefined,
     createdBy: r.created_by ? String(r.created_by) : undefined,
     updatedBy: r.updated_by ? String(r.updated_by) : undefined,
@@ -346,4 +483,3 @@ async function batchInsertLines(adapter: Awaited<ReturnType<typeof getDbAdapter>
   const values = rows.flat();
   await adapter.query(`INSERT INTO ${table} (${columns.join(',')}) VALUES ${placeholders}`, values);
 }
-

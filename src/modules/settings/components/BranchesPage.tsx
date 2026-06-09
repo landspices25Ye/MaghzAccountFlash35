@@ -6,6 +6,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 interface Branch {
   id: string;
@@ -19,6 +20,7 @@ interface Branch {
 export const BranchesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
+  const { t } = useTranslation();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,8 +44,8 @@ export const BranchesPage: React.FC = () => {
           isActive: row.is_active,
         })));
       }
-    } catch (err) {
-      console.error('Failed to load branches:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +73,8 @@ export const BranchesPage: React.FC = () => {
 
       await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'branches', recordId: editingId || 'new', companyId: activeCompany.id });
       setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
-    } catch (err) {
-      console.error('Failed to save branch:', err);
+    } catch {
+      // Error handled by caller
     } finally {
       setIsSaving(false);
     }
@@ -85,18 +87,18 @@ export const BranchesPage: React.FC = () => {
       await adapter.query(`DELETE FROM branches WHERE id = $1`, [id]);
       await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
       setShowDeleteConfirm(null); loadData();
-    } catch (err) {
-      console.error('Failed to delete branch:', err);
+    } catch {
+      // Error handled by caller
     }
   };
 
   const columns = [
-    { key: 'name', header: 'الاسم' },
-    { key: 'code', header: 'الرمز', width: '100px' },
-    { key: 'city', header: 'المدينة', width: '120px' },
-    { key: 'phone', header: 'الهاتف', width: '140px' },
-    { key: 'isActive', header: 'الحالة', render: (row: Branch) => (
-      <span className={row.isActive ? 'badge-posted' : 'badge-draft'}>{row.isActive ? 'نشط' : 'معطل'}</span>
+    { key: 'name', header: t('settings.branches.name') },
+    { key: 'code', header: t('settings.branches.code'), width: '100px' },
+    { key: 'city', header: t('settings.branches.city'), width: '120px' },
+    { key: 'phone', header: t('settings.branches.phone'), width: '140px' },
+    { key: 'isActive', header: t('settings.branches.status'), render: (row: Branch) => (
+      <span className={row.isActive ? 'badge-posted' : 'badge-draft'}>{row.isActive ? t('settings.common.active') : t('settings.common.disabled')}</span>
     )},
     { key: 'actions', header: '', render: (row: Branch) => (
       <div className="flex items-center gap-1">
@@ -116,13 +118,13 @@ export const BranchesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <GitBranch size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الفروع</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة فروع الشركة</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.branches.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.branches.subtitle')}</p>
           </div>
         </div>
         <Can action="create" module="settings">
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>
-            فرع جديد
+            {t('settings.branches.newBranch')}
           </Button>
         </Can>
       </div>
@@ -131,14 +133,14 @@ export const BranchesPage: React.FC = () => {
         {(editingId !== null || formData.name) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Input label="الاسم" value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              <Input label="الرمز" value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
-              <Input label="المدينة" value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} />
-              <Input label="الهاتف" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
+              <Input label={t('settings.branches.name')} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+              <Input label={t('settings.branches.code')} value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
+              <Input label={t('settings.branches.city')} value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} />
+              <Input label={t('settings.branches.phone')} value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>إلغاء</Button>
-              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>حفظ</Button>
+              <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>{t('settings.common.cancel')}</Button>
+              <Button variant="primary" leftIcon={<Save size={16} />} onClick={handleSave} isLoading={isSaving}>{t('settings.common.save')}</Button>
             </div>
           </div>
         )}
@@ -148,15 +150,13 @@ export const BranchesPage: React.FC = () => {
           columns={columns}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
-          emptyMessage="لا توجد فروع"
+          emptyMessage={t('settings.branches.emptyMessage')}
         />
       </Card>
 
-      <ConfirmDialog isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} title="حذف الفرع" message="هل أنت متأكد من حذف هذا الفرع؟" confirmText="حذف" variant="danger" />
+      <ConfirmDialog isOpen={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} onConfirm={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} title={t('settings.branches.deleteTitle')} message={t('settings.branches.deleteMessage')} confirmText={t('settings.branches.deleteConfirm')} variant="danger" />
     </div>
   );
 };
 
 export default BranchesPage;
-
-

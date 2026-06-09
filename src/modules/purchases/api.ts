@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createSupplierSchema, createPurchaseInvoiceSchema, createPurchaseOrderSchema, createPurchaseReturnSchema } from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import type {
   Supplier,
   PurchaseInvoice,
@@ -53,7 +54,7 @@ function mapInvoice(row: Record<string, unknown>): PurchaseInvoice {
     vatAmount: toNum(row.vat_amount || row.vatAmount),
     totalAmount: toNum(row.total_amount || row.totalAmount),
     paidAmount: toNum(row.paid_amount || row.paidAmount),
-    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    currencyCode: row.currency_code ? String(row.currency_code) : YER_CODE,
     exchangeRate: row.exchange_rate !== undefined ? toNum(row.exchange_rate) : 1,
     baseCurrencyAmount: row.base_currency_amount !== undefined ? toNum(row.base_currency_amount) : 0,
     baseCurrencyPaid: row.base_currency_paid !== undefined ? toNum(row.base_currency_paid) : 0,
@@ -76,7 +77,7 @@ function mapInvoiceLine(row: Record<string, unknown>): PurchaseInvoiceLine {
     discountPercent: toNum(row.discount_percent || row.discountPercent),
     vatPercent: toNum(row.vat_percent || row.vatPercent),
     lineTotal: toNum(row.line_total || row.lineTotal),
-    currencyCode: row.currency_code ? String(row.currency_code) : 'YER',
+    currencyCode: row.currency_code ? String(row.currency_code) : YER_CODE,
     exchangeRate: row.exchange_rate !== undefined ? toNum(row.exchange_rate) : 1,
     baseCurrencyLineTotal: row.base_currency_line_total !== undefined ? toNum(row.base_currency_line_total) : 0,
   };
@@ -540,7 +541,7 @@ export const purchasesApi = {
       const validation = validateInput(createPurchaseInvoiceSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const currencyCode = data.currencyCode || 'YER';
+      const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
       const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;

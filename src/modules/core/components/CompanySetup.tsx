@@ -5,6 +5,7 @@ import { useCompany } from '../hooks/useCore';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import type { Company } from '../types';
 import { cn } from '@/core/utils';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 
 export const CompanySetup: React.FC = () => {
   const { t } = useTranslation();
@@ -89,7 +90,7 @@ export const CompanySetup: React.FC = () => {
           />
           <Input
             label="العملة الافتراضية"
-            value={formData?.currency || 'YER'}
+            value={formData?.currency || YER_CODE}
             disabled
           />
           <Input

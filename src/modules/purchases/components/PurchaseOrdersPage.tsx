@@ -4,7 +4,7 @@ import { printDocument } from '@/core/utils/printDocument';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
-import { Card, Button, Modal, Input, Pagination } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Pagination, Can } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -17,6 +17,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import type { PurchaseOrder } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 
 interface OrderFormLine {
   productId: string;
@@ -60,7 +61,7 @@ export const PurchaseOrdersPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -259,9 +260,11 @@ export const PurchaseOrdersPage: React.FC = () => {
           <option value="invoiced">مفوتر</option>
           <option value="cancelled">ملغي</option>
         </select>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-          {t('purchases.order.create')}
-        </Button>
+        <Can action="create" module="purchases">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+            {t('purchases.order.create')}
+          </Button>
+        </Can>
       </div>
     </div>
 

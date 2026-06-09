@@ -69,11 +69,11 @@ describe('PermissionGate', () => {
     expect(store.hasPermission('settings.roles')).toBe(true);
   });
 
-  it('admin has all permissions except settings.roles and core.edit', () => {
+  it('admin has all permissions except core.edit', () => {
     const store = useAuthStore.getState();
     setUser(makeUser('admin'));
     expect(store.hasPermission('sales.create')).toBe(true);
-    expect(store.hasPermission('settings.roles')).toBe(false);
+    expect(store.hasPermission('settings.roles')).toBe(true);
     expect(store.hasPermission('core.edit')).toBe(false);
   });
 

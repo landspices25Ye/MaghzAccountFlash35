@@ -6,7 +6,7 @@ export function formatNumber(value: number | string, locale: string = DEFAULT_LO
   return new Intl.NumberFormat(locale).format(num);
 }
 
-export function formatCurrencyValue(value: number | string, currency = 'YER', locale: string = DEFAULT_LOCALE): string {
+export function formatCurrencyValue(value: number | string, currency: string = 'YER', locale: string = DEFAULT_LOCALE): string {
   const num = typeof value === 'string' ? Number(value) : value;
   if (isNaN(num)) return '-';
   return new Intl.NumberFormat(locale, {

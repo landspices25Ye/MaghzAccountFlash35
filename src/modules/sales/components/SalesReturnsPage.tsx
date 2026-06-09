@@ -11,6 +11,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
@@ -289,7 +290,7 @@ export const SalesReturnsPage: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.total') || 'عدد المردودات'}</p><p className="text-2xl font-bold text-slate-900 dark:text-slate-50">{total}</p></div></Card>
-        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || 'YER'}</span></p></div></Card>
+        <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.postedTotal') || 'إجمالي المرحّل'}</p><p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{formatCurrency(stats.total)} <span className="text-sm font-normal text-slate-500">{activeCompany?.currency || YER_CODE}</span></p></div></Card>
         <Card><div className="p-4"><p className="text-sm text-slate-500 dark:text-slate-400">{t('sales.return.drafts') || 'مسودات'}</p><p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{stats.draftCount}</p></div></Card>
       </div>
 

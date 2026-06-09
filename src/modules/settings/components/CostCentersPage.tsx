@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Target, Plus, Pencil, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input } from '@/core/ui/components';
+import { Card, Button, Table, Modal, Input, Can } from '@/core/ui/components';
 import { useCostCenters } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import type { CostCenter } from '@/core/types';
 
 export const CostCentersPage: React.FC = () => {
+  const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { centers, isLoading, create, update } = useCostCenters(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -36,13 +38,20 @@ export const CostCentersPage: React.FC = () => {
     setIsOpen(true);
   };
 
+  const typeLabel = (type: string) => {
+    if (type === 'department') return t('settings.costCenters.typeDepartment');
+    if (type === 'project') return t('settings.costCenters.typeProject');
+    if (type === 'branch') return t('settings.costCenters.typeBranch');
+    return type;
+  };
+
   const columns = [
-    { key: 'nameAr', header: 'الاسم', render: (row: CostCenter) => <span className="font-medium">{row.nameAr}</span> },
-    { key: 'nameEn', header: 'الإنجليزي', render: (row: CostCenter) => <span className="text-slate-500 text-sm">{row.nameEn}</span> },
-    { key: 'code', header: 'الرمز', width: '100px', render: (row: CostCenter) => <span className="font-mono text-xs">{row.code}</span> },
-    { key: 'type', header: 'النوع', width: '120px', render: (row: CostCenter) => <span>{row.type === 'department' ? 'قسم' : row.type === 'project' ? 'مشروع' : row.type === 'branch' ? 'فرع' : row.type}</span> },
-    { key: 'budgetAmount', header: 'الميزانية', width: '140px', align: 'right' as const, render: (row: CostCenter) => <span>{formatCurrency(row.budgetAmount)}</span> },
-    { key: 'isActive', header: 'نشط', width: '80px', render: (row: CostCenter) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? 'نعم' : 'لا'}</span> },
+    { key: 'nameAr', header: t('settings.costCenters.name'), render: (row: CostCenter) => <span className="font-medium">{row.nameAr}</span> },
+    { key: 'nameEn', header: t('settings.costCenters.nameEn'), render: (row: CostCenter) => <span className="text-slate-500 text-sm">{row.nameEn}</span> },
+    { key: 'code', header: t('settings.costCenters.code'), width: '100px', render: (row: CostCenter) => <span className="font-mono text-xs">{row.code}</span> },
+    { key: 'type', header: t('settings.costCenters.type'), width: '120px', render: (row: CostCenter) => <span>{typeLabel(row.type)}</span> },
+    { key: 'budgetAmount', header: t('settings.costCenters.budget'), width: '140px', align: 'right' as const, render: (row: CostCenter) => <span>{formatCurrency(row.budgetAmount)}</span> },
+    { key: 'isActive', header: t('settings.common.active'), width: '80px', render: (row: CostCenter) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? t('settings.common.yes') : t('settings.common.no')}</span> },
     { key: 'actions', header: '', width: '100px', render: (row: CostCenter) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
@@ -56,37 +65,39 @@ export const CostCentersPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Target size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">مراكز التكلفة</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">إدارة الأقسام والمشاريع والفروع كمراكز تكلفة</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.costCenters.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('settings.costCenters.subtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>مركز جديد</Button>
+        <Can action="create" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { reset(); setIsOpen(true); }}>{t('settings.costCenters.new')}</Button>
+        </Can>
       </div>
 
       <Card>
-        <Table<CostCenter> data={centers} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage="لا توجد مراكز تكلفة" />
+        <Table<CostCenter> data={centers} columns={columns} keyExtractor={(row, i) => row.id || String(i)} isLoading={isLoading} emptyMessage={t('settings.costCenters.empty')} />
       </Card>
 
       {isOpen && (
-        <Modal isOpen={isOpen} title={editingId ? 'تعديل المركز' : 'مركز تكلفة جديد'} onClose={() => setIsOpen(false)} size="md">
+        <Modal isOpen={isOpen} title={editingId ? t('settings.costCenters.editTitle') : t('settings.costCenters.newTitle')} onClose={() => setIsOpen(false)} size="md">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input label="الاسم (عربي) *" value={form.nameAr || ''} onChange={e => setForm({ ...form, nameAr: e.target.value })} />
-              <Input label="الاسم (إنجليزي)" value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
-              <Input label="الرمز" value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
+              <Input label={t('settings.costCenters.nameAr')} value={form.nameAr || ''} onChange={e => setForm({ ...form, nameAr: e.target.value })} />
+              <Input label={t('settings.costCenters.nameEn')} value={form.nameEn || ''} onChange={e => setForm({ ...form, nameEn: e.target.value })} />
+              <Input label={t('settings.costCenters.code')} value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value })} />
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">النوع</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.costCenters.type')}</label>
                 <select className="form-control" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-                  <option value="department">قسم</option>
-                  <option value="project">مشروع</option>
-                  <option value="branch">فرع</option>
+                  <option value="department">{t('settings.costCenters.typeDepartment')}</option>
+                  <option value="project">{t('settings.costCenters.typeProject')}</option>
+                  <option value="branch">{t('settings.costCenters.typeBranch')}</option>
                 </select>
               </div>
-              <Input label="الميزانية" type="number" value={String(form.budgetAmount || 0)} onChange={e => setForm({ ...form, budgetAmount: Number(e.target.value) })} />
+              <Input label={t('settings.costCenters.budget')} type="number" value={String(form.budgetAmount || 0)} onChange={e => setForm({ ...form, budgetAmount: Number(e.target.value) })} />
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">مركز التكلفة الأب</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.costCenters.parentCenter')}</label>
                 <select className="form-control" value={form.parentId || ''} onChange={e => setForm({ ...form, parentId: e.target.value || undefined })}>
-                  <option value="">بدون (مركز رئيسي)</option>
+                  <option value="">{t('settings.costCenters.noParent')}</option>
                   {centers.filter(c => c.id !== editingId).map(c => (
                     <option key={c.id} value={c.id}>{c.nameAr} ({c.code})</option>
                   ))}
@@ -94,8 +105,8 @@ export const CostCentersPage: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setIsOpen(false)}>إلغاء</Button>
-              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>حفظ</Button>
+              <Button variant="secondary" onClick={() => setIsOpen(false)}>{t('settings.common.cancel')}</Button>
+              <Button onClick={handleSave} leftIcon={<CheckSquare size={16} />}>{t('settings.common.save')}</Button>
             </div>
           </div>
         </Modal>

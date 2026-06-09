@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowRightLeft, Plus, Printer, Download, CheckSquare } from 'lucide-react';
-import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
+import { Card, Button, Modal, Input, Table, Badge, Can } from '@/core/ui/components';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
@@ -10,7 +10,6 @@ import { Pagination } from '@/core/ui/components/Pagination';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
-// import { printDocument } from '@/core/utils/printDocument';
 import type { InventoryTransaction } from '../types';
 
 const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
@@ -168,9 +167,11 @@ ${filtered.map(tx => `<tr>
           <Button variant="secondary" size="sm" leftIcon={<Download size={16} />} onClick={handleExportPDF}>
             PDF
           </Button>
-          <Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => setIsOpen(true)}>
-            {t('inventory.newTransaction')}
-          </Button>
+          <Can action="create" module="inventory">
+            <Button variant="primary" size="sm" leftIcon={<Plus size={16} />} onClick={() => setIsOpen(true)}>
+              {t('inventory.newTransaction')}
+            </Button>
+          </Can>
         </div>
       </div>
 

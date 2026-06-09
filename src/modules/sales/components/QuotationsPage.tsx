@@ -13,6 +13,7 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { printDocument } from '@/core/utils/printDocument';
@@ -56,7 +57,7 @@ export const QuotationsPage: React.FC = () => {
   } = useQuotationsPaginated(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);

@@ -13,6 +13,7 @@ import { useSettings } from '@/core/utils/useSettings';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { cn } from '@/core/utils';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useUserMap } from '@/core/utils/useUserMap';
 import type { Transaction, JournalEntry as JournalEntryType } from '../types';
 
@@ -34,7 +35,7 @@ export const JournalEntriesPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { settings } = useSettings(activeCompany?.id || '');
   const { getUserName } = useUserMap();
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
 
   const [isModalOpen, setIsModalOpen] = useState(false);

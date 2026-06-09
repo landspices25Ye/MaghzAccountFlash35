@@ -84,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (user.role === 'super_admin') return true;
 
     if (user.role === 'admin') {
-      const restricted: string[] = ['settings.roles', 'core.edit'];
+      const restricted: string[] = ['core.edit'];
       return !restricted.includes(permission);
     }
 

@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Target, CheckSquare } from 'lucide-react';
+import { Target, CheckSquare, Activity } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const crmMenu = [
   { id: 'leads', label: 'العملاء المحتملين', icon: Target, path: '/crm/leads' },
   { id: 'opportunities', label: 'الفرص', icon: CheckSquare, path: '/crm/opportunities' },
   { id: 'tasks', label: 'المهام', icon: CheckSquare, path: '/crm/tasks' },
+  { id: 'activities', label: 'النشاطات', icon: Activity, path: '/crm/activities' },
 ];
 
 export const CrmPage: React.FC = () => {

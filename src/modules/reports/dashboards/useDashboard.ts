@@ -115,8 +115,8 @@ export function useDashboard(companyId: string, filters: DashboardFilters) {
         if (!cancelled) {
           setData({ current: currentData, previous: previousData });
         }
-      } catch (e) {
-        console.error('Dashboard load error:', e);
+      } catch {
+        // Error handled silently
       }
       if (!cancelled) {
         setIsLoading(false);

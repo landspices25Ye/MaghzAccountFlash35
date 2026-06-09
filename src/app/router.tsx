@@ -61,16 +61,20 @@ const PurchaseReturnsPage = React.lazy(() => import('@/modules/purchases/compone
 // Manufacturing sub-pages
 const WorkOrdersPage = React.lazy(() => import('@/modules/manufacturing/components/WorkOrdersPage'));
 const BomPage = React.lazy(() => import('@/modules/manufacturing/components/BomPage'));
+const ProductionCostReport = React.lazy(() => import('@/modules/manufacturing/components/ProductionCostReport'));
 
 // HR sub-pages
 const EmployeesPage = React.lazy(() => import('@/modules/hr/components/EmployeesPage'));
 const AttendancePage = React.lazy(() => import('@/modules/hr/components/AttendancePage'));
 const PayrollPage = React.lazy(() => import('@/modules/hr/components/PayrollPage'));
+const LeavesPage = React.lazy(() => import('@/modules/hr/components/LeavesPage'));
+const EndOfServicePage = React.lazy(() => import('@/modules/hr/components/EndOfServicePage'));
 
 // CRM sub-pages
 const LeadsPage = React.lazy(() => import('@/modules/crm/components/LeadsPage'));
 const OpportunitiesPage = React.lazy(() => import('@/modules/crm/components/OpportunitiesPage'));
 const TasksPage = React.lazy(() => import('@/modules/crm/components/TasksPage'));
+const ActivitiesPage = React.lazy(() => import('@/modules/crm/components/ActivitiesPage'));
 
 // Settings with nested routes
 const SettingsLayout = React.lazy(() => import('@/modules/core/components/SettingsPage'));
@@ -182,6 +186,7 @@ export const AppRouter: React.FC = () => {
             <Route path="/manufacturing" element={withSuspense(ManufacturingPage)}>
               <Route path="work-orders" element={withSuspense(WorkOrdersPage)} />
               <Route path="bom" element={withSuspense(BomPage)} />
+              <Route path="cost-report" element={withSuspense(ProductionCostReport)} />
             </Route>
             
             {/* HR with nested routes */}
@@ -189,6 +194,8 @@ export const AppRouter: React.FC = () => {
               <Route path="employees" element={withSuspense(EmployeesPage)} />
               <Route path="attendance" element={withSuspense(AttendancePage)} />
               <Route path="payroll" element={withSuspense(PayrollPage)} />
+              <Route path="leaves" element={withSuspense(LeavesPage)} />
+              <Route path="end-of-service" element={withSuspense(EndOfServicePage)} />
             </Route>
             
             {/* CRM with nested routes */}
@@ -196,6 +203,7 @@ export const AppRouter: React.FC = () => {
               <Route path="leads" element={withSuspense(LeadsPage)} />
               <Route path="opportunities" element={withSuspense(OpportunitiesPage)} />
               <Route path="tasks" element={withSuspense(TasksPage)} />
+              <Route path="activities" element={withSuspense(ActivitiesPage)} />
             </Route>
             
             {/* Reports hub & analytical reports */}

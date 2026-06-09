@@ -11,6 +11,7 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useCurrencies } from '@/core/utils/useCurrencyDisplay';
 import { buildCurrencyBreakdown, type CurrencyBreakdownResult } from '@/core/utils/currencyBreakdown';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 
 interface SalesLine {
   month: string;
@@ -104,7 +105,7 @@ export const SalesAnalysisReport: React.FC = () => {
             invoiceId: invId,
             date: String(r.date || ''),
             customerName: String(r.customer_name || 'غير معروف'),
-            currencyCode: String(r.currency_code || 'YER'),
+            currencyCode: String(r.currency_code || YER_CODE),
             lines: [],
           };
           invoiceMap.set(invId, entry);

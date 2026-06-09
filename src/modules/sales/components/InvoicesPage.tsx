@@ -15,6 +15,7 @@ import { useSettings } from '@/core/utils/useSettings';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useUserMap } from '@/core/utils/useUserMap';
 import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { postSalesInvoice } from '@/core/utils/journalEntryGenerator';
@@ -65,7 +66,7 @@ export const InvoicesPage: React.FC = () => {
   const { formatCurrency, formatDate } = useFormatters(activeCompany?.id || '');
   const { getUserName } = useUserMap();
   const { currencies, defaultCurrency } = useCurrencyDisplay();
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
 
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -83,13 +84,13 @@ export const InvoicesPage: React.FC = () => {
   }), [settings?.vatRate]);
 
   const [header, setHeader] = useState({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
-  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || 'YER');
+  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || YER_CODE);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [lines, setLines] = useState<InvoiceLineForm[]>([defaultLine()]);
 
   const resetForm = useCallback(() => {
     setHeader({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', notes: '' });
-    setCurrencyCode(defaultCurrency?.code || 'YER');
+    setCurrencyCode(defaultCurrency?.code || YER_CODE);
     setExchangeRate(1);
     setLines([defaultLine()]);
     setEditingId(null);
@@ -97,7 +98,7 @@ export const InvoicesPage: React.FC = () => {
 
   const handleCurrencyChange = useCallback((code: string | null) => {
     if (!code) {
-      setCurrencyCode('YER');
+      setCurrencyCode(YER_CODE);
       setExchangeRate(1);
       return;
     }
@@ -127,7 +128,7 @@ export const InvoicesPage: React.FC = () => {
       dueDate: invoice.dueDate || '',
       notes: invoice.notes || '',
     });
-    setCurrencyCode(invoice.currencyCode || 'YER');
+    setCurrencyCode(invoice.currencyCode || YER_CODE);
     setExchangeRate(invoice.exchangeRate ?? 1);
     setLines(invoice.lines.map(l => ({
       productId: l.productId,

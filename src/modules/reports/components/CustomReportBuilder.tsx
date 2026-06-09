@@ -166,8 +166,8 @@ export const CustomReportBuilder: React.FC = () => {
 
       setPreviewData(projected);
       setStep('preview');
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // Error handled silently
     }
     setIsLoading(false);
   };

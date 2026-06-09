@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Package, Plus, Upload, Camera, X } from 'lucide-react';
-import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination, Can } from '@/core/ui/components';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -188,8 +188,7 @@ export const ProductsPage: React.FC = () => {
           barcodeScanner.stopCamera();
         }
       );
-    } catch (error) {
-      console.error('Barcode scan error:', error);
+    } catch {
       setScanning(false);
     }
   }, []);
@@ -273,9 +272,11 @@ export const ProductsPage: React.FC = () => {
               <option key={t.id} value={t.id}>{t.nameAr}</option>
             ))}
           </select>
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>
-            {t('inventory.newProduct')}
-          </Button>
+          <Can action="create" module="inventory">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>
+              {t('inventory.newProduct')}
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -285,7 +286,7 @@ export const ProductsPage: React.FC = () => {
             icon="search"
             title="لا توجد منتجات"
             description="أضف منتجات جديدة للبدء"
-            action={<Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newProduct')}</Button>}
+            action={<Can action="create" module="inventory"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={handleOpenCreate}>{t('inventory.newProduct')}</Button></Can>}
           />
         ) : (
           <Table<Product>

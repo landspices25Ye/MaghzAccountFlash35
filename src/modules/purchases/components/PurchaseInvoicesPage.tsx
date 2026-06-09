@@ -20,6 +20,7 @@ import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { postPurchaseInvoice } from '@/core/utils/journalEntryGenerator';
 import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
+import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { PurchaseInvoice } from '../types';
@@ -87,13 +88,13 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const { getNextNumber } = useDocumentSequence();
   const { getUserName } = useUserMap();
   const { currencies, defaultCurrency } = useCurrencyDisplay();
-  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || 'YER';
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<InvoiceForm>(initialForm());
-  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || 'YER');
+  const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrency?.code || YER_CODE);
   const [exchangeRate, setExchangeRate] = useState<number>(1);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmPost, setConfirmPost] = useState<string | null>(null);
@@ -102,7 +103,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
   const handleCurrencyChange = useCallback((code: string | null) => {
     if (!code) {
-      setCurrencyCode('YER');
+      setCurrencyCode(YER_CODE);
       setExchangeRate(1);
       return;
     }
@@ -162,7 +163,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
   const openEdit = useCallback((invoice: PurchaseInvoice) => {
     setEditingId(invoice.id);
-    setCurrencyCode(invoice.currencyCode || 'YER');
+    setCurrencyCode(invoice.currencyCode || YER_CODE);
     setExchangeRate(invoice.exchangeRate ?? 1);
     setForm({
       supplierId: invoice.supplierId,

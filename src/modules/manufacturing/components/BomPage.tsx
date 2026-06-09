@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { GitBranch, Plus, Printer, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Pagination } from '@/core/ui/components/Pagination';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
+import { ProductSelect } from '@/core/ui/components/smart/fields/ProductSelect';
 import { useAppStore } from '@/core/store';
-import { useBoms } from '../hooks/useManufacturing';
+import { useBomsPaginated } from '../hooks/useManufacturing';
 import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
 import type { BOM, BOMLine } from '../types';
@@ -22,7 +24,7 @@ interface BomFormLine {
 export const BomPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { boms, isLoading, create, update, remove } = useBoms(companyId);
+  const { items: boms, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useBomsPaginated(companyId);
   const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,7 +33,7 @@ export const BomPage: React.FC = () => {
   const [viewing, setViewing] = useState<{ bom: BOM; lines: BOMLine[] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({ productId: '', productName: '', version: '1.0', isActive: true });
+  const [formData, setFormData] = useState({ productId: '', productName: '', version: '1.0', isActive: true, notes: '' });
   const [lines, setLines] = useState<BomFormLine[]>([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
 
   const estimatedTotal = useMemo(() =>
@@ -39,7 +41,7 @@ export const BomPage: React.FC = () => {
   [lines]);
 
   const resetForm = () => {
-    setFormData({ productId: '', productName: '', version: '1.0', isActive: true });
+    setFormData({ productId: '', productName: '', version: '1.0', isActive: true, notes: '' });
     setLines([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
     setEditing(null);
   };
@@ -51,7 +53,7 @@ export const BomPage: React.FC = () => {
 
   const openEdit = async (bom: BOM) => {
     setEditing(bom);
-    setFormData({ productId: bom.productId, productName: bom.productName || '', version: bom.version, isActive: bom.isActive });
+    setFormData({ productId: bom.productId, productName: bom.productName || '', version: bom.version, isActive: bom.isActive, notes: bom.notes || '' });
     const res = await manufacturingApi.getBomById(bom.id, companyId);
     if (res.success && res.data) {
       setLines(res.data.lines.map((l) => ({
@@ -82,6 +84,7 @@ export const BomPage: React.FC = () => {
       version: formData.version,
       isActive: formData.isActive,
       totalCost: estimatedTotal,
+      notes: formData.notes || undefined,
       lines: lines.map((l) => ({ materialId: l.materialId, quantity: l.quantity, unitCost: l.unitCost })),
     };
     if (editing) {
@@ -118,7 +121,7 @@ export const BomPage: React.FC = () => {
   const columns = [
     { key: 'productName', header: 'المنتج' },
     { key: 'version', header: 'الإصدار', width: '100px' },
-    { key: 'lines', header: 'المواد', width: '100px', render: (row: BOM) => `${boms.find((b) => b.id === row.id)?.id ? '—' : '—'}` },
+    { key: 'lines', header: 'المواد', width: '100px', render: (_row: BOM) => _row.linesCount !== undefined ? `${_row.linesCount} مادة` : '—' },
     { key: 'totalCost', header: 'التكلفة', align: 'right' as const, render: (row: BOM) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
     { key: 'isActive', header: 'الحالة', width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: BOM) => (
@@ -158,12 +161,15 @@ export const BomPage: React.FC = () => {
             </Can>
           } />
         ) : (
-          <Table<BOM>
-            data={boms}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage="لا توجد BOMs"
-          />
+          <>
+            <Table<BOM>
+              data={boms}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage="لا توجد BOMs"
+            />
+            <Pagination page={page} pageSize={pageSize} total={total} onPageChange={goToPage} onPageSizeChange={changePageSize} />
+          </>
         )}
       </Card>
 
@@ -182,15 +188,18 @@ export const BomPage: React.FC = () => {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="معرف المنتج" value={formData.productId} onChange={(e) => setFormData((prev) => ({ ...prev, productId: e.target.value }))} />
-            <Input label="اسم المنتج" value={formData.productName} onChange={(e) => setFormData((prev) => ({ ...prev, productName: e.target.value }))} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">المنتج النهائي</label>
+              <ProductSelect companyId={companyId} value={formData.productId} onChange={(v) => setFormData((prev) => ({ ...prev, productId: typeof v === 'string' ? v : '' }))} placeholder="اختر المنتج النهائي..." />
+            </div>
+            <Input label="الإصدار" value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="الإصدار" value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
             <div className="flex items-center gap-2 pt-6">
               <input type="checkbox" id="isActive" checked={formData.isActive} onChange={(e) => setFormData((prev) => ({ ...prev, isActive: e.target.checked }))} className="rounded" />
               <label htmlFor="isActive" className="text-sm text-slate-700 dark:text-slate-200">نشط</label>
             </div>
+            <Input label="ملاحظات" value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} placeholder="ملاحظات اختيارية..." />
           </div>
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
@@ -199,7 +208,7 @@ export const BomPage: React.FC = () => {
               {lines.map((line, idx) => (
                 <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-4">
-                    <Input label={idx === 0 ? 'معرف المادة' : ''} value={line.materialId} onChange={(e) => updateLine(idx, 'materialId', e.target.value)} />
+                    <ProductSelect companyId={companyId} value={line.materialId} onChange={(v) => updateLine(idx, 'materialId', typeof v === 'string' ? v : '')} placeholder={idx === 0 ? 'اختر المادة...' : ''} />
                   </div>
                   <div className="col-span-3">
                     <Input label={idx === 0 ? 'اسم المادة' : ''} value={line.materialName} onChange={(e) => updateLine(idx, 'materialName', e.target.value)} />

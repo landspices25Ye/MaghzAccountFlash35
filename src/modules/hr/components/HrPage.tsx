@@ -1,16 +1,20 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Users, UserCheck, Banknote } from 'lucide-react';
+import { Users, UserCheck, Banknote, Calendar, LogOut } from 'lucide-react';
 import { cn } from '@/core/utils';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
 const hrMenu = [
-  { id: 'employees', label: 'الموظفين', icon: Users, path: '/hr/employees' },
-  { id: 'attendance', label: 'الحضور', icon: UserCheck, path: '/hr/attendance' },
-  { id: 'payroll', label: 'مسير الرواتب', icon: Banknote, path: '/hr/payroll' },
+  { id: 'employees', labelKey: 'hr.page.menu.employees', icon: Users, path: '/hr/employees' },
+  { id: 'attendance', labelKey: 'hr.page.menu.attendance', icon: UserCheck, path: '/hr/attendance' },
+  { id: 'payroll', labelKey: 'hr.page.menu.payroll', icon: Banknote, path: '/hr/payroll' },
+  { id: 'leaves', labelKey: 'hr.page.menu.leaves', icon: Calendar, path: '/hr/leaves' },
+  { id: 'end-of-service', labelKey: 'hr.page.menu.endOfService', icon: LogOut, path: '/hr/end-of-service' },
 ];
 
 export const HrPage: React.FC = () => {
   const location = useLocation();
+  const { t } = useTranslation();
   const isRoot = location.pathname === '/hr';
 
   return (
@@ -18,8 +22,8 @@ export const HrPage: React.FC = () => {
       {isRoot ? (
         <>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">الموظفين</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">إدارة الموظفين والرواتب والحضور</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('hr.page.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('hr.page.subtitle')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {hrMenu.map(item => {
@@ -30,7 +34,7 @@ export const HrPage: React.FC = () => {
                     <Icon size={24} className="text-primary-600 dark:text-primary-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-50">{item.label}</h3>
+                    <h3 className="font-semibold text-slate-900 dark:text-slate-50">{t(item.labelKey)}</h3>
                   </div>
                 </Link>
               );
@@ -45,7 +49,7 @@ export const HrPage: React.FC = () => {
               const isActive = location.pathname === item.path;
               return (
                 <Link key={item.id} to={item.path} className={cn('flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap', isActive ? 'bg-primary-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800')}>
-                  <Icon size={16} />{item.label}
+                  <Icon size={16} />{t(item.labelKey)}
                 </Link>
               );
             })}

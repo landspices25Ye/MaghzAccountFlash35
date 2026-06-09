@@ -1,11 +1,12 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { GitBranch, Wrench } from 'lucide-react';
+import { GitBranch, Wrench, BarChart3 } from 'lucide-react';
 import { cn } from '@/core/utils';
 
 const mfgMenu = [
   { id: 'work-orders', label: 'أوامر التشغيل', icon: Wrench, path: '/manufacturing/work-orders' },
   { id: 'bom', label: 'فاتير المواد', icon: GitBranch, path: '/manufacturing/bom' },
+  { id: 'cost-report', label: 'تحليل التكاليف', icon: BarChart3, path: '/manufacturing/cost-report' },
 ];
 
 export const ManufacturingPage: React.FC = () => {
