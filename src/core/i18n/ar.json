@@ -724,7 +724,7 @@
     "materialVariance": "انحراف المواد",
     "planned": "مخطط",
     "actual": "فعلي",
-    "variance": "انحراف",
+    "variance": "الانحراف",
     "noWorkOrders": "لا توجد أوامر تشغيل لإنشاء التقرير",
     "page": {
       "title": "التصنيع",
@@ -757,15 +757,27 @@
       "addMaterial": "إضافة مادة",
       "varianceReport": "تقرير التباين"
     },
-    "status": {
-      "planned": "مخطط",
-      "inProgress": "قيد التنفيذ",
-      "completed": "مكتمل",
-      "cancelled": "ملغى",
-      "startExecution": "بدء التنفيذ",
-      "complete": "إكمال",
-      "actual": "فعلي"
-    }
+    "status": "الحالة",
+    "orderNumber": "رقم الأمر",
+    "product": "المنتج",
+    "plannedQuantity": "الكمية المخططة",
+    "actualQuantity": "الكمية الفعلية",
+    "completion": "الإنجاز",
+    "plannedCost": "التكلفة المخططة",
+    "actualCost": "التكلفة الفعلية",
+    "material": "المادة",
+    "qtyVariance": "انحراف الكمية",
+    "costVarianceLabel": "انحراف التكلفة",
+    "plannedQuantityShort": "المخططة",
+    "actualQuantityShort": "الفعلية",
+    "plannedCostShort": "مخطط",
+    "actualCostShort": "فعلي",
+    "varianceShort": "انحراف",
+    "costComparisonDesc": "تحليل مقارن للتكاليف المخططة والفعلية",
+    "workOrderStatus": "حالة أوامر التشغيل",
+    "in_progress": "قيد التنفيذ",
+    "completed": "مكتمل",
+    "cancelled": "ملغي"
   },
   "hr": {
     "employees": "الموظفين",
@@ -1620,5 +1632,9 @@
     "lightMode": "الوضع الفاتح",
     "darkMode": "الوضع الداكن",
     "logout": "تسجيل الخروج"
+  },
+  "common": {
+    "loading": "جارٍ التحميل...",
+    "noData": "لا توجد بيانات"
   }
 }

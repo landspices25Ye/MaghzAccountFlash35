@@ -757,15 +757,27 @@
       "addMaterial": "Add Material",
       "varianceReport": "Variance Report"
     },
-    "status": {
-      "planned": "Planned",
-      "inProgress": "In Progress",
-      "completed": "Completed",
-      "cancelled": "Cancelled",
-      "startExecution": "Start Execution",
-      "complete": "Complete",
-      "actual": "Actual"
-    }
+    "status": "Status",
+    "orderNumber": "Order No.",
+    "product": "Product",
+    "plannedQuantity": "Planned Qty",
+    "actualQuantity": "Actual Qty",
+    "completion": "Completion",
+    "plannedCost": "Planned Cost",
+    "actualCost": "Actual Cost",
+    "material": "Material",
+    "qtyVariance": "Qty Variance",
+    "costVarianceLabel": "Cost Variance",
+    "plannedQuantityShort": "Planned",
+    "actualQuantityShort": "Actual",
+    "plannedCostShort": "Planned",
+    "actualCostShort": "Actual",
+    "varianceShort": "Variance",
+    "costComparisonDesc": "Comparative analysis of planned vs actual costs",
+    "workOrderStatus": "Work Order Status",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
   },
   "hr": {
     "employees": "Employees",
@@ -1620,5 +1632,9 @@
     "lightMode": "Light Mode",
     "darkMode": "Dark Mode",
     "logout": "Logout"
+  },
+  "common": {
+    "loading": "Loading...",
+    "noData": "No data available"
   }
 }

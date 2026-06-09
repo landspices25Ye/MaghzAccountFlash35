@@ -140,20 +140,20 @@ export const ProductionCostReport: React.FC = () => {
   ].filter((d) => d.value > 0);
 
   const woColumns = [
-    { key: 'orderNumber', header: 'رقم الأمر' },
-    { key: 'productName', header: 'المنتج' },
-    { key: 'status', header: 'الحالة', render: (row: WorkOrderCostRow) => {
+    { key: 'orderNumber', header: t('manufacturing.orderNumber') },
+    { key: 'productName', header: t('manufacturing.product') },
+    { key: 'status', header: t('manufacturing.status'), render: (row: WorkOrderCostRow) => {
       const colors: Record<string, string> = {
         planned: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
         in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
         completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
         cancelled: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
       };
-      return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[row.status] || ''}`}>{row.status}</span>;
+      return <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[row.status] || ''}`}>{t(`manufacturing.${row.status}`)}</span>;
     }},
-    { key: 'quantity', header: 'الكمية المخططة', align: 'right' as const },
-    { key: 'producedQuantity', header: 'الكمية الفعلية', align: 'right' as const },
-    { key: 'completionPct', header: 'الإنجاز', align: 'right' as const, render: (row: WorkOrderCostRow) => (
+    { key: 'quantity', header: t('manufacturing.plannedQuantity'), align: 'right' as const },
+    { key: 'producedQuantity', header: t('manufacturing.actualQuantity'), align: 'right' as const },
+    { key: 'completionPct', header: t('manufacturing.completion'), align: 'right' as const, render: (row: WorkOrderCostRow) => (
       <div className="flex items-center gap-2">
         <div className="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
           <div className="h-2 rounded-full bg-primary-500" style={{ width: `${Math.min(row.completionPct, 100)}%` }} />
@@ -161,9 +161,9 @@ export const ProductionCostReport: React.FC = () => {
         <span className="text-xs">{row.completionPct}%</span>
       </div>
     )},
-    { key: 'plannedCost', header: 'التكلفة المخططة', align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.plannedCost) },
-    { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.actualCost) },
-    { key: 'variance', header: 'الانحراف', align: 'right' as const, render: (row: WorkOrderCostRow) => (
+    { key: 'plannedCost', header: t('manufacturing.plannedCost'), align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.plannedCost) },
+    { key: 'actualCost', header: t('manufacturing.actualCost'), align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.actualCost) },
+    { key: 'variance', header: t('manufacturing.variance'), align: 'right' as const, render: (row: WorkOrderCostRow) => (
       <span className={row.variance > 0 ? 'text-rose-600 dark:text-rose-400' : row.variance < 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
         {row.variance > 0 ? '+' : ''}{formatCurrency(row.variance)}
       </span>
@@ -171,17 +171,17 @@ export const ProductionCostReport: React.FC = () => {
   ];
 
   const matColumns = [
-    { key: 'materialName', header: 'المادة' },
-    { key: 'plannedQty', header: 'الكمية المخططة', align: 'right' as const },
-    { key: 'actualQty', header: 'الكمية الفعلية', align: 'right' as const },
-    { key: 'qtyVariance', header: 'انحراف الكمية', align: 'right' as const, render: (row: MaterialVarianceRow) => (
+    { key: 'materialName', header: t('manufacturing.material') },
+    { key: 'plannedQty', header: t('manufacturing.plannedQuantity'), align: 'right' as const },
+    { key: 'actualQty', header: t('manufacturing.actualQuantity'), align: 'right' as const },
+    { key: 'qtyVariance', header: t('manufacturing.qtyVariance'), align: 'right' as const, render: (row: MaterialVarianceRow) => (
       <span className={row.qtyVariance > 0 ? 'text-rose-600 dark:text-rose-400' : row.qtyVariance < 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
         {row.qtyVariance > 0 ? '+' : ''}{row.qtyVariance.toFixed(2)}
       </span>
     )},
-    { key: 'plannedCost', header: 'التكلفة المخططة', align: 'right' as const, render: (row: MaterialVarianceRow) => formatCurrency(row.plannedCost) },
-    { key: 'actualCost', header: 'التكلفة الفعلية', align: 'right' as const, render: (row: MaterialVarianceRow) => formatCurrency(row.actualCost) },
-    { key: 'costVariance', header: 'انحراف التكلفة', align: 'right' as const, render: (row: MaterialVarianceRow) => (
+    { key: 'plannedCost', header: t('manufacturing.plannedCost'), align: 'right' as const, render: (row: MaterialVarianceRow) => formatCurrency(row.plannedCost) },
+    { key: 'actualCost', header: t('manufacturing.actualCost'), align: 'right' as const, render: (row: MaterialVarianceRow) => formatCurrency(row.actualCost) },
+    { key: 'costVariance', header: t('manufacturing.costVarianceLabel'), align: 'right' as const, render: (row: MaterialVarianceRow) => (
       <span className={row.costVariance > 0 ? 'text-rose-600 dark:text-rose-400' : row.costVariance < 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
         {row.costVariance > 0 ? '+' : ''}{formatCurrency(row.costVariance)}
       </span>
@@ -190,28 +190,28 @@ export const ProductionCostReport: React.FC = () => {
 
   const handleExportExcel = async () => {
     await exportToExcel(rows, [
-      { key: 'orderNumber', header: 'رقم الأمر', width: 15 },
-      { key: 'productName', header: 'المنتج', width: 20 },
-      { key: 'status', header: 'الحالة', width: 12 },
-      { key: 'quantity', header: 'الكمية المخططة', width: 15 },
-      { key: 'producedQuantity', header: 'الكمية الفعلية', width: 15 },
-      { key: 'completionPct', header: 'نسبة الإنجاز', width: 12 },
-      { key: 'plannedCost', header: 'التكلفة المخططة', width: 15 },
-      { key: 'actualCost', header: 'التكلفة الفعلية', width: 15 },
-      { key: 'variance', header: 'الانحراف', width: 15 },
+      { key: 'orderNumber', header: t('manufacturing.orderNumber'), width: 15 },
+      { key: 'productName', header: t('manufacturing.product'), width: 20 },
+      { key: 'status', header: t('manufacturing.status'), width: 12 },
+      { key: 'quantity', header: t('manufacturing.plannedQuantity'), width: 15 },
+      { key: 'producedQuantity', header: t('manufacturing.actualQuantity'), width: 15 },
+      { key: 'completionPct', header: t('manufacturing.completionRate'), width: 12 },
+      { key: 'plannedCost', header: t('manufacturing.plannedCost'), width: 15 },
+      { key: 'actualCost', header: t('manufacturing.actualCost'), width: 15 },
+      { key: 'variance', header: t('manufacturing.variance'), width: 15 },
     ], `production-cost-${new Date().toISOString().slice(0, 10)}`);
   };
 
   const handleExportPDF = async () => {
     await exportToPDF(rows, [
-      { key: 'orderNumber', header: 'رقم الأمر' },
-      { key: 'productName', header: 'المنتج' },
-      { key: 'status', header: 'الحالة' },
-      { key: 'quantity', header: 'المخططة' },
-      { key: 'producedQuantity', header: 'الفعلية' },
-      { key: 'plannedCost', header: 'مخطط' },
-      { key: 'actualCost', header: 'فعلي' },
-      { key: 'variance', header: 'انحراف' },
+      { key: 'orderNumber', header: t('manufacturing.orderNumber') },
+      { key: 'productName', header: t('manufacturing.product') },
+      { key: 'status', header: t('manufacturing.status') },
+      { key: 'quantity', header: t('manufacturing.plannedQuantityShort') },
+      { key: 'producedQuantity', header: t('manufacturing.actualQuantityShort') },
+      { key: 'plannedCost', header: t('manufacturing.plannedCostShort') },
+      { key: 'actualCost', header: t('manufacturing.actualCostShort') },
+      { key: 'variance', header: t('manufacturing.varianceShort') },
     ], `production-cost-${new Date().toISOString().slice(0, 10)}`, {
       title: t('manufacturing.productionCostReport'),
       rtl: true,
@@ -225,7 +225,7 @@ export const ProductionCostReport: React.FC = () => {
           <Factory size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('manufacturing.productionCostReport')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">تحليل مقارن للتكاليف المخططة والفعلية</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('manufacturing.costComparisonDesc')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export const ProductionCostReport: React.FC = () => {
       </div>
 
       {isLoading ? (
-        <div className="py-12 text-center text-slate-500">جارٍ التحميل...</div>
+        <div className="py-12 text-center text-slate-500">{t('common.loading')}</div>
       ) : rows.length === 0 ? (
         <Card>
           <div className="py-12 text-center text-slate-500">
@@ -276,12 +276,12 @@ export const ProductionCostReport: React.FC = () => {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-slate-400">لا توجد بيانات</div>
+                <div className="h-[300px] flex items-center justify-center text-slate-400">{t('common.noData')}</div>
               )}
             </Card>
 
             <Card className="p-4">
-              <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">حالة أوامر التشغيل</h3>
+              <h3 className="font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('manufacturing.workOrderStatus')}</h3>
               {statusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
@@ -295,7 +295,7 @@ export const ProductionCostReport: React.FC = () => {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-[300px] flex items-center justify-center text-slate-400">لا توجد بيانات</div>
+                <div className="h-[300px] flex items-center justify-center text-slate-400">{t('common.noData')}</div>
               )}
             </Card>
           </div>
