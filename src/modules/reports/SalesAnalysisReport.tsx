@@ -66,7 +66,7 @@ export const SalesAnalysisReport: React.FC = () => {
                 i.total_amount,
                 i.paid_amount,
                 i.currency_code,
-                c.name_ar AS customer_name,
+                c.name AS customer_name,
                 l.id AS line_id,
                 l.product_id,
                 l.quantity,
