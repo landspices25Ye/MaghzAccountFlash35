@@ -313,7 +313,7 @@ function generateBomPrintHtml(bom: BOM, lines: BOMLine[], formatCurrency: (value
   <p><strong>${t('manufacturing.form.product')}:</strong> ${bom.productName || bom.productId}</p>
   <p><strong>${t('manufacturing.form.version')}:</strong> ${bom.version}</p>
   <table><thead><tr><th>#</th><th>${t('manufacturing.bom.materialName')}</th><th>${t('manufacturing.bom.quantity')}</th><th>${t('manufacturing.bom.unitCost')}</th><th>${t('manufacturing.bom.total')}</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="total">${t('manufacturing.bom.totalCost')}: ${bom.totalCost !== undefined ? formatCurrency(bom.totalCost) : '—'} ر.ي</div>
+  <div class="total">${t('manufacturing.bom.totalCost')}: ${bom.totalCost !== undefined ? formatCurrency(bom.totalCost) : '—'} ${t('common.currencyYer')}</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printFooter')}</div>
   </div></body></html>`;
 }

@@ -276,7 +276,7 @@ function generateEosPrintHtml(item: EndOfService, formatCurrency: (value: number
   <div class="row"><span>${t('hr.eos.terminationDateDetailLabel')}</span><strong>${item.terminationDate}</strong></div>
   <div class="row"><span>${t('hr.eos.serviceYearsDetailLabel')}</span><strong>${item.serviceYears}</strong></div>
   <div class="row"><span>${t('hr.eos.lastSalaryDetailLabel')}</span><strong>${formatCurrency(item.lastSalary)}</strong></div>
-  <div class="total">${t('hr.eos.totalLabel')} ${formatCurrency(item.eosAmount)} ر.ي</div>
+  <div class="total">${t('hr.eos.totalLabel')} ${formatCurrency(item.eosAmount)} ${t('common.currencyYer')}</div>
    <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printFooter')}</div>
   </div></body></html>`;
 }

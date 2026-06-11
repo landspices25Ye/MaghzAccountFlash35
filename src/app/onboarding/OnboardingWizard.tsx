@@ -20,16 +20,19 @@ import {
 import { useOnboardingStore } from '@/core/store/onboardingStore';
 import { useAppStore } from '@/core/store';
 import { Button, Input, Card } from '@/core/ui/components';
+import { useTranslation } from '@/core/i18n/useTranslation';
 
-const steps = [
-  { id: 0, title: 'مرحباً', description: 'تهيئة نظام محاسبة المهذب' },
-  { id: 1, title: 'قاعدة البيانات', description: 'إعداد اتصال PostgreSQL' },
-  { id: 2, title: 'بيانات الشركة', description: 'إعداد معلومات المنشأة' },
-  { id: 3, title: 'البيانات الأولية', description: 'تغذية البيانات الافتراضية' },
-  { id: 4, title: 'الإنجاز', description: 'الانتهاء من التهيئة' },
+const getSteps = (t: (key: string) => string) => [
+  { id: 0, title: t('onboarding.welcome'), description: t('onboarding.welcomeDesc') },
+  { id: 1, title: t('onboarding.database'), description: t('onboarding.databaseDesc') },
+  { id: 2, title: t('onboarding.company'), description: t('onboarding.companyDesc') },
+  { id: 3, title: t('onboarding.seedData'), description: t('onboarding.seedDataDesc') },
+  { id: 4, title: t('onboarding.complete'), description: t('onboarding.completeDesc') },
 ];
 
 export const OnboardingWizard: React.FC = () => {
+  const { t } = useTranslation();
+  const steps = getSteps(t);
   const { currentStep, setCurrentStep, dbConfig, companyConfig, setCompleted, setProcessing, isProcessing, processingMessage, error, setError } = useOnboardingStore();
   const setActiveCompany = useAppStore((state) => state.setActiveCompany);
 
@@ -37,7 +40,7 @@ export const OnboardingWizard: React.FC = () => {
   const prevStep = () => setCurrentStep(Math.max(currentStep - 1, 0));
 
   const handleFinish = async () => {
-    setProcessing(true, 'جارٍ حفظ الإعدادات...');
+    setProcessing(true, t('onboarding.saving'));
     setError(null);
 
     try {
@@ -63,7 +66,7 @@ export const OnboardingWizard: React.FC = () => {
       setProcessing(false);
       window.location.reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ أثناء الحفظ');
+      setError(err instanceof Error ? err.message : t('onboarding.saveError'));
       setProcessing(false);
     }
   };
@@ -125,6 +128,7 @@ export const OnboardingWizard: React.FC = () => {
 
 // ─── Step 1: Welcome ─────────────────────────────────────────────────────────
 function WelcomeStep({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [resetError, setResetError] = useState('');
@@ -137,16 +141,16 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       if (typeof window !== 'undefined' && window.electronDB?.clearAll) {
         const result = await window.electronDB.clearAll();
         if (!result.success) {
-          throw new Error(result.error || 'فشل مسح البيانات');
+          throw new Error(result.error || t('onboarding.clearDataError'));
         }
         resetOnboarding();
         setIsResetting(false);
         setShowResetConfirm(false);
         return;
       }
-      throw new Error('خدمة PostgreSQL غير متوفرة. تأكد من تشغيل Electron.');
+      throw new Error(t('onboarding.pgNotAvailable'));
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : 'حدث خطأ أثناء مسح البيانات');
+      setResetError(err instanceof Error ? err.message : t('onboarding.clearDataError'));
       setIsResetting(false);
     }
   };
@@ -157,19 +161,18 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         <Settings size={40} className="text-primary-600 dark:text-primary-400" />
       </div>
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-2">مرحباً بك في محاسبة المهذب</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-2">{t('onboarding.welcomeTitle')}</h1>
         <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-          دعنا نساعدك في تهيئة النظام. ستستغرق هذه العملية بضع دقائق فقط.
-          يمكنك تغيير هذه الإعدادات لاحقاً من قائمة الإعدادات.
+          {t('onboarding.helpDesc')}
         </p>
       </div>
       <div className="flex justify-center gap-4 text-sm text-slate-500 dark:text-slate-400">
         <div className="flex items-center gap-1"><Database size={16} /> PostgreSQL</div>
-        <div className="flex items-center gap-1"><Globe size={16} /> متعدد العملات</div>
-        <div className="flex items-center gap-1"><Sparkles size={16} /> بيانات افتراضية</div>
+        <div className="flex items-center gap-1"><Globe size={16} /> {t('onboarding.multiCurrency')}</div>
+        <div className="flex items-center gap-1"><Sparkles size={16} /> {t('onboarding.defaultData')}</div>
       </div>
       <Button variant="primary" size="lg" leftIcon={<ArrowRight size={18} />} onClick={onNext}>
-        ابدأ التهيئة
+        {t('onboarding.start')}
       </Button>
 
       {/* Reset All Data */}
@@ -182,13 +185,13 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
             onClick={() => setShowResetConfirm(true)}
             className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
           >
-            مسح جميع البيانات والبدء من جديد
+            {t('onboarding.clearAll')}
           </Button>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg">
               <AlertTriangle size={18} />
-              <span className="text-sm font-medium">سيتم حذف جميع بيانات قاعدة البيانات. هذا الإجراء لا يمكن التراجع عنه.</span>
+              <span className="text-sm font-medium">{t('onboarding.clearWarning')}</span>
             </div>
             {resetError && (
               <div className="flex items-center gap-2 text-rose-600 bg-rose-50 dark:bg-rose-900/20 p-3 rounded-lg">
@@ -203,7 +206,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
                 onClick={() => { setShowResetConfirm(false); setResetError(''); }}
                 disabled={isResetting}
               >
-                إلغاء
+                {t('cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -213,7 +216,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
                 isLoading={isResetting}
                 className="bg-rose-600 hover:bg-rose-700"
               >
-                {isResetting ? 'جارٍ المسح...' : 'نعم، امسح جميع البيانات'}
+                {isResetting ? t('onboarding.clearing') : t('onboarding.confirmClear')}
               </Button>
             </div>
           </div>
@@ -225,6 +228,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 // ─── Step 2: Database ────────────────────────────────────────────────────────
 function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation();
   const { dbConfig, setDbConfig, setError, setProcessing, isProcessing } = useOnboardingStore();
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
@@ -234,7 +238,7 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
     setError(null);
 
     if (typeof window !== 'undefined' && window.electronDB?.testConnection) {
-      setProcessing(true, 'جارٍ اختبار اتصال PostgreSQL...');
+      setProcessing(true, t('onboarding.testingConnection'));
       try {
         const result = await window.electronDB.testConnection({
           host: dbConfig.host,
@@ -248,16 +252,16 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
           setTestMessage(`متصل بـ: ${result.db} | النسخة: ${(result.version || '').split(' ')[0]}`);
         } else {
           setTestStatus('error');
-          setTestMessage(result.error || 'فشل الاتصال');
+          setTestMessage(result.error || t('onboarding.connectionFailed'));
         }
       } catch (err) {
         setTestStatus('error');
-        setTestMessage(err instanceof Error ? err.message : 'فشل الاتصال');
+        setTestMessage(err instanceof Error ? err.message : t('onboarding.connectionFailed'));
       }
       setProcessing(false);
     } else {
       setTestStatus('error');
-      setTestMessage('PostgreSQL غير متوفر. تأكد من تشغيل Electron.');
+      setTestMessage(t('onboarding.pgNotAvailable'));
     }
   };
 
@@ -266,8 +270,8 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       <div className="flex items-center gap-3 mb-4">
         <Database size={24} className="text-primary-600 dark:text-primary-400" />
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">إعداد قاعدة البيانات</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">أدخل بيانات اتصال PostgreSQL</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('onboarding.databaseSetup')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('onboarding.databaseSetupDesc')}</p>
         </div>
       </div>
 
@@ -277,14 +281,14 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
           <span className="text-sm font-medium">PostgreSQL</span>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="الخادم (Host)" value={dbConfig.host || ''} onChange={e => setDbConfig({ host: e.target.value })} />
-          <Input label="المنفذ (Port)" value={dbConfig.port || ''} onChange={e => setDbConfig({ port: e.target.value })} />
+          <Input label={t('onboarding.host')} value={dbConfig.host || ''} onChange={e => setDbConfig({ host: e.target.value })} />
+          <Input label={t('onboarding.port')} value={dbConfig.port || ''} onChange={e => setDbConfig({ port: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="اسم قاعدة البيانات" value={dbConfig.database || ''} onChange={e => setDbConfig({ database: e.target.value })} />
-          <Input label="اسم المستخدم" value={dbConfig.user || ''} onChange={e => setDbConfig({ user: e.target.value })} />
+          <Input label={t('onboarding.dbName')} value={dbConfig.database || ''} onChange={e => setDbConfig({ database: e.target.value })} />
+          <Input label={t('auth.username')} value={dbConfig.user || ''} onChange={e => setDbConfig({ user: e.target.value })} />
         </div>
-        <Input label="كلمة المرور" type="password" value={dbConfig.password || ''} onChange={e => setDbConfig({ password: e.target.value })} />
+        <Input label={t('auth.password')} type="password" value={dbConfig.password || ''} onChange={e => setDbConfig({ password: e.target.value })} />
       </div>
 
       {testStatus === 'success' && (
@@ -301,13 +305,13 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
       )}
 
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>رجوع</Button>
+        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>{t('back')}</Button>
         <div className="flex gap-2">
           <Button variant="ghost" onClick={handleTest} isLoading={isProcessing} leftIcon={<Settings size={16} />}>
-            اختبار الاتصال
+            {t('onboarding.testConnection')}
           </Button>
           <Button variant="primary" leftIcon={<ArrowRight size={16} />} onClick={onNext}>
-            التالي
+            {t('next')}
           </Button>
         </div>
       </div>
@@ -317,6 +321,7 @@ function DatabaseStep({ onNext, onBack }: { onNext: () => void; onBack: () => vo
 
 // ─── Step 3: Company ─────────────────────────────────────────────────────────
 function CompanyStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation();
   const { companyConfig, setCompanyConfig } = useOnboardingStore();
 
   return (
@@ -324,45 +329,45 @@ function CompanyStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
       <div className="flex items-center gap-3 mb-4">
         <Building2 size={24} className="text-primary-600 dark:text-primary-400" />
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">بيانات الشركة</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">أدخل معلومات منشأتك الأساسية</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('onboarding.company')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('onboarding.companyInfoDesc')}</p>
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="اسم الشركة *" value={companyConfig.name} onChange={e => setCompanyConfig({ name: e.target.value })} required />
-          <Input label="الاسم الإنجليزي" value={companyConfig.nameEn} onChange={e => setCompanyConfig({ nameEn: e.target.value })} />
+          <Input label={t('onboarding.companyName')} value={companyConfig.name} onChange={e => setCompanyConfig({ name: e.target.value })} required />
+          <Input label={t('onboarding.companyNameEn')} value={companyConfig.nameEn} onChange={e => setCompanyConfig({ nameEn: e.target.value })} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">العملة الافتراضية</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('settings.company.defaultCurrency')}</label>
             <select
               value={companyConfig.currency}
-              title="اختر عملتك الأساسية"
+              title={t('onboarding.selectCurrency')}
               onChange={e => setCompanyConfig({ currency: e.target.value })}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="YER">ريال يمني (YER)</option>
-              <option value="SAR">ريال سعودي (SAR)</option>
-              <option value="USD">دولار أمريكي (USD)</option>
-              <option value="AED">درهم إماراتي (AED)</option>
-              <option value="KWD">دينار كويتي (KWD)</option>
-              <option value="QAR">ريال قطري (QAR)</option>
+              <option value="YER">{t('onboarding.currencyYer')}</option>
+              <option value="SAR">{t('onboarding.currencySar')}</option>
+              <option value="USD">{t('onboarding.currencyUsd')}</option>
+              <option value="AED">{t('onboarding.currencyAed')}</option>
+              <option value="KWD">{t('onboarding.currencyKwd')}</option>
+              <option value="QAR">{t('onboarding.currencyQar')}</option>
             </select>
           </div>
-          <Input label="الرقم الضريبي" value={companyConfig.taxNumber} onChange={e => setCompanyConfig({ taxNumber: e.target.value })} />
-          <Input label="الهاتف" value={companyConfig.phone} onChange={e => setCompanyConfig({ phone: e.target.value })} />
+          <Input label={t('settings.company.taxNumber')} value={companyConfig.taxNumber} onChange={e => setCompanyConfig({ taxNumber: e.target.value })} />
+          <Input label={t('settings.company.phone')} value={companyConfig.phone} onChange={e => setCompanyConfig({ phone: e.target.value })} />
         </div>
 
-        <Input label="العنوان" value={companyConfig.address} onChange={e => setCompanyConfig({ address: e.target.value })} />
-        <Input label="البريد الإلكتروني" type="email" value={companyConfig.email} onChange={e => setCompanyConfig({ email: e.target.value })} />
+        <Input label={t('settings.company.address')} value={companyConfig.address} onChange={e => setCompanyConfig({ address: e.target.value })} />
+        <Input label={t('settings.company.email')} type="email" value={companyConfig.email} onChange={e => setCompanyConfig({ email: e.target.value })} />
       </div>
 
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>رجوع</Button>
-        <Button variant="primary" leftIcon={<ArrowRight size={16} />} onClick={onNext}>التالي</Button>
+        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>{t('back')}</Button>
+        <Button variant="primary" leftIcon={<ArrowRight size={16} />} onClick={onNext}>{t('next')}</Button>
       </div>
     </div>
   );
@@ -370,6 +375,7 @@ function CompanyStep({ onNext, onBack }: { onNext: () => void; onBack: () => voi
 
 // ─── Step 4: Seed Data ───────────────────────────────────────────────────────
 function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation();
   const { seedOption, setSeedOption, setError, setProcessing, isProcessing } = useOnboardingStore();
   const [seedStatus, setSeedStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [seedMessage, setSeedMessage] = useState('');
@@ -382,7 +388,7 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
 
     setSeedStatus('idle');
     setError(null);
-    setProcessing(true, seedOption === 'default' ? 'جارٍ بذر البيانات الافتراضية...' : 'جارٍ بذر البيانات الوهمية...');
+    setProcessing(true, seedOption === 'default' ? t('onboarding.seedingDefault') : t('onboarding.seedingDemo'));
 
     try {
       if (typeof window !== 'undefined' && window.electronDB) {
@@ -390,35 +396,35 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
 
         if (seedOption === 'default') {
           if (!electronDB.seedDefault) {
-            throw new Error('seedDefault غير متوفر');
+            throw new Error('seedDefault ' + t('onboarding.seedFailed'));
           }
           const result = await electronDB.seedDefault();
           if (result.success) {
             setSeedStatus('success');
-            setSeedMessage('تم بذر البيانات الافتراضية بنجاح');
+            setSeedMessage(t('onboarding.defaultSeeded'));
           } else {
-            throw new Error(result.error || 'فشل البذر');
+            throw new Error(result.error || t('onboarding.seedFailed'));
           }
         } else if (seedOption === 'demo') {
           if (!electronDB.seedDemo) {
-            throw new Error('seedDemo غير متوفر');
+            throw new Error('seedDemo ' + t('onboarding.seedFailed'));
           }
           const result = await electronDB.seedDemo();
           if (result.success) {
             setSeedStatus('success');
-            setSeedMessage('تم بذر البيانات الوهمية بنجاح');
+            setSeedMessage(t('onboarding.demoSeeded'));
           } else {
-            throw new Error(result.error || 'فشل البذر');
+            throw new Error(result.error || t('onboarding.seedFailed'));
           }
         }
       } else {
-        throw new Error('PostgreSQL غير متوفر');
+        throw new Error(t('onboarding.pgNotAvailable'));
       }
 
       setProcessing(false);
       onNext();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء البذر';
+      const msg = err instanceof Error ? err.message : t('onboarding.seedError');
       setSeedStatus('error');
       setSeedMessage(msg);
       setError(msg);
@@ -431,8 +437,8 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
       <div className="flex items-center gap-3 mb-4">
         <Package size={24} className="text-primary-600 dark:text-primary-400" />
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">البيانات الأولية</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">اختر نوع البيانات التي تريد بدء العمل بها</p>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50">{t('onboarding.seedData')}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('onboarding.seedDataDesc')}</p>
         </div>
       </div>
 
@@ -440,22 +446,22 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
         <SeedOptionCard
           active={seedOption === 'none'}
           icon={<FileText size={20} />}
-          title="بدون بيانات"
-          desc="ابدأ بشركة فارغة وقم بإدخال كل شيء يدوياً"
+          title={t('onboarding.noDataOpt')}
+          desc={t('onboarding.noDataDesc')}
           onClick={() => setSeedOption('none')}
         />
         <SeedOptionCard
           active={seedOption === 'default'}
           icon={<CheckCircle size={20} />}
-          title="البيانات الافتراضية"
-          desc="شجرة حسابات، إعدادات VAT، فروع، مستخدم، وعملة (موصى به)"
+          title={t('onboarding.dataDefault')}
+          desc={t('onboarding.dataDefaultDesc')}
           onClick={() => setSeedOption('default')}
         />
         <SeedOptionCard
           active={seedOption === 'demo'}
           icon={<Sparkles size={20} />}
-          title="البيانات الوهمية (Demo)"
-          desc="كل ما سبق + عملاء، موردين، منتجات، فواتير، موظفين، مهام..."
+          title={t('onboarding.dataDemo')}
+          desc={t('onboarding.dataDemoDesc')}
           onClick={() => setSeedOption('demo')}
         />
       </div>
@@ -474,9 +480,9 @@ function SeedStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }
       )}
 
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>رجوع</Button>
+        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>{t('back')}</Button>
         <Button variant="primary" onClick={handleSeedNow} isLoading={isProcessing} leftIcon={<ArrowRight size={16} />}>
-          {seedOption === 'none' ? 'تخطي' : 'بذر البيانات والتالي'}
+          {seedOption === 'none' ? t('onboarding.skip') : t('onboarding.seedAndNext')}
         </Button>
       </div>
     </div>
@@ -504,9 +510,10 @@ function SeedOptionCard({ active, icon, title, desc, onClick }: { active: boolea
 
 // ─── Step 5: Complete ────────────────────────────────────────────────────────
 function CompleteStep({ onFinish, onBack }: { onFinish: () => void; onBack: () => void }) {
+  const { t } = useTranslation();
   const { companyConfig, seedOption } = useOnboardingStore();
 
-  const seedLabel = seedOption === 'none' ? 'بدون بيانات' : seedOption === 'default' ? 'البيانات الافتراضية' : 'البيانات الوهمية';
+  const seedLabel = seedOption === 'none' ? t('onboarding.noDataOpt') : seedOption === 'default' ? t('onboarding.dataDefault') : t('onboarding.dataDemo');
 
   return (
     <div className="space-y-6 text-center">
@@ -515,21 +522,21 @@ function CompleteStep({ onFinish, onBack }: { onFinish: () => void; onBack: () =
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">جاهز للبدء!</h2>
-        <p className="text-slate-500 dark:text-slate-400">تمت تهيئة النظام بنجاح. إليك ملخص إعداداتك:</p>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-slate-50 mb-2">{t('onboarding.ready')}</h2>
+        <p className="text-slate-500 dark:text-slate-400">{t('onboarding.successDesc')}</p>
       </div>
 
       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 text-right space-y-2 border border-slate-200 dark:border-slate-800 max-w-md mx-auto">
-        <SummaryRow label="الشركة" value={companyConfig.name} icon={<Building2 size={16} />} />
-        <SummaryRow label="العملة" value={companyConfig.currency} icon={<Coins size={16} />} />
-        <SummaryRow label="قاعدة البيانات" value="PostgreSQL" icon={<Database size={16} />} />
-        <SummaryRow label="البيانات" value={seedLabel} icon={<Package size={16} />} />
+        <SummaryRow label={t('onboarding.summaryCompany')} value={companyConfig.name} icon={<Building2 size={16} />} />
+        <SummaryRow label={t('onboarding.summaryCurrency')} value={companyConfig.currency} icon={<Coins size={16} />} />
+        <SummaryRow label={t('onboarding.summaryDatabase')} value="PostgreSQL" icon={<Database size={16} />} />
+        <SummaryRow label={t('onboarding.summaryData')} value={seedLabel} icon={<Package size={16} />} />
       </div>
 
       <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800 max-w-md mx-auto">
-        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>رجوع</Button>
+        <Button variant="secondary" leftIcon={<ArrowLeft size={16} />} onClick={onBack}>{t('back')}</Button>
         <Button variant="primary" size="lg" onClick={onFinish} leftIcon={<ArrowRight size={16} />}>
-          الدخول إلى النظام
+          {t('onboarding.enterSystem')}
         </Button>
       </div>
     </div>

@@ -6,23 +6,12 @@ import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAuthStore } from '../store';
 import { useAuditLogs } from '../hooks/useAuth';
+import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAppStore } from '@/core/store';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { formatDateTime } from '@/core/utils/locale';
 import type { AuditLog } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
-
-const ACTION_LABELS: Record<string, string> = {
-  create: 'إنشاء',
-  update: 'تعديل',
-  delete: 'حذف',
-  post: 'ترحيل',
-  cancel: 'إلغاء',
-  login: 'تسجيل دخول',
-  logout: 'تسجيل خروج',
-  reset_password: 'تغيير كلمة المرور',
-  toggle_active: 'تفعيل/تعطيل',
-};
 
 const ACTION_COLORS: Record<string, string> = {
   create: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
@@ -36,23 +25,34 @@ const ACTION_COLORS: Record<string, string> = {
   toggle_active: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
 };
 
-const TABLE_LABELS: Record<string, string> = {
-  users: 'المستخدمين',
-  roles: 'الأدوار',
-  accounts: 'الحسابات',
-  transactions: 'القيود',
-  products: 'المنتجات',
-  contacts: 'العملاء/الموردين',
-  sales_invoices: 'فواتير المبيعات',
-  purchase_invoices: 'فواتير المشتريات',
-  employees: 'الموظفين',
-  warehouses: 'المستودعات',
-};
-
 export const AuditLogPage: React.FC = () => {
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const hasPermission = useAuthStore((state) => state.hasPermission);
+  const { t } = useTranslation();
+  const actionLabels: Record<string, string> = {
+    create: t('auth.auditLog.action_create'),
+    update: t('auth.auditLog.action_update'),
+    delete: t('auth.auditLog.action_delete'),
+    post: t('auth.auditLog.action_post'),
+    cancel: t('auth.auditLog.action_cancel'),
+    login: t('auth.auditLog.action_login'),
+    logout: t('auth.auditLog.action_logout'),
+    reset_password: t('auth.auditLog.action_resetPassword'),
+    toggle_active: t('auth.auditLog.action_toggleActive'),
+  };
+  const tableLabels: Record<string, string> = {
+    users: t('auth.auditLog.table_users'),
+    roles: t('auth.auditLog.table_roles'),
+    accounts: t('auth.auditLog.table_accounts'),
+    transactions: t('auth.auditLog.table_transactions'),
+    products: t('auth.auditLog.table_products'),
+    contacts: t('auth.auditLog.table_contacts'),
+    sales_invoices: t('auth.auditLog.table_sales_invoices'),
+    purchase_invoices: t('auth.auditLog.table_purchase_invoices'),
+    employees: t('auth.auditLog.table_employees'),
+    warehouses: t('auth.auditLog.table_warehouses'),
+  };
   const [filters, setFilters] = useState({
     userId: '',
     tableName: '',
@@ -79,19 +79,19 @@ export const AuditLogPage: React.FC = () => {
     exportToExcel(
       logs.map((l) => ({
         username: l.username,
-        action: ACTION_LABELS[l.action] || l.action,
-        tableName: TABLE_LABELS[l.tableName] || l.tableName,
+        action: actionLabels[l.action] || l.action,
+        tableName: tableLabels[l.tableName] || l.tableName,
         recordId: l.recordId,
         recordLabel: l.recordLabel || '',
         createdAt: formatDateTime(l.createdAt),
       })),
       [
-        { key: 'username', header: 'المستخدم', width: 20 },
-        { key: 'action', header: 'العملية', width: 15 },
-        { key: 'tableName', header: 'الجدول', width: 20 },
-        { key: 'recordId', header: 'رقم السجل', width: 15 },
-        { key: 'recordLabel', header: 'وصف السجل', width: 25 },
-        { key: 'createdAt', header: 'التاريخ', width: 20 },
+        { key: 'username', header: t('auth.auditLog.user'), width: 20 },
+        { key: 'action', header: t('auth.auditLog.action'), width: 15 },
+        { key: 'tableName', header: t('auth.auditLog.table'), width: 20 },
+        { key: 'recordId', header: t('auth.auditLog.recordId'), width: 15 },
+        { key: 'recordLabel', header: t('auth.auditLog.recordLabel'), width: 25 },
+        { key: 'createdAt', header: t('auth.auditLog.date'), width: 20 },
       ],
       `audit_log_${activeCompany?.id || 'export'}_${new Date().toISOString().split('T')[0]}`
     );
@@ -101,21 +101,21 @@ export const AuditLogPage: React.FC = () => {
     exportToPDF(
       logs.map((l) => ({
         username: l.username,
-        action: ACTION_LABELS[l.action] || l.action,
-        tableName: TABLE_LABELS[l.tableName] || l.tableName,
+        action: actionLabels[l.action] || l.action,
+        tableName: tableLabels[l.tableName] || l.tableName,
         recordId: l.recordId,
         createdAt: formatDateTime(l.createdAt),
       })),
       [
-        { key: 'username', header: 'المستخدم', width: 20 },
-        { key: 'action', header: 'العملية', width: 15 },
-        { key: 'tableName', header: 'الجدول', width: 20 },
-        { key: 'recordId', header: 'رقم السجل', width: 15 },
-        { key: 'createdAt', header: 'التاريخ', width: 20 },
+        { key: 'username', header: t('auth.auditLog.user'), width: 20 },
+        { key: 'action', header: t('auth.auditLog.action'), width: 15 },
+        { key: 'tableName', header: t('auth.auditLog.table'), width: 20 },
+        { key: 'recordId', header: t('auth.auditLog.recordId'), width: 15 },
+        { key: 'createdAt', header: t('auth.auditLog.date'), width: 20 },
       ],
       `audit_log_${activeCompany?.id || 'export'}_${new Date().toISOString().split('T')[0]}`,
       {
-        title: 'سجل عمليات النظام',
+        title: t('auth.auditLog.logTitle'),
         subtitle: activeCompany?.name || '',
         companyName: activeCompany?.name || '',
         rtl: true,
@@ -126,7 +126,7 @@ export const AuditLogPage: React.FC = () => {
   const columns: ColumnDef<AuditLog>[] = [
     {
       accessorKey: 'username',
-      header: 'المستخدم',
+      header: t('auth.auditLog.user'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 flex items-center justify-center font-bold text-[10px]">
@@ -138,28 +138,28 @@ export const AuditLogPage: React.FC = () => {
     },
     {
       accessorKey: 'action',
-      header: 'العملية',
+      header: t('auth.auditLog.action'),
       cell: ({ row }) => {
         const action = row.original.action;
         return (
           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ACTION_COLORS[action] || 'bg-slate-100 text-slate-700'}`}>
-            {ACTION_LABELS[action] || action}
+            {actionLabels[action] || action}
           </span>
         );
       },
     },
     {
       accessorKey: 'tableName',
-      header: 'الجدول',
+      header: t('auth.auditLog.table'),
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300">
-          {TABLE_LABELS[row.original.tableName] || row.original.tableName}
+          {tableLabels[row.original.tableName] || row.original.tableName}
         </span>
       ),
     },
     {
       accessorKey: 'recordId',
-      header: 'رقم السجل',
+      header: t('auth.auditLog.recordId'),
       cell: ({ row }) => (
         <span className="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
           {row.original.recordId.slice(0, 8)}...
@@ -168,7 +168,7 @@ export const AuditLogPage: React.FC = () => {
     },
     {
       accessorKey: 'createdAt',
-      header: 'التاريخ والوقت',
+      header: t('auth.auditLog.date'),
       cell: ({ row }) => (
         <span className="text-sm text-slate-600 dark:text-slate-300 tabular-nums">
           {formatDateTime(row.original.createdAt)}
@@ -188,16 +188,16 @@ export const AuditLogPage: React.FC = () => {
             <ScrollText size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">سجل العمليات</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">تتبع من أنشأ/عدّل/حذف ومتى</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('auth.auditLog.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('auth.auditLog.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={handleExportExcel} title="تصدير Excel">
+          <Button size="sm" variant="ghost" onClick={handleExportExcel} title={t('auth.auditLog.exportExcel')}>
             <FileSpreadsheet size={16} className="text-emerald-600" />
             <span className="mr-1 text-emerald-600">Excel</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={handleExportPDF} title="تصدير PDF">
+          <Button size="sm" variant="ghost" onClick={handleExportPDF} title={t('auth.auditLog.exportPdf')}>
             <FileText size={16} className="text-rose-600" />
             <span className="mr-1 text-rose-600">PDF</span>
           </Button>
@@ -214,11 +214,11 @@ export const AuditLogPage: React.FC = () => {
               onChange={(e) => setFilters((prev) => ({ ...prev, userId: e.target.value }))}
               className="form-control pr-9 w-full"
             >
-              <option value="">كل المستخدمين</option>
-              <option value="user-1">admin</option>
-              <option value="user-2">محاسب</option>
-              <option value="user-3">مبيعات</option>
-              <option value="user-4">مدير</option>
+              <option value="">{t('auth.auditLog.allUsers')}</option>
+              <option value="user-1">{t('auth.auditLog.user_admin')}</option>
+              <option value="user-2">{t('auth.auditLog.user_accountant')}</option>
+              <option value="user-3">{t('auth.auditLog.user_sales')}</option>
+              <option value="user-4">{t('auth.auditLog.user_manager')}</option>
             </select>
           </div>
           <div className="relative">
@@ -228,15 +228,15 @@ export const AuditLogPage: React.FC = () => {
               onChange={(e) => setFilters((prev) => ({ ...prev, tableName: e.target.value }))}
               className="form-control pr-9 w-full"
             >
-              <option value="">كل الجداول</option>
-              <option value="users">المستخدمين</option>
-              <option value="roles">الأدوار</option>
-              <option value="accounts">الحسابات</option>
-              <option value="transactions">القيود</option>
-              <option value="products">المنتجات</option>
-              <option value="contacts">العملاء/الموردين</option>
-              <option value="sales_invoices">فواتير المبيعات</option>
-              <option value="purchase_invoices">فواتير المشتريات</option>
+              <option value="">{t('auth.auditLog.allTables')}</option>
+              <option value="users">{t('auth.auditLog.table_users')}</option>
+              <option value="roles">{t('auth.auditLog.table_roles')}</option>
+              <option value="accounts">{t('auth.auditLog.table_accounts')}</option>
+              <option value="transactions">{t('auth.auditLog.table_transactions')}</option>
+              <option value="products">{t('auth.auditLog.table_products')}</option>
+              <option value="contacts">{t('auth.auditLog.table_contacts')}</option>
+              <option value="sales_invoices">{t('auth.auditLog.table_sales_invoices')}</option>
+              <option value="purchase_invoices">{t('auth.auditLog.table_purchase_invoices')}</option>
             </select>
           </div>
           <div className="relative">
@@ -246,13 +246,13 @@ export const AuditLogPage: React.FC = () => {
               onChange={(e) => setFilters((prev) => ({ ...prev, action: e.target.value }))}
               className="form-control pr-9 w-full"
             >
-              <option value="">كل العمليات</option>
-              <option value="create">إنشاء</option>
-              <option value="update">تعديل</option>
-              <option value="delete">حذف</option>
-              <option value="post">ترحيل</option>
-              <option value="login">تسجيل دخول</option>
-              <option value="logout">تسجيل خروج</option>
+              <option value="">{t('auth.auditLog.allActions')}</option>
+              <option value="create">{t('auth.auditLog.action_create')}</option>
+              <option value="update">{t('auth.auditLog.action_update')}</option>
+              <option value="delete">{t('auth.auditLog.action_delete')}</option>
+              <option value="post">{t('auth.auditLog.action_post')}</option>
+              <option value="login">{t('auth.auditLog.action_login')}</option>
+              <option value="logout">{t('auth.auditLog.action_logout')}</option>
             </select>
           </div>
           <div className="relative">
@@ -262,7 +262,7 @@ export const AuditLogPage: React.FC = () => {
               value={filters.fromDate}
               onChange={(e) => setFilters((prev) => ({ ...prev, fromDate: e.target.value }))}
               className="form-control pr-9 w-full"
-              placeholder="من تاريخ"
+              placeholder={t('auth.auditLog.fromDate')}
             />
           </div>
           <div className="relative">
@@ -272,14 +272,14 @@ export const AuditLogPage: React.FC = () => {
               value={filters.toDate}
               onChange={(e) => setFilters((prev) => ({ ...prev, toDate: e.target.value }))}
               className="form-control pr-9 w-full"
-              placeholder="إلى تاريخ"
+              placeholder={t('auth.auditLog.toDate')}
             />
           </div>
         </div>
         {hasActiveFilters && (
           <div className="flex justify-end mt-3">
             <Button size="sm" variant="ghost" onClick={() => setFilters({ userId: '', tableName: '', action: '', fromDate: '', toDate: '' })}>
-              إعادة تعيين الفلاتر
+              {t('auth.auditLog.resetFilters')}
             </Button>
           </div>
         )}
@@ -297,8 +297,8 @@ export const AuditLogPage: React.FC = () => {
           <div className="p-8">
             <EmptyState
               icon="search"
-              title="لا توجد سجلات"
-              description="لم يتم العثور على أي عمليات مطابقة للفلاتر المحددة"
+              title={t('auth.auditLog.emptyTitle')}
+              description={t('auth.auditLog.emptyDesc')}
             />
           </div>
         ) : (
@@ -307,9 +307,9 @@ export const AuditLogPage: React.FC = () => {
             columns={columns}
             keyExtractor={(row) => row.id}
             isLoading={false}
-            emptyMessage="لا توجد سجلات"
+            emptyMessage={t('auth.auditLog.emptyMessage')}
             searchable={false}
-            title={`السجلات (${logs.length})`}
+            title={t('auth.auditLog.recordsCount', { count: logs.length })}
             onExportExcel={handleExportExcel}
             onExportPdf={handleExportPDF}
           />

@@ -8,6 +8,7 @@ import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useAppStore } from '@/core/store';
 import { useLeavesPaginated, useEmployees } from '../hooks/useHr';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { DEFAULT_LOCALE } from '@/core/utils/locale';
 import type { Leave } from '../types';
 
 export const LeavesPage: React.FC = () => {
@@ -56,7 +57,7 @@ export const LeavesPage: React.FC = () => {
 
   const handleExportExcel = () => {
     exportToExcel(
-      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType) })),
+      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
       [
         { key: 'employeeName', header: t('hr.leaves.employee') },
         { key: 'leaveType', header: t('hr.leaves.leaveType') },
@@ -71,7 +72,7 @@ export const LeavesPage: React.FC = () => {
 
   const handleExportPDF = () => {
     exportToPDF(
-      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType) })),
+      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
       [
         { key: 'employeeName', header: t('hr.leaves.employee') },
         { key: 'leaveType', header: t('hr.leaves.leaveType') },
@@ -92,7 +93,7 @@ export const LeavesPage: React.FC = () => {
       <tr>
         <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
         <td style="padding:8px;border:1px solid #e2e8f0">${l.employeeName || l.employeeId}</td>
-        <td style="padding:8px;border:1px solid #e2e8f0">${leaveTypeLabel(l.leaveType)}</td>
+        <td style="padding:8px;border:1px solid #e2e8f0">${leaveTypeLabel(l.leaveType, t)}</td>
         <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.startDate}</td>
         <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.endDate}</td>
         <td style="padding:8px;border:1px solid #e2e8f0;text-align:center">${l.days}</td>
@@ -103,7 +104,7 @@ export const LeavesPage: React.FC = () => {
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}td{border:1px solid #e2e8f0}</style></head><body>
     <div class="page"><h2>${t('hr.leaves.reportTitle')}</h2>
-    <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${new Date().toLocaleDateString('ar-YE')}</p>
+    <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${new Date().toLocaleDateString(DEFAULT_LOCALE)}</p>
     <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${leaves.length}</p>
     <table><thead><tr><th>#</th><th>${t('hr.leaves.employee')}</th><th>${t('hr.leaves.leaveType')}</th><th>${t('hr.leaves.from')}</th><th>${t('hr.leaves.to')}</th><th>${t('hr.leaves.days')}</th><th>${t('hr.leaves.status')}</th></tr></thead><tbody>${rows}</tbody></table>
     <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printReportFooter')}</div>
@@ -115,7 +116,7 @@ export const LeavesPage: React.FC = () => {
 
   const columns = [
     { key: 'employeeName', header: t('hr.leaves.employee'), render: (row: Leave) => row.employeeName || row.employeeId },
-    { key: 'leaveType', header: t('hr.leaves.leaveType'), render: (row: Leave) => leaveTypeLabel(row.leaveType) },
+    { key: 'leaveType', header: t('hr.leaves.leaveType'), render: (row: Leave) => leaveTypeLabel(row.leaveType, t) },
     { key: 'startDate', header: t('hr.leaves.from'), width: '120px' },
     { key: 'endDate', header: t('hr.leaves.to'), width: '120px' },
     { key: 'days', header: t('hr.leaves.days'), width: '80px' },
@@ -235,8 +236,8 @@ export const LeavesPage: React.FC = () => {
   );
 };
 
-function leaveTypeLabel(type: Leave['leaveType']) {
-  const labels: Record<string, string> = { annual: 'سنوية', sick: 'مرضية', emergency: 'طارئة', unpaid: 'بدون راتب' };
+function leaveTypeLabel(type: Leave['leaveType'], t: (key: string) => string) {
+  const labels: Record<string, string> = { annual: t('hr.leaves.annual'), sick: t('hr.leaves.sick'), emergency: t('hr.leaves.emergency'), unpaid: t('hr.leaves.unpaid') };
   return labels[type] || type;
 }
 

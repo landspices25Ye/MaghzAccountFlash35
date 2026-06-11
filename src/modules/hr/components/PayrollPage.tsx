@@ -238,7 +238,7 @@ function handlePrintPayroll(payroll: { month: number; year: number; totalAmount:
   <div class="page"><h2>${t('hr.payroll.printTitle')}</h2>
   <p><strong>${t('hr.payroll.printMonthYear')}</strong> ${payroll.month}/${payroll.year}</p>
   <table><thead><tr><th>#</th><th>${t('hr.payroll.employee')}</th><th>${t('hr.payroll.baseSalary')}</th><th>${t('hr.payroll.allowances')}</th><th>${t('hr.payroll.deductions')}</th><th>${t('hr.payroll.overtime')}</th><th>${t('hr.payroll.netSalary')}</th></tr></thead><tbody>${rows}</tbody></table>
-  <div class="total">${t('hr.payroll.grandTotal')} ${formatCurrency(payroll.totalAmount)} ر.ي</div>
+  <div class="total">${t('hr.payroll.grandTotal')} ${formatCurrency(payroll.totalAmount)} ${t('common.currencyYer')}</div>
   <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printFooter')}</div>
   </div></body></html>`;
   printWindow.document.open();

@@ -341,16 +341,16 @@ export const Header: React.FC = () => {
         <button
           onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          title={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
-          aria-label={language === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+          title={language === 'ar' ? t('header.switchToEnglish') : t('header.switchToArabic')}
+          aria-label={language === 'ar' ? t('header.switchToEnglish') : t('header.switchToArabic')}
         >
           <Globe size={18} />
         </button>
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
-          title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
-          aria-label={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن'}
+          title={theme === 'dark' ? t('header.lightMode') : t('header.darkMode')}
+          aria-label={theme === 'dark' ? t('header.lightMode') : t('header.darkMode')}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
