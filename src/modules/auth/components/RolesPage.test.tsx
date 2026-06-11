@@ -167,7 +167,7 @@ describe('RolesPage', () => {
     renderPage();
     const customCard = screen.getByText('مدير').closest('.p-5');
     expect(customCard).toBeInTheDocument();
-    expect(within(customCard as HTMLElement).queryByText('تعديل')).not.toBeNull();
+    expect(within(customCard as HTMLElement).queryByText('تعديل الدور')).not.toBeNull();
     expect(within(customCard as HTMLElement).queryByText('حذف')).not.toBeNull();
     expect(within(customCard as HTMLElement).queryByText('نسخ')).not.toBeNull();
   });
@@ -183,7 +183,7 @@ describe('RolesPage', () => {
     });
     renderPage();
     const systemCard = screen.getByText('مدير النظام').closest('.p-5');
-    const editButton = within(systemCard as HTMLElement).getByText('تعديل');
+    const editButton = within(systemCard as HTMLElement).getByText('تعديل الدور');
     fireEvent.click(editButton);
     expect(screen.getByText('دور نظامي — للقراءة فقط')).toBeInTheDocument();
     expect(screen.getByText('للقراءة فقط')).toBeInTheDocument();
