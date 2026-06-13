@@ -3,7 +3,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import type { Permission } from '@/modules/auth/types';
 
 type Module = 'accounting' | 'inventory' | 'sales' | 'purchases' | 'manufacturing' | 'hr' | 'crm' | 'reports' | 'settings';
-type Action = 'view' | 'create' | 'edit' | 'delete' | 'post';
+type Action = 'view' | 'create' | 'edit' | 'delete' | 'post' | 'export';
 
 function checkPermissionSet(
   hasPermission: (p: Permission) => boolean,

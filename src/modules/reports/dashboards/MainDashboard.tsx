@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, FileText, Package, ShoppingCart, Users, AlertTriangle,
-  Calendar, ChevronDown, Download, FilePlus, BookOpen, PlusCircle, UserPlus, RotateCcw, Factory
+  Calendar, ChevronDown, Download, FilePlus, BookOpen, PlusCircle, UserPlus, RotateCcw, Factory,
+  Target, XCircle, Award
 } from 'lucide-react';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAppStore } from '@/core/store';
-import { useDashboard, type PeriodFilter, type DashboardFilters } from './useDashboard';
+import { useDashboard, type PeriodFilter, type DashboardFilters, type DashboardData } from './useDashboard';
 import {
   MonthlyRevenueChart, TopProductsChart, ArAgingChart, CashFlowChart,
-  SalesTrendChart, ProfitTrendChart, CategoryShareChart
+  SalesTrendChart, ProfitTrendChart, CategoryShareChart, OpportunityFunnelChart
 } from './charts';
 import { KpiCardPro } from '../components/KpiCardPro';
 import { EmptyState } from '@/core/ui/components/EmptyState';
@@ -255,27 +256,6 @@ const MainDashboard: React.FC = () => {
           color="slate"
           onClick={() => navigate('/hr/employees')}
         />
-        <KpiCardPro
-          title={t('reports.totalLeads')}
-          value={current.crmLeadsCount}
-          icon={Users}
-          color="blue"
-          onClick={() => navigate('/crm/leads')}
-        />
-        <KpiCardPro
-          title={t('reports.pipelineValue')}
-          value={formatCurrency(current.crmPipelineValue)}
-          icon={TrendingUp}
-          color="emerald"
-          onClick={() => navigate('/crm/opportunities')}
-        />
-        <KpiCardPro
-          title={t('reports.conversionRate')}
-          value={`${current.crmConversionRate}%`}
-          icon={TrendingUp}
-          color="purple"
-          onClick={() => navigate('/reports/lead-conversion')}
-        />
       </div>
 
       {/* Charts Row 1 */}
@@ -299,6 +279,14 @@ const MainDashboard: React.FC = () => {
 
       {/* Manufacturing KPIs */}
       <ManufacturingKpiSection companyId={activeCompany?.id || ''} />
+
+      {/* CRM KPIs */}
+      <CrmKpiSection data={current} />
+
+      {/* CRM Pipeline Funnel Chart */}
+      <div className="grid grid-cols-1 gap-4">
+        <OpportunityFunnelChart data={current.pipelineByStage} />
+      </div>
 
       {/* Alerts & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -403,6 +391,30 @@ function ManufacturingKpiSection({ companyId }: { companyId: string }) {
         <KpiCardPro title={t('manufacturing.planned')} value={kpis.activeOrders} icon={Factory} color="purple" onClick={() => navigate('/manufacturing/work-orders')} />
         <KpiCardPro title={t('manufacturing.completed')} value={kpis.completedOrders} icon={TrendingUp} color="emerald" onClick={() => navigate('/manufacturing/work-orders')} />
         <KpiCardPro title={t('manufacturing.costs')} value={formatCurrency(kpis.totalProductionCost)} icon={DollarSign} color="amber" onClick={() => navigate('/manufacturing/cost-report')} />
+      </div>
+    </div>
+  );
+}
+
+function CrmKpiSection({ data }: { data: DashboardData }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  if (!data) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Target size={18} className="text-primary-600" />
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">{t('crm.title')}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCardPro title={t('reports.totalLeads')} value={data.crmLeadsCount} icon={Users} color="blue" onClick={() => navigate('/crm/leads')} />
+        <KpiCardPro title={t('reports.pipelineValue')} value={formatCurrency(data.crmPipelineValue)} icon={TrendingUp} color="emerald" onClick={() => navigate('/crm/opportunities')} />
+        <KpiCardPro title={t('reports.conversionRate')} value={`${data.crmConversionRate}%`} icon={Target} color="purple" onClick={() => navigate('/reports/lead-conversion')} />
+        <KpiCardPro title={t('reports.wonDeals')} value={data.crmWonDealsCount} icon={Award} color="emerald" onClick={() => navigate('/crm/opportunities')} />
+        <KpiCardPro title={t('reports.lostDeals')} value={data.crmLostDealsCount} icon={XCircle} color="rose" onClick={() => navigate('/crm/opportunities')} />
+        <KpiCardPro title={t('reports.avgDealValue')} value={formatCurrency(data.crmAvgDealValue)} icon={DollarSign} color="amber" onClick={() => navigate('/crm/opportunities')} />
+        <KpiCardPro title={t('reports.totalOpportunities')} value={data.crmOpportunitiesCount} icon={Target} color="purple" onClick={() => navigate('/crm/opportunities')} />
       </div>
     </div>
   );

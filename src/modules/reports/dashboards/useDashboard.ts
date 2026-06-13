@@ -25,6 +25,10 @@ export interface DashboardData {
   crmOpportunitiesCount: number;
   crmPipelineValue: number;
   crmConversionRate: number;
+  crmWonDealsCount: number;
+  crmLostDealsCount: number;
+  crmAvgDealValue: number;
+  pipelineByStage: Array<{ stage: string; value: number; count: number }>;
   monthlyRevenue: Array<{ month: string; revenue: number; expenses: number }>;
   topProducts: Array<{ name: string; value: number }>;
   arAging: Array<{ range: string; amount: number }>;
@@ -228,6 +232,39 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
   const crmOpportunitiesCount = toNum(crmOppsResult.rows?.[0]?.cnt);
   const crmPipelineValue = toNum(crmOppsResult.rows?.[0]?.total_value);
   const crmConversionRate = crmLeadsCount > 0 ? Math.round((crmOpportunitiesCount / crmLeadsCount) * 100) : 0;
+
+  const [crmWonResult, crmLostResult, crmAvgResult] = await Promise.all([
+    adapter.query<{ cnt: string | number }>(
+      `SELECT COUNT(*)::int AS cnt FROM opportunities WHERE company_id = $1 AND stage = 'won'`, [companyId]
+    ),
+    adapter.query<{ cnt: string | number }>(
+      `SELECT COUNT(*)::int AS cnt FROM opportunities WHERE company_id = $1 AND stage = 'lost'`, [companyId]
+    ),
+    adapter.query<{ avg: string | number }>(
+      `SELECT COALESCE(AVG(value), 0) AS avg FROM opportunities WHERE company_id = $1 AND stage = 'won'`, [companyId]
+    ),
+  ]);
+  const crmWonDealsCount = toNum(crmWonResult.rows?.[0]?.cnt);
+  const crmLostDealsCount = toNum(crmLostResult.rows?.[0]?.cnt);
+  const crmAvgDealValue = toNum(crmAvgResult.rows?.[0]?.avg);
+
+  const stageResult = await adapter.query<{ stage: string; value: string | number; cnt: string | number }>(
+    `SELECT stage, COALESCE(SUM(value), 0) AS value, COUNT(*)::int AS cnt
+       FROM opportunities
+      WHERE company_id = $1
+      GROUP BY stage
+      ORDER BY MIN(CASE stage
+        WHEN 'new' THEN 1 WHEN 'qualified' THEN 2
+        WHEN 'proposal' THEN 3 WHEN 'negotiation' THEN 4
+        WHEN 'won' THEN 5 WHEN 'lost' THEN 6 ELSE 7
+      END)`,
+    [companyId],
+  );
+  const pipelineByStage: DashboardData['pipelineByStage'] = (stageResult.rows || []).map((r) => ({
+    stage: String(r.stage),
+    value: toNum(r.value),
+    count: toNum(r.cnt),
+  }));
 
   // 3. Monthly revenue (only when period spans >60 days, otherwise daily)
   const showMonthly = days > 60;
@@ -443,6 +480,10 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
     crmOpportunitiesCount,
     crmPipelineValue,
     crmConversionRate,
+    crmWonDealsCount,
+    crmLostDealsCount,
+    crmAvgDealValue,
+    pipelineByStage,
     monthlyRevenue,
     topProducts,
     arAging,

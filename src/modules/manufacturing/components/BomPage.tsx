@@ -1,11 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { GitBranch, Plus, Printer, Trash2 } from 'lucide-react';
+import { Eye, GitBranch, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
 import { Pagination } from '@/core/ui/components/Pagination';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
-import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { ProductSelect } from '@/core/ui/components/smart/fields/ProductSelect';
 import { useAppStore } from '@/core/store';
@@ -127,12 +126,21 @@ export const BomPage: React.FC = () => {
     { key: 'totalCost', header: t('manufacturing.table.cost'), align: 'right' as const, render: (row: BOM) => row.totalCost !== undefined ? formatCurrency(row.totalCost) : '—' },
     { key: 'isActive', header: t('manufacturing.table.status'), width: '100px', render: (row: BOM) => <StatusBadge status={row.isActive ? 'active' : 'inactive'} /> },
     { key: 'actions', header: '', width: '140px', render: (row: BOM) => (
-      <ActionButtons
-        onView={() => openView(row)}
-        onEdit={() => openEdit(row)}
-        onDelete={() => setConfirmDelete(row.id)}
-        showPrint={false}
-      />
+      <div className="flex items-center gap-1">
+        <Button size="sm" variant="ghost" onClick={() => openView(row)} title={t('settings.common.view')} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+          <Eye size={14} />
+        </Button>
+        <Can action="edit" module="manufacturing">
+          <Button size="sm" variant="ghost" onClick={() => openEdit(row)} title={t('settings.common.edit')} className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20">
+            <Pencil size={14} />
+          </Button>
+        </Can>
+        <Can action="delete" module="manufacturing">
+          <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(row.id)} title={t('settings.common.delete')} className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20">
+            <Trash2 size={14} />
+          </Button>
+        </Can>
+      </div>
     )},
   ];
 
@@ -143,7 +151,7 @@ export const BomPage: React.FC = () => {
           <GitBranch size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('manufacturing.bom.title')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Bill of Materials - {t('manufacturing.bom.subtitle')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('manufacturing.bom.subtitle')}</p>
           </div>
         </div>
         <Can action="create" module="manufacturing">

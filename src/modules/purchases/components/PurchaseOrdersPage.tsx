@@ -161,7 +161,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, formTotal, editingId, orders, create, update, user, getNextNumber]);
+  }, [activeCompany, form, formTotal, editingId, orders, create, update, user, getNextNumber, addToast, t]);
 
   const handleDelete = useCallback((id: string) => setConfirmDelete(id), []);
   const confirmDeleteAction = useCallback(async () => {
@@ -170,7 +170,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     addToast('success', t('purchases.order.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'purchase_orders', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
-  }, [confirmDelete, activeCompany, remove, user]);
+  }, [confirmDelete, activeCompany, remove, user, addToast, t]);
 
   const handleConvert = useCallback((id: string) => setConfirmConvert(id), []);
   const confirmConvertAction = useCallback(async () => {
@@ -181,7 +181,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     await logAudit({ userId: user?.id || '', action: 'post', tableName: 'purchase_orders', recordId: confirmConvert, companyId: activeCompany.id });
     setConvertingId(null);
     setConfirmConvert(null);
-  }, [confirmConvert, activeCompany, convertToInvoice, user]);
+  }, [confirmConvert, activeCompany, convertToInvoice, user, addToast, t]);
 
   const handlePrint = useCallback((order: PurchaseOrder) => {
     printDocument({

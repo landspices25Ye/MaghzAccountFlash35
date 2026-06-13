@@ -160,7 +160,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, formTotal, editingId, returns, create, update, user]);
+  }, [activeCompany, form, formTotal, editingId, returns, create, update, user, addToast, t]);
 
   const handleDelete = useCallback((id: string) => setConfirmDelete(id), []);
   const confirmDeleteAction = useCallback(async () => {
@@ -169,7 +169,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     addToast('success', t('purchases.return.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'purchase_returns', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
-  }, [confirmDelete, activeCompany, remove, user]);
+  }, [confirmDelete, activeCompany, remove, user, addToast, t]);
 
   const handlePost = useCallback((ret: PurchaseReturn) => setConfirmPost(ret.id), []);
   const confirmPostAction = useCallback(async () => {
@@ -194,7 +194,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     }
     setPostingId(null);
     setConfirmPost(null);
-  }, [confirmPost, activeCompany, returns, post, user]);
+  }, [confirmPost, activeCompany, returns, post, user, addToast, t]);
 
   const handlePrint = useCallback((ret: PurchaseReturn) => {
     printDocument({

@@ -335,7 +335,7 @@ export const manufacturingApi = {
     }
   },
 
-  async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }): Promise<{ success: boolean; error?: string }> {
+  async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }, companyId?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const adapter = await getDbAdapter();
       const fields: string[] = [];
@@ -345,7 +345,12 @@ export const manufacturingApi = {
       if (data.actualUnitCost !== undefined) { fields.push(`actual_unit_cost = $${idx++}`); values.push(data.actualUnitCost); }
       if (fields.length === 0) return { success: true };
       values.push(consumptionId);
-      const result = await adapter.query(`UPDATE work_order_consumptions SET ${fields.join(', ')} WHERE id = $${idx}`, values);
+      let sql = `UPDATE work_order_consumptions SET ${fields.join(', ')} WHERE id = $${idx}`;
+      if (companyId) {
+        sql += ` AND work_order_id IN (SELECT id FROM work_orders WHERE company_id = $${idx + 1})`;
+        values.push(companyId);
+      }
+      const result = await adapter.query(sql, values);
       return { success: result.success, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };

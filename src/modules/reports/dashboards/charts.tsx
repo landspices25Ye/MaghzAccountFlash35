@@ -188,6 +188,75 @@ export const ProfitTrendChart: React.FC<ProfitTrendProps> = ({ data }) => {
   );
 };
 
+// --- Opportunity Funnel (Horizontal Bar) ---
+interface OpportunityFunnelProps {
+  data: Array<{ stage: string; value: number; count: number }>;
+}
+
+const STAGE_ORDER = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
+const STAGE_COLORS: Record<string, string> = {
+  new: '#94a3b8',
+  qualified: '#3b82f6',
+  proposal: '#f59e0b',
+  negotiation: '#8b5cf6',
+  won: '#10b981',
+  lost: '#ef4444',
+};
+
+function stageLabelKey(stage: string): string {
+  const map: Record<string, string> = {
+    new: 'crm.stage.new',
+    qualified: 'crm.stage.qualified',
+    proposal: 'crm.stage.proposal',
+    negotiation: 'crm.stage.negotiation',
+    won: 'crm.stage.won',
+    lost: 'crm.stage.lost',
+  };
+  return map[stage] || stage;
+}
+
+export const OpportunityFunnelChart: React.FC<OpportunityFunnelProps> = ({ data }) => {
+  const { t } = useTranslation();
+  const activeCompany = useAppStore((state) => state.activeCompany);
+  const { formatCurrency } = useFormatters(activeCompany?.id || '');
+
+  const chartData = STAGE_ORDER
+    .map((s) => {
+      const found = (data || []).find((d) => d.stage === s);
+      return { stage: t(stageLabelKey(s)), value: found?.value || 0, count: found?.count || 0, rawStage: s };
+    })
+    .filter((d) => d.count > 0);
+
+  if (chartData.length === 0) {
+    return (
+      <ChartCard title={t('reports.pipelineByStage')}>
+        <div className="h-full flex items-center justify-center text-slate-400 text-sm">{t('reports.opportunityPipelineNoData')}</div>
+      </ChartCard>
+    );
+  }
+
+  return (
+    <ChartCard title={t('reports.pipelineByStage')}>
+      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis type="number" tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
+        <YAxis dataKey="stage" type="category" tick={{ fontSize: 12 }} width={100} />
+        <Tooltip
+          formatter={(value: unknown, _name: unknown) => [
+            `${t('reports.totalValue')}: ${formatCurrency(Number(value))}`,
+            '',
+          ]}
+        />
+        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+          {chartData.map((entry) => (
+            <Cell key={entry.rawStage} fill={STAGE_COLORS[entry.rawStage] || '#94a3b8'} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartCard>
+  );
+};
+
 // --- Category Share (Pie) ---
 interface CategoryShareProps {
   data: Array<{ name: string; value: number }>;

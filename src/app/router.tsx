@@ -68,6 +68,7 @@ const PurchaseReturnsPage = React.lazy(() => import('@/modules/purchases/compone
 const WorkOrdersPage = React.lazy(() => import('@/modules/manufacturing/components/WorkOrdersPage'));
 const BomPage = React.lazy(() => import('@/modules/manufacturing/components/BomPage'));
 const ProductionCostReport = React.lazy(() => import('@/modules/manufacturing/components/ProductionCostReport'));
+const VarianceAnalysisReport = React.lazy(() => import('@/modules/manufacturing/components/VarianceAnalysisReport'));
 
 // HR sub-pages
 const EmployeesPage = React.lazy(() => import('@/modules/hr/components/EmployeesPage'));
@@ -187,6 +188,7 @@ export const AppRouter: React.FC = () => {
               <Route path="work-orders" element={withSuspense(WorkOrdersPage)} />
               <Route path="bom" element={withSuspense(BomPage)} />
               <Route path="cost-report" element={withSuspense(ProductionCostReport)} />
+              <Route path="variance-report" element={withSuspense(VarianceAnalysisReport)} />
             </Route>
             
             {/* HR with nested routes */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Factory, FileDown } from 'lucide-react';
-import { Card, Button, Table } from '@/core/ui/components';
+import { Card, Button, Table, Can } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -163,7 +163,7 @@ export const ProductionCostReport: React.FC = () => {
     )},
     { key: 'plannedCost', header: t('manufacturing.plannedCost'), align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.plannedCost) },
     { key: 'actualCost', header: t('manufacturing.actualCost'), align: 'right' as const, render: (row: WorkOrderCostRow) => formatCurrency(row.actualCost) },
-    { key: 'variance', header: t('manufacturing.variance'), align: 'right' as const, render: (row: WorkOrderCostRow) => (
+    { key: 'variance', header: t('manufacturing.variance.title'), align: 'right' as const, render: (row: WorkOrderCostRow) => (
       <span className={row.variance > 0 ? 'text-rose-600 dark:text-rose-400' : row.variance < 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}>
         {row.variance > 0 ? '+' : ''}{formatCurrency(row.variance)}
       </span>
@@ -198,7 +198,7 @@ export const ProductionCostReport: React.FC = () => {
       { key: 'completionPct', header: t('manufacturing.completionRate'), width: 12 },
       { key: 'plannedCost', header: t('manufacturing.plannedCost'), width: 15 },
       { key: 'actualCost', header: t('manufacturing.actualCost'), width: 15 },
-      { key: 'variance', header: t('manufacturing.variance'), width: 15 },
+      { key: 'variance', header: t('manufacturing.variance.title'), width: 15 },
     ], `production-cost-${new Date().toISOString().slice(0, 10)}`);
   };
 
@@ -229,8 +229,12 @@ export const ProductionCostReport: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>Excel</Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF}>PDF</Button>
+          <Can action="export" module="reports">
+            <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>{t('export.excel')}</Button>
+          </Can>
+          <Can action="export" module="reports">
+            <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF}>{t('export.pdf')}</Button>
+          </Can>
         </div>
       </div>
 
@@ -310,7 +314,7 @@ export const ProductionCostReport: React.FC = () => {
           {materials.length > 0 && (
             <Card>
               <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t('manufacturing.materialVariance')} — أعلى 10</h3>
+                <h3 className="font-semibold text-slate-700 dark:text-slate-200">{t('manufacturing.materialVariance')} — {t('reports.top10')}</h3>
               </div>
               <Table<MaterialVarianceRow> data={materials} columns={matColumns} keyExtractor={(r) => r.materialName} />
             </Card>

@@ -108,7 +108,7 @@ export const SuppliersPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, editingId, create, update, user]);
+  }, [activeCompany, form, editingId, create, update, user, addToast, t]);
 
   const handleDelete = useCallback((id: string) => {
     setConfirmDelete(id);
@@ -120,7 +120,7 @@ export const SuppliersPage: React.FC = () => {
     addToast('success', t('purchases.supplier.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'suppliers', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
-  }, [confirmDelete, activeCompany, remove, user]);
+  }, [confirmDelete, activeCompany, remove, user, addToast, t]);
 
   const handleExportExcel = useCallback(() => {
     exportToExcel(suppliers, [

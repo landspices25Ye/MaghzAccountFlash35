@@ -163,9 +163,11 @@ export const WorkOrdersPage: React.FC = () => {
       <div className="flex items-center gap-1">
         <ActionButtons onView={() => openView(row)} onEdit={() => openEdit(row)} onDelete={() => setConfirmDelete(row.id)} showPrint={false} />
         {canAdvance(row.status) && (
-          <Button variant="ghost" size="sm" title={statusActionLabel[row.status]} onClick={() => setConfirmStatus({ id: row.id, status: nextStatus(row.status)! })} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
-            <ArrowRight size={14} />
-          </Button>
+          <Can action="edit" module="manufacturing">
+            <Button variant="ghost" size="sm" title={statusActionLabel[row.status]} onClick={() => setConfirmStatus({ id: row.id, status: nextStatus(row.status)! })} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+              <ArrowRight size={14} />
+            </Button>
+          </Can>
         )}
         {row.status === 'completed' && (
           <Button variant="ghost" size="sm" title={t('manufacturing.actions.varianceReport')} onClick={() => openVariance(row.id)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
@@ -257,7 +259,7 @@ export const WorkOrdersPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">BOM</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('manufacturing.form.bom')}</label>
               <select value={formData.bomId} onChange={async (e) => {
                 const bomId = e.target.value;
                 setFormData((prev) => ({ ...prev, bomId }));
@@ -331,27 +333,29 @@ export const WorkOrdersPage: React.FC = () => {
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
             {(viewing?.workOrder.status === 'in_progress' || viewing?.workOrder.status === 'completed') && (
-              <Button variant={isEditingActual ? 'primary' : 'secondary'} onClick={async () => {
-                if (isEditingActual && viewing) {
-                  for (const line of viewing.lines) {
-                    const input = document.getElementById(`actual-qty-${line.id}`) as HTMLInputElement;
-                    const costInput = document.getElementById(`actual-cost-${line.id}`) as HTMLInputElement;
-                    if (input) {
-                      await manufacturingApi.updateConsumption(line.id, {
-                        actualQuantity: Number(input.value) || 0,
-                        actualUnitCost: costInput ? Number(costInput.value) || line.unitCost : line.unitCost,
-                      });
+              <Can action="edit" module="manufacturing">
+                <Button variant={isEditingActual ? 'primary' : 'secondary'} onClick={async () => {
+                  if (isEditingActual && viewing) {
+                    for (const line of viewing.lines) {
+                      const input = document.getElementById(`actual-qty-${line.id}`) as HTMLInputElement;
+                      const costInput = document.getElementById(`actual-cost-${line.id}`) as HTMLInputElement;
+                      if (input) {
+                        await manufacturingApi.updateConsumption(line.id, {
+                          actualQuantity: Number(input.value) || 0,
+                          actualUnitCost: costInput ? Number(costInput.value) || line.unitCost : line.unitCost,
+                        }, companyId);
+                      }
                     }
+                    const res = await manufacturingApi.getWorkOrderById(viewing.workOrder.id, companyId);
+                    if (res.success && res.data) setViewing(res.data);
+                    setIsEditingActual(false);
+                  } else {
+                    setIsEditingActual(true);
                   }
-                  const res = await manufacturingApi.getWorkOrderById(viewing.workOrder.id, companyId);
-                  if (res.success && res.data) setViewing(res.data);
-                  setIsEditingActual(false);
-                } else {
-                  setIsEditingActual(true);
-                }
-              }}>
-                {isEditingActual ? t('manufacturing.workOrders.saveActual') : t('manufacturing.workOrders.recordActual')}
-              </Button>
+                }}>
+                  {isEditingActual ? t('manufacturing.workOrders.saveActual') : t('manufacturing.workOrders.recordActual')}
+                </Button>
+              </Can>
             )}
             <Button variant="secondary" leftIcon={<Printer size={16} />} onClick={() => {
               if (!viewing) return;

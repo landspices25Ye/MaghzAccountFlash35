@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Users, Filter, RotateCcw } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
@@ -29,12 +29,39 @@ interface ConversionSummary {
   convertedValue: number;
 }
 
+function daysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+}
+
+function yearStart(): string {
+  const d = new Date();
+  d.setMonth(0, 1);
+  return d.toISOString().split('T')[0];
+}
+
 export const LeadConversionReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [summary, setSummary] = useState<ConversionSummary | null>(null);
   const [sourceData, setSourceData] = useState<LeadSourceRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const applyPreset = useCallback((preset: '30' | '90' | 'year' | 'all') => {
+    if (preset === 'all') {
+      setFromDate('');
+      setToDate('');
+      return;
+    }
+    setToDate(new Date().toISOString().split('T')[0]);
+    if (preset === '30') setFromDate(daysAgo(30));
+    else if (preset === '90') setFromDate(daysAgo(90));
+    else if (preset === 'year') setFromDate(yearStart());
+  }, []);
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -44,8 +71,11 @@ export const LeadConversionReport: React.FC = () => {
       setIsLoading(true);
       const adapter = await getDbAdapter();
 
-      const whereBase = 'WHERE company_id = $1';
+      const conditions: string[] = ['company_id = $1'];
       const params: unknown[] = [companyId];
+      if (fromDate) { conditions.push(`created_at >= $${params.length + 1}::date`); params.push(fromDate); }
+      if (toDate) { conditions.push(`created_at <= $${params.length + 1}::date`); params.push(toDate); }
+      const whereBase = `WHERE ${conditions.join(' AND ')}`;
 
       const summaryResult = await adapter.query<Record<string, unknown>>(
         `SELECT
@@ -88,6 +118,8 @@ export const LeadConversionReport: React.FC = () => {
           totalEstimatedValue: Number(r.total_estimated) || 0,
           convertedValue: Number(r.converted_value) || 0,
         });
+      } else {
+        setSummary(null);
       }
 
       if (sourceResult.success && sourceResult.rows) {
@@ -105,13 +137,22 @@ export const LeadConversionReport: React.FC = () => {
           };
         });
         setSourceData(rows);
+      } else {
+        setSourceData([]);
       }
 
       setIsLoading(false);
     }
 
     load();
-  }, [activeCompany?.id]);
+  }, [activeCompany?.id, fromDate, toDate]);
+
+  const hasActiveFilters = fromDate || toDate;
+
+  const clearFilters = () => {
+    setFromDate('');
+    setToDate('');
+  };
 
   const handleExportExcel = async () => {
     if (!sourceData.length) return;
@@ -167,7 +208,18 @@ export const LeadConversionReport: React.FC = () => {
 
   if (!summary || summary.totalLeads === 0) {
     return (
-      <EmptyState icon="inbox" title={t('reports.noData')} description={t('reports.leadConversionNoData')} />
+      <EmptyState
+        icon="inbox"
+        title={hasActiveFilters ? t('reports.emptyResults.title') : t('reports.noData')}
+        description={hasActiveFilters ? t('reports.emptyResults.description') : t('reports.leadConversionNoData')}
+        action={
+          hasActiveFilters ? (
+            <Button variant="secondary" onClick={clearFilters} leftIcon={<RotateCcw size={16} />}>
+              {t('reports.clearFilter')}
+            </Button>
+          ) : undefined
+        }
+      />
     );
   }
 
@@ -182,6 +234,9 @@ export const LeadConversionReport: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="secondary" leftIcon={<Filter size={16} />} onClick={() => setShowFilters((s) => !s)}>
+            {t('reports.filter')}
+          </Button>
           {summary.totalLeads > 0 && (
             <>
               <Button variant="secondary" onClick={handleExportExcel}>{t('reports.exportExcel')}</Button>
@@ -191,6 +246,41 @@ export const LeadConversionReport: React.FC = () => {
         </div>
       </div>
 
+      {/* Filter Panel */}
+      {showFilters && (
+        <Card>
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.fromDate')}</label>
+                <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.toDate')}</label>
+                <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </div>
+              <div className="flex items-end gap-1">
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('30')}>{t('reports.preset.last30')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('90')}>{t('reports.preset.last90')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('year')}>{t('reports.preset.thisYear')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('all')}>{t('reports.preset.all')}</Button>
+              </div>
+              <div className="flex items-end">
+                <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>
+                  {t('reports.clearFilter')}
+                </Button>
+              </div>
+            </div>
+            {hasActiveFilters && (
+              <p className="text-xs text-primary-600 dark:text-primary-400">
+                {t('reports.filter')}: {fromDate ? `${t('reports.fromDate')} ${fromDate}` : ''}{fromDate && toDate ? ' — ' : ''}{toDate ? `${t('reports.toDate')} ${toDate}` : ''}
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card><div className="p-4 text-center"><p className="text-3xl font-bold text-primary-600">{summary.totalLeads}</p><p className="text-sm text-slate-500 mt-1">{t('reports.totalLeads')}</p></div></Card>
         <Card><div className="p-4 text-center"><p className="text-3xl font-bold text-blue-600">{summary.contacted}</p><p className="text-sm text-slate-500 mt-1">{t('crm.status.contacted')}</p></div></Card>

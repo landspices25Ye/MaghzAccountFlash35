@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { TrendingUp, FileDown, Filter, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { TrendingUp, FileDown, Filter, RotateCcw, Calendar } from 'lucide-react';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CurrencyBreakdown } from '@/core/ui/components/CurrencyBreakdown';
@@ -50,6 +50,23 @@ export const SalesAnalysisReport: React.FC = () => {
   const [repFilter, setRepFilter] = useState('');
   const [pivotBy, setPivotBy] = useState<'none' | 'customer' | 'product' | 'month'>('none');
   const [showFilters, setShowFilters] = useState(false);
+
+  const applyPreset = useCallback((preset: '30' | '90' | 'year' | 'all') => {
+    if (preset === 'all') {
+      setFromDate('');
+      setToDate('');
+      return;
+    }
+    const now = new Date();
+    setToDate(now.toISOString().split('T')[0]);
+    if (preset === '30') {
+      const d = new Date(now); d.setDate(d.getDate() - 30); setFromDate(d.toISOString().split('T')[0]);
+    } else if (preset === '90') {
+      const d = new Date(now); d.setDate(d.getDate() - 90); setFromDate(d.toISOString().split('T')[0]);
+    } else if (preset === 'year') {
+      const d = new Date(now.getFullYear(), 0, 1); setFromDate(d.toISOString().split('T')[0]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -298,40 +315,50 @@ export const SalesAnalysisReport: React.FC = () => {
       {/* Filters */}
       {showFilters && (
         <Card>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.fromDate')}</label>
-              <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.fromDate')}</label>
+                <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.toDate')}</label>
+                <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </div>
+              <div className="flex items-end gap-1 flex-wrap">
+                <Button size="sm" variant="ghost" leftIcon={<Calendar size={14} />} onClick={() => applyPreset('30')}>{t('reports.preset.last30')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('90')}>{t('reports.preset.last90')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('year')}>{t('reports.preset.thisYear')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => applyPreset('all')}>{t('reports.preset.all')}</Button>
+              </div>
+              <div className="flex items-end">
+                <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>
+                  {t('reports.clearFilter')}
+                </Button>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.toDate')}</label>
-              <input type="date" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.customer')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.customerName')} value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.product')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.productName')} value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.salesRep')}</label>
-              <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.repName')} value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">{t('reports.pivotTable')}</label>
-              <select className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={pivotBy} onChange={(e) => setPivotBy(e.target.value as 'none' | 'customer' | 'product' | 'month')}>
-                <option value="none">{t('reports.pivotNone')}</option>
-                <option value="customer">{t('reports.pivotByCustomer')}</option>
-                <option value="product">{t('reports.pivotByProduct')}</option>
-                <option value="month">{t('reports.pivotByMonth')}</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <Button variant="ghost" size="sm" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>
-                {t('reports.clearFilter')}
-              </Button>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.customer')}</label>
+                <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.customerName')} value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.product')}</label>
+                <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.productName')} value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.salesRep')}</label>
+                <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.repName')} value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">{t('reports.pivotTable')}</label>
+                <select className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" value={pivotBy} onChange={(e) => setPivotBy(e.target.value as 'none' | 'customer' | 'product' | 'month')}>
+                  <option value="none">{t('reports.pivotNone')}</option>
+                  <option value="customer">{t('reports.pivotByCustomer')}</option>
+                  <option value="product">{t('reports.pivotByProduct')}</option>
+                  <option value="month">{t('reports.pivotByMonth')}</option>
+                </select>
+              </div>
             </div>
           </div>
         </Card>

@@ -110,6 +110,7 @@ const menuItems: MenuItem[] = [
       { labelKey: 'sidebar.manufacturing.boms', path: '/manufacturing/bom' },
       { labelKey: 'sidebar.manufacturing.workOrders', path: '/manufacturing/work-orders' },
       { labelKey: 'sidebar.manufacturing.costReport', path: '/manufacturing/cost-report' },
+      { labelKey: 'sidebar.manufacturing.varianceReport', path: '/manufacturing/variance-report' },
     ],
   },
   {

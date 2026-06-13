@@ -133,7 +133,8 @@
       "title": "Manufacturing",
       "boms": "Bills of Materials",
       "workOrders": "Work Orders",
-      "costReport": "Cost Analysis"
+      "costReport": "Cost Analysis",
+      "varianceReport": "Variance Analysis"
     },
     "hr": {
       "title": "HR",
@@ -491,7 +492,8 @@
       "updated": "Payment voucher updated successfully",
       "deleted": "Payment voucher deleted",
       "posted": "Payment voucher posted successfully"
-    }
+    },
+    "avgInvoiceValue": "Average Invoice Value"
   },
   "inventory": {
     "products": "Products",
@@ -998,7 +1000,19 @@
     "materialVariance": "Material Variance",
     "planned": "Planned",
     "actual": "Actual",
-    "variance": "Variance",
+    "variance": {
+      "title": "Variance",
+      "emptyTitle": "No Variances",
+      "emptyDescription": "No actual quantities recorded yet to calculate variances",
+      "quantityDifference": "Qty Difference",
+      "plannedCost": "Planned Cost",
+      "actualCost": "Actual Cost",
+      "costDifference": "Cost Difference",
+      "unfavorable": "Unfavorable",
+      "favorable": "Favorable",
+      "noVariance": "No Variance"
+    },
+    "varianceDistribution": "Variance Distribution",
     "noWorkOrders": "No work orders to generate report",
     "page": {
       "title": "Manufacturing",
@@ -1007,7 +1021,8 @@
     "tabs": {
       "workOrders": "Work Orders",
       "boms": "Bills of Materials",
-      "costReport": "Cost Analysis"
+      "costReport": "Cost Analysis",
+      "varianceReport": "Variance Analysis"
     },
     "table": {
       "product": "Product",
@@ -1521,7 +1536,9 @@
     "hub": {
       "subtitle": "Advanced analytics reports for all system modules",
       "salesAnalysis": {
-        "desc": "Monthly sales performance, top customers, product analysis"
+        "desc": "Monthly sales performance, top customers, product analysis",
+        "subtitle": "Sales revenue analysis by month, customer, and product",
+        "details": "Sales Details"
       },
       "inventoryAnalysis": {
         "desc": "Inventory status, stock turnover, low stock products"
@@ -1565,6 +1582,12 @@
       "customerName": "Customer name...",
       "productName": "Product name...",
       "repName": "Rep name..."
+    },
+    "preset": {
+      "last30": "Last 30 Days",
+      "last90": "Last 90 Days",
+      "thisYear": "This Year",
+      "all": "All"
     },
     "pivotNone": "None",
     "pivotByCustomer": "By Customer",
@@ -1674,7 +1697,10 @@
     "repPerformance": "Rep Performance",
     "repName": "Rep Name",
     "opportunitiesCount": "Opportunities Count",
-    "noRepData": "No rep performance data"
+    "noRepData": "No rep performance data",
+    "wonDeals": "Won Deals",
+    "lostDeals": "Lost Deals",
+    "avgDealValue": "Avg Deal Value"
   },
   "settings": {
     "pageTitle": "Settings",

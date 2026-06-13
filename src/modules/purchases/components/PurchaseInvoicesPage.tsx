@@ -259,7 +259,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, formTotals, editingId, invoices, create, update, user, getNextNumber, currencyCode, exchangeRate]);
+  }, [activeCompany, form, formTotals, editingId, invoices, create, update, user, getNextNumber, currencyCode, exchangeRate, addToast, t]);
 
   const handleDelete = useCallback(async (id: string) => {
     setConfirmDelete(id);
@@ -277,7 +277,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
       companyId: activeCompany.id,
     });
     setConfirmDelete(null);
-  }, [confirmDelete, activeCompany, remove, user]);
+  }, [confirmDelete, activeCompany, remove, user, addToast, t]);
 
   const handlePost = useCallback(async (invoice: PurchaseInvoice) => {
     setConfirmPost(invoice.id);
@@ -313,7 +313,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
     }
     setPostingId(null);
     setConfirmPost(null);
-  }, [confirmPost, activeCompany, invoices, post, user, t]);
+  }, [confirmPost, activeCompany, invoices, post, user, t, addToast]);
 
   const handlePrint = useCallback((invoice: PurchaseInvoice) => {
     printDocument({
