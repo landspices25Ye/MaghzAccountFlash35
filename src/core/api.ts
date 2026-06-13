@@ -79,9 +79,9 @@ export async function updateProductType(id: string, data: Partial<ProductType>):
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
-export async function deleteProductType(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteProductType(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('DELETE FROM product_types WHERE id = $1', [id]);
+  const result = await adapter.query('DELETE FROM product_types WHERE id = $1 AND company_id = $2', [id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
@@ -110,9 +110,9 @@ export async function updateUnit(id: string, data: Partial<Unit>): Promise<{ suc
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
-export async function deleteUnit(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteUnit(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('DELETE FROM units WHERE id = $1', [id]);
+  const result = await adapter.query('DELETE FROM units WHERE id = $1 AND company_id = $2', [id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
@@ -167,15 +167,15 @@ export async function updateBank(id: string, data: Partial<Bank>): Promise<{ suc
 }
 
 // ─── Delete Cash Boxes and Banks ──────────────────────────────────────────────
-export async function deleteCashBox(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteCashBox(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('DELETE FROM cash_boxes WHERE id = $1', [id]);
+  const result = await adapter.query('DELETE FROM cash_boxes WHERE id = $1 AND company_id = $2', [id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
-export async function deleteBank(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteBank(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('DELETE FROM banks WHERE id = $1', [id]);
+  const result = await adapter.query('DELETE FROM banks WHERE id = $1 AND company_id = $2', [id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
@@ -204,9 +204,9 @@ export async function updateCostCenter(id: string, data: Partial<CostCenter>): P
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 
-export async function deleteCostCenter(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteCostCenter(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('DELETE FROM cost_centers WHERE id = $1', [id]);
+  const result = await adapter.query('DELETE FROM cost_centers WHERE id = $1 AND company_id = $2', [id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 

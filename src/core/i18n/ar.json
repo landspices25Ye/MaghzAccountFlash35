@@ -159,7 +159,9 @@
       "customerStatement": "كشف حساب عميل",
       "supplierStatement": "كشف حساب مورد",
       "profitAnalysis": "تحليل الأرباح",
-      "customBuilder": "تقرير مخصص"
+      "customBuilder": "تقرير مخصص",
+      "leadConversion": "تحويل العملاء المحتملين",
+      "opportunityPipeline": "خط أنابيب الفرص"
     },
     "settings": {
       "title": "الإعدادات",
@@ -1642,7 +1644,37 @@
       "noFilters": "لا توجد فلاتر. اضغط \"+ تصفية\" لإضافة فلتر.",
       "records": "سجل",
       "tryDifferent": "جرب تعديل الفلاتر أو اختيار جدول آخر"
-    }
+    },
+    "leadConversion": "تحليل تحويل العملاء المحتملين",
+    "leadConversionDesc": "تحليل معدل تحويل العملاء المحتملين حسب المصدر والحالة",
+    "leadConversionNoData": "لا توجد بيانات تحويل للعملاء المحتملين",
+    "leadConversionBySource": "معدل التحويل حسب المصدر",
+    "opportunityPipeline": "خط أنابيب الفرص",
+    "opportunityPipelineDesc": "تحليل خط أنابيب الفرص التجارية حسب المرحلة",
+    "opportunityPipelineNoData": "لا توجد بيانات للفرص التجارية",
+    "totalLeads": "إجمالي العملاء المحتملين",
+    "totalOpportunities": "إجمالي الفرص",
+    "overallConversionRate": "معدل التحويل الإجمالي",
+    "convertedLeads": "العملاء المحولين",
+    "totalEstimatedValue": "إجمالي القيمة التقديرية",
+    "convertedValue": "قيمة العملاء المحولين",
+    "qualifiedRate": "نسبة التأهيل",
+    "conversionRate": "معدل التحويل",
+    "source": "المصدر",
+    "stage": "المرحلة",
+    "stageBreakdown": "تحليل المراحل",
+    "pipelineValue": "قيمة خط الأنابيب",
+    "weightedPipeline": "القيمة المرجحة",
+    "wonValue": "قيمة الصفقات المغلقة",
+    "pipelineByStage": "خط الأنابيب حسب المرحلة",
+    "totalValue": "القيمة الإجمالية",
+    "avgValue": "متوسط القيمة",
+    "weightedValue": "القيمة المرجحة",
+    "probability": "الاحتمالية",
+    "repPerformance": "أداء مندوبي المبيعات",
+    "repName": "اسم المندوب",
+    "opportunitiesCount": "عدد الفرص",
+    "noRepData": "لا توجد بيانات لمندوبي المبيعات"
   },
   "settings": {
     "pageTitle": "الإعدادات",
@@ -1956,6 +1988,35 @@
       "empty": "لا توجد مراكز تكلفة",
       "created": "تم إنشاء مركز التكلفة بنجاح",
       "updated": "تم تحديث مركز التكلفة بنجاح"
+    },
+    "defaultAccounts": {
+      "title": "الحسابات الافتراضية",
+      "subtitle": "ربط حسابات الدفتر العام بالعمليات الآلية في النظام",
+      "function": "الدالة",
+      "status": "الحالة",
+      "linked": "مربوط",
+      "required": "مطلوب",
+      "optional": "اختياري",
+      "linkedAccount": "الحساب المرتبط",
+      "selectAccount": "اختر الحساب...",
+      "none": "بدون",
+      "currentAccount": "الحساب الحالي",
+      "templateTrading": "قالب تجاري",
+      "templateManufacturing": "قالب تصنيعي",
+      "templateServices": "قالب خدمات",
+      "empty": "لا توجد إعدادات"
+    },
+    "reset": {
+      "title": "إعادة تهيئة النظام",
+      "subtitle": "مسح إعدادات التهيئة وإعادة تشغيل المعالج",
+      "unauthorized": "غير مصرح",
+      "unauthorizedDesc": "فقط المدراء يمكنهم إعادة تهيئة النظام.",
+      "done": "تم إعادة التهيئة",
+      "doneDesc": "سيتم إعادة تحميل الصفحة...",
+      "warning": "تنبيه مهم",
+      "warningDesc": "إعادة التهيئة لن تحذف بيانات قاعدة البيانات. ستقوم فقط بإعادة تشغيل معالج التهيئة حتى تتمكن من تغيير إعدادات الاتصال أو إعادة بذر البيانات الافتراضية.",
+      "confirm": "أفهم أن هذا سيُعيد تشغيل معالج التهيئة عند التالي.",
+      "resetNow": "إعادة التهيئة الآن"
     }
   },
   "status": {

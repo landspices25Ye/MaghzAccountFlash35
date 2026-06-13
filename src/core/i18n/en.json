@@ -159,7 +159,9 @@
       "customerStatement": "Customer Statement",
       "supplierStatement": "Supplier Statement",
       "profitAnalysis": "Profit Analysis",
-      "customBuilder": "Custom Report Builder"
+      "customBuilder": "Custom Report Builder",
+      "leadConversion": "Lead Conversion",
+      "opportunityPipeline": "Opportunity Pipeline"
     },
     "settings": {
       "title": "Settings",
@@ -1642,7 +1644,37 @@
       "noFilters": "No filters. Click \"+ Filter\" to add a filter.",
       "records": "records",
       "tryDifferent": "Try adjusting filters or selecting a different table"
-    }
+    },
+    "leadConversion": "Lead Conversion Analysis",
+    "leadConversionDesc": "Analyze lead conversion rates by source and status",
+    "leadConversionNoData": "No lead conversion data available",
+    "leadConversionBySource": "Conversion Rate by Source",
+    "opportunityPipeline": "Opportunity Pipeline",
+    "opportunityPipelineDesc": "Analyze opportunity pipeline by stage",
+    "opportunityPipelineNoData": "No opportunity pipeline data available",
+    "totalLeads": "Total Leads",
+    "totalOpportunities": "Total Opportunities",
+    "overallConversionRate": "Overall Conversion Rate",
+    "convertedLeads": "Converted Leads",
+    "totalEstimatedValue": "Total Estimated Value",
+    "convertedValue": "Converted Value",
+    "qualifiedRate": "Qualification Rate",
+    "conversionRate": "Conversion Rate",
+    "source": "Source",
+    "stage": "Stage",
+    "stageBreakdown": "Stage Breakdown",
+    "pipelineValue": "Pipeline Value",
+    "weightedPipeline": "Weighted Pipeline",
+    "wonValue": "Won Value",
+    "pipelineByStage": "Pipeline by Stage",
+    "totalValue": "Total Value",
+    "avgValue": "Average Value",
+    "weightedValue": "Weighted Value",
+    "probability": "Probability",
+    "repPerformance": "Rep Performance",
+    "repName": "Rep Name",
+    "opportunitiesCount": "Opportunities Count",
+    "noRepData": "No rep performance data"
   },
   "settings": {
     "pageTitle": "Settings",
@@ -1956,6 +1988,35 @@
       "empty": "No cost centers found",
       "created": "Cost center created successfully",
       "updated": "Cost center updated successfully"
+    },
+    "defaultAccounts": {
+      "title": "Default Accounts",
+      "subtitle": "Link general ledger accounts to system automation operations",
+      "function": "Function",
+      "status": "Status",
+      "linked": "Linked",
+      "required": "Required",
+      "optional": "Optional",
+      "linkedAccount": "Linked Account",
+      "selectAccount": "Select account...",
+      "none": "None",
+      "currentAccount": "Current Account",
+      "templateTrading": "Trading Template",
+      "templateManufacturing": "Manufacturing Template",
+      "templateServices": "Services Template",
+      "empty": "No settings found"
+    },
+    "reset": {
+      "title": "Reset System",
+      "subtitle": "Clear initialization settings and restart the wizard",
+      "unauthorized": "Unauthorized",
+      "unauthorizedDesc": "Only admins can reset the system initialization.",
+      "done": "Reset Complete",
+      "doneDesc": "Reloading page...",
+      "warning": "Important Notice",
+      "warningDesc": "Resetting will not delete database data. It will only restart the setup wizard so you can change connection settings or re-seed default data.",
+      "confirm": "I understand this will restart the setup wizard on next load.",
+      "resetNow": "Reset Now"
     }
   },
   "status": {

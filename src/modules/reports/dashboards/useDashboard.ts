@@ -21,6 +21,10 @@ export interface DashboardData {
   employeesCount: number;
   lowStockCount: number;
   overdueInvoicesCount: number;
+  crmLeadsCount: number;
+  crmOpportunitiesCount: number;
+  crmPipelineValue: number;
+  crmConversionRate: number;
   monthlyRevenue: Array<{ month: string; revenue: number; expenses: number }>;
   topProducts: Array<{ name: string; value: number }>;
   arAging: Array<{ range: string; amount: number }>;
@@ -209,6 +213,21 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
   const productsCount = toNum(prodResult.rows?.[0]?.cnt);
   const overdueInvoicesCount = toNum(overdueResult.rows?.[0]?.cnt);
   const lowStockCount = toNum(lowStockResult.rows?.[0]?.cnt);
+
+  // CRM KPIs
+  const crmLeadsResult = await adapter.query<{ cnt: string | number }>(
+    `SELECT COUNT(*)::int AS cnt FROM leads WHERE company_id = $1`, [companyId]
+  );
+  const crmOppsResult = await adapter.query<{ total_value: string | number; cnt: string | number }>(
+    `SELECT COALESCE(SUM(COALESCE(value, 0)), 0) AS total_value,
+            COUNT(*)::int AS cnt
+       FROM opportunities
+      WHERE company_id = $1 AND stage NOT IN ('won', 'lost')`, [companyId]
+  );
+  const crmLeadsCount = toNum(crmLeadsResult.rows?.[0]?.cnt);
+  const crmOpportunitiesCount = toNum(crmOppsResult.rows?.[0]?.cnt);
+  const crmPipelineValue = toNum(crmOppsResult.rows?.[0]?.total_value);
+  const crmConversionRate = crmLeadsCount > 0 ? Math.round((crmOpportunitiesCount / crmLeadsCount) * 100) : 0;
 
   // 3. Monthly revenue (only when period spans >60 days, otherwise daily)
   const showMonthly = days > 60;
@@ -420,6 +439,10 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
     employeesCount,
     lowStockCount,
     overdueInvoicesCount,
+    crmLeadsCount,
+    crmOpportunitiesCount,
+    crmPipelineValue,
+    crmConversionRate,
     monthlyRevenue,
     topProducts,
     arAging,

@@ -25,6 +25,8 @@ const CustomerStatementReport = React.lazy(() => import('@/modules/reports/Custo
 const SupplierStatementReport = React.lazy(() => import('@/modules/reports/SupplierStatementReport'));
 const ProfitAnalysisReport = React.lazy(() => import('@/modules/reports/ProfitAnalysisReport'));
 const CustomReportBuilder = React.lazy(() => import('@/modules/reports/components/CustomReportBuilder'));
+const LeadConversionReport = React.lazy(() => import('@/modules/reports/LeadConversionReport'));
+const OpportunityPipelineReport = React.lazy(() => import('@/modules/reports/OpportunityPipelineReport'));
 
 // Auth pages
 const LoginPage = React.lazy(() => import('@/modules/auth/components/LoginPage'));
@@ -215,6 +217,8 @@ export const AppRouter: React.FC = () => {
             <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
             <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />
             <Route path="/reports/custom-builder" element={withSuspense(CustomReportBuilder)} />
+            <Route path="/reports/lead-conversion" element={withSuspense(LeadConversionReport)} />
+            <Route path="/reports/opportunity-pipeline" element={withSuspense(OpportunityPipelineReport)} />
             <Route path="/users" element={withSuspense(UsersPage)} />
             <Route path="/roles" element={withSuspense(RolesPage)} />
             <Route path="/audit-logs" element={withSuspense(AuditLogPage)} />

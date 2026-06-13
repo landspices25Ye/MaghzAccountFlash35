@@ -121,12 +121,12 @@ export const VatSettingsPage: React.FC = () => {
     )},
     { key: 'actions', header: '', render: (row: VatType) => (
       <div className="flex items-center gap-1">
-        <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setFormData(row); }}>
+        <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setFormData(row); }}>
           <Pencil size={14} className="text-amber-600" />
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(row.id)}>
+        </Button></Can>
+        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(row.id)}>
           <Trash2 size={14} className="text-rose-600" />
-        </Button>
+        </Button></Can>
       </div>
     )},
   ];

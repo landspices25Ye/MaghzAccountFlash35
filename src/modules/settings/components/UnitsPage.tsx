@@ -52,8 +52,8 @@ export const UnitsPage: React.FC = () => {
     { key: 'conversionFactor', header: t('settings.units.conversionFactor'), width: '120px', render: (row: Unit) => <span>{row.conversionFactor}</span> },
     { key: 'actions', header: '', width: '100px', render: (row: Unit) => (
       <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
-        <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
+        <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} /></Can>
+        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></Can>
       </div>
     )},
   ];

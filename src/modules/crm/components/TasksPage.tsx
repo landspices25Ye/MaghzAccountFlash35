@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { CheckSquare, Plus, User, AlertTriangle } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { useTasks } from '../hooks/useCrm';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { useTasksPaginated } from '../hooks/useCrm';
 import type { Task } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -17,8 +15,7 @@ export const TasksPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { tasks, isLoading, create, update, remove } = useTasks(companyId);
-  const { filtered: filteredTasks, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(tasks, 'crm');
+  const { tasks, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useTasksPaginated(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -143,22 +140,30 @@ export const TasksPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('crm.tasks.description')}</p>
           </div>
         </div>
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.task.new')}</Button></Can>
       </div>
 
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
-        ) : filteredTasks.length === 0 ? (
+        ) : tasks.length === 0 ? (
           <EmptyState icon="inbox" title={t('crm.task.empty')} description={t('crm.task.emptyDescription')} action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.task.new')}</Button></Can>} />
         ) : (
-          <Table<Task>
-            data={filteredTasks}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage={t('crm.task.empty')}
-          />
+          <>
+            <Table<Task>
+              data={tasks}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage={t('crm.task.empty')}
+            />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+            />
+          </>
         )}
       </Card>
 

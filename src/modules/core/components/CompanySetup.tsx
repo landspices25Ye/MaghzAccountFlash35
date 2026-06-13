@@ -45,7 +45,7 @@ export const CompanySetup: React.FC = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.company')}</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('settings.company.title')}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t('settings.company.description')}</p>
         </div>
         {!isEditing ? (

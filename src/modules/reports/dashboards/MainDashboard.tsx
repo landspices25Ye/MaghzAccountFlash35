@@ -255,6 +255,27 @@ const MainDashboard: React.FC = () => {
           color="slate"
           onClick={() => navigate('/hr/employees')}
         />
+        <KpiCardPro
+          title={t('reports.totalLeads')}
+          value={current.crmLeadsCount}
+          icon={Users}
+          color="blue"
+          onClick={() => navigate('/crm/leads')}
+        />
+        <KpiCardPro
+          title={t('reports.pipelineValue')}
+          value={formatCurrency(current.crmPipelineValue)}
+          icon={TrendingUp}
+          color="emerald"
+          onClick={() => navigate('/crm/opportunities')}
+        />
+        <KpiCardPro
+          title={t('reports.conversionRate')}
+          value={`${current.crmConversionRate}%`}
+          icon={TrendingUp}
+          color="purple"
+          onClick={() => navigate('/reports/lead-conversion')}
+        />
       </div>
 
       {/* Charts Row 1 */}

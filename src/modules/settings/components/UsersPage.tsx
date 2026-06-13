@@ -134,16 +134,22 @@ export const UsersPage: React.FC = () => {
     )},
     { key: 'actions', header: '', render: (row: User) => (
       <div className="flex items-center gap-1">
-        <Button size="sm" variant="ghost" onClick={() => setShowResetPassword(row.id)} title={t('settings.users.changePassword')}>
-          <KeyRound size={14} className="text-blue-600" />
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setFormData(row); }}>
-          <Pencil size={14} className="text-amber-600" />
-        </Button>
-        {row.id !== currentUser?.id && (
-          <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(row.id)}>
-            <Trash2 size={14} className="text-rose-600" />
+        <Can action="edit" module="settings">
+          <Button size="sm" variant="ghost" onClick={() => setShowResetPassword(row.id)} title={t('settings.users.changePassword')}>
+            <KeyRound size={14} className="text-blue-600" />
           </Button>
+        </Can>
+        <Can action="edit" module="settings">
+          <Button size="sm" variant="ghost" onClick={() => { setEditingId(row.id); setFormData(row); }}>
+            <Pencil size={14} className="text-amber-600" />
+          </Button>
+        </Can>
+        {row.id !== currentUser?.id && (
+          <Can action="delete" module="settings">
+            <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(row.id)}>
+              <Trash2 size={14} className="text-rose-600" />
+            </Button>
+          </Can>
         )}
       </div>
     )},

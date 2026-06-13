@@ -42,8 +42,8 @@ function TreeNode({ node, level, onEdit, onDelete, t }: { node: CategoryNode; le
         <FolderTree size={16} className="text-amber-500" />
         <span className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100">{node.name}</span>
         <span className="text-xs text-slate-400">{node.children.length} {t('settings.productCategories.subcategories')}</span>
-        <Button size="sm" variant="ghost" onClick={() => onEdit(node)} leftIcon={<Pencil size={12} />} />
-        <Button size="sm" variant="ghost" onClick={() => onDelete(node.id)} leftIcon={<Trash2 size={12} className="text-rose-500" />} />
+        <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => onEdit(node)} leftIcon={<Pencil size={12} />} /></Can>
+        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => onDelete(node.id)} leftIcon={<Trash2 size={12} className="text-rose-500" />} /></Can>
       </div>
       {expanded && node.children.length > 0 && (
         <div className="mr-3">

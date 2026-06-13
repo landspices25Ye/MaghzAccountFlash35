@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Hash, RotateCcw, Save, Eye, ToggleLeft, ToggleRight } from 'lucide-react';
-import { Card, Button, Table, Input } from '@/core/ui/components';
+import { Card, Button, Table, Input, Can } from '@/core/ui/components';
 import { useDocumentSequences } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -95,13 +95,15 @@ export const DocumentSequencesPage: React.FC = () => {
       />
     )},
     { key: 'isActive', header: t('settings.sequences.active'), width: '80px', render: (row: DocumentSequence) => (
-      <button onClick={() => toggleActive(row)} className="focus:outline-none" title={row.isActive ? t('settings.sequences.deactivate') : t('settings.sequences.activate')}>
-        {row.isActive ? (
-          <ToggleRight size={20} className="text-emerald-500" />
-        ) : (
-          <ToggleLeft size={20} className="text-slate-400" />
-        )}
-      </button>
+      <Can action="edit" module="settings">
+        <button onClick={() => toggleActive(row)} className="focus:outline-none" title={row.isActive ? t('settings.sequences.deactivate') : t('settings.sequences.activate')}>
+          {row.isActive ? (
+            <ToggleRight size={20} className="text-emerald-500" />
+          ) : (
+            <ToggleLeft size={20} className="text-slate-400" />
+          )}
+        </button>
+      </Can>
     )},
     { key: 'preview', header: t('settings.sequences.preview'), width: '160px', render: (row: DocumentSequence) => (
       <div className="flex items-center gap-2">
@@ -113,9 +115,13 @@ export const DocumentSequencesPage: React.FC = () => {
     )},
     { key: 'actions', header: '', width: '80px', render: (row: DocumentSequence) => (
       editing[row.id] ? (
-        <Button size="sm" variant="secondary" onClick={() => handleSave(row)} isLoading={savingId === row.id} leftIcon={<Save size={12} />}>{t('settings.common.save')}</Button>
+        <Can action="edit" module="settings">
+          <Button size="sm" variant="secondary" onClick={() => handleSave(row)} isLoading={savingId === row.id} leftIcon={<Save size={12} />}>{t('settings.common.save')}</Button>
+        </Can>
       ) : (
-        <Button size="sm" variant="ghost" onClick={() => { setEditing({ [row.id]: { ...row } }); }} leftIcon={<RotateCcw size={12} />}>{t('settings.common.edit')}</Button>
+        <Can action="edit" module="settings">
+          <Button size="sm" variant="ghost" onClick={() => { setEditing({ [row.id]: { ...row } }); }} leftIcon={<RotateCcw size={12} />}>{t('settings.common.edit')}</Button>
+        </Can>
       )
     )},
   ];

@@ -72,15 +72,15 @@ export function useProductTypes(companyId: string): {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await settingsApi.deleteProductType(id);
+    const result = await settingsApi.deleteProductType(id, companyId);
     if (result.success) setTypes(prev => prev.filter(t => t.id !== id));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { types, isLoading, create, update, remove };
 }
 
-// ─── Units ────────────────────────────────────────────────────────────────────
+// ─── Units
 export function useUnits(companyId: string) {
   const [units, setUnits] = useState<Unit[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -109,10 +109,10 @@ export function useUnits(companyId: string) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await settingsApi.deleteUnit(id);
+    const result = await settingsApi.deleteUnit(id, companyId);
     if (result.success) setUnits(prev => prev.filter(u => u.id !== id));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { units, isLoading, create, update, remove };
 }
@@ -146,10 +146,10 @@ export function useCashBoxes(companyId: string) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await settingsApi.deleteCashBox(id);
+    const result = await settingsApi.deleteCashBox(id, companyId);
     if (result.success) setBoxes(prev => prev.filter(b => b.id !== id));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { boxes, isLoading, create, update, remove };
 }
@@ -183,10 +183,10 @@ export function useBanks(companyId: string) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await settingsApi.deleteBank(id);
+    const result = await settingsApi.deleteBank(id, companyId);
     if (result.success) setBanks(prev => prev.filter(b => b.id !== id));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { banks, isLoading, create, update, remove };
 }
@@ -220,10 +220,10 @@ export function useCostCenters(companyId: string) {
   }, []);
 
   const remove = useCallback(async (id: string) => {
-    const result = await settingsApi.deleteCostCenter(id);
+    const result = await settingsApi.deleteCostCenter(id, companyId);
     if (result.success) setCenters(prev => prev.filter(c => c.id !== id));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { centers, isLoading, create, update, remove };
 }

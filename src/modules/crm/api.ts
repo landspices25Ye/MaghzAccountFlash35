@@ -376,6 +376,62 @@ export const crmApi = {
     }
   },
 
+  async getTasksPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { status?: string; priority?: string; search?: string }
+  ): Promise<PaginatedQueryResult<Task>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['t.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.status) {
+        params.push(filters.status);
+        conditions.push(`t.status = $${params.length}`);
+      }
+      if (filters?.priority) {
+        params.push(filters.priority);
+        conditions.push(`t.priority = $${params.length}`);
+      }
+      if (filters?.search) {
+        params.push(`%${filters.search}%`);
+        conditions.push(`(t.title ILIKE $${params.length} OR t.description ILIKE $${params.length})`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM tasks t WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT t.*, u.full_name as assigned_name
+         FROM tasks t LEFT JOIN users u ON t.assigned_to = u.id
+         WHERE ${where}
+         ORDER BY t.due_date ASC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapTaskRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   // ─── Activities ───────────────────────────────────────────────────────────
   async getActivities(companyId: string): Promise<{ success: boolean; data?: Activity[]; error?: string }> {
     try {
@@ -446,6 +502,58 @@ export const crmApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query('DELETE FROM activities WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getActivitiesPaginated(
+    companyId: string,
+    page: number,
+    pageSize: number,
+    filters?: { type?: string; assignedTo?: string }
+  ): Promise<PaginatedQueryResult<Activity>> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const { page: p, pageSize: ps, offset } = clampPageArgs(page, pageSize);
+      const adapter = await getDbAdapter();
+
+      const conditions: string[] = ['a.company_id = $1'];
+      const params: unknown[] = [companyId];
+      if (filters?.type) {
+        params.push(filters.type);
+        conditions.push(`a.type = $${params.length}`);
+      }
+      if (filters?.assignedTo) {
+        params.push(filters.assignedTo);
+        conditions.push(`a.assigned_to = $${params.length}`);
+      }
+      const where = conditions.join(' AND ');
+
+      const countResult = await adapter.query(
+        `SELECT COUNT(*)::int AS total FROM activities a WHERE ${where}`,
+        params
+      );
+      const total = Number(countResult.rows?.[0]?.total || 0);
+
+      params.push(ps);
+      params.push(offset);
+      const limitIdx = params.length - 1;
+      const offsetIdx = params.length;
+
+      const dataResult = await adapter.query(
+        `SELECT a.*, u.full_name as assigned_name
+         FROM activities a LEFT JOIN users u ON a.assigned_to = u.id
+         WHERE ${where}
+         ORDER BY a.activity_date DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        params
+      );
+      if (!dataResult.success) return { success: false, error: dataResult.error };
+
+      const items = (dataResult.rows || []).map((r: Record<string, unknown>) => mapActivityRow(r));
+      return { success: true, data: paginatedResult(items, total, p, ps) };
     } catch (e) {
       return { success: false, error: String(e) };
     }

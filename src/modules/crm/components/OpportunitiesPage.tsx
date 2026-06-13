@@ -211,7 +211,7 @@ export const OpportunitiesPage: React.FC = () => {
                       <p className="font-medium text-sm">{opp.name}</p>
                       <p className="text-xs text-slate-500">{opp.probability || 0}%</p>
                     </div>
-                    <p className="text-primary-600 font-bold text-sm mb-2">{formatCurrency(opp.value)} YER</p>
+                    <p className="text-primary-600 font-bold text-sm mb-2">{formatCurrency(opp.value)}</p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-400">{opp.expectedCloseDate || '—'}</span>
                       <div className="flex items-center gap-1">

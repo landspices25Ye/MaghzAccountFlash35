@@ -50,6 +50,13 @@
       "when": 1791000000000,
       "tag": "0006_products_min_max_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792000000000,
+      "tag": "0007_opportunity_stage_default",
+      "breakpoints": true
     }
   ]
 }

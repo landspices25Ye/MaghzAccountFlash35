@@ -28,7 +28,7 @@ export const opportunities = pgTable('opportunities', {
   customerId: uuid('customer_id'),
   name: varchar('name', { length: 255 }).notNull(),
   value: numeric('value', { precision: 18, scale: 4 }).notNull(),
-  stage: varchar('stage', { length: 50 }).default('prospecting').notNull(), // prospecting, qualification, proposal, negotiation, closed_won, closed_lost
+  stage: varchar('stage', { length: 50 }).default('new').notNull(), // new, qualified, proposal, negotiation, won, lost
   probability: integer('probability').default(50), // 0-100
   expectedCloseDate: date('expected_close_date'),
   assignedTo: uuid('assigned_to').references(() => users.id),

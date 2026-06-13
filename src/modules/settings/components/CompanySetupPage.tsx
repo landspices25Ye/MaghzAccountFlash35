@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Save, Upload } from 'lucide-react';
-import { Card, Button, Input } from '@/core/ui/components';
+import { Card, Button, Input, Can } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
@@ -139,14 +139,16 @@ export const CompanySetupPage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="primary"
-            leftIcon={<Save size={16} />}
-            onClick={handleSave}
-            isLoading={isSaving}
-          >
-            {t('settings.company.save')}
-          </Button>
+          <Can action="edit" module="settings">
+            <Button
+              variant="primary"
+              leftIcon={<Save size={16} />}
+              onClick={handleSave}
+              isLoading={isSaving}
+            >
+              {t('settings.company.save')}
+            </Button>
+          </Can>
         </div>
       </div>
 

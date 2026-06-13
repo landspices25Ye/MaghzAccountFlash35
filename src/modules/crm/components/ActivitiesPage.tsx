@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { Activity, Plus, Phone, Mail, Users, MapPin, FileText, BarChart3 } from 'lucide-react';
-import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
+import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
-import { useActivities } from '../hooks/useCrm';
-import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
-import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { useActivitiesPaginated } from '../hooks/useCrm';
 import type { Activity as ActivityType } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -33,8 +31,7 @@ export const ActivitiesPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { activities, isLoading, create, update, remove } = useActivities(companyId);
-  const { filtered: filteredActivities, showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter(activities, 'crm');
+  const { activities, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useActivitiesPaginated(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<ActivityType | null>(null);
@@ -144,7 +141,6 @@ export const ActivitiesPage: React.FC = () => {
           </div>
         </div>
       <div className="flex items-center gap-2">
-        <OwnerFilterToggle isOwnOnly={isOwnOnly} showToggle={showOwnerToggle} onToggle={toggleOwnOnly} />
         <Button variant="secondary" leftIcon={<BarChart3 size={16} />} onClick={() => setShowReport(true)}>{t('crm.activities.performanceReport')}</Button>
         <Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.activity.new')}</Button></Can>
       </div>
@@ -153,15 +149,24 @@ export const ActivitiesPage: React.FC = () => {
       <Card>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
-        ) : filteredActivities.length === 0 ? (
+        ) : activities.length === 0 ? (
           <EmptyState icon="inbox" title={t('crm.activity.empty')} description={t('crm.activity.emptyDescription')} action={<Can action="create" module="crm"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>{t('crm.activity.new')}</Button></Can>} />
         ) : (
-          <Table<ActivityType>
-            data={filteredActivities}
-            columns={columns}
-            keyExtractor={(row) => row.id}
-            emptyMessage={t('crm.activity.empty')}
-          />
+          <>
+            <Table<ActivityType>
+              data={activities}
+              columns={columns}
+              keyExtractor={(row) => row.id}
+              emptyMessage={t('crm.activity.empty')}
+            />
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={total}
+              onPageChange={goToPage}
+              onPageSizeChange={changePageSize}
+            />
+          </>
         )}
       </Card>
 

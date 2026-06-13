@@ -153,6 +153,8 @@ const menuItems: MenuItem[] = [
       { labelKey: 'sidebar.reports.supplierStatement', path: '/reports/supplier-statement' },
       { labelKey: 'sidebar.reports.profitAnalysis', path: '/reports/profit-analysis' },
       { labelKey: 'sidebar.reports.customBuilder', path: '/reports/custom-builder' },
+      { labelKey: 'sidebar.reports.leadConversion', path: '/reports/lead-conversion' },
+      { labelKey: 'sidebar.reports.opportunityPipeline', path: '/reports/opportunity-pipeline' },
     ],
   },
   {

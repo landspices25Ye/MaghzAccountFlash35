@@ -58,7 +58,7 @@ export const CostCentersPage: React.FC = () => {
     { key: 'isActive', header: t('settings.common.active'), width: '80px', render: (row: CostCenter) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? t('settings.common.yes') : t('settings.common.no')}</span> },
     { key: 'actions', header: '', width: '100px', render: (row: CostCenter) => (
       <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
+        <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} /></Can>
       </div>
     )},
   ];

@@ -281,3 +281,92 @@ export function useOpportunitiesPaginated(companyId: string, filters?: Opportuni
     reload: reloadList,
   };
 }
+
+export interface TaskFilters {
+  status?: string;
+  priority?: string;
+  search?: string;
+}
+
+export function useTasksPaginated(companyId: string, filters?: TaskFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Task>(
+    (page, pageSize) => crmApi.getTasksPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.status, filters?.priority, filters?.search]
+  );
+
+  const create = useCallback(async (data: Omit<Task, 'id' | 'createdAt'>) => {
+    const res = await crmApi.createTask(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Task, 'id' | 'companyId'>>) => {
+    const res = await crmApi.updateTask(id, companyId, data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await crmApi.deleteTask(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    tasks: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
+}
+
+export interface ActivityFilters {
+  type?: string;
+  assignedTo?: string;
+}
+
+export function useActivitiesPaginated(companyId: string, filters?: ActivityFilters) {
+  const { reload: reloadList, ...list } = usePaginatedList<Activity>(
+    (page, pageSize) => crmApi.getActivitiesPaginated(companyId, page, pageSize, filters),
+    [companyId, filters?.type, filters?.assignedTo]
+  );
+
+  const create = useCallback(async (data: Omit<Activity, 'id' | 'createdAt'>) => {
+    const res = await crmApi.createActivity(data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList]);
+
+  const update = useCallback(async (id: string, data: Partial<Omit<Activity, 'id' | 'companyId'>>) => {
+    const res = await crmApi.updateActivity(id, companyId, data);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  const remove = useCallback(async (id: string) => {
+    const res = await crmApi.deleteActivity(id, companyId);
+    if (res.success) await reloadList();
+    return res;
+  }, [reloadList, companyId]);
+
+  return {
+    activities: list.items,
+    total: list.total,
+    page: list.page,
+    pageSize: list.pageSize,
+    isLoading: list.isLoading,
+    goToPage: list.goToPage,
+    changePageSize: list.changePageSize,
+    create,
+    update,
+    remove,
+    reload: reloadList,
+  };
+}
