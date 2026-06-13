@@ -110,7 +110,10 @@
       "warehouses": "المستودعات",
       "stock": "المخزون",
       "transactions": "الحركات المخزنية",
-      "adjustments": "التسويات"
+      "adjustments": "التسويات",
+      "lowStockAlert": "تنبيه المخزون",
+      "stockMovement": "حركة المخزون",
+      "stockValuation": "تقييم المخزون"
     },
     "sales": {
       "title": "المبيعات",
@@ -151,7 +154,8 @@
       "title": "التقارير",
       "hub": "مركز التقارير",
       "salesAnalysis": "تحليل المبيعات",
-      "inventoryAnalysis": "تحليل المخزون",
+    "inventoryAnalysis": "تحليل المخزون",
+    "stockValuation": "تقييم المخزون",
       "customerStatement": "كشف حساب عميل",
       "supplierStatement": "كشف حساب مورد",
       "profitAnalysis": "تحليل الأرباح",
@@ -1460,6 +1464,9 @@
     "customReportBuilder": "منشئ التقارير المخصصة",
     "slowMoving": "بطيء الحركة",
     "lowStockItems": "منخفض المخزون",
+    "lowStockAlert": "تنبيه المخزون",
+    "stockMovement": "تحليل حركة المخزون",
+    "stockValuation": "تقييم المخزون",
     "productProfitability": "ربحية المنتج",
     "abcAnalysis": "تحليل ABC",
     "pivotTable": "جدول محوري",

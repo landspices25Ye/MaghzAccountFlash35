@@ -273,6 +273,10 @@ export const createProductSchema = z.object({
   costPrice: currencyAmountSchema,
   salePrice: currencyAmountSchema,
   isActive: z.boolean().default(true),
+  image: z.string().optional(),
+  minStock: currencyAmountSchema.optional(),
+  maxStock: currencyAmountSchema.optional(),
+  reorderPoint: currencyAmountSchema.optional(),
   createdBy: uuidSchema.optional(),
   updatedBy: uuidSchema.optional(),
 });

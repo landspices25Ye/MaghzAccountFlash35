@@ -194,7 +194,6 @@ export const InventoryAnalysisReport: React.FC = () => {
           <Package size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.inventoryAnalysis')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.inventoryAnalysis.subtitle')}</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -202,10 +201,10 @@ export const InventoryAnalysisReport: React.FC = () => {
             {t('reports.filter')}
           </Button>
           <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
-            Excel
+            {t('reports.exportExcel')}
           </Button>
           <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF}>
-            PDF
+            {t('reports.exportPdf')}
           </Button>
         </div>
       </div>

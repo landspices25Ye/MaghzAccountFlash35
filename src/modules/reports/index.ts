@@ -1,6 +1,9 @@
 export { default as MainDashboard } from './dashboards/MainDashboard';
 export { default as SalesAnalysisReport } from './SalesAnalysisReport';
 export { default as InventoryAnalysisReport } from './InventoryAnalysisReport';
+export { default as LowStockAlertReport } from './LowStockAlertReport';
+export { default as StockMovementReport } from './StockMovementReport';
+export { default as StockValuationReport } from './StockValuationReport';
 export { default as CustomerStatementReport } from './CustomerStatementReport';
 export { default as SupplierStatementReport } from './SupplierStatementReport';
 export { default as ProfitAnalysisReport } from './ProfitAnalysisReport';

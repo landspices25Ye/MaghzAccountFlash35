@@ -110,7 +110,10 @@
       "warehouses": "Warehouses",
       "stock": "Stock",
       "transactions": "Inventory Transactions",
-      "adjustments": "Adjustments"
+      "adjustments": "Adjustments",
+      "lowStockAlert": "Low Stock Alert",
+      "stockMovement": "Stock Movement",
+      "stockValuation": "Stock Valuation"
     },
     "sales": {
       "title": "Sales",
@@ -151,7 +154,8 @@
       "title": "Reports",
       "hub": "Reports Hub",
       "salesAnalysis": "Sales Analysis",
-      "inventoryAnalysis": "Inventory Analysis",
+    "inventoryAnalysis": "Inventory Analysis",
+    "stockValuation": "Stock Valuation",
       "customerStatement": "Customer Statement",
       "supplierStatement": "Supplier Statement",
       "profitAnalysis": "Profit Analysis",
@@ -1460,6 +1464,9 @@
     "customReportBuilder": "Custom Report Builder",
     "slowMoving": "Slow Moving",
     "lowStockItems": "Low Stock Items",
+    "lowStockAlert": "Low Stock Alert",
+    "stockMovement": "Stock Movement Analysis",
+    "stockValuation": "Stock Valuation",
     "productProfitability": "Product Profitability",
     "abcAnalysis": "ABC Analysis",
     "pivotTable": "Pivot Table",

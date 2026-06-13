@@ -18,6 +18,9 @@ const ReportsPage = React.lazy(() => import('@/modules/reports/ReportsHubPage'))
 // Analytical reports
 const SalesAnalysisReport = React.lazy(() => import('@/modules/reports/SalesAnalysisReport'));
 const InventoryAnalysisReport = React.lazy(() => import('@/modules/reports/InventoryAnalysisReport'));
+const LowStockAlertReport = React.lazy(() => import('@/modules/reports/LowStockAlertReport'));
+const StockMovementReport = React.lazy(() => import('@/modules/reports/StockMovementReport'));
+const StockValuationReport = React.lazy(() => import('@/modules/reports/StockValuationReport'));
 const CustomerStatementReport = React.lazy(() => import('@/modules/reports/CustomerStatementReport'));
 const SupplierStatementReport = React.lazy(() => import('@/modules/reports/SupplierStatementReport'));
 const ProfitAnalysisReport = React.lazy(() => import('@/modules/reports/ProfitAnalysisReport'));
@@ -205,6 +208,9 @@ export const AppRouter: React.FC = () => {
             <Route path="/reports" element={withSuspense(ReportsPage)} />
             <Route path="/reports/sales-analysis" element={withSuspense(SalesAnalysisReport)} />
             <Route path="/reports/inventory-analysis" element={withSuspense(InventoryAnalysisReport)} />
+            <Route path="/reports/low-stock-alert" element={withSuspense(LowStockAlertReport)} />
+            <Route path="/reports/stock-movement" element={withSuspense(StockMovementReport)} />
+            <Route path="/reports/stock-valuation" element={withSuspense(StockValuationReport)} />
             <Route path="/reports/customer-statement" element={withSuspense(CustomerStatementReport)} />
             <Route path="/reports/supplier-statement" element={withSuspense(SupplierStatementReport)} />
             <Route path="/reports/profit-analysis" element={withSuspense(ProfitAnalysisReport)} />

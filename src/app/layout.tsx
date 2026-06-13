@@ -69,6 +69,9 @@ const menuItems: MenuItem[] = [
       { labelKey: 'sidebar.inventory.stock', path: '/inventory/stock' },
       { labelKey: 'sidebar.inventory.transactions', path: '/inventory/transactions' },
       { labelKey: 'sidebar.inventory.adjustments', path: '/inventory/adjustments' },
+      { labelKey: 'sidebar.inventory.lowStockAlert', path: '/reports/low-stock-alert' },
+      { labelKey: 'sidebar.inventory.stockMovement', path: '/reports/stock-movement' },
+      { labelKey: 'sidebar.inventory.stockValuation', path: '/reports/stock-valuation' },
     ],
   },
   {
