@@ -6,6 +6,7 @@ import { useBanks } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { Bank } from '@/core/types';
 
 export const BanksPage: React.FC = () => {
@@ -13,6 +14,7 @@ export const BanksPage: React.FC = () => {
   const { banks, isLoading, create, update, remove } = useBanks(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -27,8 +29,10 @@ export const BanksPage: React.FC = () => {
     if (!form.name || !activeCompany?.id) return;
     if (editingId) {
       await update(editingId, form);
+      addToast('success', t('settings.banks.updated'));
     } else {
       await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Bank, 'id'>);
+      addToast('success', t('settings.banks.created'));
     }
     setIsOpen(false);
     reset();
@@ -43,6 +47,7 @@ export const BanksPage: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     await remove(deleteId);
+    addToast('success', t('settings.banks.deleted'));
     setDeleteId(null);
   };
 

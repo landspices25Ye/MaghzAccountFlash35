@@ -17,6 +17,7 @@ import type { PurchaseReturn } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { YER_CODE } from '@/core/utils/currencyConverter';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface ReturnFormLine {
   productId: string;
@@ -54,6 +55,7 @@ const initialForm = (): ReturnForm => ({
 
 export const PurchaseReturnsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -144,11 +146,15 @@ export const PurchaseReturnsPage: React.FC = () => {
 
     if (editingId) {
       await update(editingId, payload);
+      addToast('success', t('purchases.return.updated'));
       await logAudit({ userId: user?.id || '', action: 'update', tableName: 'purchase_returns', recordId: editingId, companyId: activeCompany.id });
     } else {
       const result = await create(payload);
       if (result.success && result.id) {
+        addToast('success', t('purchases.return.created'));
         await logAudit({ userId: user?.id || '', action: 'create', tableName: 'purchase_returns', recordId: result.id, companyId: activeCompany.id });
+      } else {
+        addToast('error', result.error || t('common.error'));
       }
     }
     setModalOpen(false);
@@ -160,6 +166,7 @@ export const PurchaseReturnsPage: React.FC = () => {
   const confirmDeleteAction = useCallback(async () => {
     if (!confirmDelete || !activeCompany?.id) return;
     await remove(confirmDelete);
+    addToast('success', t('purchases.return.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'purchase_returns', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
   }, [confirmDelete, activeCompany, remove, user]);
@@ -180,7 +187,10 @@ export const PurchaseReturnsPage: React.FC = () => {
 
     if (result.success) {
       await post(confirmPost);
+      addToast('success', t('purchases.return.posted'));
       await logAudit({ userId: user?.id || '', action: 'post', tableName: 'purchase_returns', recordId: confirmPost, companyId: activeCompany.id });
+    } else {
+      addToast('error', result.error || t('common.error'));
     }
     setPostingId(null);
     setConfirmPost(null);

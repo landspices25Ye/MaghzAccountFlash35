@@ -7,6 +7,7 @@ import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import { useAuthStore } from '../store';
 import { useUsers } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
@@ -15,6 +16,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 
 export const UsersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const hasPermission = useAuthStore((state) => state.hasPermission);
@@ -91,8 +93,10 @@ export const UsersPage: React.FC = () => {
 
     if (editing) {
       await update(editing.id, data);
+      addToast('success', t('auth.users.updated'));
     } else {
       await create(data);
+      addToast('success', t('auth.users.created'));
     }
 
     setIsModalOpen(false);
@@ -108,6 +112,7 @@ export const UsersPage: React.FC = () => {
       variant: 'danger',
       onConfirm: async () => {
         await remove(user.id);
+        addToast('success', t('auth.users.deleted'));
         setConfirmDialog((prev) => ({ ...prev, open: false }));
       },
     });
@@ -124,6 +129,7 @@ export const UsersPage: React.FC = () => {
       variant: 'warning',
       onConfirm: async () => {
         await toggleActive(user.id, !user.isActive);
+        addToast('success', t(user.isActive ? 'auth.users.updated' : 'auth.users.updated'));
         setConfirmDialog((prev) => ({ ...prev, open: false }));
       },
     });
@@ -132,6 +138,7 @@ export const UsersPage: React.FC = () => {
   const handleResetPassword = async () => {
     if (!selectedUser || !newPassword) return;
     await resetPassword(selectedUser.id, newPassword);
+    addToast('success', t('auth.users.updated'));
     setIsResetPasswordOpen(false);
     setNewPassword('');
     setSelectedUser(null);

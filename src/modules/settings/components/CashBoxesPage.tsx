@@ -6,10 +6,12 @@ import { useCashBoxes } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { CashBox } from '@/core/types';
 
 export const CashBoxesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { boxes, isLoading, create, update, remove } = useCashBoxes(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -27,8 +29,10 @@ export const CashBoxesPage: React.FC = () => {
     if (!form.name || !activeCompany?.id) return;
     if (editingId) {
       await update(editingId, form);
+      addToast('success', t('settings.cashBoxes.updated'));
     } else {
       await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CashBox, 'id'>);
+      addToast('success', t('settings.cashBoxes.created'));
     }
     setIsOpen(false);
     reset();
@@ -43,6 +47,7 @@ export const CashBoxesPage: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     await remove(deleteId);
+    addToast('success', t('settings.cashBoxes.deleted'));
     setDeleteId(null);
   };
 

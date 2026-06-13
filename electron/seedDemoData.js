@@ -877,7 +877,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
       );
       await client.query(
         `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, created_by, updated_by)
-         SELECT $1::uuid, 'WO-0001', $2::uuid, $3::uuid, 50, 'pending', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', $4::uuid, $4::uuid
+         SELECT $1::uuid, 'WO-0001', $2::uuid, $3::uuid, 50, 'planned', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', $4::uuid, $4::uuid
          WHERE NOT EXISTS (SELECT 1 FROM work_orders WHERE company_id = $1::uuid AND order_number = 'WO-0001');`,
         [companyId, prodInfos[0].id, bomId, adminId]
       );

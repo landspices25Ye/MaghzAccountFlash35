@@ -10,9 +10,11 @@ import { useLeadsPaginated, useActivities } from '../hooks/useCrm';
 import type { Lead, Activity } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 export const LeadsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -73,24 +75,30 @@ export const LeadsPage: React.FC = () => {
       assignedTo: formData.assignedTo || undefined,
       notes: formData.notes || undefined,
     };
-    if (editing) {
-      await update(editing.id, payload);
+    const res = editing ? await update(editing.id, payload) : await create(payload);
+    if (res?.success) {
+      setIsModalOpen(false);
+      resetForm();
+      addToast('success', t(editing ? 'crm.lead.updated' : 'crm.lead.created'));
     } else {
-      await create(payload);
+      addToast('error', res?.error || t('error'));
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    setConfirmDelete(null);
+    const res = await remove(confirmDelete);
+    if (res?.success) {
+      setConfirmDelete(null);
+      addToast('success', t('crm.lead.deleted'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const handleAddActivity = async () => {
     if (!selectedLead) return;
-    await createActivity({
+    const res = await createActivity({
       companyId,
       leadId: selectedLead.id,
       type: activityForm.type,
@@ -98,15 +106,25 @@ export const LeadsPage: React.FC = () => {
       description: activityForm.description || undefined,
       activityDate: activityForm.activityDate,
     });
-    setIsActivityOpen(false);
-    setActivityForm({ type: 'call', subject: '', description: '', activityDate: new Date().toISOString().split('T')[0] });
+    if (res?.success) {
+      setIsActivityOpen(false);
+      setActivityForm({ type: 'call', subject: '', description: '', activityDate: new Date().toISOString().split('T')[0] });
+      addToast('success', t('crm.activity.created'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const handleConvert = async () => {
     if (!selectedLead) return;
-    await convertToCustomer(selectedLead.id, { code: `CUST-${Date.now()}`, address: '', taxNumber: '', creditLimit: 0 });
-    setIsConvertOpen(false);
-    setSelectedLead(null);
+    const res = await convertToCustomer(selectedLead.id, { code: `CUST-${Date.now()}`, address: '', taxNumber: '', creditLimit: 0 });
+    if (res?.success) {
+      setIsConvertOpen(false);
+      setSelectedLead(null);
+      addToast('success', t('crm.lead.updated'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const ratingColor = (rating: Lead['rating']) => {

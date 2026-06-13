@@ -15,6 +15,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import type { Supplier, SupplierStatementItem } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface SupplierForm {
   name: string;
@@ -38,6 +39,7 @@ const initialForm = (): SupplierForm => ({
 
 export const SuppliersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const { suppliers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useSuppliersPaginated(activeCompany?.id || '');
@@ -92,11 +94,15 @@ export const SuppliersPage: React.FC = () => {
 
     if (editingId) {
       await update(editingId, payload);
+      addToast('success', t('purchases.supplier.updated'));
       await logAudit({ userId: user?.id || '', action: 'update', tableName: 'suppliers', recordId: editingId, companyId: activeCompany.id });
     } else {
       const result = await create(payload);
       if (result.success && result.id) {
+        addToast('success', t('purchases.supplier.created'));
         await logAudit({ userId: user?.id || '', action: 'create', tableName: 'suppliers', recordId: result.id, companyId: activeCompany.id });
+      } else {
+        addToast('error', result.error || t('common.error'));
       }
     }
     setModalOpen(false);
@@ -111,6 +117,7 @@ export const SuppliersPage: React.FC = () => {
   const confirmDeleteAction = useCallback(async () => {
     if (!confirmDelete || !activeCompany?.id) return;
     await remove(confirmDelete);
+    addToast('success', t('purchases.supplier.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'suppliers', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
   }, [confirmDelete, activeCompany, remove, user]);

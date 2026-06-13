@@ -5,10 +5,12 @@ import { useCostCenters } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { CostCenter } from '@/core/types';
 
 export const CostCentersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { centers, isLoading, create, update } = useCostCenters(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -25,8 +27,10 @@ export const CostCentersPage: React.FC = () => {
     if (!form.nameAr || !activeCompany?.id) return;
     if (editingId) {
       await update(editingId, form);
+      addToast('success', t('settings.costCenters.updated'));
     } else {
       await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CostCenter, 'id'>);
+      addToast('success', t('settings.costCenters.created'));
     }
     setIsOpen(false);
     reset();

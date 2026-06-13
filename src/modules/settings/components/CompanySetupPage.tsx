@@ -8,6 +8,7 @@ import { logAudit } from '@/core/utils/auditLogger';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface CompanyFormData {
   name: string;
@@ -29,6 +30,7 @@ export const CompanySetupPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<CompanyFormData>({
     name: '',
@@ -106,6 +108,8 @@ export const CompanySetupPage: React.FC = () => {
         recordId: activeCompany.id,
         companyId: activeCompany.id,
       });
+
+      addToast('success', t('settings.company.updated'));
 
       // Update store
       useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency, {

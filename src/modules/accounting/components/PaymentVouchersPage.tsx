@@ -16,9 +16,11 @@ import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { Pagination } from '@/core/ui/components/Pagination';
 import type { PaymentVoucher } from '../types';
+import { useToastStore } from '@/core/store/toastStore';
 
 export const PaymentVouchersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const voucherFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
@@ -71,19 +73,20 @@ export const PaymentVouchersPage: React.FC = () => {
     setPostingId(null);
     if (result.success) {
       await update(voucher.id, { status: 'posted' });
+      addToast('success', t('accounting.paymentVoucher.posted'));
     } else {
-      alert(`${t('accounting.postFailed')}: ${result.error || t('error')}`);
+      addToast('error', `${t('accounting.postFailed')}: ${result.error || t('error')}`);
     }
   };
 
   const handleSave = async () => {
     if (!activeCompany?.id) return;
     if (!form.amount || Number(form.amount) <= 0) {
-      alert(t('accounting.enterAmount'));
+      addToast('error', t('accounting.enterAmount'));
       return;
     }
     if (!form.supplierId && !form.expenseAccountId) {
-      alert(t('accounting.selectSupplierOrExpense'));
+      addToast('error', t('accounting.selectSupplierOrExpense'));
       return;
     }
     setIsSaving(true);
@@ -113,15 +116,21 @@ export const PaymentVouchersPage: React.FC = () => {
       status: (form.status || 'draft') as 'draft' | 'posted' | 'cancelled',
     };
 
+    let result;
     if (isEditMode && editingId) {
-      await update(editingId, payload);
+      result = await update(editingId, payload);
     } else {
-      await create(payload);
+      result = await create(payload);
     }
     
     setIsSaving(false);
-    setIsOpen(false);
-    resetForm();
+    if (result?.success) {
+      addToast('success', t(isEditMode ? 'accounting.paymentVoucher.updated' : 'accounting.paymentVoucher.created'));
+      setIsOpen(false);
+      resetForm();
+    } else {
+      addToast('error', result?.error || t('common.error'));
+    }
   };
 
   const handleCurrencyChange = (code: string | null) => {
@@ -316,7 +325,12 @@ export const PaymentVouchersPage: React.FC = () => {
         onClose={() => setConfirmDelete(null)}
         onConfirm={async () => {
           if (confirmDelete) {
-            await remove(confirmDelete.id);
+            const result = await remove(confirmDelete.id);
+            if (result?.success) {
+              addToast('success', t('accounting.paymentVoucher.deleted'));
+            } else {
+              addToast('error', result?.error || t('common.error'));
+            }
             setConfirmDelete(null);
           }
         }}

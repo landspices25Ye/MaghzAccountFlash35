@@ -18,6 +18,7 @@ import type { PurchaseOrder } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { YER_CODE } from '@/core/utils/currencyConverter';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface OrderFormLine {
   productId: string;
@@ -53,6 +54,7 @@ const initialForm = (): OrderForm => ({
 
 export const PurchaseOrdersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -145,11 +147,15 @@ export const PurchaseOrdersPage: React.FC = () => {
 
     if (editingId) {
       await update(editingId, payload);
+      addToast('success', t('purchases.order.updated'));
       await logAudit({ userId: user?.id || '', action: 'update', tableName: 'purchase_orders', recordId: editingId, companyId: activeCompany.id });
     } else {
       const result = await create(payload);
       if (result.success && result.id) {
+        addToast('success', t('purchases.order.created'));
         await logAudit({ userId: user?.id || '', action: 'create', tableName: 'purchase_orders', recordId: result.id, companyId: activeCompany.id });
+      } else {
+        addToast('error', result.error || t('common.error'));
       }
     }
     setModalOpen(false);
@@ -161,6 +167,7 @@ export const PurchaseOrdersPage: React.FC = () => {
   const confirmDeleteAction = useCallback(async () => {
     if (!confirmDelete || !activeCompany?.id) return;
     await remove(confirmDelete);
+    addToast('success', t('purchases.order.deleted'));
     await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'purchase_orders', recordId: confirmDelete, companyId: activeCompany.id });
     setConfirmDelete(null);
   }, [confirmDelete, activeCompany, remove, user]);
@@ -170,6 +177,7 @@ export const PurchaseOrdersPage: React.FC = () => {
     if (!confirmConvert || !activeCompany?.id) return;
     setConvertingId(confirmConvert);
     await convertToInvoice(confirmConvert);
+    addToast('success', t('purchases.order.converted'));
     await logAudit({ userId: user?.id || '', action: 'post', tableName: 'purchase_orders', recordId: confirmConvert, companyId: activeCompany.id });
     setConvertingId(null);
     setConfirmConvert(null);

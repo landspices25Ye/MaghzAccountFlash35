@@ -9,10 +9,12 @@ import { useAppStore } from '@/core/store';
 import { useEndOfServicesPaginated, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { EndOfService } from '../types';
 
 export const EndOfServicePage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -64,6 +66,7 @@ export const EndOfServicePage: React.FC = () => {
       status: 'draft',
       notes: formData.notes || undefined,
     });
+    addToast('success', t('hr.eos.created'));
     setIsModalOpen(false);
     resetForm();
   };
@@ -71,6 +74,7 @@ export const EndOfServicePage: React.FC = () => {
   const handleDelete = async () => {
     if (!confirmDelete) return;
     await remove(confirmDelete);
+    addToast('success', t('hr.eos.deleted'));
     setConfirmDelete(null);
   };
 
@@ -129,8 +133,8 @@ export const EndOfServicePage: React.FC = () => {
         <Button variant="ghost" size="sm" className="text-slate-600" onClick={() => handlePrint(row)} title={t('settings.common.print')}>
           <Printer size={16} />
         </Button>
-        {row.status === 'draft' && (
-          <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => updateStatus(row.id, 'approved')} title={t('hr.eos.approve')}>
+          {row.status === 'draft' && (
+          <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => { await updateStatus(row.id, 'approved'); addToast('success', t('hr.eos.updated')); }} title={t('hr.eos.approve')}>
             <span className="text-xs">{t('hr.eos.approve')}</span>
           </Button>
         )}

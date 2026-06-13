@@ -7,6 +7,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface Currency {
   id: string;
@@ -20,6 +21,7 @@ interface Currency {
 
 export const CurrenciesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
@@ -75,6 +77,7 @@ export const CurrenciesPage: React.FC = () => {
       }
 
       await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'currencies', recordId: editingId || 'new', companyId: activeCompany.id });
+      addToast('success', t(editingId ? 'settings.currencies.updated' : 'settings.currencies.created'));
       setEditingId(null); setFormData({ code: '', name: '', symbol: '', exchangeRate: 1, isActive: true }); loadData();
     } catch {
       // Error handled by caller
@@ -101,6 +104,7 @@ export const CurrenciesPage: React.FC = () => {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM currencies WHERE id = $1`, [id]);
       await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
+      addToast('success', t('settings.currencies.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
       // Error handled by caller

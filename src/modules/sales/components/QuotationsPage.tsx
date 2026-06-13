@@ -19,6 +19,7 @@ import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useToastStore } from '@/core/store/toastStore';
 import type { Quotation } from '../types';
 
 interface QuotationLineForm {
@@ -31,6 +32,7 @@ interface QuotationLineForm {
 
 export const QuotationsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const STATUS_FLOW = useMemo(() => ({
     open: t('sales.status.open'),
     accepted: t('sales.status.accepted'),
@@ -137,6 +139,9 @@ export const QuotationsPage: React.FC = () => {
       const res = await update(editingId, buildPayload(quotationNumber));
       if (res.success && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'quotations', recordId: editingId, companyId: activeCompany.id });
+        addToast('success', t('sales.quotation.updated'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     } else {
       const seq = await getNextNumber('quotation', activeCompany.id);
@@ -144,6 +149,9 @@ export const QuotationsPage: React.FC = () => {
       const res = await create(buildPayload(quotationNumber));
       if (res.success && res.id && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'quotations', recordId: res.id, companyId: activeCompany.id });
+        addToast('success', t('sales.quotation.created'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     }
     setSaving(false);
@@ -161,6 +169,9 @@ export const QuotationsPage: React.FC = () => {
         const res = await remove(q.id);
         if (res.success && activeCompany?.id) {
           await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'quotations', recordId: q.id, companyId: activeCompany.id });
+          addToast('success', t('sales.quotation.deleted'));
+        } else {
+          addToast('error', res.error || t('error'));
         }
       },
     });
@@ -204,6 +215,9 @@ export const QuotationsPage: React.FC = () => {
         const res = await convertToInvoice(q.id, payload);
         if (res.success && activeCompany.id) {
           await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'quotations', recordId: q.id, companyId: activeCompany.id, newValues: { status: 'converted' } });
+          addToast('success', t('sales.quotation.converted'));
+        } else {
+          addToast('error', res.error || t('error'));
         }
       },
     });

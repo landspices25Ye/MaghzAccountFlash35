@@ -10,6 +10,7 @@ notes?: string;
 linesCount?: number;
 createdBy?: string;
 updatedBy?: string;
+updatedAt?: string;
 }
 
 export interface BOMLine {
@@ -40,6 +41,7 @@ export interface WorkOrder {
   notes?: string;
   createdBy?: string;
   updatedBy?: string;
+  updatedAt?: string;
 }
 
 export interface WorkOrderLine {

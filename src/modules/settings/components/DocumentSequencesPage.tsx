@@ -4,12 +4,14 @@ import { Card, Button, Table, Input } from '@/core/ui/components';
 import { useDocumentSequences } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { DocumentSequence } from '@/core/types';
 
 export const DocumentSequencesPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { sequences, isLoading, update, peekNextNumber } = useDocumentSequences(activeCompany?.id || '');
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [editing, setEditing] = useState<Record<string, Partial<DocumentSequence>>>({});
   const [previewNumber, setPreviewNumber] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export const DocumentSequencesPage: React.FC = () => {
     if (!changes) return;
     setSavingId(seq.id);
     await update(seq.id, changes);
+    addToast('success', t('settings.sequences.updated'));
     setSavingId(null);
     setEditing(prev => { const n = { ...prev }; delete n[seq.id]; return n; });
   };
@@ -55,6 +58,7 @@ export const DocumentSequencesPage: React.FC = () => {
 
   const toggleActive = async (seq: DocumentSequence) => {
     await update(seq.id, { isActive: !seq.isActive });
+    addToast('success', t('settings.sequences.updated'));
   };
 
   const columns = [

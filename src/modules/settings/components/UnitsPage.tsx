@@ -4,12 +4,14 @@ import { Card, Button, Table, Modal, Input, Can } from '@/core/ui/components';
 import { useUnits } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { Unit } from '@/core/types';
 
 export const UnitsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const { units, isLoading, create, update, remove } = useUnits(activeCompany?.id || '');
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Unit>>({ nameAr: '', nameEn: '', code: '', conversionFactor: 1 });
@@ -19,12 +21,19 @@ export const UnitsPage: React.FC = () => {
     setEditingId(null);
   };
 
+  const handleDelete = async (id: string) => {
+    await remove(id);
+    addToast('success', t('settings.units.deleted'));
+  };
+
   const handleSave = async () => {
     if (!form.nameAr || !activeCompany?.id) return;
     if (editingId) {
       await update(editingId, form);
+      addToast('success', t('settings.units.updated'));
     } else {
       await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Unit, 'id'>);
+      addToast('success', t('settings.units.created'));
     }
     setIsOpen(false);
     reset();
@@ -44,7 +53,7 @@ export const UnitsPage: React.FC = () => {
     { key: 'actions', header: '', width: '100px', render: (row: Unit) => (
       <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} />
-        <Button size="sm" variant="ghost" onClick={() => remove(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
+        <Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} />
       </div>
     )},
   ];

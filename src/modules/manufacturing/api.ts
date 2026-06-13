@@ -35,6 +35,7 @@ export const manufacturingApi = {
           notes: r.notes ? String(r.notes) : undefined,
           createdBy: r.created_by ? String(r.created_by) : undefined,
           updatedBy: r.updated_by ? String(r.updated_by) : undefined,
+          updatedAt: r.updated_at ? String(r.updated_at) : undefined,
         }));
         return { success: true, data: rows };
       }
@@ -62,6 +63,7 @@ export const manufacturingApi = {
         notes: row.notes ? String(row.notes) : undefined,
         createdBy: row.created_by ? String(row.created_by) : undefined,
         updatedBy: row.updated_by ? String(row.updated_by) : undefined,
+        updatedAt: row.updated_at ? String(row.updated_at) : undefined,
       };
       const linesRes = await adapter.query('SELECT l.*, p.name_ar as material_name FROM bom_lines l LEFT JOIN products p ON l.material_id = p.id WHERE l.bom_id = $1', [id]);
       const lines = (linesRes.rows || []).map((r: Record<string, unknown>) => ({
@@ -114,6 +116,7 @@ export const manufacturingApi = {
       if (data.totalCost !== undefined) { fields.push(`total_cost = $${idx++}`); values.push(data.totalCost); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 
+      fields.push(`updated_at = NOW()`);
       fields.push(`updated_by = $${idx++}`);
       values.push(_userId ?? null);
 
@@ -238,6 +241,7 @@ export const manufacturingApi = {
       if (data.totalCost !== undefined) { fields.push(`total_cost = $${idx++}`); values.push(data.totalCost); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
 
+      fields.push(`updated_at = NOW()`);
       fields.push(`updated_by = $${idx++}`);
       values.push(_userId ?? null);
 
@@ -267,7 +271,7 @@ export const manufacturingApi = {
     }
   },
 
-  async updateWorkOrderStatus(id: string, companyId: string, status: WorkOrder['status'], _userId?: string): Promise<{ success: boolean; error?: string }> {
+  async updateWorkOrderStatus(id: string, companyId: string, status: WorkOrder['status'], _userId?: string, producedQuantity?: number): Promise<{ success: boolean; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
@@ -278,31 +282,54 @@ export const manufacturingApi = {
         if (!uidValidation.success) return { success: false, error: uidValidation.error };
       }
       const adapter = await getDbAdapter();
-      let sql: string;
-      let params: unknown[];
 
       if (status === 'in_progress') {
-        sql = `UPDATE work_orders SET status = 'in_progress', actual_start_date = $1`;
-        params = [new Date().toISOString()];
-        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
-        sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
-        params.push(id, companyId);
-      } else if (status === 'completed') {
-        sql = `UPDATE work_orders SET status = 'completed', actual_end_date = $1`;
-        params = [new Date().toISOString()];
-        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
-        sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
-        params.push(id, companyId);
-      } else {
-        sql = `UPDATE work_orders SET status = $1`;
-        params = [status];
-        if (_userId) { sql += `, updated_by = $${params.length + 1}`; params.push(_userId); }
-        sql += ` WHERE id = $${params.length + 1} AND company_id = $${params.length + 2}`;
-        params.push(id, companyId);
+        const result = await adapter.query(
+          `UPDATE work_orders SET status = 'in_progress', actual_start_date = $1, updated_at = NOW()${_userId ? ', updated_by = $2' : ''} WHERE id = $${_userId ? 3 : 2} AND company_id = $${_userId ? 4 : 3}`,
+          _userId ? [new Date().toISOString(), _userId, id, companyId] : [new Date().toISOString(), id, companyId]
+        );
+        return { success: result.success, error: result.error };
       }
 
-      const result = await adapter.query(sql, params);
-      return { success: result.success, error: result.error };
+      if (status === 'completed') {
+        const woRes = await adapter.query('SELECT product_id, produced_quantity, quantity FROM work_orders WHERE id = $1 AND company_id = $2', [id, companyId]);
+        if (!woRes.success || !woRes.rows?.[0]) return { success: false, error: 'Work order not found' };
+        const wo = woRes.rows[0];
+        const finalProducedQty = producedQuantity ?? (Number(wo.produced_quantity) || Number(wo.quantity));
+
+        const consRes = await adapter.query('SELECT material_id, planned_quantity FROM work_order_consumptions WHERE work_order_id = $1', [id]);
+        const consRows = consRes.success ? (consRes.rows || []) : [];
+
+        const whRes = await adapter.query('SELECT id FROM warehouses WHERE company_id = $1 ORDER BY created_at ASC LIMIT 1', [companyId]);
+        const warehouseId = whRes.success && whRes.rows?.[0]?.id ? String(whRes.rows[0].id) : null;
+
+        if (warehouseId) {
+          for (const c of consRows) {
+            await adapter.query(
+              `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes, created_by) VALUES ($1, $2, $3, 'out', $4, $5, $6, $7)`,
+              [companyId, String(c.material_id), warehouseId, Number(c.planned_quantity), id, 'Production consumption', _userId ?? null]
+            );
+          }
+          await adapter.query(
+            `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes, created_by) VALUES ($1, $2, $3, 'in', $4, $5, $6, $7)`,
+            [companyId, String(wo.product_id), warehouseId, finalProducedQty, id, 'Production output', _userId ?? null]
+          );
+        }
+
+        const result = await adapter.query(
+          `UPDATE work_orders SET status = 'completed', actual_end_date = $1, produced_quantity = $2, updated_at = NOW()${_userId ? ', updated_by = $3' : ''} WHERE id = $${_userId ? 4 : 3} AND company_id = $${_userId ? 5 : 4}`,
+          _userId ? [new Date().toISOString(), finalProducedQty, _userId, id, companyId] : [new Date().toISOString(), finalProducedQty, id, companyId]
+        );
+        return { success: result.success, error: result.error };
+      }
+
+      {
+        const result = await adapter.query(
+          `UPDATE work_orders SET status = $1, updated_at = NOW()${_userId ? ', updated_by = $2' : ''} WHERE id = $${_userId ? 3 : 2} AND company_id = $${_userId ? 4 : 3}`,
+          _userId ? [status, _userId, id, companyId] : [status, id, companyId]
+        );
+        return { success: result.success, error: result.error };
+      }
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -323,6 +350,18 @@ export const manufacturingApi = {
     } catch (e) {
       return { success: false, error: String(e) };
     }
+  },
+
+  async getNextWorkOrderNumber(companyId: string): Promise<string> {
+    try {
+      const adapter = await getDbAdapter();
+      const res = await adapter.query(`SELECT order_number FROM work_orders WHERE company_id = $1 AND order_number ~ '^WO-' ORDER BY order_number DESC LIMIT 1`, [companyId]);
+      if (res.success && res.rows?.[0]) {
+        const lastNum = parseInt(res.rows[0].order_number.replace('WO-', ''), 10);
+        return `WO-${String(lastNum + 1).padStart(5, '0')}`;
+      }
+      return 'WO-00001';
+    } catch { return 'WO-00001'; }
   },
 
   async getManufacturingKpis(companyId: string): Promise<{ success: boolean; data?: { totalWorkOrders: number; activeOrders: number; completedOrders: number; totalProductionCost: number }; error?: string }> {
@@ -403,6 +442,7 @@ export const manufacturingApi = {
         notes: r.notes ? String(r.notes) : undefined,
         createdBy: r.created_by ? String(r.created_by) : undefined,
         updatedBy: r.updated_by ? String(r.updated_by) : undefined,
+        updatedAt: r.updated_at ? String(r.updated_at) : undefined,
         linesCount: r.lines_count ? Number(r.lines_count) : 0,
       }));
       return { success: true, data: paginatedResult(rows, total, p, ps) };
@@ -470,6 +510,7 @@ function mapWorkOrderRow(r: Record<string, unknown>): WorkOrder {
     notes: r.notes ? String(r.notes) : undefined,
     createdBy: r.created_by ? String(r.created_by) : undefined,
     updatedBy: r.updated_by ? String(r.updated_by) : undefined,
+    updatedAt: r.updated_at ? String(r.updated_at) : undefined,
   };
 }
 

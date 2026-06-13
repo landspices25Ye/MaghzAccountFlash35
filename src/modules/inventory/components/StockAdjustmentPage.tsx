@@ -12,6 +12,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { postStockAdjustment } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useToastStore } from '@/core/store/toastStore';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
@@ -20,6 +21,7 @@ import { Can } from '@/core/ui/components/PermissionGate';
 
 export const StockAdjustmentPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const { adjustments, isLoading, create, approve, remove } = useStockAdjustments(activeCompany?.id || '');
@@ -47,7 +49,7 @@ export const StockAdjustmentPage: React.FC = () => {
     if (!activeCompany || !form.productId) return;
     const sys = Number(form.systemQty) || 0;
     const act = Number(form.actualQty) || 0;
-    await create({
+    const result = await create({
       companyId: activeCompany.id,
       date: form.date || new Date().toISOString().split('T')[0],
       productId: form.productId,
@@ -59,6 +61,12 @@ export const StockAdjustmentPage: React.FC = () => {
       status: 'draft',
       unitCost: Number(form.unitCost) || 0,
     });
+    if (result?.success) {
+      addToast('success', t('inventory.adjustment.created'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+      return;
+    }
     setIsOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], status: 'draft' });
   };
@@ -70,13 +78,23 @@ export const StockAdjustmentPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await remove(id);
+    const result = await remove(id);
+    if (result?.success) {
+      addToast('success', t('inventory.adjustment.deleted'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+    }
     setConfirmDelete(null);
   };
 
   const handleApprove = async (id: string) => {
     if (!user?.id) return;
-    await approve(id, user.id);
+    const result = await approve(id, user.id);
+    if (result?.success) {
+      addToast('success', t('inventory.adjustment.updated'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+    }
     setConfirmApprove(null);
   };
 
@@ -100,6 +118,9 @@ export const StockAdjustmentPage: React.FC = () => {
         recordId: adj.id,
         companyId: activeCompany.id,
       });
+      addToast('success', t('inventory.adjustment.posted'));
+    } else {
+      addToast('error', result.error || t('common.error'));
     }
   };
 

@@ -12,3 +12,5 @@ export { DataTablePro } from './DataTablePro';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Pagination } from './Pagination';
 export { PermissionGate, Can } from './PermissionGate';
+export { ToastContainer } from './Toast';
+export { PageLoader } from './PageLoader';

@@ -23,6 +23,7 @@ import { useCurrencyDisplay } from '@/core/utils/useCurrencyDisplay';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
+import { useToastStore } from '@/core/store/toastStore';
 import type { PurchaseInvoice } from '../types';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -66,6 +67,7 @@ const initialForm = (): InvoiceForm => ({
 
 export const PurchaseInvoicesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'purchases');
@@ -227,6 +229,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
     if (editingId) {
       await update(editingId, payload);
+      addToast('success', t('purchases.invoice.updated'));
       await logAudit({
         userId: user?.id || '',
         action: 'update',
@@ -241,6 +244,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
       }
       const result = await create(payload);
       if (result.success && result.id) {
+        addToast('success', t('purchases.invoice.created'));
         await logAudit({
           userId: user?.id || '',
           action: 'create',
@@ -248,6 +252,8 @@ export const PurchaseInvoicesPage: React.FC = () => {
           recordId: result.id,
           companyId: activeCompany.id,
         });
+      } else {
+        addToast('error', result.error || t('common.error'));
       }
     }
     setModalOpen(false);
@@ -262,6 +268,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
   const confirmDeleteAction = useCallback(async () => {
     if (!confirmDelete || !activeCompany?.id) return;
     await remove(confirmDelete);
+    addToast('success', t('purchases.invoice.deleted'));
     await logAudit({
       userId: user?.id || '',
       action: 'delete',
@@ -293,6 +300,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
     if (result.success) {
       await post(confirmPost);
+      addToast('success', t('purchases.invoice.posted'));
       await logAudit({
         userId: user?.id || '',
         action: 'post',
@@ -301,7 +309,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
         companyId: activeCompany.id,
       });
     } else {
-      alert(`${t('purchases.invoice.postFailed')}: ${result.error || t('purchases.invoice.postErrorUnknown')}`);
+      addToast('error', result.error || t('purchases.invoice.postErrorUnknown'));
     }
     setPostingId(null);
     setConfirmPost(null);

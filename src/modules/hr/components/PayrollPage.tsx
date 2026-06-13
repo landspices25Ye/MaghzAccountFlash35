@@ -7,10 +7,12 @@ import { useAppStore } from '@/core/store';
 import { usePayrollRunsPaginated, useEmployees } from '../hooks/useHr';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { PayrollLine } from '../types';
 
 export const PayrollPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -60,12 +62,14 @@ export const PayrollPage: React.FC = () => {
       status: 'draft',
       lines: [...lines],
     });
+    addToast('success', t('hr.payroll.created'));
     setIsModalOpen(false);
     setLines([]);
   };
 
   const handlePost = async (id: string) => {
     await post(id);
+    addToast('success', t('hr.payroll.posted'));
   };
 
   const selectedPayrollData = selectedPayroll ? payrolls.find((p) => p.id === selectedPayroll) || null : null;

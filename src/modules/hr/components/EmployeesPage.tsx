@@ -11,11 +11,13 @@ import { useEmployeesPaginated } from '../hooks/useHr';
 import type { Employee } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 export const EmployeesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
   const employeeFilters = useMemo(() => ({ isActive: isActiveFilter }), [isActiveFilter]);
@@ -96,8 +98,10 @@ export const EmployeesPage: React.FC = () => {
     };
     if (editing) {
       await update(editing.id, payload);
+      addToast('success', t('hr.employeesPage.updated'));
     } else {
       await create(payload);
+      addToast('success', t('hr.employeesPage.created'));
     }
     setIsModalOpen(false);
     resetForm();
@@ -106,6 +110,7 @@ export const EmployeesPage: React.FC = () => {
   const handleDelete = async () => {
     if (!confirmDelete) return;
     await remove(confirmDelete);
+    addToast('success', t('hr.employeesPage.deleted'));
     setConfirmDelete(null);
   };
 

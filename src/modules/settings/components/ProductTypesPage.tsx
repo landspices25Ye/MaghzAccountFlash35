@@ -5,10 +5,12 @@ import { AccountSelect } from '@/core/ui/components/smart';
 import { useProductTypes } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { ProductType } from '@/core/types';
 
 export const ProductTypesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { types, isLoading, create, update, remove } = useProductTypes(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
@@ -29,9 +31,11 @@ export const ProductTypesPage: React.FC = () => {
     if (!form.nameAr || !activeCompany?.id) return;
     if (editingId) {
       await update(editingId, form);
+      addToast('success', t('settings.productTypes.updated'));
       setEditingId(null);
     } else {
       await create({ ...form, companyId: activeCompany.id } as Omit<ProductType, 'id'>);
+      addToast('success', t('settings.productTypes.created'));
     }
     setIsOpen(false);
     resetForm();
@@ -46,6 +50,7 @@ export const ProductTypesPage: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteId) return;
     await remove(deleteId);
+    addToast('success', t('settings.productTypes.deleted'));
     setDeleteId(null);
   };
 

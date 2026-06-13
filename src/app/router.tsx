@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, HashRouter, Routes, Route, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { isElectron } from '@/core/database/adapters';
+import { PageLoader } from '@/core/ui/components/PageLoader';
 import { AppLayout } from './layout';
 
 // Lazy load modules for better performance
@@ -95,12 +96,6 @@ const UnitsPage = React.lazy(() => import('@/modules/settings/components/UnitsPa
 const CashBoxesPage = React.lazy(() => import('@/modules/settings/components/CashBoxesPage'));
 const BanksPage = React.lazy(() => import('@/modules/settings/components/BanksPage'));
 const CostCentersPage = React.lazy(() => import('@/modules/settings/components/CostCentersPage'));
-
-const PageLoader: React.FC = () => (
-  <div className="flex items-center justify-center h-full">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
-  </div>
-);
 
 const withSuspense = (Component: React.ComponentType) => (
   <React.Suspense fallback={<PageLoader />}>

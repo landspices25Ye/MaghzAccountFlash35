@@ -10,6 +10,7 @@ import { useWarehouses } from '../hooks/useInventory';
 import { useStockDetailed } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import type { Warehouse as WarehouseType } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 
@@ -24,6 +25,7 @@ const initialForm: FormData = { name: '', code: '', branchId: '', isActive: true
 
 export const WarehousesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { warehouses, isLoading, create, update, remove } = useWarehouses(activeCompany?.id || '');
   const { stock } = useStockDetailed(activeCompany?.id || '');
@@ -62,10 +64,17 @@ export const WarehousesPage: React.FC = () => {
       isActive: formData.isActive,
     };
 
+    let result;
     if (editingId) {
-      await update(editingId, payload);
+      result = await update(editingId, payload);
     } else {
-      await create(payload);
+      result = await create(payload);
+    }
+    if (result?.success) {
+      addToast('success', editingId ? t('inventory.warehouse.updated') : t('inventory.warehouse.created'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+      return;
     }
     setIsModalOpen(false);
     setFormData(initialForm);
@@ -73,7 +82,12 @@ export const WarehousesPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await remove(id);
+    const result = await remove(id);
+    if (result?.success) {
+      addToast('success', t('inventory.warehouse.deleted'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+    }
     setConfirmDelete(null);
   };
 

@@ -10,6 +10,7 @@ import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Activity as ActivityType } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   call: <Phone size={14} />,
@@ -29,6 +30,7 @@ const TYPE_KEYS: Record<string, string> = {
 
 export const ActivitiesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { activities, isLoading, create, update, remove } = useActivities(companyId);
@@ -79,19 +81,25 @@ export const ActivitiesPage: React.FC = () => {
       opportunityId: formData.opportunityId || undefined,
       customerId: formData.customerId || undefined,
     };
-    if (editing) {
-      await update(editing.id, payload);
+    const res = editing ? await update(editing.id, payload) : await create(payload);
+    if (res?.success) {
+      setIsModalOpen(false);
+      resetForm();
+      addToast('success', t(editing ? 'crm.activity.updated' : 'crm.activity.created'));
     } else {
-      await create(payload);
+      addToast('error', res?.error || t('error'));
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    setConfirmDelete(null);
+    const res = await remove(confirmDelete);
+    if (res?.success) {
+      setConfirmDelete(null);
+      addToast('success', t('crm.activity.deleted'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const repReport = React.useMemo(() => {

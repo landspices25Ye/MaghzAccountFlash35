@@ -7,6 +7,7 @@ import { useAppStore } from '@/core/store';
 import { useAttendance, useEmployees } from '../hooks/useHr';
 import type { AttendanceRecord } from '../types';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface DailyFormRecord {
   employeeId: string;
@@ -21,6 +22,7 @@ export const AttendancePage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
 
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
@@ -96,6 +98,7 @@ export const AttendancePage: React.FC = () => {
       };
     });
     await save(payload);
+    addToast('success', t('hr.attendancePage.created'));
     setIsOpen(false);
   };
 

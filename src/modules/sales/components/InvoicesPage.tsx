@@ -8,6 +8,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useInvoicesPaginated } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
+import { useToastStore } from '@/core/store/toastStore';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
@@ -35,6 +36,7 @@ interface InvoiceLineForm {
 
 export const InvoicesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const STATUS_FLOW = useMemo(() => ({
     draft: t('sales.status.draft'),
     posted: t('sales.status.posted'),
@@ -219,11 +221,17 @@ export const InvoicesPage: React.FC = () => {
       const res = await update(editingId, { ...payload, status: 'draft' });
       if (res.success) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'sales_invoices', recordId: editingId, companyId: activeCompany.id, newValues: payload });
+        addToast('success', t('sales.invoice.updated'));
+      } else {
+        addToast('error', res.error || t('common.error'));
       }
     } else {
       const res = await create(payload);
       if (res.success && res.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'sales_invoices', recordId: res.id, companyId: activeCompany.id, newValues: payload });
+        addToast('success', t('sales.invoice.created'));
+      } else {
+        addToast('error', res.error || t('common.error'));
       }
     }
     setSaving(false);
@@ -243,6 +251,9 @@ export const InvoicesPage: React.FC = () => {
         const res = await remove(invoice.id);
         if (res.success && activeCompany?.id) {
           await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'sales_invoices', recordId: invoice.id, companyId: activeCompany.id });
+          addToast('success', t('sales.invoice.deleted'));
+        } else {
+          addToast('error', res.error || t('common.error'));
         }
       },
     });
@@ -271,8 +282,9 @@ export const InvoicesPage: React.FC = () => {
         if (postResult.success) {
           await post(invoice.id);
           await logAudit({ userId: currentUser?.id || 'system', action: 'post', tableName: 'sales_invoices', recordId: invoice.id, companyId: activeCompany.id });
+          addToast('success', t('sales.invoice.posted'));
         } else {
-          alert(`${t('sales.invoice.postFailed')}: ${postResult.error || t('sales.invoice.unknownError')}`);
+          addToast('error', `${t('sales.invoice.postFailed')}: ${postResult.error || t('sales.invoice.unknownError')}`);
         }
         setPostingId(null);
       },

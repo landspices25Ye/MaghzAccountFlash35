@@ -15,6 +15,7 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { barcodeScanner } from '@/core/utils/barcodeScanner';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useToastStore } from '@/core/store/toastStore';
 import type { Product } from '../types';
 
 interface FormData {
@@ -43,6 +44,7 @@ const initialForm: FormData = {
 
 export const ProductsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const [filterTypeId, setFilterTypeId] = useState<string>('');
@@ -133,6 +135,10 @@ export const ProductsPage: React.FC = () => {
           recordId: editingId,
           companyId: activeCompany.id,
         });
+        addToast('success', t('inventory.product.updated'));
+      } else {
+        addToast('error', result.error || t('common.error'));
+        return;
       }
     } else {
       const result = await create(payload);
@@ -144,6 +150,10 @@ export const ProductsPage: React.FC = () => {
           recordId: result.id || '',
           companyId: activeCompany.id,
         });
+        addToast('success', t('inventory.product.created'));
+      } else {
+        addToast('error', result.error || t('common.error'));
+        return;
       }
     }
     setIsModalOpen(false);
@@ -162,6 +172,9 @@ export const ProductsPage: React.FC = () => {
         recordId: id,
         companyId: activeCompany.id,
       });
+      addToast('success', t('inventory.product.deleted'));
+    } else {
+      addToast('error', result.error || t('common.error'));
     }
     setConfirmDelete(null);
   };

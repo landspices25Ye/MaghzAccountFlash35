@@ -9,11 +9,13 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { usePermission } from '../hooks/usePermission';
 import { useRoles } from '../hooks/useAuth';
 import { useAppStore } from '@/core/store';
+import { useToastStore } from '@/core/store/toastStore';
 import { PERMISSION_GROUPS } from '../types';
 import type { Role, Permission } from '../types';
 
 export const RolesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const canManageRoles = usePermission('settings.roles');
@@ -69,8 +71,10 @@ export const RolesPage: React.FC = () => {
 
     if (editingRole) {
       await update(editingRole.id, data);
+      addToast('success', t('auth.roles.updated'));
     } else {
       await create(data);
+      addToast('success', t('auth.roles.created'));
     }
 
     setIsModalOpen(false);
@@ -86,6 +90,7 @@ export const RolesPage: React.FC = () => {
       message: t('auth.roles.deleteConfirm', { name: role.name }),
       onConfirm: async () => {
         await remove(role.id);
+        addToast('success', t('auth.roles.deleted'));
         setConfirmDialog((prev) => ({ ...prev, open: false }));
       },
     });

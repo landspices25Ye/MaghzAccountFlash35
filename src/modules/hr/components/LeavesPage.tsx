@@ -8,11 +8,13 @@ import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useAppStore } from '@/core/store';
 import { useLeavesPaginated, useEmployees } from '../hooks/useHr';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import { DEFAULT_LOCALE } from '@/core/utils/locale';
 import type { Leave } from '../types';
 
 export const LeavesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -45,6 +47,7 @@ export const LeavesPage: React.FC = () => {
       status: 'pending',
       reason: formData.reason || undefined,
     });
+    addToast('success', t('hr.leaves.created'));
     setIsModalOpen(false);
     resetForm();
   };
@@ -52,6 +55,7 @@ export const LeavesPage: React.FC = () => {
   const handleDelete = async () => {
     if (!confirmDelete) return;
     await remove(confirmDelete);
+    addToast('success', t('hr.leaves.deleted'));
     setConfirmDelete(null);
   };
 
@@ -125,10 +129,10 @@ export const LeavesPage: React.FC = () => {
       <div className="flex items-center gap-1">
         {row.status === 'pending' && (
           <>
-            <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => updateStatus(row.id, 'approved', 'manager')} title={t('hr.leaves.approve')}>
+            <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => { await updateStatus(row.id, 'approved', 'manager'); addToast('success', t('hr.leaves.updated')); }} title={t('hr.leaves.approve')}>
               <CheckCircle size={16} />
             </Button>
-            <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => updateStatus(row.id, 'rejected', 'manager')} title={t('hr.leaves.reject')}>
+            <Button variant="ghost" size="sm" className="text-rose-600" onClick={async () => { await updateStatus(row.id, 'rejected', 'manager'); addToast('success', t('hr.leaves.updated')); }} title={t('hr.leaves.reject')}>
               <XCircle size={16} />
             </Button>
           </>

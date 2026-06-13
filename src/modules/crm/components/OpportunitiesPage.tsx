@@ -10,6 +10,7 @@ import { useOpportunitiesPaginated } from '../hooks/useCrm';
 import type { Opportunity } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 const STAGES: Opportunity['stage'][] = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
@@ -33,6 +34,7 @@ const STAGE_COLORS: Record<string, string> = {
 
 export const OpportunitiesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
@@ -72,19 +74,25 @@ export const OpportunitiesPage: React.FC = () => {
       assignedTo: formData.assignedTo || undefined,
       notes: formData.notes || undefined,
     };
-    if (editing) {
-      await update(editing.id, payload);
+    const res = editing ? await update(editing.id, payload) : await create(payload);
+    if (res?.success) {
+      setIsModalOpen(false);
+      resetForm();
+      addToast('success', t(editing ? 'crm.opportunity.updated' : 'crm.opportunity.created'));
     } else {
-      await create(payload);
+      addToast('error', res?.error || t('error'));
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    setConfirmDelete(null);
+    const res = await remove(confirmDelete);
+    if (res?.success) {
+      setConfirmDelete(null);
+      addToast('success', t('crm.opportunity.deleted'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const onDragStart = (id: string) => setDraggedId(id);
@@ -93,7 +101,12 @@ export const OpportunitiesPage: React.FC = () => {
     if (!draggedId) return;
     const opp = opportunities.find((o) => o.id === draggedId);
     if (opp && opp.stage !== stage) {
-      await update(draggedId, { stage });
+      const res = await update(draggedId, { stage });
+      if (res?.success) {
+        addToast('success', t('crm.opportunity.updated'));
+      } else {
+        addToast('error', res?.error || t('error'));
+      }
     }
     setDraggedId(null);
   };

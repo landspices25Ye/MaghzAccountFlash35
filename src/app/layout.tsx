@@ -22,6 +22,7 @@ import {
   Globe,
 } from 'lucide-react';
 import { useAppStore } from '@/core/store';
+import { ToastContainer } from '@/core/ui/components/Toast';
 import { useAuthStore } from '@/modules/auth/store';
 import { useCanAccessModule } from '@/modules/auth/hooks/usePermission';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -105,6 +106,7 @@ const menuItems: MenuItem[] = [
     children: [
       { labelKey: 'sidebar.manufacturing.boms', path: '/manufacturing/bom' },
       { labelKey: 'sidebar.manufacturing.workOrders', path: '/manufacturing/work-orders' },
+      { labelKey: 'sidebar.manufacturing.costReport', path: '/manufacturing/cost-report' },
     ],
   },
   {
@@ -369,6 +371,7 @@ export const AppLayout = () => {
           <Outlet />
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 };

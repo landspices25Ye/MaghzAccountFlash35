@@ -13,6 +13,7 @@ export const boms = pgTable('boms', {
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 export const bomLines = pgTable('bom_lines', {
@@ -22,6 +23,7 @@ export const bomLines = pgTable('bom_lines', {
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitCost: numeric('unit_cost', { precision: 18, scale: 4 }).default('0'),
   totalCost: numeric('total_cost', { precision: 18, scale: 4 }).default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // ─── Work Orders ──────────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ export const workOrders = pgTable('work_orders', {
   bomId: uuid('bom_id'),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   producedQuantity: numeric('produced_quantity', { precision: 18, scale: 4 }).default('0'),
-  status: varchar('status', { length: 20 }).default('pending'), // pending, in_progress, completed, cancelled
+  status: varchar('status', { length: 20 }).default('planned'), // planned, in_progress, completed, cancelled
   plannedStartDate: date('planned_start_date'),
   plannedEndDate: date('planned_end_date'),
   actualStartDate: date('actual_start_date'),
@@ -43,6 +45,7 @@ export const workOrders = pgTable('work_orders', {
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // ─── Work Order Consumptions ──────────────────────────────────────────────────
@@ -54,4 +57,5 @@ export const workOrderConsumptions = pgTable('work_order_consumptions', {
   actualQuantity: numeric('actual_quantity', { precision: 18, scale: 4 }).default('0'),
   unitCost: numeric('unit_cost', { precision: 18, scale: 4 }).default('0'),
   actualUnitCost: numeric('actual_unit_cost', { precision: 18, scale: 4 }).default('0'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });

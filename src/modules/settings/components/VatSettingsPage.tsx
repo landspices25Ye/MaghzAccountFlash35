@@ -6,6 +6,7 @@ import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface VatType {
   id: string;
@@ -17,6 +18,7 @@ interface VatType {
 
 export const VatSettingsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const [vatTypes, setVatTypes] = useState<VatType[]>([]);
@@ -79,6 +81,7 @@ export const VatSettingsPage: React.FC = () => {
         companyId: activeCompany.id,
       });
 
+      addToast('success', t(editingId ? 'settings.vat.updated' : 'settings.vat.created'));
       setEditingId(null);
       setFormData({ name: '', rate: 15, isActive: true });
       loadData();

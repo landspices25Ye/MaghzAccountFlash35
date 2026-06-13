@@ -4,6 +4,7 @@ import { Card, Button, Modal, Input, ConfirmDialog, Can } from '@/core/ui/compon
 import { useProductCategories } from '@/modules/inventory/hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface CategoryNode {
   id: string;
@@ -57,6 +58,7 @@ function TreeNode({ node, level, onEdit, onDelete, t }: { node: CategoryNode; le
 
 export const ProductCategoriesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { categories, isLoading, create, update, remove } = useProductCategories(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
@@ -71,8 +73,10 @@ export const ProductCategoriesPage: React.FC = () => {
     try {
       if (editingId) {
         await update(editingId, { name: form.name, parentId: form.parentId || undefined });
+        addToast('success', t('settings.productCategories.updated'));
       } else {
         await create({ companyId: activeCompany.id, name: form.name, parentId: form.parentId || undefined });
+        addToast('success', t('settings.productCategories.created'));
       }
       setIsOpen(false);
       setForm({ name: '', parentId: '' });
@@ -85,6 +89,7 @@ export const ProductCategoriesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       await remove(id);
+      addToast('success', t('settings.productCategories.deleted'));
       setShowDeleteConfirm(null);
     } catch {
       // Error handled by caller

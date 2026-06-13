@@ -16,11 +16,13 @@ import { YER_CODE } from '@/core/utils/currencyConverter';
 import { logAudit } from '@/core/utils/auditLogger';
 import type { Customer } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
+import { useToastStore } from '@/core/store/toastStore';
 
 type TabKey = 'details' | 'statement' | 'aging';
 
 export const CustomersPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const currentUser = useAuthStore(state => state.user);
@@ -79,11 +81,17 @@ export const CustomersPage: React.FC = () => {
       const res = await update(editingId, { ...payload, balance: undefined });
       if (res.success && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'customers', recordId: editingId, companyId: activeCompany.id, newValues: payload });
+        addToast('success', t('sales.customer.updated'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     } else {
       const res = await create(payload);
       if (res.success && res.id && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'customers', recordId: res.id, companyId: activeCompany.id, newValues: payload });
+        addToast('success', t('sales.customer.created'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     }
     setSaving(false);
@@ -101,6 +109,9 @@ export const CustomersPage: React.FC = () => {
         const res = await remove(c.id);
         if (res.success && activeCompany?.id) {
           await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'customers', recordId: c.id, companyId: activeCompany.id });
+          addToast('success', t('sales.customer.deleted'));
+        } else {
+          addToast('error', res.error || t('error'));
         }
       },
     });

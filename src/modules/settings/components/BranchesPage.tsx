@@ -7,6 +7,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface Branch {
   id: string;
@@ -21,6 +22,7 @@ export const BranchesPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const user = useAuthStore((state) => state.user);
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +74,7 @@ export const BranchesPage: React.FC = () => {
       }
 
       await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'branches', recordId: editingId || 'new', companyId: activeCompany.id });
+      addToast('success', t(editingId ? 'settings.branches.updated' : 'settings.branches.created'));
       setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
     } catch {
       // Error handled by caller
@@ -86,6 +89,7 @@ export const BranchesPage: React.FC = () => {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM branches WHERE id = $1`, [id]);
       await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
+      addToast('success', t('settings.branches.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
       // Error handled by caller

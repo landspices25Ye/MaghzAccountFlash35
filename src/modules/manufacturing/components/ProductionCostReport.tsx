@@ -142,7 +142,7 @@ export const ProductionCostReport: React.FC = () => {
   const woColumns = [
     { key: 'orderNumber', header: t('manufacturing.orderNumber') },
     { key: 'productName', header: t('manufacturing.product') },
-    { key: 'status', header: t('manufacturing.status'), render: (row: WorkOrderCostRow) => {
+    { key: 'status', header: t('manufacturing.table.status'), render: (row: WorkOrderCostRow) => {
       const colors: Record<string, string> = {
         planned: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
         in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -192,7 +192,7 @@ export const ProductionCostReport: React.FC = () => {
     await exportToExcel(rows, [
       { key: 'orderNumber', header: t('manufacturing.orderNumber'), width: 15 },
       { key: 'productName', header: t('manufacturing.product'), width: 20 },
-      { key: 'status', header: t('manufacturing.status'), width: 12 },
+      { key: 'status', header: t('manufacturing.table.status'), width: 12 },
       { key: 'quantity', header: t('manufacturing.plannedQuantity'), width: 15 },
       { key: 'producedQuantity', header: t('manufacturing.actualQuantity'), width: 15 },
       { key: 'completionPct', header: t('manufacturing.completionRate'), width: 12 },

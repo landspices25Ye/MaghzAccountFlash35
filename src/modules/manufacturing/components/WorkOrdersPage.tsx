@@ -58,8 +58,10 @@ export const WorkOrdersPage: React.FC = () => {
     setEditing(null);
   };
 
-  const openCreate = () => {
+  const openCreate = async () => {
     resetForm();
+    const nextNum = await manufacturingApi.getNextWorkOrderNumber(companyId);
+    setFormData((prev) => ({ ...prev, orderNumber: nextNum }));
     setIsModalOpen(true);
   };
 
@@ -129,10 +131,7 @@ export const WorkOrdersPage: React.FC = () => {
 
   const handleStatusChange = async () => {
     if (!confirmStatus) return;
-    if (confirmStatus.status === 'completed' && producedQty) {
-      await update(confirmStatus.id, { producedQuantity: Number(producedQty) });
-    }
-    await changeStatus(confirmStatus.id, confirmStatus.status);
+    await changeStatus(confirmStatus.id, confirmStatus.status, confirmStatus.status === 'completed' && producedQty ? Number(producedQty) : undefined);
     setConfirmStatus(null);
     setProducedQty('');
   };
@@ -259,7 +258,22 @@ export const WorkOrdersPage: React.FC = () => {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">BOM</label>
-              <select value={formData.bomId} onChange={(e) => setFormData((prev) => ({ ...prev, bomId: e.target.value }))} disabled={availableBoms.length === 0} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
+              <select value={formData.bomId} onChange={async (e) => {
+                const bomId = e.target.value;
+                setFormData((prev) => ({ ...prev, bomId }));
+                if (bomId) {
+                  const res = await manufacturingApi.getBomById(bomId, companyId);
+                  if (res.success && res.data) {
+                    const { bom, lines } = res.data;
+                    setLines(lines.map((l) => ({ materialId: l.materialId, plannedQuantity: Number(l.quantity), unitCost: Number(l.unitCost || 0) })));
+                    if (bom.totalCost) {
+                      setFormData((prev) => ({ ...prev, totalCost: String(bom.totalCost) }));
+                    }
+                  }
+                } else {
+                  setLines([{ materialId: '', plannedQuantity: 1, unitCost: 0 }]);
+                }
+              }} disabled={availableBoms.length === 0} className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm">
                 <option value="">{availableBoms.length === 0 ? t('manufacturing.workOrders.noBom') : t('manufacturing.workOrders.withoutBom')}</option>
                 {availableBoms.map((b) => (
                   <option key={b.id} value={b.id}>{t('manufacturing.form.version')} {b.version}</option>

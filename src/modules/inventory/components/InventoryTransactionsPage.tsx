@@ -9,6 +9,7 @@ import { useInventoryTransactionsPaginated } from '../hooks/useInventory';
 import { Pagination } from '@/core/ui/components/Pagination';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import type { InventoryTransaction } from '../types';
 
@@ -21,6 +22,7 @@ const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
 
 export const InventoryTransactionsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const txFilters = useMemo(() => ({ type: typeFilter || undefined }), [typeFilter]);
@@ -41,7 +43,7 @@ export const InventoryTransactionsPage: React.FC = () => {
 
   const handleAdd = async () => {
     if (!activeCompany || !form.productId || !form.warehouseId) return;
-    await create({
+    const result = await create({
       companyId: activeCompany.id,
       date: form.date || new Date().toISOString().split('T')[0],
       type: form.type || 'in',
@@ -51,8 +53,24 @@ export const InventoryTransactionsPage: React.FC = () => {
       reference: form.reference || '',
       notes: form.notes || '',
     });
+    if (result?.success) {
+      addToast('success', t('inventory.transaction.created'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+      return;
+    }
     setIsOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], type: 'in' });
+  };
+
+  const handleDelete = async (id: string) => {
+    const result = await remove(id);
+    if (result?.success) {
+      addToast('success', t('inventory.transaction.deleted'));
+    } else {
+      addToast('error', result?.error || t('common.error'));
+    }
+    setConfirmDelete(null);
   };
 
   const handleExportExcel = () => {
@@ -266,7 +284,7 @@ ${filtered.map(tx => `<tr>
       <ConfirmDialog
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
-        onConfirm={() => confirmDelete && remove(confirmDelete)}
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
         title={t('delete')}
         message={t('inventory.deleteConfirm')}
         variant="danger"

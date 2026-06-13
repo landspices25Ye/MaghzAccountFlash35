@@ -16,6 +16,7 @@ import { useFormatters } from '@/core/utils/useFormatters';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useUserMap } from '@/core/utils/useUserMap';
 import type { Transaction, JournalEntry as JournalEntryType } from '../types';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface EntryLine {
   accountId: string;
@@ -28,6 +29,7 @@ const emptyLine = (): EntryLine => ({ accountId: '', debit: 0, credit: 0, memo: 
 
 export const JournalEntriesPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const txFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
@@ -110,6 +112,9 @@ export const JournalEntriesPage: React.FC = () => {
     if (result.success) {
       setIsModalOpen(false);
       resetForm();
+      addToast('success', t(isEditMode ? 'accounting.transaction.updated' : 'accounting.transaction.created'));
+    } else {
+      addToast('error', result.error || t('common.error'));
     }
     setIsSaving(false);
   };
@@ -131,7 +136,12 @@ export const JournalEntriesPage: React.FC = () => {
 
   const handlePost = async (tx: Transaction) => {
     if (tx.status === 'draft') {
-      await post(tx.id);
+      const result = await post(tx.id);
+      if (result.success) {
+        addToast('success', t('accounting.transaction.posted'));
+      } else {
+        addToast('error', result.error || t('common.error'));
+      }
     }
   };
 
@@ -402,7 +412,12 @@ export const JournalEntriesPage: React.FC = () => {
         onClose={() => setConfirmDelete(null)}
         onConfirm={async () => {
           if (confirmDelete) {
-            await remove(confirmDelete.id);
+            const result = await remove(confirmDelete.id);
+            if (result.success) {
+              addToast('success', t('accounting.transaction.deleted'));
+            } else {
+              addToast('error', result.error || t('common.error'));
+            }
             setConfirmDelete(null);
           }
         }}

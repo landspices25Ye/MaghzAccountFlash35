@@ -10,9 +10,11 @@ import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { Task } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 export const TasksPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { tasks, isLoading, create, update, remove } = useTasks(companyId);
@@ -61,24 +63,35 @@ export const TasksPage: React.FC = () => {
       opportunityId: formData.opportunityId || undefined,
       customerId: formData.customerId || undefined,
     };
-    if (editing) {
-      await update(editing.id, payload);
+    const res = editing ? await update(editing.id, payload) : await create(payload);
+    if (res?.success) {
+      setIsModalOpen(false);
+      resetForm();
+      addToast('success', t(editing ? 'crm.task.updated' : 'crm.task.created'));
     } else {
-      await create(payload);
+      addToast('error', res?.error || t('error'));
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    setConfirmDelete(null);
+    const res = await remove(confirmDelete);
+    if (res?.success) {
+      setConfirmDelete(null);
+      addToast('success', t('crm.task.deleted'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const toggleStatus = async (task: Task) => {
     const newStatus: Task['status'] = task.status === 'pending' ? 'completed' : 'pending';
-    await update(task.id, { status: newStatus });
+    const res = await update(task.id, { status: newStatus });
+    if (res?.success) {
+      addToast('success', t('crm.task.updated'));
+    } else {
+      addToast('error', res?.error || t('error'));
+    }
   };
 
   const isOverdue = (task: Task) => {

@@ -17,6 +17,7 @@ import { printDocument } from '@/core/utils/printDocument';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { postSalesReturn } from '@/core/utils/journalEntryGenerator';
 import { logAudit } from '@/core/utils/auditLogger';
+import { useToastStore } from '@/core/store/toastStore';
 import { useOwnerFilter } from '@/core/utils/useOwnerFilter';
 import { OwnerFilterToggle } from '@/core/ui/components/OwnerFilterToggle';
 import type { SalesReturn } from '../types';
@@ -30,6 +31,7 @@ interface ReturnLineForm {
 
 export const SalesReturnsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const currentUser = useAuthStore(state => state.user);
   const { showToggle: showOwnerToggle, isOwnOnly, toggleOwnOnly } = useOwnerFilter([], 'sales');
@@ -132,6 +134,9 @@ export const SalesReturnsPage: React.FC = () => {
       const res = await update(editingId, buildPayload(returnNumber));
       if (res.success && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'update', tableName: 'sales_returns', recordId: editingId, companyId: activeCompany.id });
+        addToast('success', t('sales.return.updated'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     } else {
       const seq = await getNextNumber('sales_return', activeCompany.id);
@@ -139,6 +144,9 @@ export const SalesReturnsPage: React.FC = () => {
       const res = await create(buildPayload(returnNumber));
       if (res.success && res.id && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'sales_returns', recordId: res.id, companyId: activeCompany.id });
+        addToast('success', t('sales.return.created'));
+      } else {
+        addToast('error', res.error || t('error'));
       }
     }
     setSaving(false);
@@ -157,6 +165,9 @@ export const SalesReturnsPage: React.FC = () => {
         const res = await remove(ret.id);
         if (res.success && activeCompany?.id) {
           await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'sales_returns', recordId: ret.id, companyId: activeCompany.id });
+          addToast('success', t('sales.return.deleted'));
+        } else {
+          addToast('error', res.error || t('error'));
         }
       },
     });
@@ -183,6 +194,9 @@ export const SalesReturnsPage: React.FC = () => {
         if (postResult.success) {
           await post(ret.id);
           await logAudit({ userId: currentUser?.id || 'system', action: 'post', tableName: 'sales_returns', recordId: ret.id, companyId: activeCompany.id });
+          addToast('success', t('sales.return.posted'));
+        } else {
+          addToast('error', postResult.error || t('error'));
         }
         setPostingId(null);
       },

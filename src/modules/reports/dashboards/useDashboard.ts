@@ -115,8 +115,8 @@ export function useDashboard(companyId: string, filters: DashboardFilters) {
         if (!cancelled) {
           setData({ current: currentData, previous: previousData });
         }
-      } catch {
-        // Error handled silently
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch data:', err);
       }
       if (!cancelled) {
         setIsLoading(false);
@@ -227,11 +227,11 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
               COALESCE(SUM(CASE WHEN pi.total_amount IS NOT NULL THEN pi.total_amount ELSE 0 END), 0) AS expenses
          FROM months
          LEFT JOIN sales_invoices si ON si.company_id = $1
-              AND date_trunc('month', si.date) = months.m
-              AND si.status != 'cancelled'
-         LEFT JOIN purchase_invoices pi ON pi.company_id = $1
-              AND date_trunc('month', pi.date) = months.m
-              AND pi.status != 'cancelled'
+               AND si.date >= months.m AND si.date < months.m + INTERVAL '1 month'
+               AND si.status != 'cancelled'
+          LEFT JOIN purchase_invoices pi ON pi.company_id = $1
+               AND pi.date >= months.m AND pi.date < months.m + INTERVAL '1 month'
+               AND pi.status != 'cancelled'
         GROUP BY months.m
         ORDER BY months.m`,
       [companyId, fromStr, toStr],
@@ -333,29 +333,28 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
          LEFT JOIN journal_entries je ON je.company_id = $1
               AND date_trunc('month', je.created_at) = months.m
          LEFT JOIN accounts a ON je.account_id = a.id
-              AND (a.code LIKE '111%' OR a.code LIKE '112%')
-        WHERE je.id IS NULL OR a.id IS NOT NULL
-        GROUP BY months.m
-        ORDER BY months.m`,
-      [companyId, fromStr, toStr],
-    );
-    for (const r of cfRes.rows || []) {
-      cashFlow.push({ month: String(r.month), inflow: toNum(r.inflow), outflow: toNum(r.outflow) });
-    }
-  } else {
-    const cfRes = await adapter.query<{ day: string; inflow: string | number; outflow: string | number }>(
-      `WITH days AS (
-         SELECT generate_series($2::date, $3::date, '1 day'::interval)::date AS d
-       )
-       SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS day,
-              COALESCE(SUM(je.credit) FILTER (WHERE je.credit > 0), 0) AS inflow,
-              COALESCE(SUM(je.debit) FILTER (WHERE je.debit > 0), 0) AS outflow
-         FROM days
-         LEFT JOIN journal_entries je ON je.company_id = $1
-              AND je.created_at::date = days.d
-         LEFT JOIN accounts a ON je.account_id = a.id
-              AND (a.code LIKE '111%' OR a.code LIKE '112%')
-        WHERE je.id IS NULL OR a.id IS NOT NULL
+               AND a.code >= '111' AND a.code < '113'
+         WHERE je.id IS NULL OR a.id IS NOT NULL
+         GROUP BY months.m
+         ORDER BY months.m`,
+       [companyId, fromStr, toStr],
+     );
+     for (const r of cfRes.rows || []) {
+       cashFlow.push({ month: String(r.month), inflow: toNum(r.inflow), outflow: toNum(r.outflow) });
+     }
+   } else {
+     const cfRes = await adapter.query<{ day: string; inflow: string | number; outflow: string | number }>(
+       `WITH days AS (
+          SELECT generate_series($2::date, $3::date, '1 day'::interval)::date AS d
+        )
+        SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(je.credit) FILTER (WHERE je.credit > 0), 0) AS inflow,
+               COALESCE(SUM(je.debit) FILTER (WHERE je.debit > 0), 0) AS outflow
+          FROM days
+          LEFT JOIN journal_entries je ON je.company_id = $1
+               AND je.created_at::date = days.d
+          LEFT JOIN accounts a ON je.account_id = a.id
+               AND a.code >= '111' AND a.code < '113'
         GROUP BY days.d
         ORDER BY days.d`,
       [companyId, fromStr, toStr],

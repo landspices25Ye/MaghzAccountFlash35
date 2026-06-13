@@ -29,6 +29,20 @@
       "when": 1780785000000,
       "tag": "0003_warehouse_transfer_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790000000000,
+      "tag": "0004_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790500000000,
+      "tag": "0005_work_order_status_updated_at",
+      "breakpoints": true
     }
   ]
 }
