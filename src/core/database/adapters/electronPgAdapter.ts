@@ -130,14 +130,6 @@ export const electronPgAdapter: DbAdapter = {
     return { success: false, error: result.error };
   },
 
-  async updateAccountBalance(accountId, delta) {
-    const result = await getDB().query(
-      'UPDATE accounts SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
-      [delta, accountId],
-    );
-    return result;
-  },
-
   async getTransactions(companyId) {
     // Fetch transactions and entries separately to avoid json_agg issues
     const txResult = await getDB().query(

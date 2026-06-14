@@ -60,8 +60,8 @@ export const WorkOrdersPage: React.FC = () => {
 
   const openCreate = async () => {
     resetForm();
-    const nextNum = await manufacturingApi.getNextWorkOrderNumber(companyId);
-    setFormData((prev) => ({ ...prev, orderNumber: nextNum }));
+    const nextNumResult = await manufacturingApi.getNextWorkOrderNumber(companyId);
+    setFormData((prev) => ({ ...prev, orderNumber: nextNumResult.data || 'WO-00001' }));
     setIsModalOpen(true);
   };
 

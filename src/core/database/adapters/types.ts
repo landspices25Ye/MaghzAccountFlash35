@@ -21,8 +21,6 @@ export interface DbAdapter {
   // Accounts
   getAccounts(companyId: string): Promise<{ success: boolean; data?: any[]; error?: string }>;
   createAccount(data: any): Promise<{ success: boolean; id?: string; error?: string }>;
-  updateAccountBalance(accountId: string, delta: number): Promise<{ success: boolean; error?: string }>;
-
   // Transactions
   getTransactions(companyId: string): Promise<{ success: boolean; data?: any[]; error?: string }>;
   createTransaction(data: any): Promise<{ success: boolean; id?: string; error?: string }>;

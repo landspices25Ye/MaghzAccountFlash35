@@ -6,6 +6,7 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { DataTablePro } from '@/core/ui/components/DataTablePro';
+import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useToastStore } from '@/core/store/toastStore';
 import { useAuthStore } from '../store';
@@ -246,9 +247,11 @@ export const UsersPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('auth.users.subtitle')}</p>
           </div>
         </div>
-        <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-          {t('auth.users.newButton')}
-        </Button>
+        <Can action="edit" module="settings">
+          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
+            {t('auth.users.newButton')}
+          </Button>
+        </Can>
       </div>
 
       {/* Filters */}

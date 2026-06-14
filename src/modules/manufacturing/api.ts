@@ -357,16 +357,18 @@ export const manufacturingApi = {
     }
   },
 
-  async getNextWorkOrderNumber(companyId: string): Promise<string> {
+  async getNextWorkOrderNumber(companyId: string): Promise<{ success: boolean; data?: string; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const res = await adapter.query(`SELECT order_number FROM work_orders WHERE company_id = $1 AND order_number ~ '^WO-' ORDER BY order_number DESC LIMIT 1`, [companyId]);
       if (res.success && res.rows?.[0]) {
         const lastNum = parseInt(res.rows[0].order_number.replace('WO-', ''), 10);
-        return `WO-${String(lastNum + 1).padStart(5, '0')}`;
+        return { success: true, data: `WO-${String(lastNum + 1).padStart(5, '0')}` };
       }
-      return 'WO-00001';
-    } catch { return 'WO-00001'; }
+      return { success: true, data: 'WO-00001' };
+    } catch { return { success: true, data: 'WO-00001' }; }
   },
 
   async getManufacturingKpis(companyId: string): Promise<{ success: boolean; data?: { totalWorkOrders: number; activeOrders: number; completedOrders: number; totalProductionCost: number }; error?: string }> {

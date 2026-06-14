@@ -187,9 +187,11 @@ export const RolesPage: React.FC = () => {
           title={t('auth.roles.emptyTitle')}
           description={t('auth.roles.emptyDesc')}
           action={
-            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
-              {t('auth.roles.new')}
-            </Button>
+            <Can action="edit" module="settings">
+              <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => openModal()}>
+                {t('auth.roles.new')}
+              </Button>
+            </Can>
           }
         />
       ) : (
