@@ -515,6 +515,9 @@
     "warehouse": "Warehouse",
     "branch": "Branch",
     "lowStock": "Low Stock",
+    "stockValue": "Stock Value",
+    "warehouseCount": "Warehouses",
+    "stockMovementsCount": "Stock Movements",
     "minStock": "Min Stock",
     "maxStock": "Max Stock",
     "reorderPoint": "Reorder Point",
@@ -847,6 +850,10 @@
       "title": "Purchases",
       "subtitle": "Manage Purchases and Suppliers"
     },
+    "ordersCount": "Purchase Orders",
+    "pendingOrders": "Pending Orders",
+    "totalPurchasesValue": "Purchases Value",
+    "apOutstanding": "A/P Outstanding",
     "tabs": {
       "invoices": "Purchase Invoices",
       "orders": "Purchase Orders",
@@ -1070,6 +1077,9 @@
     "plannedCostShort": "Planned",
     "actualCostShort": "Actual",
     "varianceShort": "Variance",
+    "plannedUnitCost": "Planned Unit Cost",
+    "actualUnitCost": "Actual Unit Cost",
+    "monthlyCostTitle": "Monthly Cost Breakdown",
     "costComparisonDesc": "Comparative analysis of planned vs actual costs",
     "workOrderStatus": "Work Order Status",
     "in_progress": "In Progress",
@@ -1077,6 +1087,9 @@
     "cancelled": "Cancelled"
   },
   "hr": {
+    "activeEmployees": "Active Employees",
+    "pendingLeaves": "Pending Leaves",
+    "totalPayroll": "Payroll Total",
     "employees": "Employees",
     "attendance": "Attendance",
     "payroll": {
@@ -1434,6 +1447,7 @@
     "today": "Today",
     "week": "This Week",
     "month": "This Month",
+    "quarter": "90 Days",
     "year": "This Year",
     "fromDate": "From Date",
     "toDate": "To Date",
@@ -1448,6 +1462,9 @@
     "common": {
       "createdBy": "Created By"
     },
+    "monthlyCostTrend": "Monthly Cost Trend",
+    "costEfficiency": "Cost Efficiency",
+    "unitCostAnalysis": "Unit Cost Analysis",
     "applyFilter": "Apply",
     "clearFilter": "Clear",
     "customer": "Customer",
@@ -1685,6 +1702,9 @@
     "conversionRate": "Conversion Rate",
     "source": "Source",
     "stage": "Stage",
+    "leadFunnel": "Lead Funnel",
+    "sourceDistribution": "Source Distribution",
+    "monthlyConversionTrend": "Monthly Conversion Trend",
     "stageBreakdown": "Stage Breakdown",
     "pipelineValue": "Pipeline Value",
     "weightedPipeline": "Weighted Pipeline",

@@ -1,4 +1,5 @@
 import { getDbAdapter } from '@/core/database/adapters';
+import { validateInput, companyIdSchema } from '@/core/utils/validation';
 import type { Company, Currency, VatSetting, Branch, Setting } from './types';
 
 export const coreApi = {
@@ -10,7 +11,7 @@ export const coreApi = {
 
   async updateCompany(data: Partial<Company>): Promise<{ success: boolean; error?: string }> {
     const adapter = await getDbAdapter();
-    // Try to update via generic query if supported
+    if (!data.id) return { success: false, error: 'معرف الشركة مطلوب' };
     const result = await adapter.query(
       `UPDATE companies SET name = $1, name_en = $2, currency = $3, tax_number = $4, address = $5, phone = $6, email = $7, updated_at = NOW() WHERE id = $8`,
       [data.name, data.nameEn, data.currency, data.taxNumber, data.address, data.phone, data.email, data.id]
@@ -20,6 +21,8 @@ export const coreApi = {
 
   // ─── Currencies ────────────────────────────────────────────────────────────
   async getCurrencies(companyId: string): Promise<{ success: boolean; data?: Currency[]; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     const result = await adapter.query(
       'SELECT * FROM currencies WHERE company_id = $1 AND is_active = true ORDER BY is_default DESC, code',
@@ -32,6 +35,8 @@ export const coreApi = {
   },
 
   async createCurrency(data: Omit<Currency, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, data.companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     const result = await adapter.query<{ id: string }>(
       `INSERT INTO currencies (company_id, code, name, symbol, exchange_rate, is_default, is_active)
@@ -44,16 +49,20 @@ export const coreApi = {
     return { success: false, error: result.error };
   },
 
-  async updateCurrency(id: string, data: Partial<Currency>): Promise<{ success: boolean; error?: string }> {
+  async updateCurrency(companyId: string, id: string, data: Partial<Currency>): Promise<{ success: boolean; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     return adapter.query(
-      `UPDATE currencies SET code = $1, name = $2, symbol = $3, exchange_rate = $4, is_default = $5, is_active = $6 WHERE id = $7`,
-      [data.code, data.name, data.symbol, data.exchangeRate, data.isDefault, data.isActive, id]
+      `UPDATE currencies SET code = $1, name = $2, symbol = $3, exchange_rate = $4, is_default = $5, is_active = $6 WHERE id = $7 AND company_id = $8`,
+      [data.code, data.name, data.symbol, data.exchangeRate, data.isDefault, data.isActive, id, companyId]
     );
   },
 
   // ─── VAT Settings ──────────────────────────────────────────────────────────
   async getVatSettings(companyId: string): Promise<{ success: boolean; data?: VatSetting; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     const result = await adapter.query(
       'SELECT * FROM vat_settings WHERE company_id = $1 LIMIT 1',
@@ -65,16 +74,20 @@ export const coreApi = {
     return { success: false, error: result.error || 'No VAT settings found' };
   },
 
-  async updateVatSettings(data: Partial<VatSetting>): Promise<{ success: boolean; error?: string }> {
+  async updateVatSettings(companyId: string, id: string, data: Partial<VatSetting>): Promise<{ success: boolean; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     return adapter.query(
-      `UPDATE vat_settings SET vat_rate = $1, vat_number = $2, is_inclusive = $3, is_active = $4, updated_at = NOW() WHERE id = $5`,
-      [data.vatRate, data.vatNumber, data.isInclusive, data.isActive, data.id]
+      `UPDATE vat_settings SET vat_rate = $1, vat_number = $2, is_inclusive = $3, is_active = $4, updated_at = NOW() WHERE id = $5 AND company_id = $6`,
+      [data.vatRate, data.vatNumber, data.isInclusive, data.isActive, id, companyId]
     );
   },
 
   // ─── Branches ──────────────────────────────────────────────────────────────
   async getBranches(companyId: string): Promise<{ success: boolean; data?: Branch[]; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     const result = await adapter.query(
       'SELECT * FROM branches WHERE company_id = $1 AND is_active = true ORDER BY name',
@@ -87,6 +100,8 @@ export const coreApi = {
   },
 
   async createBranch(data: Omit<Branch, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, data.companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     const result = await adapter.query<{ id: string }>(
       `INSERT INTO branches (company_id, name, code, address, is_active)
@@ -99,16 +114,20 @@ export const coreApi = {
     return { success: false, error: result.error };
   },
 
-  async updateBranch(id: string, data: Partial<Branch>): Promise<{ success: boolean; error?: string }> {
+  async updateBranch(companyId: string, id: string, data: Partial<Branch>): Promise<{ success: boolean; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     return adapter.query(
-      `UPDATE branches SET name = $1, code = $2, address = $3, is_active = $4 WHERE id = $5`,
-      [data.name, data.code, data.address, data.isActive, id]
+      `UPDATE branches SET name = $1, code = $2, address = $3, is_active = $4 WHERE id = $5 AND company_id = $6`,
+      [data.name, data.code, data.address, data.isActive, id, companyId]
     );
   },
 
   // ─── Settings ──────────────────────────────────────────────────────────────
   async getSettings(companyId: string, category?: string): Promise<{ success: boolean; data?: Setting[]; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     let sql = 'SELECT * FROM settings WHERE company_id = $1';
     const params: unknown[] = [companyId];
@@ -125,6 +144,8 @@ export const coreApi = {
   },
 
   async setSetting(data: Omit<Setting, 'id'>): Promise<{ success: boolean; error?: string }> {
+    const cidValidation = validateInput(companyIdSchema, data.companyId);
+    if (!cidValidation.success) return { success: false, error: cidValidation.error };
     const adapter = await getDbAdapter();
     return adapter.query(
       `INSERT INTO settings (company_id, key, value, category)

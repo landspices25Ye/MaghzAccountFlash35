@@ -515,6 +515,9 @@
     "warehouse": "المستودع",
     "branch": "الفرع",
     "lowStock": "مخزون منخفض",
+    "stockValue": "قيمة المخزون",
+    "warehouseCount": "المستودعات",
+    "stockMovementsCount": "الحركات المخزنية",
     "minStock": "الحد الأدنى",
     "maxStock": "الحد الأقصى",
     "reorderPoint": "نقطة إعادة الطلب",
@@ -847,11 +850,15 @@
       "title": "المشتريات",
       "subtitle": "إدارة المشتريات والموردين"
     },
+    "ordersCount": "أوامر الشراء",
+    "pendingOrders": "الأوامر المعلقة",
+    "totalPurchasesValue": "قيمة المشتريات",
+    "apOutstanding": "المستحق للموردين",
     "tabs": {
       "invoices": "فواتير المشتريات",
       "orders": "أوامر الشراء",
       "suppliers": "الموردين",
-      "returns": "مردودات المشتريات"
+      "returns": "مرتجعات المشتريات"
     },
     "invoice": {
       "new": "فاتورة مشتريات جديدة",
@@ -1070,6 +1077,9 @@
     "plannedCostShort": "مخطط",
     "actualCostShort": "فعلي",
     "varianceShort": "انحراف",
+    "plannedUnitCost": "تكلفة الوحدة المخططة",
+    "actualUnitCost": "تكلفة الوحدة الفعلية",
+    "monthlyCostTitle": "تفصيل التكاليف الشهرية",
     "costComparisonDesc": "تحليل مقارن للتكاليف المخططة والفعلية",
     "workOrderStatus": "حالة أوامر التشغيل",
     "in_progress": "قيد التنفيذ",
@@ -1077,6 +1087,9 @@
     "cancelled": "ملغي"
   },
   "hr": {
+    "activeEmployees": "الموظفين النشطين",
+    "pendingLeaves": "الإجازات المعلقة",
+    "totalPayroll": "إجمالي الرواتب",
     "employees": "الموظفين",
     "attendance": "الحضور والانصراف",
     "payroll": {
@@ -1434,6 +1447,7 @@
     "today": "اليوم",
     "week": "هذا الأسبوع",
     "month": "هذا الشهر",
+    "quarter": "90 يوم",
     "year": "هذا العام",
     "fromDate": "من تاريخ",
     "toDate": "إلى تاريخ",
@@ -1448,6 +1462,9 @@
     "common": {
       "createdBy": "أنشأها"
     },
+    "monthlyCostTrend": "اتجاه التكلفة الشهري",
+    "costEfficiency": "كفاءة التكلفة",
+    "unitCostAnalysis": "تحليل تكلفة الوحدة",
     "applyFilter": "تطبيق",
     "clearFilter": "مسح",
     "customer": "العميل",
@@ -1685,6 +1702,9 @@
     "conversionRate": "معدل التحويل",
     "source": "المصدر",
     "stage": "المرحلة",
+    "leadFunnel": "قمع العملاء المحتملين",
+    "sourceDistribution": "توزيع المصادر",
+    "monthlyConversionTrend": "اتجاه التحويل الشهري",
     "stageBreakdown": "تحليل المراحل",
     "pipelineValue": "قيمة خط الأنابيب",
     "weightedPipeline": "القيمة المرجحة",

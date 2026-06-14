@@ -17,6 +17,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { exportToPDF } from '@/core/utils/exportEngine';
 import { cn, formatCurrency, formatDate } from '@/core/utils';
 import { manufacturingApi } from '@/modules/manufacturing/api';
+import { purchasesApi } from '@/modules/purchases/api';
+import { inventoryApi } from '@/modules/inventory/api';
+import { hrApi } from '@/modules/hr/api';
 
 const periodOptions: { key: PeriodFilter; labelKey: string }[] = [
   { key: 'today', labelKey: 'reports.today' },
@@ -280,6 +283,15 @@ const MainDashboard: React.FC = () => {
       {/* Manufacturing KPIs */}
       <ManufacturingKpiSection companyId={activeCompany?.id || ''} />
 
+      {/* Purchases KPIs */}
+      <PurchasesKpiSection companyId={activeCompany?.id || ''} />
+
+      {/* Inventory KPIs */}
+      <InventoryKpiSection companyId={activeCompany?.id || ''} />
+
+      {/* HR KPIs */}
+      <HrKpiSection companyId={activeCompany?.id || ''} />
+
       {/* CRM KPIs */}
       <CrmKpiSection data={current} />
 
@@ -391,6 +403,102 @@ function ManufacturingKpiSection({ companyId }: { companyId: string }) {
         <KpiCardPro title={t('manufacturing.planned')} value={kpis.activeOrders} icon={Factory} color="purple" onClick={() => navigate('/manufacturing/work-orders')} />
         <KpiCardPro title={t('manufacturing.completed')} value={kpis.completedOrders} icon={TrendingUp} color="emerald" onClick={() => navigate('/manufacturing/work-orders')} />
         <KpiCardPro title={t('manufacturing.costs')} value={formatCurrency(kpis.totalProductionCost)} icon={DollarSign} color="amber" onClick={() => navigate('/manufacturing/cost-report')} />
+      </div>
+    </div>
+  );
+}
+
+function PurchasesKpiSection({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<{ totalOrders: number; pendingOrders: number; totalInvoicesValue: number; apOutstanding: number } | null>(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    purchasesApi.getPurchasesKpis(companyId).then((res) => {
+      if (!cancelled && res.success && res.data) setKpis(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  if (!kpis) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <ShoppingCart size={18} className="text-primary-600" />
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">{t('purchases.tabs.invoices')}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCardPro title={t('purchases.ordersCount')} value={kpis.totalOrders} icon={ShoppingCart} color="blue" onClick={() => navigate('/purchases/orders')} />
+        <KpiCardPro title={t('purchases.pendingOrders')} value={kpis.pendingOrders} icon={ShoppingCart} color="amber" onClick={() => navigate('/purchases/orders')} />
+        <KpiCardPro title={t('purchases.totalPurchasesValue')} value={formatCurrency(kpis.totalInvoicesValue)} icon={DollarSign} color="emerald" onClick={() => navigate('/purchases/invoices')} />
+        <KpiCardPro title={t('purchases.apOutstanding')} value={formatCurrency(kpis.apOutstanding)} icon={TrendingUp} color="rose" onClick={() => navigate('/purchases/invoices')} />
+      </div>
+    </div>
+  );
+}
+
+function InventoryKpiSection({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<{ stockValue: number; lowStockItems: number; warehouseCount: number; stockMovementsCount: number } | null>(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    inventoryApi.getInventoryKpis(companyId).then((res) => {
+      if (!cancelled && res.success && res.data) setKpis(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  if (!kpis) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Package size={18} className="text-primary-600" />
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">{t('inventory.stock')}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCardPro title={t('inventory.stockValue')} value={formatCurrency(kpis.stockValue)} icon={Package} color="blue" onClick={() => navigate('/inventory/products')} />
+        <KpiCardPro title={t('inventory.lowStock')} value={kpis.lowStockItems} icon={AlertTriangle} color="rose" onClick={() => navigate('/inventory/products')} />
+        <KpiCardPro title={t('inventory.warehouseCount')} value={kpis.warehouseCount} icon={Package} color="amber" onClick={() => navigate('/inventory/warehouses')} />
+        <KpiCardPro title={t('inventory.stockMovementsCount')} value={kpis.stockMovementsCount} icon={Package} color="purple" onClick={() => navigate('/inventory/transactions')} />
+      </div>
+    </div>
+  );
+}
+
+function HrKpiSection({ companyId }: { companyId: string }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [kpis, setKpis] = useState<{ totalEmployees: number; activeEmployees: number; pendingLeaves: number; totalPayrollAmount: number } | null>(null);
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    hrApi.getHrKpis(companyId).then((res) => {
+      if (!cancelled && res.success && res.data) setKpis(res.data);
+    });
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  if (!kpis) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Users size={18} className="text-primary-600" />
+        <h2 className="font-semibold text-slate-900 dark:text-slate-50">{t('hr.employees')}</h2>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCardPro title={t('hr.employees')} value={kpis.totalEmployees} icon={Users} color="blue" onClick={() => navigate('/hr/employees')} />
+        <KpiCardPro title={t('hr.activeEmployees')} value={kpis.activeEmployees} icon={Users} color="emerald" onClick={() => navigate('/hr/employees')} />
+        <KpiCardPro title={t('hr.pendingLeaves')} value={kpis.pendingLeaves} icon={Calendar} color="amber" onClick={() => navigate('/hr/leaves')} />
+        <KpiCardPro title={t('hr.totalPayroll')} value={formatCurrency(kpis.totalPayrollAmount)} icon={DollarSign} color="purple" onClick={() => navigate('/hr/payroll')} />
       </div>
     </div>
   );

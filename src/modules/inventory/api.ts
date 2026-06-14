@@ -101,7 +101,7 @@ export const inventoryApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       if (data.categoryIds !== undefined) {
-        await adapter.query('DELETE FROM product_product_categories WHERE product_id = $1', [id]);
+        await adapter.query('DELETE FROM product_product_categories WHERE product_id = $1 AND $2 = (SELECT company_id FROM products WHERE id = $1)', [id, companyId]);
         if (data.categoryIds.length > 0) {
           for (const categoryId of data.categoryIds) {
             await adapter.query(
@@ -549,6 +549,61 @@ export const inventoryApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query('DELETE FROM product_categories WHERE id = $1 AND company_id = $2', [id, companyId]);
       return result.success ? { success: true } : { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  // ─── Dashboard KPIs ────────────────────────────────────────────────────────────
+  async getInventoryKpis(companyId: string): Promise<{
+    success: boolean;
+    data?: {
+      stockValue: number;
+      lowStockItems: number;
+      warehouseCount: number;
+      stockMovementsCount: number;
+    };
+    error?: string;
+  }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const [stockResult, lowStockResult, whResult, movResult] = await Promise.all([
+        adapter.query<{ total: string | number }>(
+          `SELECT COALESCE(SUM(s.quantity * p.cost_price), 0) AS total
+             FROM stock s
+             JOIN products p ON s.product_id = p.id
+            WHERE p.company_id = $1 AND p.is_active = true`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt
+             FROM stock s
+             JOIN products p ON s.product_id = p.id
+            WHERE p.company_id = $1 AND p.is_active = true
+              AND s.min_stock_alert IS NOT NULL
+              AND s.quantity <= s.min_stock_alert`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM warehouses WHERE company_id = $1`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM stock_movements WHERE company_id = $1`,
+          [companyId],
+        ),
+      ]);
+      return {
+        success: true,
+        data: {
+          stockValue: Number(stockResult.rows?.[0]?.total || 0),
+          lowStockItems: Number(lowStockResult.rows?.[0]?.cnt || 0),
+          warehouseCount: Number(whResult.rows?.[0]?.cnt || 0),
+          stockMovementsCount: Number(movResult.rows?.[0]?.cnt || 0),
+        },
+      };
     } catch (e) {
       return { success: false, error: String(e) };
     }

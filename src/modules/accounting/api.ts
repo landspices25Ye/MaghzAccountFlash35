@@ -9,6 +9,8 @@ export const accountingApi = {
   // ─── Chart of Accounts ────────────────────────────────────────────────────
   async getAccounts(companyId: string, ownedByUserId?: string): Promise<{ success: boolean; data?: Account[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.getAccounts(companyId);
 
@@ -54,6 +56,8 @@ export const accountingApi = {
 
   async createAccount(data: Omit<Account, 'id'>, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, data.companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
       const result = await adapter.query(
@@ -70,6 +74,8 @@ export const accountingApi = {
 
   async updateAccount(id: string, companyId: string, userId: string, data: Partial<Account>): Promise<{ success: boolean; error?: string }> {
     try {
+      const cidValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       return await adapter.query(
         `UPDATE accounts SET name_ar = $1, name_en = $2, code = $3, parent_id = $4, type = $5, nature = $6, is_group = $7, is_active = $8, updated_at = NOW(), updated_by = $9 WHERE id = $10 AND company_id = $11`,
@@ -404,9 +410,9 @@ export const accountingApi = {
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
@@ -431,6 +437,7 @@ export const accountingApi = {
       if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
       if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
       if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
+      if (data.cashBoxId !== undefined) { fields.push(`cash_box_id = $${idx++}`); values.push(data.cashBoxId); }
       if (data.checkNumber !== undefined) { fields.push(`check_number = $${idx++}`); values.push(data.checkNumber); }
       if (data.checkDate !== undefined) { fields.push(`check_date = $${idx++}`); values.push(data.checkDate); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
@@ -550,9 +557,9 @@ export const accountingApi = {
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, expense_account_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.expenseAccountId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, expense_account_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.expenseAccountId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
@@ -578,6 +585,7 @@ export const accountingApi = {
       if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
       if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
       if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
+      if (data.cashBoxId !== undefined) { fields.push(`cash_box_id = $${idx++}`); values.push(data.cashBoxId); }
       if (data.checkNumber !== undefined) { fields.push(`check_number = $${idx++}`); values.push(data.checkNumber); }
       if (data.checkDate !== undefined) { fields.push(`check_date = $${idx++}`); values.push(data.checkDate); }
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
@@ -609,6 +617,8 @@ export const accountingApi = {
   // ─── Reports ──────────────────────────────────────────────────────────────
   async getTrialBalance(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: TrialBalanceRow[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
 
       let sql = `
@@ -671,6 +681,8 @@ export const accountingApi = {
 
   async getBalanceSheet(companyId: string, asOfDate?: string): Promise<{ success: boolean; data?: Account[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('asset', 'liability', 'equity') AND is_group = false`;
       const params: unknown[] = [companyId];
@@ -696,6 +708,8 @@ export const accountingApi = {
 
   async getProfitLoss(companyId: string, startDate?: string, endDate?: string): Promise<{ success: boolean; data?: Account[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = `SELECT * FROM accounts WHERE company_id = $1 AND type IN ('revenue', 'expense') AND is_group = false`;
       const params: unknown[] = [companyId];
@@ -727,6 +741,8 @@ export const accountingApi = {
 
   async getAccountLedger(accountId: string, companyId: string, startDate?: string, endDate?: string): Promise<{ success: boolean; data?: LedgerRow[]; error?: string }> {
     try {
+      const cidValidation = validateInput(idCompanySchema, { companyId, id: accountId });
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = `
       SELECT

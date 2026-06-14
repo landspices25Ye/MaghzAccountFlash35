@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Users, Filter, RotateCcw } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 import { Card, Button, Table } from '@/core/ui/components';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { useAppStore } from '@/core/store';
@@ -46,6 +50,8 @@ export const LeadConversionReport: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [summary, setSummary] = useState<ConversionSummary | null>(null);
   const [sourceData, setSourceData] = useState<LeadSourceRow[]>([]);
+  const [funnelData, setFunnelData] = useState<Array<{ stage: string; count: number }>>([]);
+  const [monthlyTrend, setMonthlyTrend] = useState<Array<{ month: string; total: number; converted: number }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -139,6 +145,45 @@ export const LeadConversionReport: React.FC = () => {
         setSourceData(rows);
       } else {
         setSourceData([]);
+      }
+
+      const funnelResult = await adapter.query<{ stage: string; cnt: string | number }>(
+        `SELECT status AS stage, COUNT(*)::int AS cnt
+           FROM leads ${whereBase}
+          GROUP BY status
+          ORDER BY MIN(CASE status
+            WHEN 'new' THEN 1 WHEN 'contacted' THEN 2
+            WHEN 'qualified' THEN 3 WHEN 'converted' THEN 4
+            WHEN 'lost' THEN 5 ELSE 6
+          END)`,
+        params,
+      );
+      if (funnelResult.success && funnelResult.rows) {
+        setFunnelData(funnelResult.rows.map((r) => ({
+          stage: String(r.stage),
+          count: Number(r.cnt) || 0,
+        })));
+      } else {
+        setFunnelData([]);
+      }
+
+      const trendResult = await adapter.query<{ month: string; cnt: string | number; conv: string | number }>(
+        `SELECT to_char(created_at, 'YYYY-MM') AS month,
+                COUNT(*)::int AS cnt,
+                COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END))::int AS conv
+           FROM leads ${whereBase}
+          GROUP BY month
+          ORDER BY month`,
+        params,
+      );
+      if (trendResult.success && trendResult.rows) {
+        setMonthlyTrend(trendResult.rows.map((r) => ({
+          month: String(r.month),
+          total: Number(r.cnt) || 0,
+          converted: Number(r.conv) || 0,
+        })));
+      } else {
+        setMonthlyTrend([]);
       }
 
       setIsLoading(false);
@@ -296,6 +341,76 @@ export const LeadConversionReport: React.FC = () => {
         <Card><div className="p-4"><p className="text-sm text-slate-500">{t('reports.qualifiedRate')}</p><p className="text-2xl font-bold mt-1">{summary.totalLeads > 0 ? ((summary.qualified / summary.totalLeads) * 100).toFixed(1) : '0'}%</p></div></Card>
       </div>
 
+      {/* Charts Row: Funnel + Source Pie */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Funnel Chart */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4 text-sm">{t('reports.leadFunnel')}</h3>
+          <div style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 20, left: 40, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis type="number" />
+                <YAxis dataKey="stage" type="category" tick={{ fontSize: 12 }} width={80} />
+                <Tooltip formatter={(value: unknown) => [Number(value), t('reports.count')]} />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {funnelData.map((entry) => {
+                    const colors: Record<string, string> = {
+                      new: '#94a3b8', contacted: '#3b82f6', qualified: '#f59e0b',
+                      converted: '#10b981', lost: '#ef4444',
+                    };
+                    return <Cell key={entry.stage} fill={colors[entry.stage] || '#94a3b8'} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Source Distribution Pie */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4 text-sm">{t('reports.sourceDistribution')}</h3>
+          <div style={{ height: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={sourceData} cx="50%" cy="45%" outerRadius={80} dataKey="total" nameKey="source" paddingAngle={3}>
+                  {sourceData.map((_, i) => (
+                    <Cell key={i} fill={
+                      ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#6366f1'][i % 8]
+                    } />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: unknown) => [Number(value), t('reports.count')]} />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Trend */}
+      {monthlyTrend.length > 0 && (
+        <Card>
+          <div className="p-4">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4 text-sm">{t('reports.monthlyConversionTrend')}</h3>
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyTrend} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="total" fill="#94a3b8" name={t('reports.totalLeads')} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="converted" fill="#10b981" name={t('reports.convertedLeads')} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Source Breakdown Table */}
       <Card>
         <div className="space-y-4 p-4">
           <h3 className="font-bold text-lg">{t('reports.leadConversionBySource')}</h3>

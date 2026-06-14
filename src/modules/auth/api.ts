@@ -1,5 +1,6 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
+import { validateInput, companyIdSchema, idCompanySchema } from '@/core/utils/validation';
 import type {
   User,
   Role,
@@ -167,6 +168,8 @@ export const authApi = {
 
   async getUsers(companyId: string, filters?: UserFilters): Promise<{ success: boolean; data?: User[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         'SELECT * FROM users WHERE company_id = $1 ORDER BY username',
@@ -210,6 +213,8 @@ export const authApi = {
 
   async createUser(data: Omit<User, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, data.companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const pw = (data as Record<string, unknown>).password as string | undefined;
       if (!pw) {
         return { success: false, error: 'كلمة المرور مطلوبة' };
@@ -263,13 +268,15 @@ export const authApi = {
     }
   },
 
-  async resetPassword(id: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  async resetPassword(companyId: string, id: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const cidValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const passwordHash = await hashPassword(newPassword);
       return adapter.query(
-        'UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3',
-        [passwordHash, new Date().toISOString(), id]
+        'UPDATE users SET password_hash = $1, updated_at = $2 WHERE id = $3 AND company_id = $4',
+        [passwordHash, new Date().toISOString(), id, companyId]
       );
     } catch {
       return { success: false, error: 'حدث خطأ أثناء إعادة تعيين كلمة المرور' };
@@ -278,6 +285,8 @@ export const authApi = {
 
   async getRoles(companyId: string, filters?: RoleFilters): Promise<{ success: boolean; data?: Role[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query('SELECT * FROM roles WHERE company_id = $1 OR company_id IS NULL ORDER BY name', [companyId]);
       if (result.success) {
@@ -310,6 +319,8 @@ export const authApi = {
 
   async createRole(data: Omit<Role, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, data.companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const permsJson = JSON.stringify(data.permissions);
       const result = await adapter.query(
@@ -350,6 +361,8 @@ export const authApi = {
 
   async getAuditLogs(companyId: string, filters?: AuditLogFilters): Promise<{ success: boolean; data?: AuditLog[]; error?: string }> {
     try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = 'SELECT * FROM audit_logs WHERE company_id = $1';
       const params: unknown[] = [companyId];

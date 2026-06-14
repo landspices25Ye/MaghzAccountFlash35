@@ -618,7 +618,7 @@ export const purchasesApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.transaction([
-        { sql: 'DELETE FROM purchase_invoice_lines WHERE invoice_id = $1', params: [id] },
+        { sql: 'DELETE FROM purchase_invoice_lines WHERE invoice_id = $1 AND $2 = (SELECT company_id FROM purchase_invoices WHERE id = $1)', params: [id, companyId] },
         { sql: 'DELETE FROM purchase_invoices WHERE id = $1 AND company_id = $2', params: [id, companyId] },
       ]);
       return { success: result.success, error: result.error };
@@ -810,7 +810,7 @@ export const purchasesApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.transaction([
-        { sql: 'DELETE FROM purchase_order_lines WHERE order_id = $1', params: [id] },
+        { sql: 'DELETE FROM purchase_order_lines WHERE order_id = $1 AND $2 = (SELECT company_id FROM purchase_orders WHERE id = $1)', params: [id, companyId] },
         { sql: 'DELETE FROM purchase_orders WHERE id = $1 AND company_id = $2', params: [id, companyId] },
       ]);
       return { success: result.success, error: result.error };
@@ -1035,7 +1035,7 @@ export const purchasesApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.transaction([
-        { sql: 'DELETE FROM purchase_return_lines WHERE return_id = $1', params: [id] },
+        { sql: 'DELETE FROM purchase_return_lines WHERE return_id = $1 AND $2 = (SELECT company_id FROM purchase_returns WHERE id = $1)', params: [id, companyId] },
         { sql: 'DELETE FROM purchase_returns WHERE id = $1 AND company_id = $2', params: [id, companyId] },
       ]);
       return { success: result.success, error: result.error };
@@ -1054,6 +1054,53 @@ export const purchasesApi = {
         [id, companyId]
       );
       return { success: result.success, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  // ─── Dashboard KPIs ────────────────────────────────────────────────────────────
+  async getPurchasesKpis(companyId: string): Promise<{
+    success: boolean;
+    data?: {
+      totalOrders: number;
+      pendingOrders: number;
+      totalInvoicesValue: number;
+      apOutstanding: number;
+    };
+    error?: string;
+  }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const [ordersResult, pendingResult, invoicesResult, apResult] = await Promise.all([
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM purchase_orders WHERE company_id = $1`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM purchase_orders WHERE company_id = $1 AND status IN ('draft', 'confirmed')`,
+          [companyId],
+        ),
+        adapter.query<{ total: string | number }>(
+          `SELECT COALESCE(SUM(total_amount), 0) AS total FROM purchase_invoices WHERE company_id = $1 AND status != 'cancelled'`,
+          [companyId],
+        ),
+        adapter.query<{ total: string | number }>(
+          `SELECT COALESCE(SUM(total_amount - paid_amount), 0) AS total FROM purchase_invoices WHERE company_id = $1 AND status IN ('posted', 'partially_paid')`,
+          [companyId],
+        ),
+      ]);
+      return {
+        success: true,
+        data: {
+          totalOrders: toNum(ordersResult.rows?.[0]?.cnt),
+          pendingOrders: toNum(pendingResult.rows?.[0]?.cnt),
+          totalInvoicesValue: toNum(invoicesResult.rows?.[0]?.total),
+          apOutstanding: toNum(apResult.rows?.[0]?.total),
+        },
+      };
     } catch (e) {
       return { success: false, error: String(e) };
     }

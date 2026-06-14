@@ -369,7 +369,7 @@ export const salesApi = {
         await adapter.query(`UPDATE sales_invoices SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values);
       }
       if (data.lines) {
-        await adapter.query('DELETE FROM sales_invoice_lines WHERE invoice_id = $1', [id]);
+        await adapter.query('DELETE FROM sales_invoice_lines WHERE invoice_id = $1 AND $2 = (SELECT company_id FROM sales_invoices WHERE id = $1)', [id, companyId]);
         for (const line of data.lines) {
           const lineCurrencyCode = line.currencyCode || data.currencyCode || YER_CODE;
           const lineExchangeRate = line.exchangeRate ?? data.exchangeRate ?? 1;
@@ -541,7 +541,7 @@ export const salesApi = {
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE quotations SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
-        await adapter.query('DELETE FROM quotation_lines WHERE quotation_id = $1', [id]);
+        await adapter.query('DELETE FROM quotation_lines WHERE quotation_id = $1 AND $2 = (SELECT company_id FROM quotations WHERE id = $1)', [id, companyId]);
         for (const line of data.lines) {
           await adapter.query(`INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, line_total) VALUES ($1,$2,$3,$4,$5,$6)`,
             [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.lineTotal]);
@@ -717,7 +717,7 @@ export const salesApi = {
       if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE sales_returns SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
-        await adapter.query('DELETE FROM sales_return_lines WHERE return_id = $1', [id]);
+        await adapter.query('DELETE FROM sales_return_lines WHERE return_id = $1 AND $2 = (SELECT company_id FROM sales_returns WHERE id = $1)', [id, companyId]);
         for (const line of data.lines) {
           await adapter.query(`INSERT INTO sales_return_lines (return_id, product_id, quantity, unit_price, line_total) VALUES ($1,$2,$3,$4,$5)`,
             [id, line.productId, line.quantity, line.unitPrice, line.lineTotal]);

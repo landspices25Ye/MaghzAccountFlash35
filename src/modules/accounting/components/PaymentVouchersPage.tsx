@@ -3,7 +3,7 @@ import { Banknote, Plus, CheckSquare, Truck } from 'lucide-react';
 import { printDocument } from '@/core/utils/printDocument';
 import { Card, Button, Modal, Input, Table, Badge } from '@/core/ui/components';
 import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components';
-import { SupplierSelect, BankSelect, AccountSelect, CurrencySelect } from '@/core/ui/components/smart';
+import { SupplierSelect, BankSelect, CashBoxSelect, AccountSelect, CurrencySelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { usePaymentVouchersPaginated } from '../hooks/useAccounting';
@@ -110,6 +110,7 @@ export const PaymentVouchersPage: React.FC = () => {
       baseCurrencyAmount: (Number(form.amount) || 0) * (form.exchangeRate ?? 1),
       paymentMethod: form.paymentMethod || 'cash',
       bankAccountId: form.bankAccountId,
+      cashBoxId: form.cashBoxId,
       checkNumber: form.checkNumber,
       checkDate: form.checkDate,
       notes: form.notes || '',
@@ -290,12 +291,28 @@ export const PaymentVouchersPage: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm mb-1">{t('accounting.paymentMethod')}</label>
-            <select className="input w-full" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value as PaymentVoucher['paymentMethod'] })}>
+            <select className="input w-full" value={form.paymentMethod} onChange={e => {
+              const paymentMethod = e.target.value as PaymentVoucher['paymentMethod'];
+              setForm({
+                ...form,
+                paymentMethod,
+                bankAccountId: paymentMethod === 'bank' ? form.bankAccountId : undefined,
+                cashBoxId: paymentMethod === 'cash' ? form.cashBoxId : undefined,
+                checkNumber: paymentMethod === 'check' ? form.checkNumber : undefined,
+                checkDate: paymentMethod === 'check' ? form.checkDate : undefined,
+              });
+            }}>
               <option value="cash">{t('accounting.cash')}</option>
               <option value="bank">{t('accounting.bank')}</option>
               <option value="check">{t('accounting.check')}</option>
             </select>
           </div>
+          {form.paymentMethod === 'cash' && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.cashBox')}</label>
+              <CashBoxSelect companyId={activeCompany?.id || ''} value={form.cashBoxId || ''} onChange={v => setForm({ ...form, cashBoxId: v || '' })} />
+            </div>
+          )}
           {form.paymentMethod === 'bank' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.bankAccount')}</label>

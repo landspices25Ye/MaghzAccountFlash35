@@ -59,12 +59,12 @@ export function useCurrencies(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Currency>) => {
-    const result = await coreApi.updateCurrency(id, data);
+    const result = await coreApi.updateCurrency(companyId, id, data);
     if (result.success) {
       setCurrencies(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   return { currencies, isLoading, create, update };
 }
@@ -87,8 +87,8 @@ export function useVatSettings(companyId: string) {
   }, [companyId]);
 
   const update = useCallback(async (data: Partial<VatSetting>) => {
-    if (!settings) return { success: false };
-    const result = await coreApi.updateVatSettings({ ...settings, ...data });
+    if (!settings || !settings.id || !settings.companyId) return { success: false };
+    const result = await coreApi.updateVatSettings(settings.companyId, settings.id, data);
     if (result.success) {
       setSettings({ ...settings, ...data });
     }
@@ -124,12 +124,12 @@ export function useBranches(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Branch>) => {
-    const result = await coreApi.updateBranch(id, data);
+    const result = await coreApi.updateBranch(companyId, id, data);
     if (result.success) {
       setBranches(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   return { branches, isLoading, create, update };
 }

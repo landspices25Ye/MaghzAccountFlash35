@@ -91,8 +91,8 @@ export function useUsers(companyId: string, filters?: UserFilters) {
   }, [companyId]);
 
   const resetPassword = useCallback(async (id: string, newPassword: string) => {
-    return authApi.resetPassword(id, newPassword);
-  }, []);
+    return authApi.resetPassword(companyId, id, newPassword);
+  }, [companyId]);
 
   const toggleActive = useCallback(async (id: string, isActive: boolean) => {
     const result = await authApi.updateUser(companyId, id, { isActive });

@@ -122,7 +122,7 @@ export const manufacturingApi = {
 
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE boms SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
-        await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1', [id]);
+        await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1 AND $2 = (SELECT company_id FROM boms WHERE id = $1)', [id, companyId]);
         await batchInsertLines(adapter, 'bom_lines', ['bom_id', 'material_id', 'quantity', 'unit_cost', 'total_cost'],
           data.lines.map(l => [id, l.materialId, l.quantity, l.unitCost, (l.quantity || 0) * (l.unitCost || 0)])
         );
@@ -138,7 +138,7 @@ export const manufacturingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1', [id]);
+      await adapter.query('DELETE FROM bom_lines WHERE bom_id = $1 AND $2 = (SELECT company_id FROM boms WHERE id = $1)', [id, companyId]);
       const result = await adapter.query('DELETE FROM boms WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
     } catch (e) {
@@ -247,7 +247,7 @@ export const manufacturingApi = {
 
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE work_orders SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
-        await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1', [id]);
+        await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1 AND $2 = (SELECT company_id FROM work_orders WHERE id = $1)', [id, companyId]);
         await batchInsertLines(adapter, 'work_order_consumptions', ['work_order_id', 'material_id', 'planned_quantity', 'actual_quantity', 'unit_cost', 'actual_unit_cost'],
           data.lines.map(l => [id, l.materialId, l.plannedQuantity, l.actualQuantity, l.unitCost, l.actualUnitCost])
         );
@@ -263,7 +263,7 @@ export const manufacturingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1', [id]);
+      await adapter.query('DELETE FROM work_order_consumptions WHERE work_order_id = $1 AND $2 = (SELECT company_id FROM work_orders WHERE id = $1)', [id, companyId]);
       const result = await adapter.query('DELETE FROM work_orders WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
     } catch (e) {

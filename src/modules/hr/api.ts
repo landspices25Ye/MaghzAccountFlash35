@@ -183,11 +183,11 @@ export const hrApi = {
       }
       const adapter = await getDbAdapter();
       for (const rec of records) {
-        const existing = await adapter.query('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2 LIMIT 1', [rec.employeeId, rec.date]);
+        const existing = await adapter.query('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2 AND company_id = $3 LIMIT 1', [rec.employeeId, rec.date, rec.companyId]);
         if (existing.rows?.[0]) {
           await adapter.query(
-            'UPDATE attendance SET check_in = $1, check_out = $2, overtime_hours = $3, status = $4, notes = $5 WHERE id = $6',
-            [rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes, existing.rows[0].id]
+            'UPDATE attendance SET check_in = $1, check_out = $2, overtime_hours = $3, status = $4, notes = $5 WHERE id = $6 AND company_id = $7',
+            [rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes, existing.rows[0].id, rec.companyId]
           );
         } else {
           await adapter.query(
@@ -509,6 +509,55 @@ export const hrApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query('DELETE FROM end_of_service WHERE id = $1 AND company_id = $2', [id, companyId]);
       return { success: result.success, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  // ─── Dashboard KPIs ────────────────────────────────────────────────────────────
+  async getHrKpis(companyId: string): Promise<{
+    success: boolean;
+    data?: {
+      totalEmployees: number;
+      activeEmployees: number;
+      pendingLeaves: number;
+      totalPayrollAmount: number;
+    };
+    error?: string;
+  }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const [empResult, activeResult, leavesResult, payrollResult] = await Promise.all([
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM employees WHERE company_id = $1`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM employees WHERE company_id = $1 AND is_active = true`,
+          [companyId],
+        ),
+        adapter.query<{ cnt: string | number }>(
+          `SELECT COUNT(*)::int AS cnt FROM leaves WHERE company_id = $1 AND status = 'pending'`,
+          [companyId],
+        ),
+        adapter.query<{ total: string | number }>(
+          `SELECT COALESCE(SUM(net_salary), 0) AS total FROM payroll_lines pl
+            JOIN payroll_runs pr ON pl.payroll_run_id = pr.id
+           WHERE pr.company_id = $1 AND pr.status = 'posted'`,
+          [companyId],
+        ),
+      ]);
+      return {
+        success: true,
+        data: {
+          totalEmployees: Number(empResult.rows?.[0]?.cnt || 0),
+          activeEmployees: Number(activeResult.rows?.[0]?.cnt || 0),
+          pendingLeaves: Number(leavesResult.rows?.[0]?.cnt || 0),
+          totalPayrollAmount: Number(payrollResult.rows?.[0]?.total || 0),
+        },
+      };
     } catch (e) {
       return { success: false, error: String(e) };
     }
