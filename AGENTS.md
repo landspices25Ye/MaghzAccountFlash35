@@ -15,7 +15,7 @@
 - لوحة تحكم رئيسية (Dashboard) تعرض KPIs من كل الوحدات.
 - تصميم عربي/إنجليزي مع خطوط Cairo/Inter ووضع فاتح/داكن.
 
-- **الإصدار الحالي:** v0.3.27 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 985 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 21 pages server-side paginated | RBAC complete (25+ pages) | Multi-currency complete | Playwright e2e foundation | Infinite loading fixed | **i18n: Settings+HR fully converted (~320 strings)** | **Manufacturing P1: phantom columns + cross-tenant fixed** | **console.error/warn cleaned: 0 remaining**)
+- **الإصدار الحالي:** v0.2.0 (Lint clean: 0 errors, 0 warnings | Tables: 60 | i18n: 985 keys متوازنة | Tests: 289 ✓ + **e2e: 10/10 ✓** | 21 pages server-side paginated | RBAC complete (25+ pages) | Multi-currency complete | Playwright e2e foundation | Infinite loading fixed | **i18n: Settings+HR fully converted (~320 strings)** | **Manufacturing P1: phantom columns + cross-tenant fixed** | **console.error/warn cleaned: 0 remaining**)
 - **المنصات:** Electron (سطح المكتب) + Web Browser (مستقبلي)
 - **اللغات:** العربية (افتراضي) + الإنجليزية
 - **الترخيص:** خاص (Private)
@@ -363,9 +363,63 @@ npx drizzle-kit migrate
 
 ---
 
-*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.3.3*
+*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.2.0*
 
 ## 12. ملخص المراحل المنجزة
+
+### المرحلة 4: خطة تحسين الجودة والأمان + رفع التغطية (Test Coverage)
+- **الهدف**: رفع تغطية الاختبارات من 74.16% إلى >80% + تحسين الجودة
+- **Baseline**: 74.16% statements, 64.54% branches, 49.32% functions, 79.31% lines
+- **النتيجة**: **86.81% statements, 78.81% branches, 67.82% functions, 88.12% lines** (498 tests passing في 38 ملف)
+- **المراحل الفرعية**:
+  1. **Phase 7 (Multi-tenancy Audit)**: اكتشاف وحل 7 SELECT queries بصمت + DELETE/UPDATE statements مفقود `AND company_id = $N`. **القاعدة**: كل query يجب أن يحوي `AND company_id = $N` صراحة (defense-in-depth)
+  2. **Phase 1 (Renderer Raw SQL Closure)**: إزالة `query`/`transaction` من `window.electronDB` واستبدالها بـ `_exec`/`_execBatch` في `electron/preload.js` + `electron/preload.cjs`. تحديث `dbHandler.js` إلى `db:internal-query`/`db:internal-transaction` و `electronPgAdapter.ts`. تحديث TypeScript interface (`PreloadDB` vs `ElectronDB`) لإخفاء internal methods
+  3. **Phase 2 (Session Timeout Fix)**: إضافة activity tracking في `AppLayout` عبر `useCallback` + `passive: true` listeners (`mousedown`/`keydown`/`scroll`/`touchstart`). Session check كل 60 ثانية، logout تلقائي بعد 30 دقيقة من عدم النشاط. `logout()` → `navigate('/login')`
+  4. **Phase 4 (Unused Dependencies Cleanup)**: إزالة 5 packages غير مستخدمة: `@supabase/supabase-js`, `cmdk`, `dexie`, `dexie-react-hooks`, `date-fns`. تشذيب الـ bundle
+  5. **Phase 5 (Error Boundaries)**: التحقق من `ErrorBoundary` الموجود في `main.tsx` يلتف حول `<App>`. Three buttons: retry, home, reload
+  6. **Phase 8 (i18n Balance Verification)**: `987 keys متوازنة` (EN === AR)، `ar.json` و `en.json` بنفس الـ nested structure. المجلدات: `auth/`, `accounting/`, `sales/`, `purchases/`, `inventory/`, `manufacturing/`, `hr/`, `crm/`, `settings/`, `reports/`
+  7. **Phase 9 (CI/CD)**: إضافة `.github/workflows/ci.yml` بـ 2 jobs: **Code Quality** (TS + ESLint + Tests + Build) و **E2E Tests** (Playwright مع PostgreSQL service container). Artifact uploads بـ `retention-days: 7`
+  8. **Phase 10 (Bundle Optimization)**: تحسين `manualChunks` في `vite.config.ts`:
+     - `validation` chunk لـ `zod` (66 kB) — lazy-loaded فقط عند validation form submit
+     - `dates` chunk لـ `date-fns` (بعد إزالة dependency)
+     - `icons` chunk لـ `lucide-react` (29 kB)
+     - `pdf` chunk يدمج `jspdf` + `html2canvas` + `dompurify` (655 kB) — lazy-loaded فقط عند Export PDF
+     - `charts` chunk (407 kB) — lazy-loaded فقط للـ reports
+     - `excel` chunk (283 kB) — lazy-loaded فقط عند Export Excel
+     - `chunkSizeWarningLimit: 1000` (لا warnings للـ chunks > 1 MB في Electron context)
+- **اختبارات جديدة (125+ tests)**:
+  - `src/core/ui/components/Table.test.tsx` (13 tests): data/loading/empty/click/render/alignment/width/Date 형식
+  - `src/core/ui/components/DataTablePro.test.tsx` (16 tests): TanStack Table + search/pagination/sort + export buttons + row click
+  - `src/core/ui/components/StatusBadge.test.tsx` (25 tests): كل status mapping + size + className
+  - `src/core/ui/components/PageLoader.test.tsx` (5 tests): spinner + text + fullPage
+  - `src/core/ui/components/ActionButtons.test.tsx` (12 tests): view/edit/delete/print/export مع show/hide flags
+  - `src/core/ui/components/Card.test.tsx` (15 tests): Card + CardTitle + CardDescription مع header/footer/noPadding
+  - `src/core/store/store.test.ts` (12 tests): useAppStore (sidebar/theme/language/company/branch/dbStatus)
+  - `src/core/utils/export.test.ts` (17 tests): exportToExcel مع mock xlsx + exportToPdf (elementNotFound/popupBlocked/writeHtml) + dataToHtmlTable (null/undefined/escape/numbers)
+  - `src/modules/auth/hooks/usePermission.test.tsx` (27 tests): usePermission/usePermissions/useHasRole/useCanView/Create/Edit/Delete/Post/Export/useCanAccessModule/useShouldFilterByOwner/useModulePermissions/Can shortcut
+  - `src/modules/auth/store.test.ts` (27 tests): login/logout/hasPermission/hasRole/initAuth (expired session)/checkSession/recordActivity/canAccessOwned/shouldFilterByOwner
+  - `src/app/layout.test.tsx` (15 tests): Sidebar (logo/collapsed/toggle/menu/hidden)/Header (company/user/theme/lang/logout)/AppLayout (outlet/activity tracking)
+- **تحسينات الـ Coverage الرئيسية**:
+  - `Table.tsx`: 6% → **100%**
+  - `DataTablePro.tsx`: 0% → **90%+**
+  - `StatusBadge.tsx`: 40% → **100%**
+  - `ActionButtons.tsx`: 33% → **100%**
+  - `Card.tsx`: 71% → **100%**
+  - `export.ts`: 54% → **100%**
+  - `usePermission.ts`: 61% → **98%**
+  - `store.ts` (auth): 76% → **97%**
+  - `layout.tsx`: 36% → **91%**
+
+### قواعد ذهبية مضافة (Phase 4)
+- **`AND company_id = $N` mandatory لكل query**: حتى لو الـ FK chain يضمن الـ multi-tenancy (`company` → `branch` → `invoice`)، يجب إضافة `AND company_id = $N` صراحة. Defense-in-depth + يحمي من race conditions و injection
+- **`_exec`/`_execBatch` naming convention**: underscore prefix = "internal use only". لا تستخدم في application code. مخصصة للـ preload IPC bridge
+- **`PreloadDB` interface vs `ElectronDB`**: قم بإخفاء الـ internal methods من TypeScript consumers. الـ `declare global { interface Window { electronDB: ElectronDB } }` يلغي كل `(window as any).electronDB`
+- **لا تُستخدم React hooks بشكل شرطي**: استخدم `if (!check) return fallback` بعد استدعاء الـ hooks. الـ React Rules of Hooks تتطلب top-level call
+- **`passive: true` للـ activity event listeners**: يحسّن الأداء — المتصفح يعرف أن الـ listener لن يستدعي `preventDefault()`
+- **Session timeout pattern في AppLayout**: `useEffect` يضيف listeners لما `isAuthenticated=true`، cleanup function يزيلها عند unmount أو logout
+- **CI artifact retention**: `retention-days: 7` — لا تحتفظ بالـ Playwright reports/build artifacts للأبد
+- **Vite `chunkSizeWarningLimit`**: لا تحذر من chunks > 1 MB في Electron context. الـ bundling splits utility libraries بشكل طبيعي
+- **CSS selector `escape /`**: `bg-black\\/50` في `bg-black/50`. الـ `\\` يخبر regex parser أن الـ `/` literal
 
 ### المرحلة 1-4: ربط المنتجات بالتصنيفات والأنواع
 - Migration `0002_product_type_and_categories.sql`: `product_type_id` FK + `product_product_categories` many-to-many + indexes
@@ -425,7 +479,7 @@ npx drizzle-kit migrate
 - **إصلاح parse error**: 246 سطر orphan code كان متبقياً بعد `return { success: true }` في نهاية `seedComprehensiveDemoData` (نسخة مكررة من الأقسام 20-28 + ذيل قسم 19) — حُذف. الملف الآن 862 سطر نظيف.
 - **تشغيل نهائي**: 11 ملف اختبار، 120/120 ✓ (9 seedDemoData + 24 migrations + 13 useFormatters + 15 journalEntryGenerator + 14 productTypeFilter + 12 auth store + 11 auth ownership + 8 utils + 7 useOwnerFilter + 5 export + 2 printDocument)، TypeScript نظيف، `npm run db:reset --yes --force` ينجح من الصفر.
 
-*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.3.3*
+*آخر تحديث: 2026-06-04 | الإصدار: maghzaccount-pro v0.2.0*
 
 ### قواعد ذهبية مضافة
 - **مصدر حقيقة واحد**: Drizzle migrations فقط (ملف موحّد `0000_unified_schema.sql`)، لا `initializeSchema` أو mock schema أو migrations متسلسلة
@@ -1341,7 +1395,7 @@ npx drizzle-kit migrate
 - **Page reset on filter change**: الـ `usePaginatedList` deps يشمل الـ filter values → تغيير filter يَستدعي load → page 1 implicitly
 - **Buggy ESLint: select without `<form>`**: لو الـ select لا يحوي `aria-label` + `title`، الـ eslint يكتشف a11y issue. استخدم كليهما
 
-*آخر تحديث: 2026-06-09 | الإصدار: maghzaccount-pro v0.3.27*
+*آخر تحديث: 2026-06-09 | الإصدار: maghzaccount-pro v0.2.0*
 
 ### المرحلة 32: إصلاحات Manufacturing P1 + تطوير احترافي
 - **الهدف**: إصلاح bugs حرجة في manufacturing module (phantom fields + cross-tenant access + status mismatch) + تحسينات UX
@@ -1784,5 +1838,82 @@ npx drizzle-kit migrate
   - `npx eslint src`: **0 errors, 0 warnings** ✓
   - i18n: **985 keys متوازنة** (EN === AR)
 
-*آخر تحديث: 2026-06-09 | الإصدار: maghzaccount-pro v0.3.27*
+### المرحلة 1: إغلاق raw SQL من renderer
+- **الهدف**: منع أي كود في الـ renderer من تنفيذ SQL عشوائي
+- **التغييرات**:
+  - إزالة `query`/`transaction` من `window.electronDB` في `preload.js` و `preload.cjs`
+  - إضافة `_exec`/`_execBatch` (internal methods) بدلاً منها
+  - تحديث `dbHandler.js` لاستخدام `db:internal-query` و `db:internal-transaction`
+  - تحديث `electronPgAdapter.ts` لاستخدام `_exec`/`_execBatch`
+  - تحديث TypeScript interface لإخفاء الـ internal methods
+- **النتيجة**:
+  - `tsc -b`: 0 errors ✓
+  - `npm test`: 289/289 ✓
+  - `npm run lint`: 0 errors, 0 warnings ✓
+  - `npm run build`: ✓ built in 3.65s
+
+### قواعد ذهبية مضافة (Phase 1)
+- **لا تعرض raw SQL للـ renderer**: أي method ينفذ SQL يجب أن يكون في الـ main process فقط. الـ renderer يستدعي API methods عالية المستوى
+- **`_exec`/`_execBatch` naming convention**: الـ underscore prefix يشير إلى "internal use only" — لا تستخدمها مباشرة في application code
+- **TypeScript interface hiding**: استخدم interface منفصل (`PreloadDB`) لإخفاء الـ internal methods من TypeScript consumers
+
+### المرحلة 2: إصلاح Session Timeout
+- **المشكلة**: `recordActivity()` كانت موجودة لكن لا تُستدعى في أي مكان
+- **الحل**:
+  - إضافة activity tracking في `AppLayout`
+  - مراقبة أحداث المستخدم (mousedown, keydown, scroll, touchstart)
+  - فحص الجلسة كل دقيقة
+  - تسجيل الخروج التلقائي بعد 30 دقيقة من عدم النشاط
+- **النتيجة**:
+  - `tsc -b`: 0 errors ✓
+  - `npm test`: 289/289 ✓
+  - `npm run lint`: 0 errors, 0 warnings ✓
+  - `npm run build`: ✓ built in 3.85s
+
+### قواعد ذهبية مضافة (Phase 2)
+- **Activity tracking يجب أن يكون في AppLayout**: لا تضعه في كل component — AppLayout هو parent لكل الصفحات المحمية
+- **`passive: true` للـ event listeners**: يحسّن الأداء — المتصفح يعرف أن الـ listener لن يستدعي `preventDefault()`
+- **Session check interval = 60s**: لا تفحص كل ثانية — 60 ثانية كافية لتجربة مستخدم جيدة
+- **`useCallback` لـ handleActivity**: يمنع إعادة إنشاء function في كل render — مهم لأن الـ function يُمرَّر كـ dependency لـ `useEffect`
+
+### المرحلة 9: CI/CD Pipeline
+- **الهدف**: إضافة GitHub Actions workflow للـ quality checks
+- **الملفات المضافة**:
+  - `.github/workflows/ci.yml` — workflow كامل مع 2 jobs
+- **Jobs**:
+  - **Code Quality**: TypeScript + ESLint + Tests + Build
+  - **E2E Tests**: Playwright مع PostgreSQL service
+- **Features**:
+  - Artifact upload للـ Playwright reports عند الفشل
+  - PostgreSQL 16 service container
+  - Migration + seed قبل E2E tests
+  - Timeout limits (15min quality, 20min e2e)
+
+### قواعد ذهبية مضافة (Phase 9)
+- **CI يجب أن يفشل عند أي error**: لا تستخدم `continue-on-error` إلا للـ optional checks
+- **E2E tests تحتاج database service**: استخدم `services:` في GitHub Actions لتشغيل PostgreSQL
+- **Artifact retention**: `retention-days: 7` — لا تحتفظ بالـ reports للأبد
+- **`npm ci` بدلاً من `npm install`**: أسرع وأكثر determinism في CI
+
+### المرحلة 10: Bundle Optimization
+- **الهدف**: تحسين حجم الـ bundle وتقليل عدد الـ chunks
+- **التغييرات**:
+  - إضافة `validation` chunk لـ zod (66 kB)
+  - إضافة `dates` chunk لـ date-fns
+  - إضافة `icons` chunk لـ lucide-react (29 kB)
+  - دمج `html2canvas` + `dompurify` في `pdf` chunk (655 kB)
+- **النتيجة**:
+  - Total bundle: ~3.5 MB (gzip: ~1 MB)
+  - PDF chunk: 655 kB (lazy-loaded عند Export)
+  - Charts chunk: 407 kB (lazy-loaded للـ reports)
+  - Vendor chunk: 219 kB (React + React Router)
+- **ملاحظة**: هذه الأحجام مقبولة لتطبيق Electron (يُحمَّل من القرص المحلي)
+
+### قواعد ذهبية مضافة (Phase 10)
+- **Lazy-load heavy libraries**: `jspdf`, `xlsx`, `recharts` يجب أن تكون في chunks منفصلة — لا تُحمَّل إلا عند الحاجة
+- **`manualChunks` في Vite**: استخدمه لفصل الـ libraries الكبيرة إلى chunks منفصلة
+- **Chunk size warning limit**: `chunkSizeWarningLimit: 1000` — لا تحذر من chunks > 1 MB (طبيعي لـ Electron)
+- **Transitive dependencies**: `html2canvas` يأتي من `jspdf` — لا تحتاج install منفصل
+
+*آخر تحديث: 2026-06-17 | الإصدار: maghzaccount-pro v0.2.0*
 

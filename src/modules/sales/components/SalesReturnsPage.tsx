@@ -140,7 +140,12 @@ export const SalesReturnsPage: React.FC = () => {
       }
     } else {
       const seq = await getNextNumber('sales_return', activeCompany.id);
-      returnNumber = seq.number || `SR-${Date.now()}`;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('sales.return.numberError'));
+        setSaving(false);
+        return;
+      }
+      returnNumber = seq.number;
       const res = await create(buildPayload(returnNumber));
       if (res.success && res.id && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'sales_returns', recordId: res.id, companyId: activeCompany.id });

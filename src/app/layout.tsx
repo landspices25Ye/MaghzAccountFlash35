@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -368,6 +368,35 @@ export const Header: React.FC = () => {
 };
 
 export const AppLayout = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const recordActivity = useAuthStore((state) => state.recordActivity);
+  const checkSession = useAuthStore((state) => state.checkSession);
+  const navigate = useNavigate();
+
+  const handleActivity = useCallback(() => {
+    if (isAuthenticated) {
+      recordActivity();
+    }
+  }, [isAuthenticated, recordActivity]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((event) => window.addEventListener(event, handleActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      if (!checkSession()) {
+        navigate('/login');
+      }
+    }, 60000);
+
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, handleActivity));
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, handleActivity, checkSession, navigate]);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950">
       <Sidebar />

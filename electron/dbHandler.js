@@ -110,8 +110,8 @@ export function registerDatabaseHandlers() {
     return true;
   }
 
-  // Execute generic query
-  ipcMain.handle('db:query', async (_event, { sql, params }) => {
+  // Internal query handler (only accessible via _exec in preload, not exposed publicly)
+  ipcMain.handle('db:internal-query', async (_event, { sql, params }) => {
     try {
       if (!isSqlAllowed(sql)) {
         return { success: false, error: 'SQL operation not permitted' };
@@ -124,8 +124,8 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  // Execute transaction (array of { sql, params })
-  ipcMain.handle('db:transaction', async (_event, queries) => {
+  // Internal transaction handler (array of { sql, params })
+  ipcMain.handle('db:internal-transaction', async (_event, queries) => {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

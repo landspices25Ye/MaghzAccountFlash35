@@ -117,7 +117,7 @@ export const LeadsPage: React.FC = () => {
 
   const handleConvert = async () => {
     if (!selectedLead) return;
-    const res = await convertToCustomer(selectedLead.id, { code: `CUST-${Date.now()}`, address: '', taxNumber: '', creditLimit: 0 });
+    const res = await convertToCustomer(selectedLead.id, { address: '', taxNumber: '', creditLimit: 0 });
     if (res?.success) {
       setIsConvertOpen(false);
       setSelectedLead(null);

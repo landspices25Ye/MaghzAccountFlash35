@@ -325,6 +325,105 @@ describe('Migration 0001: Multi-currency columns', () => {
   });
 });
 
+describe('Migration 0009: Performance indexes phase 2', () => {
+  let mig9: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0009_performance_indexes_phase2.sql');
+    mig9 = readFileSync(path, 'utf-8');
+  });
+
+  it('has line-item FK indexes for all detail tables', () => {
+    expect(mig9).toContain('idx_sales_invoice_lines_invoice');
+    expect(mig9).toContain('idx_purchase_invoice_lines_invoice');
+    expect(mig9).toContain('idx_quotation_lines_quotation');
+    expect(mig9).toContain('idx_sales_return_lines_return');
+    expect(mig9).toContain('idx_purchase_return_lines_return');
+    expect(mig9).toContain('idx_purchase_order_lines_order');
+    expect(mig9).toContain('idx_bom_lines_bom');
+    expect(mig9).toContain('idx_work_order_consumptions_wo');
+    expect(mig9).toContain('idx_payroll_lines_run');
+    expect(mig9).toContain('idx_warehouse_transfer_lines_transfer');
+  });
+
+  it('has journal_entries FK indexes on account_id and transaction_id', () => {
+    expect(mig9).toContain('idx_journal_entries_account');
+    expect(mig9).toContain('idx_journal_entries_transaction');
+  });
+
+  it('has status filter indexes for all status-filtered tables', () => {
+    const tbls = [
+      'sales_invoices', 'purchase_invoices', 'sales_returns',
+      'purchase_returns', 'purchase_orders', 'work_orders',
+      'transactions', 'receipt_vouchers', 'payment_vouchers',
+      'leads', 'leaves', 'end_of_service', 'payroll_runs', 'tasks',
+    ];
+    for (const t of tbls) {
+      expect(mig9, `Missing status index for ${t}`).toContain(`idx_${t}_company_status`);
+    }
+  });
+
+  it('has customer/supplier FK indexes', () => {
+    expect(mig9).toContain('idx_sales_invoices_company_customer');
+    expect(mig9).toContain('idx_purchase_invoices_company_supplier');
+    expect(mig9).toContain('idx_quotations_company_customer');
+    expect(mig9).toContain('idx_purchase_orders_company_supplier');
+    expect(mig9).toContain('idx_sales_returns_company_customer');
+    expect(mig9).toContain('idx_purchase_returns_company_supplier');
+    expect(mig9).toContain('idx_receipt_vouchers_company_customer');
+    expect(mig9).toContain('idx_payment_vouchers_company_supplier');
+  });
+
+  it('has stage/type filter indexes', () => {
+    expect(mig9).toContain('idx_opportunities_company_stage');
+    expect(mig9).toContain('idx_products_company_active');
+    expect(mig9).toContain('idx_employees_company_active');
+    expect(mig9).toContain('idx_employees_company_department');
+    expect(mig9).toContain('idx_stock_movements_company_type');
+  });
+
+  it('has stock/product lookup indexes', () => {
+    expect(mig9).toContain('idx_stock_product_warehouse');
+    expect(mig9).toContain('idx_stock_movements_product_warehouse');
+    expect(mig9).toContain('idx_stock_adjustments_company_product');
+  });
+
+  it('has user login index on (username, company_id)', () => {
+    expect(mig9).toContain('idx_users_username_company');
+  });
+
+  it('has CRM assigned-to indexes for ownership filters', () => {
+    expect(mig9).toContain('idx_leads_company_assigned');
+    expect(mig9).toContain('idx_opportunities_company_assigned');
+    expect(mig9).toContain('idx_tasks_company_assigned');
+    expect(mig9).toContain('idx_activities_company_assigned');
+  });
+
+  it('has CHECK constraints for data integrity', () => {
+    expect(mig9).toContain('currencies_exchange_rate_check');
+    expect(mig9).toContain('CHECK (exchange_rate > 0)');
+    expect(mig9).toContain('payroll_lines_net_salary_check');
+    expect(mig9).toContain('CHECK (net_salary >= 0)');
+    expect(mig9).toContain('stock_quantity_check');
+    expect(mig9).toContain('CHECK (quantity >= 0)');
+    expect(mig9).toContain('sales_invoices_total_amount_check');
+    expect(mig9).toContain('purchase_invoices_total_amount_check');
+    expect(mig9).toContain('employees_base_salary_check');
+  });
+
+  it('is idempotent (all IF NOT EXISTS for indexes, pg_constraint for CHECK)', () => {
+    expect(mig9).not.toMatch(/CREATE INDEX\s+(?!IF NOT EXISTS)/i);
+    expect(mig9).toMatch(/DO \$\$/i);
+    expect(mig9).toMatch(/pg_constraint WHERE conname/i);
+  });
+
+  it('_journal.json has 10 entries (0000-0009)', () => {
+    const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf-8'));
+    expect(journal.entries.length).toBe(10);
+    expect(journal.entries[9].tag).toBe('0009_performance_indexes_phase2');
+  });
+});
+
 describe('Drizzle schema TypeScript', () => {
   it('schema files exist for all modules', () => {
     const schemaDir = join(process.cwd(), 'src', 'core', 'database', 'schema');

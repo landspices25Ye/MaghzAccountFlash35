@@ -3,6 +3,18 @@ import { validateInput, idCompanySchema, companyIdSchema, createLeadSchema } fro
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Lead, Opportunity, Task, Activity } from './types';
 
+async function nextCustomerCode(companyId: string): Promise<string> {
+  const adapter = await getDbAdapter();
+  const result = await adapter.query<{ next_code: number }>(
+    `SELECT COALESCE(MAX(CAST(SUBSTRING(code FROM '^CUST-([0-9]+)$') AS integer)), 0) + 1 AS next_code
+       FROM customers
+      WHERE company_id = $1 AND code ~ '^CUST-[0-9]+$'`,
+    [companyId]
+  );
+  const nextCode = Number(result.rows?.[0]?.next_code || 1);
+  return `CUST-${String(nextCode).padStart(4, '0')}`;
+}
+
 export const crmApi = {
   // ─── Leads ────────────────────────────────────────────────────────────────
   async getLeads(companyId: string): Promise<{ success: boolean; data?: Lead[]; error?: string }> {
@@ -157,9 +169,12 @@ export const crmApi = {
       const leadRes = await adapter.query<Record<string, unknown>>('SELECT * FROM leads WHERE id = $1 AND company_id = $2 LIMIT 1', [id, companyId]);
       if (!leadRes.success || !leadRes.rows?.[0]) return { success: false, error: 'Lead not found' };
       const lead = leadRes.rows[0];
+      const customerCode = typeof customerData.code === 'string' && customerData.code.trim()
+        ? customerData.code.trim()
+        : await nextCustomerCode(companyId);
       const custResult = await adapter.query(
         `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, credit_limit, balance, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-        [lead.company_id, customerData.code || `CUST-${Date.now()}`, lead.name, lead.phone, lead.email, customerData.address || null, customerData.taxNumber || null, customerData.creditLimit || 0, 0, true]
+        [lead.company_id, customerCode, lead.name, lead.phone, lead.email, customerData.address || null, customerData.taxNumber || null, customerData.creditLimit || 0, 0, true]
       );
       if (custResult.success && custResult.rows?.[0]) {
         await adapter.query("UPDATE leads SET status = 'converted' WHERE id = $1 AND company_id = $2", [id, companyId]);

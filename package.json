@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
@@ -17,8 +18,8 @@
     "electron:build": "npm run build && electron-builder",
     "db:reset": "node electron/resetDatabase.js",
     "db:reset:force": "node electron/resetDatabase.js --yes --force",
-    "db:check": "drizzle-kit generate --config=drizzle.check.config.ts",
-    "preflight": "npm run lint && npx tsc --noEmit && npm run test",
+    "db:check": "node scripts/db-check.mjs",
+    "preflight": "npm run lint && npx tsc -b && npm run test",
     "e2e:reset": "node electron/resetDatabase.js --yes --force"
   },
   "build": {
@@ -39,15 +40,10 @@
     }
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
     "@tailwindcss/postcss": "^4.3.0",
     "@tanstack/react-table": "^8.21.3",
     "autoprefixer": "^10.5.0",
     "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
-    "date-fns": "^4.3.0",
-    "dexie": "^4.4.2",
-    "dexie-react-hooks": "^4.4.0",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "jspdf": "^4.2.1",
@@ -76,7 +72,8 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "concurrently": "^9.2.1",
+    "@vitest/coverage-v8": "^4.1.9",
+    "concurrently": "^10.0.3",
     "drizzle-kit": "^0.31.10",
     "electron": "^42.2.0",
     "electron-builder": "^26.8.1",
@@ -89,7 +86,7 @@
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12",
+    "vite": "^8.0.16",
     "vitest": "^4.1.7",
     "wait-on": "^9.0.10"
   }

@@ -3,8 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 // ─── PostgreSQL via Drizzle ORM (IPC Bridge) ─────────────────────────────────
 contextBridge.exposeInMainWorld('electronDB', {
   ping: () => ipcRenderer.invoke('db:ping'),
-  query: (sql, params = []) => ipcRenderer.invoke('db:query', { sql, params }),
-  transaction: (queries) => ipcRenderer.invoke('db:transaction', queries),
+  _exec: (sql, params = []) => ipcRenderer.invoke('db:internal-query', { sql, params }),
+  _execBatch: (queries) => ipcRenderer.invoke('db:internal-transaction', queries),
   testConnection: (config) => ipcRenderer.invoke('db:test-connection', config),
   updateConfig: (config) => ipcRenderer.invoke('db:update-config', config),
   seedDefault: () => ipcRenderer.invoke('db:seed-default'),

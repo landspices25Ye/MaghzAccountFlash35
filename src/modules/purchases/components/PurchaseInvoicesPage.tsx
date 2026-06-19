@@ -151,17 +151,11 @@ export const PurchaseInvoicesPage: React.FC = () => {
     setForm(prev => ({ ...prev, lines: prev.lines.filter((_, i) => i !== idx) }));
   }, []);
 
-  const openCreate = useCallback(async () => {
+  const openCreate = useCallback(() => {
     setEditingId(null);
     setForm({ ...initialForm(), lines: [{ ...initialLine(), vatPercent: vatRate }] });
-    if (activeCompany?.id) {
-      const seq = await getNextNumber('purchase_invoice', activeCompany.id);
-      if (seq.success && seq.number) {
-        setForm(prev => ({ ...prev, date: new Date().toISOString().split('T')[0] }));
-      }
-    }
     setModalOpen(true);
-  }, [activeCompany?.id, getNextNumber, vatRate]);
+  }, [vatRate]);
 
   const openEdit = useCallback((invoice: PurchaseInvoice) => {
     setEditingId(invoice.id);
@@ -195,9 +189,14 @@ export const PurchaseInvoicesPage: React.FC = () => {
 
   const handleSave = useCallback(async () => {
     if (!activeCompany?.id || !form.supplierId) return;
+    const existingInvoice = editingId ? invoices.find(i => i.id === editingId) : null;
+    if (editingId && !existingInvoice?.invoiceNumber) {
+      addToast('error', t('purchases.invoice.numberError'));
+      return;
+    }
     const payload = {
       companyId: activeCompany.id,
-      invoiceNumber: editingId ? (invoices.find(i => i.id === editingId)?.invoiceNumber || '') : `PINV-${Date.now()}`,
+      invoiceNumber: editingId ? existingInvoice!.invoiceNumber : '',
       supplierId: form.supplierId,
       purchaseOrderId: form.purchaseOrderId || undefined,
       date: form.date,
@@ -239,9 +238,14 @@ export const PurchaseInvoicesPage: React.FC = () => {
       });
     } else {
       const seq = await getNextNumber('purchase_invoice', activeCompany.id);
-      if (seq.success && seq.number) {
-        payload.invoiceNumber = seq.number;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('purchases.invoice.numberError'));
+        setModalOpen(false);
+        setEditingId(null);
+        setForm(initialForm());
+        return;
       }
+      payload.invoiceNumber = seq.number;
       const result = await create(payload);
       if (result.success && result.id) {
         addToast('success', t('purchases.invoice.created'));

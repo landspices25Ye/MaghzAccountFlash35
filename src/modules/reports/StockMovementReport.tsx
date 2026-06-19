@@ -81,6 +81,17 @@ export const StockMovementReport: React.FC = () => {
     setError(null);
     try {
       const adapter = await getDbAdapter();
+      const productId = productFilter || null;
+
+      const monthlyParams: unknown[] = [companyId, dateFrom, dateTo];
+      let monthlyWhere = `sm.company_id = $1
+            AND sm.created_at >= $2::date
+            AND sm.created_at < ($3::date + INTERVAL '1 day')`;
+      if (productId) {
+        monthlyParams.push(productId);
+        monthlyWhere += `
+            AND sm.product_id = $${monthlyParams.length}`;
+      }
 
       const monthlyResult = await adapter.query(
         `SELECT date_trunc('month', sm.created_at)::date as month,
@@ -88,23 +99,29 @@ export const StockMovementReport: React.FC = () => {
                 SUM(sm.quantity) as total_qty,
                 COUNT(*) as transaction_count
            FROM stock_movements sm
-          WHERE sm.company_id = $1
-            AND sm.created_at >= $2::date
-            AND sm.created_at < ($3::date + INTERVAL '1 day')
+          WHERE ${monthlyWhere}
           GROUP BY month, sm.type
           ORDER BY month, sm.type`,
-        [companyId, dateFrom, dateTo],
+        monthlyParams,
       );
+
+      const topParams: unknown[] = [companyId];
+      let topWhere = `sm.company_id = $1`;
+      if (productId) {
+        topParams.push(productId);
+        topWhere += ` AND sm.product_id = $${topParams.length}`;
+      }
 
       const topResult = await adapter.query(
         `SELECT p.name_ar, p.sku, sm.type, SUM(sm.quantity) as total_qty
            FROM stock_movements sm
            JOIN products p ON sm.product_id = p.id AND p.company_id = $1
-          WHERE sm.created_at >= NOW() - INTERVAL '30 days'
+          WHERE ${topWhere}
+            AND sm.created_at >= NOW() - INTERVAL '30 days'
           GROUP BY p.id, p.name_ar, p.sku, sm.type
           ORDER BY SUM(sm.quantity) DESC
           LIMIT 10`,
-        [companyId],
+        topParams,
       );
 
       const productsResult = await adapter.query(
@@ -120,7 +137,7 @@ export const StockMovementReport: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [companyId, dateFrom, dateTo]);
+  }, [companyId, dateFrom, dateTo, productFilter]);
 
   useEffect(() => {
     loadData();
@@ -155,23 +172,22 @@ export const StockMovementReport: React.FC = () => {
     const outCount = monthlyData.filter((r) => r.type === 'out').reduce((s, r) => s + r.transactionCount, 0);
     const adjCount = monthlyData.filter((r) => r.type !== 'in' && r.type !== 'out').reduce((s, r) => s + r.transactionCount, 0);
     return [
-      { name: t('reports.stockIn') || 'IN', value: inCount },
-      { name: t('reports.stockOut') || 'OUT', value: outCount },
-      { name: t('reports.stockAdjustment') || 'Adj', value: adjCount },
+      { name: t('reports.stockIn'), value: inCount },
+      { name: t('reports.stockOut'), value: outCount },
+      { name: t('reports.stockAdjustment'), value: adjCount },
     ].filter((d) => d.value > 0);
   }, [monthlyData, t]);
 
   const filteredDetail = useMemo(() => {
-    if (!productFilter) return monthlyData;
     return monthlyData;
-  }, [monthlyData, productFilter]);
+  }, [monthlyData]);
 
   const handleExportExcel = async () => {
     const cols = [
-      { key: 'month', header: t('reports.month') || 'Month' },
-      { key: 'type', header: t('reports.type') || 'Type' },
-      { key: 'totalQty', header: t('reports.quantity') || 'Quantity' },
-      { key: 'transactionCount', header: t('reports.transactionCount') || 'Transactions' },
+       { key: 'month', header: t('reports.month') },
+       { key: 'type', header: t('reports.type') },
+       { key: 'totalQty', header: t('reports.quantity') },
+       { key: 'transactionCount', header: t('reports.transactionCount') },
     ];
     await exportToExcel(monthlyData, cols, 'Stock_Movement_Analysis');
   };
@@ -179,7 +195,7 @@ export const StockMovementReport: React.FC = () => {
   if (!companyId) {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-slate-500 dark:text-slate-400">{t('reports.noCompany') || 'No active company'}</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('reports.noCompany')}</p>
       </div>
     );
   }
@@ -196,9 +212,9 @@ export const StockMovementReport: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <p className="text-rose-600 dark:text-rose-400 mb-2">{t('reports.error') || 'Error'}: {error}</p>
+          <p className="text-rose-600 dark:text-rose-400 mb-2">{t('reports.error')}: {error}</p>
           <Button variant="secondary" leftIcon={<RefreshCw size={16} />} onClick={loadData}>
-            {t('reports.retry') || 'Retry'}
+            {t('reports.retry')}
           </Button>
         </div>
       </div>
@@ -212,7 +228,7 @@ export const StockMovementReport: React.FC = () => {
         <div className="flex items-center gap-3">
           <Package size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.stockMovement') || 'Stock Movement Analysis'}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('reports.stockMovement')}</h1>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -220,7 +236,7 @@ export const StockMovementReport: React.FC = () => {
             {t('reports.exportExcel')}
           </Button>
           <Button variant="secondary" leftIcon={<RefreshCw size={16} />} onClick={loadData}>
-            {t('reports.refresh') || 'Refresh'}
+            {t('reports.refresh')}
           </Button>
         </div>
       </div>
@@ -229,7 +245,7 @@ export const StockMovementReport: React.FC = () => {
       <Card>
         <div className="p-4 flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('reports.from') || 'From'}</label>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('reports.from')}</label>
             <input
               type="date"
               value={dateFrom}
@@ -238,7 +254,7 @@ export const StockMovementReport: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('reports.to') || 'To'}</label>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('reports.to')}</label>
             <input
               type="date"
               value={dateTo}
@@ -253,7 +269,7 @@ export const StockMovementReport: React.FC = () => {
               onChange={(e) => setProductFilter(e.target.value)}
               className="px-2 py-1.5 text-sm border rounded-md bg-white dark:bg-slate-900 dark:border-slate-600 text-slate-900 dark:text-slate-50"
             >
-              <option value="">{t('reports.all') || 'All'}</option>
+              <option value="">{t('reports.all')}</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>{p.nameAr}</option>
               ))}
@@ -265,19 +281,19 @@ export const StockMovementReport: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCardPro
-          title={t('reports.totalIn') || 'Total IN'}
+          title={t('reports.totalIn')}
           value={formatCurrency(totalIn)}
           icon={ArrowDown}
           color="blue"
         />
         <KpiCardPro
-          title={t('reports.totalOut') || 'Total OUT'}
+          title={t('reports.totalOut')}
           value={formatCurrency(totalOut)}
           icon={ArrowUp}
           color="amber"
         />
         <KpiCardPro
-          title={t('reports.netChange') || 'Net Change'}
+          title={t('reports.netChange')}
           value={formatCurrency(Math.abs(netChange))}
           icon={ArrowLeftRight}
           color={netChange >= 0 ? 'emerald' : 'rose'}
@@ -290,7 +306,7 @@ export const StockMovementReport: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.monthlyMovement') || 'Monthly In/Out Movement'}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.monthlyMovement')}</h3>
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthBuckets}>
@@ -298,9 +314,9 @@ export const StockMovementReport: React.FC = () => {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="inQty" name={t('reports.stockIn') || 'IN'} fill={CHART_COLORS.in} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="outQty" name={t('reports.stockOut') || 'OUT'} fill={CHART_COLORS.out} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="adjQty" name={t('reports.stockAdjustment') || 'Adj'} fill={CHART_COLORS.adjustment} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="inQty" name={t('reports.stockIn')} fill={CHART_COLORS.in} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="outQty" name={t('reports.stockOut')} fill={CHART_COLORS.out} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="adjQty" name={t('reports.stockAdjustment')} fill={CHART_COLORS.adjustment} radius={[2, 2, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -308,7 +324,7 @@ export const StockMovementReport: React.FC = () => {
         </Card>
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.typeDistribution') || 'Type Distribution'}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.typeDistribution')}</h3>
             <div style={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -340,14 +356,14 @@ export const StockMovementReport: React.FC = () => {
       {topProducts.length > 0 && (
         <Card>
           <div className="p-4">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.topMovingProducts') || 'Top Moving Products (Last 30 Days)'}</h3>
+            <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.topMovingProducts')}</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-700">
                     <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.product')}</th>
                     <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">SKU</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.type') || 'Type'}</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.type')}</th>
                     <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.quantity')}</th>
                   </tr>
                 </thead>
@@ -362,9 +378,9 @@ export const StockMovementReport: React.FC = () => {
                           p.type === 'out' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                           'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
                         }`}>
-                          {p.type === 'in' ? (t('reports.stockIn') || 'IN') :
-                           p.type === 'out' ? (t('reports.stockOut') || 'OUT') :
-                           (t('reports.stockAdjustment') || 'Adj')}
+                           {p.type === 'in' ? t('reports.stockIn') :
+                            p.type === 'out' ? t('reports.stockOut') :
+                            t('reports.stockAdjustment')}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatCurrency(p.totalQty)}</td>
@@ -380,22 +396,22 @@ export const StockMovementReport: React.FC = () => {
       {/* Detail Table */}
       <Card>
         <div className="p-4">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.details') || 'Monthly Details'}</h3>
+           <h3 className="font-semibold text-slate-900 dark:text-slate-50 mb-4">{t('reports.details')}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.month') || 'Month'}</th>
-                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.type') || 'Type'}</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.month')}</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.type')}</th>
                   <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.quantity')}</th>
-                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.transactionCount') || 'Transactions'}</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-500 dark:text-slate-400">{t('reports.transactionCount')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDetail.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-8 text-center text-slate-400">
-                      {t('reports.noData') || 'No data available'}
+                      {t('reports.noData')}
                     </td>
                   </tr>
                 ) : (
@@ -408,9 +424,9 @@ export const StockMovementReport: React.FC = () => {
                           row.type === 'out' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                           'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
                         }`}>
-                          {row.type === 'in' ? (t('reports.stockIn') || 'IN') :
-                           row.type === 'out' ? (t('reports.stockOut') || 'OUT') :
-                           row.type}
+                           {row.type === 'in' ? t('reports.stockIn') :
+                            row.type === 'out' ? t('reports.stockOut') :
+                            row.type}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatCurrency(row.totalQty)}</td>

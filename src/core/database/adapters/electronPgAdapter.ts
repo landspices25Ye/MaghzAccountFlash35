@@ -11,8 +11,8 @@ export interface ElectronDB extends PreloadDB {
 
 interface PreloadDB {
   ping(): Promise<{ success: boolean; message?: string; db?: string }>;
-  query(sql: string, params?: unknown[]): Promise<{ success: boolean; rows?: Record<string, unknown>[]; error?: string }>;
-  transaction(queries: { sql: string; params?: unknown[] }[]): Promise<{ success: boolean; results?: unknown[][]; error?: string }>;
+  _exec(sql: string, params?: unknown[]): Promise<{ success: boolean; rows?: Record<string, unknown>[]; error?: string }>;
+  _execBatch(queries: { sql: string; params?: unknown[] }[]): Promise<{ success: boolean; results?: unknown[][]; error?: string }>;
 }
 
 declare global {
@@ -85,24 +85,21 @@ export const electronPgAdapter: DbAdapter = {
 
   async query(sql, params) {
     const pgSql = convertPlaceholders(sql);
-    const raw = await getDB().query(pgSql, params);
+    const raw = await getDB()._exec(pgSql, params);
     return normalizeResult(raw);
   },
-
-
-
 
   async transaction(queries) {
     const pgQueries = queries.map(q => ({
       sql: convertPlaceholders(q.sql),
       params: q.params,
     }));
-    const raw = await getDB().transaction(pgQueries);
+    const raw = await getDB()._execBatch(pgQueries);
     return raw;
   },
 
   async getCompany() {
-    const raw = await getDB().query('SELECT * FROM companies LIMIT 1');
+    const raw = await getDB()._exec('SELECT * FROM companies LIMIT 1');
     const result = normalizeResult(raw);
     if (result.success && result.rows && result.rows.length > 0) {
       return { success: true, data: result.rows[0] };
@@ -111,7 +108,7 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async getAccounts(companyId) {
-    const result = await getDB().query(
+    const result = await getDB()._exec(
       'SELECT * FROM accounts WHERE company_id = $1 ORDER BY code',
       [companyId],
     );
@@ -119,7 +116,7 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async createAccount(data) {
-    const result = await getDB().query(
+    const result = await getDB()._exec(
       `INSERT INTO accounts (company_id, code, name_ar, name_en, parent_id, type, nature, is_group, balance)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
       [data.companyId, data.code, data.nameAr, data.nameEn, data.parentId, data.type, data.nature, data.isGroup, data.balance || 0],
@@ -132,7 +129,7 @@ export const electronPgAdapter: DbAdapter = {
 
   async getTransactions(companyId) {
     // Fetch transactions and entries separately to avoid json_agg issues
-    const txResult = await getDB().query(
+    const txResult = await getDB()._exec(
       `SELECT * FROM transactions WHERE company_id = $1 ORDER BY date DESC`,
       [companyId],
     );
@@ -144,7 +141,7 @@ export const electronPgAdapter: DbAdapter = {
     }
 
     const txIds = transactions.map((t) => String(t.id));
-    const entriesResult = await getDB().query(
+    const entriesResult = await getDB()._exec(
       `SELECT je.*, a.name_ar as account_name, a.code as account_code 
        FROM journal_entries je 
        LEFT JOIN accounts a ON je.account_id = a.id 
@@ -182,31 +179,46 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async createTransaction(data) {
-    const txResult = await getDB().transaction([
-      { sql: `INSERT INTO transactions (company_id, date, reference, description, total_amount, status)
-              VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        params: [data.companyId, data.date, data.reference, data.description, data.totalAmount, data.status || 'posted'] },
-    ]);
-
-    if (txResult.success && txResult.results?.[0]?.[0]) {
-      const txId = String((txResult.results[0][0] as { id: unknown }).id);
-
-      // Insert journal entries (include company_id for denormalized multi-tenant queries)
-      for (const entry of data.entries) {
-        await getDB().query(
-          `INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo, company_id)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [txId, entry.accountId, entry.debit, entry.credit, entry.memo, data.companyId],
-        );
-      }
-
-      return { success: true, id: txId };
+    const entries = data.entries || [];
+    if (entries.length === 0) {
+      return { success: false, error: 'No journal entries provided' };
     }
-    return { success: false, error: txResult.error };
+
+    // Build VALUES for journal entries
+    const entryValues: string[] = [];
+    const params: unknown[] = [
+      data.companyId, data.date, data.reference, data.description,
+      data.totalAmount, data.status || 'posted',
+    ];
+    let paramIdx = 7;
+
+    for (const entry of entries) {
+      entryValues.push(`((SELECT id FROM new_tx), $${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4})`);
+      params.push(entry.accountId, entry.debit, entry.credit, entry.memo, data.companyId);
+      paramIdx += 5;
+    }
+
+    const sql = `
+      WITH new_tx AS (
+        INSERT INTO transactions (company_id, date, reference, description, total_amount, status)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      )
+      INSERT INTO journal_entries (transaction_id, account_id, debit, credit, memo, company_id)
+      VALUES ${entryValues.join(', ')}
+      RETURNING transaction_id
+    `;
+
+    const result = await getDB()._exec(sql, params);
+
+    if (result.success && result.rows?.[0]) {
+      return { success: true, id: String((result.rows[0] as { transaction_id: unknown }).transaction_id) };
+    }
+    return { success: false, error: result.error || 'Failed to create transaction' };
   },
 
   async getProducts(companyId) {
-    const result = await getDB().query(
+    const result = await getDB()._exec(
       `SELECT p.*, COALESCE(
         (SELECT json_agg(ppc.category_id)
          FROM product_product_categories ppc
@@ -228,7 +240,7 @@ export const electronPgAdapter: DbAdapter = {
   },
 
   async createProduct(data) {
-    const result = await getDB().query(
+    const result = await getDB()._exec(
       `INSERT INTO products (company_id, code, name_ar, name_en, barcode, sku, unit, category_id, product_type_id, cost_price, sale_price, is_active, created_by, updated_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
       [data.companyId, data.code, data.nameAr, data.nameEn, data.barcode, data.sku, data.unit, data.categoryId ?? null, data.productTypeId ?? null, data.costPrice, data.salePrice, data.isActive ?? true, data.createdBy ?? null, data.updatedBy ?? null],
@@ -237,7 +249,7 @@ export const electronPgAdapter: DbAdapter = {
       const productId = String(result.rows[0].id);
       if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
         for (const categoryId of data.categoryIds) {
-          await getDB().query(
+          await getDB()._exec(
             'INSERT INTO product_product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [productId, categoryId],
           );
@@ -262,14 +274,14 @@ export const electronPgAdapter: DbAdapter = {
                   tax_number, balance, is_active, created_at, updated_at
                   FROM suppliers WHERE company_id = $1 ORDER BY name`;
     }
-    const result = await getDB().query(finalSql, params);
+    const result = await getDB()._exec(finalSql, params);
     return { success: result.success, data: result.rows, error: result.error };
   },
 
   async createContact(data) {
     // Route to the correct table based on type
     if (data.type === 'supplier') {
-      const result = await getDB().query(
+      const result = await getDB()._exec(
       `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance)
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
         [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],
@@ -279,7 +291,7 @@ export const electronPgAdapter: DbAdapter = {
         : { success: false, error: result.error };
     }
     // default to customer
-    const result = await getDB().query(
+    const result = await getDB()._exec(
       `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, balance)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [data.companyId, data.code ?? null, data.name, data.phone ?? null, data.email ?? null, data.address ?? null, data.taxNumber ?? null, data.balance || 0],

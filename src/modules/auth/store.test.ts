@@ -103,5 +103,133 @@ describe('Auth Store', () => {
       initAuth();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
     });
+
+    it('clears expired session from localStorage', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      localStorage.setItem('auth_user', JSON.stringify(user));
+      const expiredTime = Date.now() - (31 * 60 * 1000); // 31 minutes ago
+      localStorage.setItem('auth_last_activity', String(expiredTime));
+
+      initAuth();
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+      expect(localStorage.getItem('auth_user')).toBeNull();
+      expect(localStorage.getItem('auth_last_activity')).toBeNull();
+    });
+
+    it('sets loading to false when no stored user', () => {
+      localStorage.clear();
+      initAuth();
+      expect(useAuthStore.getState().isLoading).toBe(false);
+    });
+  });
+
+  describe('checkSession', () => {
+    it('returns false when no activity recorded', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      useAuthStore.setState({ lastActivityAt: null });
+      
+      expect(useAuthStore.getState().checkSession()).toBe(false);
+    });
+
+    it('returns true when activity is recent', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().checkSession()).toBe(true);
+    });
+
+    it('returns false and logs out when session expired', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      const expiredTime = Date.now() - (31 * 60 * 1000);
+      useAuthStore.setState({ lastActivityAt: expiredTime });
+
+      expect(useAuthStore.getState().checkSession()).toBe(false);
+      expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    });
+  });
+
+  describe('recordActivity', () => {
+    it('updates lastActivityAt timestamp', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      const before = Date.now();
+      
+      useAuthStore.getState().recordActivity();
+      const after = Date.now();
+      
+      const activityTime = useAuthStore.getState().lastActivityAt;
+      expect(activityTime).toBeGreaterThanOrEqual(before);
+      expect(activityTime).toBeLessThanOrEqual(after);
+    });
+
+    it('saves activity to localStorage', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      useAuthStore.getState().recordActivity();
+      
+      const stored = localStorage.getItem('auth_last_activity');
+      expect(stored).toBeTruthy();
+      expect(Number(stored)).toBe(useAuthStore.getState().lastActivityAt);
+    });
+  });
+
+  describe('canAccessOwned', () => {
+    it('returns true when user has module permission', () => {
+      const user: User = { id: '1', username: 'manager', email: 'm@b.com', role: 'manager', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().canAccessOwned('sales.view')).toBe(true);
+    });
+
+    it('returns false when user lacks permission', () => {
+      const user: User = { id: '1', username: 'viewer', email: 'v@b.com', role: 'viewer', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().canAccessOwned('sales.create')).toBe(false);
+    });
+  });
+
+  describe('shouldFilterByOwner', () => {
+    it('returns false when not authenticated', () => {
+      expect(useAuthStore.getState().shouldFilterByOwner('sales')).toBe(false);
+    });
+
+    it('returns false for super_admin', () => {
+      const user: User = { id: '1', username: 'super', email: 's@b.com', role: 'super_admin', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().shouldFilterByOwner('sales')).toBe(false);
+    });
+
+    it('returns false for admin', () => {
+      const user: User = { id: '1', username: 'admin', email: 'a@b.com', role: 'admin', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().shouldFilterByOwner('sales')).toBe(false);
+    });
+
+    it('returns false when user has full view permission', () => {
+      const user: User = { id: '1', username: 'manager', email: 'm@b.com', role: 'manager', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().shouldFilterByOwner('sales')).toBe(false);
+    });
+
+    it('returns true when user has only own permission', () => {
+      const user: User = { id: '1', username: 'sales', email: 's@b.com', role: 'sales_rep', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().shouldFilterByOwner('sales')).toBe(true);
+    });
+
+    it('returns false when user has no permissions for module', () => {
+      const user: User = { id: '1', username: 'viewer', email: 'v@b.com', role: 'viewer', isActive: true };
+      useAuthStore.getState().login(user);
+      
+      expect(useAuthStore.getState().shouldFilterByOwner('hr')).toBe(false);
+    });
   });
 });

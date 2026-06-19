@@ -214,7 +214,12 @@ export const InvoicesPage: React.FC = () => {
       invoiceNumber = existing?.invoiceNumber || '';
     } else {
       const seq = await getNextNumber('sales_invoice', activeCompany.id);
-      invoiceNumber = seq.number || `INV-${Date.now()}`;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('sales.invoice.numberError'));
+        setSaving(false);
+        return;
+      }
+      invoiceNumber = seq.number;
     }
     const payload = buildInvoicePayload(invoiceNumber);
     if (editingId) {

@@ -1,3 +1,5 @@
+import { escapeHtml, sanitizeElementHtml } from '@/core/utils/html';
+
 export async function exportToExcel(data: Record<string, unknown>[], filename: string, sheetName: string = 'Sheet1') {
   if (!data || data.length === 0) {
     alert('لا توجد بيانات للتصدير');
@@ -29,7 +31,7 @@ export function exportToPdf(elementId: string, filename: string, title?: string)
   <html dir="rtl">
   <head>
   <meta charset="UTF-8">
-  <title>${title || filename}</title>
+  <title>${escapeHtml(title || filename)}</title>
   <style>
   @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
   * { box-sizing: border-box; }
@@ -66,9 +68,9 @@ export function exportToPdf(elementId: string, filename: string, title?: string)
   </style>
   </head>
   <body>
-  <h1>${title || filename}</h1>
-  <div class="meta">تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}</div>
-  ${element.innerHTML}
+  <h1>${escapeHtml(title || filename)}</h1>
+  <div class="meta">تاريخ التقرير: ${escapeHtml(new Date().toLocaleDateString('ar-SA'))}</div>
+  ${sanitizeElementHtml(element)}
   <div class="no-print" style="margin-top: 30px; text-align: center;">
   <button onclick="window.print()" style="padding: 10px 30px; background: #1e40af; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: Cairo;">
   طباعة / حفظ PDF
@@ -88,7 +90,7 @@ export function dataToHtmlTable(data: Record<string, unknown>[], columns: { key:
   let html = '<table>';
   html += '<thead><tr>';
   for (const col of columns) {
-    html += `<th>${col.label}</th>`;
+    html += `<th>${escapeHtml(col.label)}</th>`;
   }
   html += '</tr></thead><tbody>';
 
@@ -98,7 +100,7 @@ export function dataToHtmlTable(data: Record<string, unknown>[], columns: { key:
       const val = row[col.key];
       const display = val === null || val === undefined ? '-' :
         typeof val === 'number' ? `<span class="number">${new Intl.NumberFormat('ar-YE').format(val)}</span>` :
-        String(val);
+        escapeHtml(String(val));
       html += `<td>${display}</td>`;
     }
     html += '</tr>';

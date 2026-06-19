@@ -1,3 +1,5 @@
+import { escapeHtml } from '@/core/utils/html';
+
 export interface PrintLine {
   description: string;
   quantity?: number;
@@ -39,6 +41,10 @@ function formatCurrency(amount: number, currency = 'YER'): string {
   return `${new Intl.NumberFormat('ar-YE').format(amount)} ${currency === 'YER' ? 'ريال' : currency}`;
 }
 
+function escapeLineBreaks(value: string): string {
+  return escapeHtml(value).replaceAll('\n', '<br />');
+}
+
 function generateHtml(data: PrintDocumentData): string {
   const color = typeColors[data.type];
   const title = typeTitles[data.type];
@@ -47,10 +53,10 @@ function generateHtml(data: PrintDocumentData): string {
   const linesHtml = data.lines.map((line, i) => `
     <tr>
       <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center">${i + 1}</td>
-      <td style="padding:10px 12px;border:1px solid #e2e8f0">${line.description}</td>
+      <td style="padding:10px 12px;border:1px solid #e2e8f0">${escapeLineBreaks(line.description)}</td>
       ${isInvoice ? `
-        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center">${line.quantity || '-'}</td>
-        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr">${line.unitPrice ? new Intl.NumberFormat('ar-YE').format(line.unitPrice) : '-'}</td>
+        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center">${line.quantity ?? '-'}</td>
+        <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr">${line.unitPrice !== undefined ? new Intl.NumberFormat('ar-YE').format(line.unitPrice) : '-'}</td>
       ` : ''}
       <td style="padding:10px 12px;border:1px solid #e2e8f0;text-align:center;direction:ltr;font-weight:600">${new Intl.NumberFormat('ar-YE').format(line.total)}</td>
     </tr>
@@ -85,7 +91,7 @@ function generateHtml(data: PrintDocumentData): string {
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>${title} - ${data.docNumber}</title>
+  <title>${escapeHtml(title)} - ${escapeHtml(data.docNumber)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -206,29 +212,29 @@ function generateHtml(data: PrintDocumentData): string {
   <div class="page">
     <div class="header">
       <div class="company-info">
-        <h2>${data.companyName || 'الشركة'}</h2>
+        <h2>${escapeHtml(data.companyName || 'الشركة')}</h2>
         <p>نظام محاسبي متكامل - maghzaccount-pro</p>
       </div>
-      <div class="doc-title">${title}</div>
+      <div class="doc-title">${escapeHtml(title)}</div>
     </div>
 
     <div class="meta-grid">
       <div class="meta-box">
-        <h4>${data.partyLabel}</h4>
-        <p>${data.partyName}</p>
+        <h4>${escapeHtml(data.partyLabel)}</h4>
+        <p>${escapeHtml(data.partyName)}</p>
       </div>
       <div class="meta-box">
         <h4>رقم المستند</h4>
-        <p>${data.docNumber}</p>
+        <p>${escapeHtml(data.docNumber)}</p>
       </div>
       <div class="meta-box">
         <h4>تاريخ المستند</h4>
-        <p>${data.date}</p>
+        <p>${escapeHtml(data.date)}</p>
       </div>
       ${data.dueDate ? `
       <div class="meta-box">
         <h4>تاريخ الاستحقاق</h4>
-        <p>${data.dueDate}</p>
+        <p>${escapeHtml(data.dueDate)}</p>
       </div>
       ` : ''}
     </div>
@@ -249,7 +255,7 @@ function generateHtml(data: PrintDocumentData): string {
 
     ${totalsHtml}
 
-    ${data.notes ? `<div style="margin-top:16px;font-size:12px;color:#64748b;background:#f8fafc;padding:8px 12px;border-radius:4px"><strong>ملاحظات:</strong> ${data.notes}</div>` : ''}
+    ${data.notes ? `<div style="margin-top:16px;font-size:12px;color:#64748b;background:#f8fafc;padding:8px 12px;border-radius:4px"><strong>ملاحظات:</strong> ${escapeLineBreaks(data.notes)}</div>` : ''}
 
     <div class="signatures">
       <div class="signature-box">

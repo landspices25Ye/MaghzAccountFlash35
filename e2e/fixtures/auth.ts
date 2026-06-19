@@ -23,7 +23,7 @@ const ONBOARDING_STORAGE = {
   version: 0,
 };
 
-export function useOnboardingBypass(context: { addInitScript: (fn: () => void) => Promise<void> }) {
+export function addOnboardingBypass(context: { addInitScript: (fn: () => void) => Promise<void> }) {
   return context.addInitScript((payload) => {
     try {
       window.localStorage.setItem('maghzaccount-onboarding', JSON.stringify(payload));
@@ -52,11 +52,10 @@ export async function logout(page: Page): Promise<void> {
 }
 
 export const test = base.extend({
-  context: async ({ context }, use) => {
-    await useOnboardingBypass(context);
-    await use(context);
+  context: async ({ context }, fixture) => {
+    await addOnboardingBypass(context);
+    await fixture(context);
   },
 });
 
 export { expect };
-

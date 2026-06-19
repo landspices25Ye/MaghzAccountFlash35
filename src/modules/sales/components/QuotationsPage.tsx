@@ -145,7 +145,12 @@ export const QuotationsPage: React.FC = () => {
       }
     } else {
       const seq = await getNextNumber('quotation', activeCompany.id);
-      quotationNumber = seq.number || `Q-${Date.now()}`;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('sales.quotation.numberError'));
+        setSaving(false);
+        return;
+      }
+      quotationNumber = seq.number;
       const res = await create(buildPayload(quotationNumber));
       if (res.success && res.id && activeCompany.id) {
         await logAudit({ userId: currentUser?.id || 'system', action: 'create', tableName: 'quotations', recordId: res.id, companyId: activeCompany.id });
@@ -188,7 +193,11 @@ export const QuotationsPage: React.FC = () => {
         setConfirmOpen(false);
         if (!activeCompany?.id) return;
         const seq = await getNextNumber('sales_invoice', activeCompany.id);
-        const invoiceNumber = seq.number || `INV-${Date.now()}`;
+        if (!seq.success || !seq.number) {
+          addToast('error', seq.error || t('sales.invoice.numberError'));
+          return;
+        }
+        const invoiceNumber = seq.number;
         const payload = {
           companyId: activeCompany.id,
           invoiceNumber,

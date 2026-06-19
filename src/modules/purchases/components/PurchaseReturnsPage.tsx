@@ -18,6 +18,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useToastStore } from '@/core/store/toastStore';
+import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 
 interface ReturnFormLine {
   productId: string;
@@ -58,6 +59,7 @@ export const PurchaseReturnsPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
+  const { getNextNumber } = useDocumentSequence();
   const [statusFilter, setStatusFilter] = useState<string>('');
   const returnFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
   const { returns, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post } = usePurchaseReturnsPaginated(activeCompany?.id || '', returnFilters);
@@ -119,9 +121,20 @@ export const PurchaseReturnsPage: React.FC = () => {
 
   const handleSave = useCallback(async () => {
     if (!activeCompany?.id || !form.supplierId) return;
-    const returnNumber = editingId
-      ? (returns.find(r => r.id === editingId)?.returnNumber || `PR-${Date.now()}`)
-      : `PR-${new Date().getFullYear()}-${String(returns.length + 1).padStart(4, '0')}`;
+    const existingReturn = editingId ? returns.find(r => r.id === editingId) : null;
+    if (editingId && !existingReturn?.returnNumber) {
+      addToast('error', t('purchases.return.numberError'));
+      return;
+    }
+    let returnNumber = existingReturn?.returnNumber || '';
+    if (!editingId) {
+      const seq = await getNextNumber('purchase_return', activeCompany.id);
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('purchases.return.numberError'));
+        return;
+      }
+      returnNumber = seq.number;
+    }
 
     const payload = {
       companyId: activeCompany.id,
@@ -160,7 +173,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     setModalOpen(false);
     setEditingId(null);
     setForm(initialForm());
-  }, [activeCompany, form, formTotal, editingId, returns, create, update, user, addToast, t]);
+  }, [activeCompany, form, formTotal, editingId, returns, create, update, user, addToast, t, getNextNumber]);
 
   const handleDelete = useCallback((id: string) => setConfirmDelete(id), []);
   const confirmDeleteAction = useCallback(async () => {

@@ -7,8 +7,7 @@ export function useDocumentSequence() {
     companyId: string
   ): Promise<{ success: boolean; number?: string; error?: string }> => {
     if (!companyId) {
-      const fallbackNum = Math.floor(Math.random() * 900000) + 100000;
-      return { success: true, number: `${documentType.toUpperCase().substring(0, 3)}-${fallbackNum}` };
+      return { success: false, error: 'معرّف الشركة مطلوب لتوليد رقم المستند' };
     }
     return getNextDocumentNumber(companyId, documentType);
   }, []);

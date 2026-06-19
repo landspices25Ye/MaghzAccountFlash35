@@ -124,7 +124,11 @@ export const PurchaseOrdersPage: React.FC = () => {
       orderNumber = orders.find(o => o.id === editingId)?.orderNumber || '';
     } else {
       const seq = await getNextNumber('purchase_order', activeCompany.id);
-      orderNumber = seq.number || `PO-${new Date().getFullYear()}-${String(orders.length + 1).padStart(4, '0')}`;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('purchases.order.numberError'));
+        return;
+      }
+      orderNumber = seq.number;
     }
 
     const payload = {

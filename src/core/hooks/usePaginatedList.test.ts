@@ -72,4 +72,36 @@ describe('usePaginatedList', () => {
     expect(result.current.items).toEqual([]);
     expect(result.current.total).toBe(0);
   });
+
+  it('handles thrown errors (not response errors)', async () => {
+    const fetchFn = vi.fn().mockRejectedValue(new Error('network down'));
+    const { result } = renderHook(() => usePaginatedList<Item>(fetchFn, []));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBe('network down');
+    expect(result.current.items).toEqual([]);
+    expect(result.current.total).toBe(0);
+  });
+
+  it('handles non-Error thrown values', async () => {
+    const fetchFn = vi.fn().mockRejectedValue('plain string');
+    const { result } = renderHook(() => usePaginatedList<Item>(fetchFn, []));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBe('plain string');
+  });
+
+  it('returns reset, setPage, setPageSize, and reload methods', async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      success: true,
+      data: { items: [], total: 200, page: 1, pageSize: 25, totalPages: 8 },
+    });
+    const { result } = renderHook(() =>
+      usePaginatedList<Item>(fetchFn, [], { initialPage: 2, initialPageSize: 50 })
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(typeof result.current.reset).toBe('function');
+    expect(typeof result.current.setPage).toBe('function');
+    expect(typeof result.current.setPageSize).toBe('function');
+    expect(typeof result.current.reload).toBe('function');
+  });
 });

@@ -93,7 +93,12 @@ export const ReceiptVouchersPage: React.FC = () => {
     let voucherNumber = form.voucherNumber || '';
     if (!isEditMode || !editingId) {
       const seq = await getNextNumber('receipt_voucher', activeCompany.id);
-      voucherNumber = seq.number || `RV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.floor(Math.random()*1000)}`;
+      if (!seq.success || !seq.number) {
+        addToast('error', seq.error || t('accounting.voucherNumberError'));
+        setIsSaving(false);
+        return;
+      }
+      voucherNumber = seq.number;
     }
 
     const payload = {
