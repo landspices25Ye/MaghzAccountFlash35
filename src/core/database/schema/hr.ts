@@ -44,6 +44,7 @@ export const attendance = pgTable('attendance', {
   checkIn: timestamp('check_in').notNull(),
   checkOut: timestamp('check_out'),
   overtimeHours: numeric('overtime_hours', { precision: 5, scale: 2 }).default('0'),
+  status: varchar('status', { length: 20 }).default('present').notNull(),
   notes: text('notes'),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
@@ -60,6 +61,9 @@ export const leaves = pgTable('leaves', {
   endDate: date('end_date').notNull(),
   days: numeric('days', { precision: 5, scale: 2 }).notNull(),
   status: varchar('status', { length: 20 }).default('pending').notNull(), // pending, approved, rejected
+  reason: text('reason'),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

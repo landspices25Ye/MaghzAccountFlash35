@@ -63,8 +63,8 @@ export const BranchesPage: React.FC = () => {
       
       if (editingId) {
         await adapter.query(
-          `UPDATE branches SET name = $1, code = $2, city = $3, phone = $4, is_active = $5 WHERE id = $6`,
-          [formData.name, formData.code, formData.city, formData.phone, formData.isActive, editingId]
+          `UPDATE branches SET name = $1, code = $2, city = $3, phone = $4, is_active = $5 WHERE id = $6 AND company_id = $7`,
+          [formData.name, formData.code, formData.city, formData.phone, formData.isActive, editingId, activeCompany.id]
         );
       } else {
         await adapter.query(
@@ -87,7 +87,7 @@ export const BranchesPage: React.FC = () => {
     if (!activeCompany?.id) return;
     try {
       const adapter = await getDbAdapter();
-      await adapter.query(`DELETE FROM branches WHERE id = $1`, [id]);
+      await adapter.query(`DELETE FROM branches WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
       addToast('success', t('settings.branches.deleted'));
       setShowDeleteConfirm(null); loadData();

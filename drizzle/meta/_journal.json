@@ -71,6 +71,13 @@
       "when": 1793500000000,
       "tag": "0009_performance_indexes_phase2",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794000000000,
+      "tag": "0010_schema_drift_fix",
+      "breakpoints": true
     }
   ]
 }

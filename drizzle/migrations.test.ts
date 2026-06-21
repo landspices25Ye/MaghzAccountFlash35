@@ -417,10 +417,64 @@ describe('Migration 0009: Performance indexes phase 2', () => {
     expect(mig9).toMatch(/pg_constraint WHERE conname/i);
   });
 
-  it('_journal.json has 10 entries (0000-0009)', () => {
+  it('_journal.json has 11 entries (0000-0010)', () => {
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf-8'));
-    expect(journal.entries.length).toBe(10);
-    expect(journal.entries[9].tag).toBe('0009_performance_indexes_phase2');
+    expect(journal.entries.length).toBe(11);
+    expect(journal.entries[10].tag).toBe('0010_schema_drift_fix');
+  });
+});
+
+describe('Migration 0010: Schema drift fix', () => {
+  let mig10: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0010_schema_drift_fix.sql');
+    mig10 = readFileSync(path, 'utf-8');
+  });
+
+  it('adds rating column to leads', () => {
+    expect(mig10).toMatch(/ALTER TABLE leads ADD COLUMN IF NOT EXISTS rating/i);
+    expect(mig10).toMatch(/DEFAULT 'warm' NOT NULL/i);
+  });
+
+  it('adds notes column to opportunities', () => {
+    expect(mig10).toMatch(/ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS notes/i);
+  });
+
+  it('adds status column to attendance', () => {
+    expect(mig10).toMatch(/ALTER TABLE attendance ADD COLUMN IF NOT EXISTS status/i);
+    expect(mig10).toMatch(/DEFAULT 'present' NOT NULL/i);
+  });
+
+  it('adds reason, approved_by, approved_at to leaves', () => {
+    expect(mig10).toMatch(/ALTER TABLE leaves ADD COLUMN IF NOT EXISTS reason/i);
+    expect(mig10).toMatch(/ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_by/i);
+    expect(mig10).toMatch(/ALTER TABLE leaves ADD COLUMN IF NOT EXISTS approved_at/i);
+  });
+
+  it('adds purchase_order_id to purchase_invoices', () => {
+    expect(mig10).toMatch(/ALTER TABLE purchase_invoices ADD COLUMN IF NOT EXISTS purchase_order_id/i);
+  });
+
+  it('adds description and received_quantity to purchase_order_lines', () => {
+    expect(mig10).toMatch(/ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS description/i);
+    expect(mig10).toMatch(/ALTER TABLE purchase_order_lines ADD COLUMN IF NOT EXISTS received_quantity/i);
+  });
+
+  it('adds description to purchase_return_lines', () => {
+    expect(mig10).toMatch(/ALTER TABLE purchase_return_lines ADD COLUMN IF NOT EXISTS description/i);
+  });
+
+  it('creates supporting indexes', () => {
+    expect(mig10).toContain('idx_leads_rating');
+    expect(mig10).toContain('idx_attendance_status');
+    expect(mig10).toContain('idx_purchase_invoices_purchase_order_id');
+    expect(mig10).toContain('idx_purchase_order_lines_received');
+  });
+
+  it('is idempotent (all IF NOT EXISTS)', () => {
+    expect(mig10).not.toMatch(/ADD COLUMN\s+(?!IF NOT EXISTS)/i);
+    expect(mig10).not.toMatch(/CREATE INDEX\s+(?!IF NOT EXISTS)/i);
   });
 });
 
@@ -457,5 +511,19 @@ describe('Drizzle schema TypeScript', () => {
     for (const name of expected) {
       expect(mod, `Missing Drizzle export ${name}`).toHaveProperty(name);
     }
+  });
+
+  it('Drizzle schema has drift-fix columns (0010)', { timeout: 30000 }, async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.leads.rating).toBeDefined();
+    expect(mod.opportunities.notes).toBeDefined();
+    expect(mod.attendance.status).toBeDefined();
+    expect(mod.leaves.reason).toBeDefined();
+    expect(mod.leaves.approvedBy).toBeDefined();
+    expect(mod.leaves.approvedAt).toBeDefined();
+    expect(mod.purchaseInvoices.purchaseOrderId).toBeDefined();
+    expect(mod.purchaseOrderLines.description).toBeDefined();
+    expect(mod.purchaseOrderLines.receivedQuantity).toBeDefined();
+    expect(mod.purchaseReturnLines.description).toBeDefined();
   });
 });

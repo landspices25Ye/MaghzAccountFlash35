@@ -11,6 +11,7 @@ export const leads = pgTable('leads', {
   company: varchar('company', { length: 255 }),
   source: varchar('source', { length: 100 }), // website, referral, social, etc.
   status: varchar('status', { length: 20 }).default('new').notNull(), // new, contacted, qualified, converted, lost
+  rating: varchar('rating', { length: 20 }).default('warm').notNull(), // hot, warm, cold
   estimatedValue: numeric('estimated_value', { precision: 18, scale: 4 }),
   assignedTo: uuid('assigned_to').references(() => users.id),
   notes: text('notes'),
@@ -32,6 +33,7 @@ export const opportunities = pgTable('opportunities', {
   probability: integer('probability').default(50), // 0-100
   expectedCloseDate: date('expected_close_date'),
   assignedTo: uuid('assigned_to').references(() => users.id),
+  notes: text('notes'),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

@@ -26,6 +26,7 @@ export const purchaseInvoices = pgTable('purchase_invoices', {
   companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
   invoiceNumber: varchar('invoice_number', { length: 50 }).notNull(),
   supplierId: uuid('supplier_id').notNull(),
+  purchaseOrderId: uuid('purchase_order_id'),
   date: date('date').notNull(),
   dueDate: date('due_date'),
   subtotal: numeric('subtotal', { precision: 18, scale: 4 }).notNull().default('0'),
@@ -80,9 +81,11 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
   id: uuid('id').defaultRandom().primaryKey(),
   orderId: uuid('order_id').notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  description: text('description'),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitPrice: numeric('unit_price', { precision: 18, scale: 4 }).notNull(),
   lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),
+  receivedQuantity: numeric('received_quantity', { precision: 18, scale: 4 }).notNull().default('0'),
 });
 
 // ─── Purchase Returns ─────────────────────────────────────────────────────────
@@ -109,6 +112,7 @@ export const purchaseReturnLines = pgTable('purchase_return_lines', {
   id: uuid('id').defaultRandom().primaryKey(),
   returnId: uuid('return_id').notNull().references(() => purchaseReturns.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  description: text('description'),
   quantity: numeric('quantity', { precision: 18, scale: 4 }).notNull(),
   unitPrice: numeric('unit_price', { precision: 18, scale: 4 }).notNull(),
   lineTotal: numeric('line_total', { precision: 18, scale: 4 }).notNull(),

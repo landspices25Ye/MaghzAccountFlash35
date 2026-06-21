@@ -66,8 +66,8 @@ export const CurrenciesPage: React.FC = () => {
       
       if (editingId) {
         await adapter.query(
-          `UPDATE currencies SET code = $1, name = $2, symbol = $3, exchange_rate = $4, is_active = $5 WHERE id = $6`,
-          [formData.code, formData.name, formData.symbol, formData.exchangeRate, formData.isActive, editingId]
+          `UPDATE currencies SET code = $1, name = $2, symbol = $3, exchange_rate = $4, is_active = $5 WHERE id = $6 AND company_id = $7`,
+          [formData.code, formData.name, formData.symbol, formData.exchangeRate, formData.isActive, editingId, activeCompany.id]
         );
       } else {
         await adapter.query(
@@ -91,7 +91,7 @@ export const CurrenciesPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`UPDATE currencies SET is_default = false WHERE company_id = $1`, [activeCompany.id]);
-      await adapter.query(`UPDATE currencies SET is_default = true WHERE id = $1`, [id]);
+      await adapter.query(`UPDATE currencies SET is_default = true WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       loadData();
     } catch {
       // Error handled by caller
@@ -102,7 +102,7 @@ export const CurrenciesPage: React.FC = () => {
     if (!activeCompany?.id) return;
     try {
       const adapter = await getDbAdapter();
-      await adapter.query(`DELETE FROM currencies WHERE id = $1`, [id]);
+      await adapter.query(`DELETE FROM currencies WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
       addToast('success', t('settings.currencies.deleted'));
       setShowDeleteConfirm(null); loadData();

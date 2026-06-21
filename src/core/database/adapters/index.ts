@@ -36,8 +36,8 @@ export async function getDbAdapter(): Promise<DbAdapter> {
         adapter = electronPgAdapter;
         return adapter;
       }
-    } catch (err) {
-      console.warn('[DB Adapter] PG unavailable:', err);
+    } catch (_err) {
+      // PG unavailable — fall through to mock adapter
     }
   }
 

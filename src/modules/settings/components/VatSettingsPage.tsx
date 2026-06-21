@@ -63,8 +63,8 @@ export const VatSettingsPage: React.FC = () => {
       
       if (editingId) {
         await adapter.query(
-          `UPDATE vat_settings SET name = $1, vat_rate = $2, account_id = $3, is_active = $4, updated_at = $5 WHERE id = $6`,
-          [formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString(), editingId]
+          `UPDATE vat_settings SET name = $1, vat_rate = $2, account_id = $3, is_active = $4, updated_at = $5 WHERE id = $6 AND company_id = $7`,
+          [formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString(), editingId, activeCompany.id]
         );
       } else {
         await adapter.query(
@@ -96,7 +96,7 @@ export const VatSettingsPage: React.FC = () => {
     if (!activeCompany?.id) return;
     try {
       const adapter = await getDbAdapter();
-      await adapter.query(`DELETE FROM vat_settings WHERE id = $1`, [id]);
+      await adapter.query(`DELETE FROM vat_settings WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({
         userId: user?.id || 'system',
         action: 'delete',

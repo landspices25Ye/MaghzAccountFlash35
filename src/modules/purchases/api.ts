@@ -758,9 +758,9 @@ export const purchasesApi = {
       if (data.lines) {
         for (const line of data.lines) {
           queries.push({
-            sql: `INSERT INTO purchase_order_lines (order_id, product_id, quantity, unit_price, line_total)
-            VALUES ($1, $2, $3, $4, $5)`,
-            params: [null, line.productId, line.quantity, line.unitPrice, line.lineTotal],
+            sql: `INSERT INTO purchase_order_lines (order_id, product_id, description, quantity, unit_price, line_total, received_quantity)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            params: [null, line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal, line.receivedQuantity ?? 0],
           });
         }
       }
@@ -981,9 +981,9 @@ export const purchasesApi = {
       ];
       for (const line of data.lines) {
         queries.push({
-          sql: `INSERT INTO purchase_return_lines (return_id, product_id, quantity, unit_price, line_total)
-          VALUES ($1, $2, $3, $4, $5)`,
-          params: [null, line.productId, line.quantity, line.unitPrice, line.lineTotal],
+          sql: `INSERT INTO purchase_return_lines (return_id, product_id, description, quantity, unit_price, line_total)
+          VALUES ($1, $2, $3, $4, $5, $6)`,
+          params: [null, line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal],
         });
       }
 

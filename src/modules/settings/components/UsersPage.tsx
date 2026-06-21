@@ -65,13 +65,13 @@ export const UsersPage: React.FC = () => {
       
       if (editingId) {
         await adapter.query(
-          `UPDATE users SET username = $1, email = $2, role = $3, is_active = $4 WHERE id = $5`,
-          [formData.username, formData.email, formData.role, formData.isActive, editingId]
+          `UPDATE users SET username = $1, email = $2, role = $3, is_active = $4 WHERE id = $5 AND company_id = $6`,
+          [formData.username, formData.email, formData.role, formData.isActive, editingId, activeCompany.id]
         );
       } else {
         await adapter.query(
-          `INSERT INTO users (id, company_id, username, email, password_hash, role, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, '', formData.role, formData.isActive, new Date().toISOString()]
+          `INSERT INTO users (id, company_id, username, email, password_hash, role, is_active, full_name, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, '', formData.role, formData.isActive, formData.username, new Date().toISOString()]
         );
       }
 
@@ -88,7 +88,7 @@ export const UsersPage: React.FC = () => {
     if (!activeCompany?.id || id === currentUser?.id) return;
     try {
       const adapter = await getDbAdapter();
-      await adapter.query(`DELETE FROM users WHERE id = $1`, [id]);
+      await adapter.query(`DELETE FROM users WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
       setShowDeleteConfirm(null); loadData();
     } catch {
@@ -109,7 +109,7 @@ export const UsersPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       const hashed = await hashPassword(newPassword);
-      await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [hashed, showResetPassword]);
+      await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2 AND company_id = $3`, [hashed, showResetPassword, activeCompany!.id]);
       setShowResetPassword(null); setNewPassword('');
     } catch {
       // Error handled by caller

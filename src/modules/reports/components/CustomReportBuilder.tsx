@@ -24,7 +24,7 @@ const AVAILABLE_TABLES: TableMeta[] = [
       { key: 'invoice_number', label: 'reports.customBuilder.col.invoiceNumber', type: 'string' },
       { key: 'customer_id', label: 'reports.customBuilder.col.customerId', type: 'string' },
       { key: 'date', label: 'reports.customBuilder.col.date', type: 'date' },
-      { key: 'total', label: 'reports.customBuilder.col.total', type: 'number' },
+      { key: 'total_amount', label: 'reports.customBuilder.col.totalAmount', type: 'number' },
       { key: 'status', label: 'reports.customBuilder.col.status', type: 'string' },
     ],
   },
@@ -36,7 +36,7 @@ const AVAILABLE_TABLES: TableMeta[] = [
       { key: 'invoice_number', label: 'reports.customBuilder.col.invoiceNumber', type: 'string' },
       { key: 'supplier_id', label: 'reports.customBuilder.col.supplierId', type: 'string' },
       { key: 'date', label: 'reports.customBuilder.col.date', type: 'date' },
-      { key: 'total', label: 'reports.customBuilder.col.total', type: 'number' },
+      { key: 'total_amount', label: 'reports.customBuilder.col.totalAmount', type: 'number' },
       { key: 'status', label: 'reports.customBuilder.col.status', type: 'string' },
     ],
   },
@@ -45,20 +45,31 @@ const AVAILABLE_TABLES: TableMeta[] = [
     label: 'reports.customBuilder.table.products',
     columns: [
       { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
-      { key: 'name', label: 'reports.customBuilder.col.name', type: 'string' },
+      { key: 'name_ar', label: 'reports.customBuilder.col.name', type: 'string' },
       { key: 'sku', label: 'reports.customBuilder.col.sku', type: 'string' },
-      { key: 'cost', label: 'reports.customBuilder.col.cost', type: 'number' },
-      { key: 'price', label: 'reports.customBuilder.col.price', type: 'number' },
-      { key: 'stock', label: 'reports.customBuilder.col.stock', type: 'number' },
+      { key: 'cost_price', label: 'reports.customBuilder.col.costPrice', type: 'number' },
+      { key: 'sale_price', label: 'reports.customBuilder.col.salePrice', type: 'number' },
+      { key: 'is_active', label: 'reports.customBuilder.col.isActive', type: 'string' },
     ],
   },
   {
-    name: 'contacts',
-    label: 'reports.customBuilder.table.contacts',
+    name: 'customers',
+    label: 'reports.customBuilder.table.customers',
     columns: [
       { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'code', label: 'reports.customBuilder.col.code', type: 'string' },
       { key: 'name', label: 'reports.customBuilder.col.name', type: 'string' },
-      { key: 'type', label: 'reports.customBuilder.col.type', type: 'string' },
+      { key: 'phone', label: 'reports.customBuilder.col.phone', type: 'string' },
+      { key: 'balance', label: 'reports.customBuilder.col.balance', type: 'number' },
+    ],
+  },
+  {
+    name: 'suppliers',
+    label: 'reports.customBuilder.table.suppliers',
+    columns: [
+      { key: 'id', label: 'reports.customBuilder.col.id', type: 'string' },
+      { key: 'code', label: 'reports.customBuilder.col.code', type: 'string' },
+      { key: 'name', label: 'reports.customBuilder.col.name', type: 'string' },
       { key: 'phone', label: 'reports.customBuilder.col.phone', type: 'string' },
       { key: 'balance', label: 'reports.customBuilder.col.balance', type: 'number' },
     ],
@@ -101,6 +112,7 @@ export const CustomReportBuilder: React.FC = () => {
   const [previewData, setPreviewData] = useState<Record<string, unknown>[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [reportName, setReportName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const steps: { key: Step; label: string }[] = [
     { key: 'table', label: t('reports.selectTable') },
@@ -133,12 +145,19 @@ export const CustomReportBuilder: React.FC = () => {
   const runPreview = async () => {
     if (!selectedTable || !activeCompany?.id) return;
     setIsLoading(true);
+    setError(null);
     try {
       const adapter = await getDbAdapter();
       const result = await adapter.query(`SELECT * FROM ${selectedTable.name} WHERE company_id = $1 LIMIT 500`, [activeCompany.id]);
       let rows = (result.rows || []) as Record<string, unknown>[];
 
-      // Apply filters
+      if (!result.success) {
+        setError(result.error || 'Query failed');
+        setPreviewData([]);
+        setStep('preview');
+        return;
+      }
+
       for (const f of filters) {
         rows = rows.filter((r) => {
           const val = String(r[f.column] ?? '').toLowerCase();
@@ -155,7 +174,6 @@ export const CustomReportBuilder: React.FC = () => {
         });
       }
 
-      // Project columns
       const projected = rows.map((row) => {
         const obj: Record<string, unknown> = {};
         for (const col of selectedColumns.length ? selectedColumns : selectedTable.columns.map((c) => ({ key: c.key, label: c.label }))) {
@@ -166,8 +184,10 @@ export const CustomReportBuilder: React.FC = () => {
 
       setPreviewData(projected);
       setStep('preview');
-    } catch {
-      // Error handled silently
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setPreviewData([]);
+      setStep('preview');
     }
     setIsLoading(false);
   };
@@ -374,7 +394,12 @@ export const CustomReportBuilder: React.FC = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
                 </div>
               )}
-              {!isLoading && previewData.length > 0 && (
+              {!isLoading && error && (
+                <div className="p-4 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 text-sm">
+                  {error}
+                </div>
+              )}
+              {!isLoading && !error && previewData.length > 0 && (
                 <div className="overflow-x-auto">
                   <Table
                     data={previewData.slice(0, 100)}
@@ -393,7 +418,7 @@ export const CustomReportBuilder: React.FC = () => {
                   />
                 </div>
               )}
-              {!isLoading && previewData.length === 0 && (
+              {!isLoading && !error && previewData.length === 0 && (
                 <EmptyState icon="search" title={t('reports.emptyResults.title')} description={t('reports.customBuilder.tryDifferent')} />
               )}
             </div>

@@ -211,9 +211,21 @@ export const hrApi = {
       const result = await adapter.query('SELECT * FROM payroll_runs WHERE company_id = $1 ORDER BY year DESC, month DESC', [companyId]);
       if (!result.success) return { success: false, error: result.error };
       const runs = (result.rows || []).map((r: Record<string, unknown>) => mapPayrollRunRow(r));
-      for (const run of runs) {
-        const linesRes = await adapter.query('SELECT * FROM payroll_lines WHERE payroll_run_id = $1', [run.id]);
-        run.lines = (linesRes.rows || []).map((r: Record<string, unknown>) => mapPayrollLineRow(r));
+      if (runs.length > 0) {
+        const runIds = runs.map((r) => r.id);
+        const linesRes = await adapter.query(
+          `SELECT pl.*, e.full_name as employee_name FROM payroll_lines pl LEFT JOIN employees e ON pl.employee_id = e.id WHERE pl.payroll_run_id = ANY($1)`,
+          [runIds]
+        );
+        const linesByRun = new Map<string, PayrollLine[]>();
+        for (const lr of (linesRes.rows || []) as Record<string, unknown>[]) {
+          const runId = String(lr.payroll_run_id);
+          if (!linesByRun.has(runId)) linesByRun.set(runId, []);
+          linesByRun.get(runId)!.push(mapPayrollLineRow(lr));
+        }
+        for (const run of runs) {
+          run.lines = linesByRun.get(run.id) || [];
+        }
       }
       return { success: true, data: runs };
     } catch (e) {
@@ -257,9 +269,21 @@ export const hrApi = {
       );
       if (!dataResult.success) return { success: false, error: dataResult.error };
       const runs = (dataResult.rows || []).map((r: Record<string, unknown>) => mapPayrollRunRow(r));
-      for (const run of runs) {
-        const linesRes = await adapter.query('SELECT * FROM payroll_lines WHERE payroll_run_id = $1', [run.id]);
-        run.lines = (linesRes.rows || []).map((r: Record<string, unknown>) => mapPayrollLineRow(r));
+      if (runs.length > 0) {
+        const runIds = runs.map((r) => r.id);
+        const linesRes = await adapter.query(
+          `SELECT pl.*, e.full_name as employee_name FROM payroll_lines pl LEFT JOIN employees e ON pl.employee_id = e.id WHERE pl.payroll_run_id = ANY($1)`,
+          [runIds]
+        );
+        const linesByRun = new Map<string, PayrollLine[]>();
+        for (const lr of (linesRes.rows || []) as Record<string, unknown>[]) {
+          const runId = String(lr.payroll_run_id);
+          if (!linesByRun.has(runId)) linesByRun.set(runId, []);
+          linesByRun.get(runId)!.push(mapPayrollLineRow(lr));
+        }
+        for (const run of runs) {
+          run.lines = linesByRun.get(run.id) || [];
+        }
       }
       return { success: true, data: paginatedResult(runs, total, p, ps) };
     } catch (e) {
@@ -373,7 +397,7 @@ export const hrApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `INSERT INTO leaves (company_id, employee_id, leave_type, start_date, end_date, days, status, reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+        `INSERT INTO leaves (company_id, employee_id, type, start_date, end_date, days, status, reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
         [data.companyId, data.employeeId, data.leaveType, data.startDate, data.endDate, data.days, data.status, data.reason]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
@@ -635,7 +659,7 @@ function mapLeaveRow(r: Record<string, unknown>): Leave {
     companyId: String(r.company_id),
     employeeId: String(r.employee_id),
     employeeName: r.employee_name ? String(r.employee_name) : undefined,
-    leaveType: String(r.leave_type) as Leave['leaveType'],
+    leaveType: String(r.type) as Leave['leaveType'],
     startDate: String(r.start_date),
     endDate: String(r.end_date),
     days: Number(r.days) || 0,

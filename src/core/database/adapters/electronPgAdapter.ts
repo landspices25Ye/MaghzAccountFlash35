@@ -39,9 +39,14 @@ const NUMERIC_COLUMNS = new Set([
   'vat_rate', 'amount', 'base_salary', 'allowances', 'deductions', 'overtime',
   'net_salary', 'value', 'estimated_value', 'probability', 'duration',
   'estimated_cost', 'actual_cost', 'planned_cost', 'variance_cost', 'variance_qty',
-  'unit_cost', 'stock_value', 'revenue', 'cost', 'profit', 'avg_value',
-  'credit_limit', 'tax_rate', 'rate', 'starting_number', 'current_number',
-  'increment_step', 'padding_length',
+  'unit_cost', 'actual_unit_cost', 'total_cost', 'stock_value', 'revenue', 'cost',
+  'profit', 'avg_value', 'credit_limit', 'tax_rate', 'rate',
+  'starting_number', 'current_number', 'increment_step', 'padding_length',
+  'base_currency_amount', 'base_currency_paid', 'base_currency_line_total',
+  'min_stock', 'max_stock', 'reorder_point', 'overtime_hours',
+  'produced_quantity', 'planned_quantity', 'actual_quantity',
+  'service_years', 'last_salary', 'eos_amount', 'days',
+  'system_qty', 'actual_qty', 'difference',
 ]);
 
 function normalizeRow(row: Record<string, unknown>): Record<string, unknown> {

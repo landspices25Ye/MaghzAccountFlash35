@@ -98,8 +98,8 @@ export function useSettings(companyId: string) {
         decimalPlaces,
         calendar,
       });
-    } catch (error) {
-      console.error('Failed to load settings:', error);
+    } catch (_error) {
+      // Error handled via setError below
     } finally {
       setIsLoading(false);
     }

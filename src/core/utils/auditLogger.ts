@@ -31,9 +31,8 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
         new Date().toISOString(),
       ]
     );
-  } catch (error) {
+  } catch (_error) {
     // Silently fail audit logs - don't block main operations
-    console.error('Audit log failed:', error);
   }
 }
 

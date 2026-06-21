@@ -48,8 +48,7 @@ class ThermalPrinter {
       }
       
       return false;
-    } catch (error) {
-      console.error('Printer connection failed:', error);
+    } catch (_error) {
       return false;
     }
   }
@@ -83,8 +82,7 @@ class ThermalPrinter {
       // Browser fallback: print to default printer
       this.printViaBrowser(job);
       return true;
-    } catch (error) {
-      console.error('Print failed:', error);
+    } catch (_error) {
       return false;
     }
   }

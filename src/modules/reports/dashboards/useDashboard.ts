@@ -123,8 +123,8 @@ export function useDashboard(companyId: string, filters: DashboardFilters) {
         if (!cancelled) {
           setData({ current: currentData, previous: previousData });
         }
-      } catch (err) {
-        console.error('[Dashboard] Failed to fetch data:', err);
+      } catch (_err) {
+        // Error handled silently — setState retains previous data
       }
       if (!cancelled) {
         setIsLoading(false);

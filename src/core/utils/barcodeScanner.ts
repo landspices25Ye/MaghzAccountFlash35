@@ -108,8 +108,7 @@ class BarcodeScanner {
       }
       
       return false;
-    } catch (error) {
-      console.error('Camera scan failed:', error);
+    } catch (_error) {
       return false;
     }
   }

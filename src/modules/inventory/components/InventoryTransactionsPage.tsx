@@ -82,7 +82,6 @@ export const InventoryTransactionsPage: React.FC = () => {
         { key: 'productId', header: t('inventory.productName') },
         { key: 'warehouseId', header: t('inventory.warehouse') },
         { key: 'quantity', header: t('inventory.quantity') },
-        { key: 'unitCost', header: t('inventory.costPrice') },
         { key: 'reference', header: t('inventory.reference') },
       ],
       `inventory-transactions-${new Date().toISOString().split('T')[0]}`

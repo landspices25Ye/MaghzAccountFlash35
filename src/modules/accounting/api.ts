@@ -92,8 +92,8 @@ export const accountingApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       const checkResult = await adapter.query<{ count: number }>(
-        `SELECT COUNT(*) as count FROM journal_entries WHERE account_id = $1`,
-        [id]
+        `SELECT COUNT(*) as count FROM journal_entries WHERE account_id = $1 AND company_id = $2`,
+        [id, companyId]
       );
       const count = Number(checkResult.rows?.[0]?.count) || 0;
       if (count > 0) {
@@ -279,13 +279,12 @@ export const accountingApi = {
         const deleteResult = await adapter.query(`DELETE FROM journal_entries WHERE transaction_id = $1 AND company_id = $2`, [id, companyId]);
         if (!deleteResult.success) return deleteResult;
 
-        for (const entry of data.entries) {
-          const entryResult = await adapter.query(
-            `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [entry.id || crypto.randomUUID(), id, entry.accountId, entry.debit, entry.credit, entry.memo, companyId]
-          );
-          if (!entryResult.success) return entryResult;
-        }
+        const entryQueries: { sql: string; params: unknown[] }[] = data.entries.map((entry) => ({
+          sql: `INSERT INTO journal_entries (id, transaction_id, account_id, debit, credit, memo, company_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          params: [entry.id || crypto.randomUUID(), id, entry.accountId, entry.debit, entry.credit, entry.memo, companyId]
+        }));
+        const entryResult = await adapter.transaction(entryQueries);
+        if (!entryResult.success) return { success: false, error: entryResult.error };
       }
       return { success: true };
     } catch (e) {

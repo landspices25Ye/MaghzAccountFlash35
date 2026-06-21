@@ -304,10 +304,17 @@ export const manufacturingApi = {
         const warehouseId = whRes.success && whRes.rows?.[0]?.id ? String(whRes.rows[0].id) : null;
 
         if (warehouseId) {
-          for (const c of consRows) {
+          if (consRows.length > 0) {
+            const consValues = consRows.map((_c: Record<string, unknown>, i: number) => {
+              const off = i * 7;
+              return `($${off + 1}, $${off + 2}, $${off + 3}, 'out', $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7})`;
+            }).join(', ');
+            const consParams = consRows.flatMap((c: Record<string, unknown>) => [
+              companyId, String(c.material_id), warehouseId, Number(c.planned_quantity), id, 'Production consumption', _userId ?? null
+            ]);
             await adapter.query(
-              `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes, created_by) VALUES ($1, $2, $3, 'out', $4, $5, $6, $7)`,
-              [companyId, String(c.material_id), warehouseId, Number(c.planned_quantity), id, 'Production consumption', _userId ?? null]
+              `INSERT INTO stock_movements (company_id, product_id, warehouse_id, type, quantity, reference, notes, created_by) VALUES ${consValues}`,
+              consParams
             );
           }
           await adapter.query(
@@ -335,7 +342,7 @@ export const manufacturingApi = {
     }
   },
 
-  async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }, companyId?: string): Promise<{ success: boolean; error?: string }> {
+  async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }, companyId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const adapter = await getDbAdapter();
       const fields: string[] = [];
