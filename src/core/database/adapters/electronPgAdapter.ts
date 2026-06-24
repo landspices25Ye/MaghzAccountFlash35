@@ -253,12 +253,12 @@ export const electronPgAdapter: DbAdapter = {
     if (result.success && result.rows?.length && result.rows[0]) {
       const productId = String(result.rows[0].id);
       if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
-        for (const categoryId of data.categoryIds) {
-          await getDB()._exec(
-            'INSERT INTO product_product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-            [productId, categoryId],
-          );
-        }
+        const catValues = data.categoryIds.map((_: string, i: number) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+        const catParams = data.categoryIds.flatMap((cid: string) => [productId, cid]);
+        await getDB()._exec(
+          `INSERT INTO product_product_categories (product_id, category_id) VALUES ${catValues} ON CONFLICT DO NOTHING`,
+          catParams,
+        );
       }
       return { success: true, id: productId };
     }

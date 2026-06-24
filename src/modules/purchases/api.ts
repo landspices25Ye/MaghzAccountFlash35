@@ -545,32 +545,26 @@ export const purchasesApi = {
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
       const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
-      const queries: { sql: string; params?: unknown[] }[] = [
-        {
-          sql: `INSERT INTO purchase_invoices (company_id, invoice_number, supplier_id, purchase_order_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, currency_code, exchange_rate, base_currency_amount, base_currency_paid, status, notes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id`,
-          params: [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes],
-        },
-      ];
-      for (let i = 0; i < data.lines.length; i++) {
-        const line = data.lines[i];
-        const lineCurrencyCode = line.currencyCode || currencyCode;
-        const lineExchangeRate = line.exchangeRate ?? exchangeRate;
-        const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
-        queries.push({
-          sql: `INSERT INTO purchase_invoice_lines (invoice_id, product_id, quantity, unit_price, line_total, currency_code, exchange_rate, base_currency_line_total)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          params: [null, line.productId, line.quantity, line.unitPrice, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal],
-        });
+      const params: unknown[] = [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes];
+      let sql = `WITH inv AS (INSERT INTO purchase_invoices (company_id,invoice_number,supplier_id,purchase_order_id,date,due_date,subtotal,discount_amount,vat_amount,total_amount,paid_amount,currency_code,exchange_rate,base_currency_amount,base_currency_paid,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
+        for (const line of data.lines) {
+          const lc = line.currencyCode || currencyCode;
+          const lr = line.exchangeRate ?? exchangeRate;
+          const lb = line.baseCurrencyLineTotal ?? (line.lineTotal * lr);
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6},$${off + 7})`);
+          params.push(line.productId, line.quantity, line.unitPrice, line.lineTotal, lc, lr, lb);
+        }
+        sql += `,lines_ins AS (INSERT INTO purchase_invoice_lines (invoice_id,product_id,quantity,unit_price,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT inv.id,v.* FROM inv JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
       }
-
-      const txResult = await adapter.transaction(queries);
-
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const invoiceId = txResult.results[0][0].id as string;
-        return { success: true, id: invoiceId };
+      sql += ' SELECT id FROM inv';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -748,30 +742,23 @@ export const purchasesApi = {
       const validation = validateInput(createPurchaseOrderSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const queries: { sql: string; params?: unknown[] }[] = [
-        {
-          sql: `INSERT INTO purchase_orders (company_id, order_number, supplier_id, date, expected_date, total_amount, status, notes)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-          params: [data.companyId, data.orderNumber, data.supplierId, data.date, data.expectedDate, data.totalAmount, data.status, data.notes],
-        },
-      ];
-      if (data.lines) {
+      const params: unknown[] = [data.companyId, data.orderNumber, data.supplierId, data.date, data.expectedDate, data.totalAmount, data.status, data.notes];
+      let sql = `WITH ord AS (INSERT INTO purchase_orders (company_id,order_number,supplier_id,date,expected_date,total_amount,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
         for (const line of data.lines) {
-          queries.push({
-            sql: `INSERT INTO purchase_order_lines (order_id, product_id, description, quantity, unit_price, line_total, received_quantity)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            params: [null, line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal, line.receivedQuantity ?? 0],
-          });
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6})`);
+          params.push(line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal, line.receivedQuantity ?? 0);
         }
+        sql += `,lines_ins AS (INSERT INTO purchase_order_lines (order_id,product_id,description,quantity,unit_price,line_total,received_quantity) SELECT ord.id,v.* FROM ord JOIN (VALUES ${lineValues.join(',')}) v(product_id,description,quantity,unit_price,line_total,received_quantity) ON true)`;
       }
-
-      const txResult = await adapter.transaction(queries);
-
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const orderId = txResult.results[0][0].id as string;
-        return { success: true, id: orderId };
+      sql += ' SELECT id FROM ord';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -972,28 +959,23 @@ export const purchasesApi = {
       const validation = validateInput(createPurchaseReturnSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const queries: { sql: string; params?: unknown[] }[] = [
-        {
-          sql: `INSERT INTO purchase_returns (company_id, return_number, invoice_id, supplier_id, date, subtotal, vat_amount, total_amount, status, notes, reason)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-          params: [data.companyId, data.returnNumber, data.invoiceId || null, data.supplierId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.status, data.notes, data.reason],
-        },
-      ];
-      for (const line of data.lines) {
-        queries.push({
-          sql: `INSERT INTO purchase_return_lines (return_id, product_id, description, quantity, unit_price, line_total)
-          VALUES ($1, $2, $3, $4, $5, $6)`,
-          params: [null, line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal],
-        });
+      const params: unknown[] = [data.companyId, data.returnNumber, data.invoiceId || null, data.supplierId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.status, data.notes, data.reason];
+      let sql = `WITH ret AS (INSERT INTO purchase_returns (company_id,return_number,invoice_id,supplier_id,date,subtotal,vat_amount,total_amount,status,notes,reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
+        for (const line of data.lines) {
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5})`);
+          params.push(line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal);
+        }
+        sql += `,lines_ins AS (INSERT INTO purchase_return_lines (return_id,product_id,description,quantity,unit_price,line_total) SELECT ret.id,v.* FROM ret JOIN (VALUES ${lineValues.join(',')}) v(product_id,description,quantity,unit_price,line_total) ON true)`;
       }
-
-      const txResult = await adapter.transaction(queries);
-
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const returnId = txResult.results[0][0].id as string;
-        return { success: true, id: returnId };
+      sql += ' SELECT id FROM ret';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }

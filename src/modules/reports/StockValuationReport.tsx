@@ -44,6 +44,7 @@ export const StockValuationReport = () => {
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductValuation[]>([]);
   const [categories, setCategories] = useState<CategoryValuation[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseValuation[]>([]);
@@ -55,7 +56,8 @@ export const StockValuationReport = () => {
 
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
 
       const prodResult = await adapter.query(
         `SELECT p.id, p.name_ar, p.sku, p.code, p.cost_price, p.sale_price,
@@ -137,7 +139,14 @@ export const StockValuationReport = () => {
         })),
       );
 
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load stock valuation');
+        setProducts([]);
+        setCategories([]);
+        setWarehouses([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     load();

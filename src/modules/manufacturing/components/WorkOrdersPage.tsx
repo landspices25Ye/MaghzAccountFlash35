@@ -336,16 +336,13 @@ export const WorkOrdersPage: React.FC = () => {
               <Can action="edit" module="manufacturing">
                 <Button variant={isEditingActual ? 'primary' : 'secondary'} onClick={async () => {
                   if (isEditingActual && viewing) {
-                    for (const line of viewing.lines) {
-                      const input = document.getElementById(`actual-qty-${line.id}`) as HTMLInputElement;
-                      const costInput = document.getElementById(`actual-cost-${line.id}`) as HTMLInputElement;
-                      if (input) {
-                        await manufacturingApi.updateConsumption(line.id, {
-                          actualQuantity: Number(input.value) || 0,
-                          actualUnitCost: costInput ? Number(costInput.value) || line.unitCost : line.unitCost,
-                        }, companyId);
-                      }
-                    }
+                    const consumptions = viewing.lines.map(line => ({
+                      id: line.id,
+                      actualQuantity: Number((document.getElementById(`actual-qty-${line.id}`) as HTMLInputElement)?.value) || 0,
+                      actualUnitCost: Number((document.getElementById(`actual-cost-${line.id}`) as HTMLInputElement)?.value) || line.unitCost,
+                      unitCost: line.unitCost,
+                    }));
+                    await manufacturingApi.batchUpdateConsumptions(consumptions, companyId);
                     const res = await manufacturingApi.getWorkOrderById(viewing.workOrder.id, companyId);
                     if (res.success && res.data) setViewing(res.data);
                     setIsEditingActual(false);

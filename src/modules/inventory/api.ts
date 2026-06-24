@@ -103,12 +103,12 @@ export const inventoryApi = {
       if (data.categoryIds !== undefined) {
         await adapter.query('DELETE FROM product_product_categories WHERE product_id = $1 AND $2 = (SELECT company_id FROM products WHERE id = $1)', [id, companyId]);
         if (data.categoryIds.length > 0) {
-          for (const categoryId of data.categoryIds) {
-            await adapter.query(
-              'INSERT INTO product_product_categories (product_id, category_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-              [id, categoryId]
-            );
-          }
+          const catValues = data.categoryIds.map((_: string, i: number) => `($${i * 2 + 1}, $${i * 2 + 2})`).join(', ');
+          const catParams = data.categoryIds.flatMap((cid: string) => [id, cid]);
+          await adapter.query(
+            `INSERT INTO product_product_categories (product_id, category_id) VALUES ${catValues} ON CONFLICT DO NOTHING`,
+            catParams
+          );
         }
       }
       return adapter.query(

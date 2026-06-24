@@ -177,26 +177,34 @@ export const hrApi = {
 
   async saveAttendance(records: Omit<AttendanceRecord, 'id'>[]): Promise<{ success: boolean; error?: string }> {
     try {
-      if (records.length > 0) {
-        const cidValidation = validateInput(companyIdSchema, records[0].companyId);
-        if (!cidValidation.success) return { success: false, error: cidValidation.error };
-      }
+      if (records.length === 0) return { success: true };
+      const cidValidation = validateInput(companyIdSchema, records[0].companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
+      // Pre-fetch existing attendance records in one query
+      const placeholders = records.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(',');
+      const empParams = records.flatMap(r => [r.employeeId, r.date, r.companyId]);
+      const existingRes = await adapter.query<{ employee_id: string; date: string; id: string }>(
+        `SELECT employee_id, date, id FROM attendance WHERE (employee_id, date, company_id) IN (${placeholders})`,
+        empParams
+      );
+      const existingMap = new Map<string, string>();
+      for (const row of (existingRes.rows || [])) {
+        existingMap.set(`${row.employee_id}:${row.date}`, row.id);
+      }
+      // Build upsert queries
+      const queries: { sql: string; params: unknown[] }[] = [];
       for (const rec of records) {
-        const existing = await adapter.query('SELECT id FROM attendance WHERE employee_id = $1 AND date = $2 AND company_id = $3 LIMIT 1', [rec.employeeId, rec.date, rec.companyId]);
-        if (existing.rows?.[0]) {
-          await adapter.query(
-            'UPDATE attendance SET check_in = $1, check_out = $2, overtime_hours = $3, status = $4, notes = $5 WHERE id = $6 AND company_id = $7',
-            [rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes, existing.rows[0].id, rec.companyId]
-          );
+        const key = `${rec.employeeId}:${rec.date}`;
+        const existingId = existingMap.get(key);
+        if (existingId) {
+          queries.push({ sql: 'UPDATE attendance SET check_in = $1, check_out = $2, overtime_hours = $3, status = $4, notes = $5 WHERE id = $6 AND company_id = $7', params: [rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes, existingId, rec.companyId] });
         } else {
-          await adapter.query(
-            'INSERT INTO attendance (company_id, employee_id, date, check_in, check_out, overtime_hours, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-            [rec.companyId, rec.employeeId, rec.date, rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes]
-          );
+          queries.push({ sql: 'INSERT INTO attendance (company_id, employee_id, date, check_in, check_out, overtime_hours, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', params: [rec.companyId, rec.employeeId, rec.date, rec.checkIn, rec.checkOut, rec.overtimeHours, rec.status, rec.notes] });
         }
       }
-      return { success: true };
+      const result = await adapter.transaction(queries);
+      return { success: result.success, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -301,10 +309,15 @@ export const hrApi = {
       ]);
       if (tx.success && tx.results?.[0]?.[0]) {
         const runId = tx.results[0][0].id as string;
-        for (const line of data.lines) {
+        if (data.lines.length > 0) {
+          const lineValues = data.lines.map((_: typeof data.lines[0], i: number) => {
+            const off = i * 7;
+            return `($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7})`;
+          }).join(', ');
+          const lineParams = data.lines.flatMap((line: typeof data.lines[0]) => [runId, line.employeeId, line.baseSalary, line.allowances, line.deductions, line.overtime, line.netSalary]);
           await adapter.query(
-            `INSERT INTO payroll_lines (payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [runId, line.employeeId, line.baseSalary, line.allowances, line.deductions, line.overtime, line.netSalary]
+            `INSERT INTO payroll_lines (payroll_run_id, employee_id, base_salary, allowances, deductions, overtime, net_salary) VALUES ${lineValues}`,
+            lineParams
           );
         }
         return { success: true, id: runId };

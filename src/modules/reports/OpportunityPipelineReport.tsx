@@ -40,6 +40,7 @@ export const OpportunityPipelineReport: React.FC = () => {
   const [stages, setStages] = useState<StageSummary[]>([]);
   const [repData, setRepData] = useState<RepSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeCompany?.id) return;
@@ -47,7 +48,8 @@ export const OpportunityPipelineReport: React.FC = () => {
 
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
 
       const stageResult = await adapter.query<Record<string, unknown>>(
         `SELECT
@@ -106,7 +108,13 @@ export const OpportunityPipelineReport: React.FC = () => {
         })));
       }
 
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load pipeline');
+        setStages([]);
+        setRepData([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     load();

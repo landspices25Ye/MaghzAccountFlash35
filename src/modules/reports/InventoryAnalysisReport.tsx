@@ -30,6 +30,7 @@ export const InventoryAnalysisReport: React.FC = () => {
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [items, setItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'good' | 'low' | 'out'>('all');
   const [view, setView] = useState<'all' | 'lowStock' | 'slowMoving' | 'abc'>('all');
@@ -39,7 +40,8 @@ export const InventoryAnalysisReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
       const stockResult = await adapter.query(
         `SELECT s.id AS stock_id,
                 s.product_id,
@@ -108,7 +110,12 @@ export const InventoryAnalysisReport: React.FC = () => {
         };
       });
       setItems(rows);
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load inventory analysis');
+        setItems([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [activeCompany?.id]);

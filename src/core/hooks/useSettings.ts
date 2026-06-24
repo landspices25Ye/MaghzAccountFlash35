@@ -19,12 +19,12 @@ export function useDocumentSequences(companyId: string) {
   }, [companyId]);
 
   const update = useCallback(async (id: string, data: Partial<DocumentSequence>) => {
-    const result = await settingsApi.updateDocumentSequence(id, data);
+    const result = await settingsApi.updateDocumentSequence(id, data, companyId);
     if (result.success) {
       setSequences(prev => prev.map(s => s.id === id ? { ...s, ...data } : s));
     }
     return result;
-  }, []);
+  }, [companyId]);
 
   const getNextNumber = useCallback(async (documentType: string) => {
     return settingsApi.getNextDocumentNumber(companyId, documentType);
@@ -66,10 +66,10 @@ export function useProductTypes(companyId: string): {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<ProductType>) => {
-    const result = await settingsApi.updateProductType(id, data);
+    const result = await settingsApi.updateProductType(id, data, companyId);
     if (result.success) setTypes(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await settingsApi.deleteProductType(id, companyId);
@@ -103,10 +103,10 @@ export function useUnits(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Unit>) => {
-    const result = await settingsApi.updateUnit(id, data);
+    const result = await settingsApi.updateUnit(id, data, companyId);
     if (result.success) setUnits(prev => prev.map(u => u.id === id ? { ...u, ...data } : u));
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await settingsApi.deleteUnit(id, companyId);
@@ -140,10 +140,10 @@ export function useCashBoxes(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<CashBox>) => {
-    const result = await settingsApi.updateCashBox(id, data);
+    const result = await settingsApi.updateCashBox(id, data, companyId);
     if (result.success) setBoxes(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await settingsApi.deleteCashBox(id, companyId);
@@ -177,10 +177,10 @@ export function useBanks(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<Bank>) => {
-    const result = await settingsApi.updateBank(id, data);
+    const result = await settingsApi.updateBank(id, data, companyId);
     if (result.success) setBanks(prev => prev.map(b => b.id === id ? { ...b, ...data } : b));
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await settingsApi.deleteBank(id, companyId);
@@ -214,10 +214,10 @@ export function useCostCenters(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<CostCenter>) => {
-    const result = await settingsApi.updateCostCenter(id, data);
+    const result = await settingsApi.updateCostCenter(id, data, companyId);
     if (result.success) setCenters(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     return result;
-  }, []);
+  }, [companyId]);
 
   const remove = useCallback(async (id: string) => {
     const result = await settingsApi.deleteCostCenter(id, companyId);
@@ -251,10 +251,10 @@ export function usePayrollComponents(companyId: string) {
   }, []);
 
   const update = useCallback(async (id: string, data: Partial<PayrollComponent>) => {
-    const result = await settingsApi.updatePayrollComponent(id, data);
+    const result = await settingsApi.updatePayrollComponent(id, data, companyId);
     if (result.success) setComponents(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
     return result;
-  }, []);
+  }, [companyId]);
 
   return { components, isLoading, create, update };
 }
@@ -276,10 +276,10 @@ export function useDefaultAccounts(companyId: string) {
   }, [companyId]);
 
   const update = useCallback(async (id: string, accountId: string | null) => {
-    const result = await settingsApi.updateDefaultAccount(id, accountId);
+    const result = await settingsApi.updateDefaultAccount(id, accountId, companyId);
     if (result.success) setAccounts(prev => prev.map(a => a.id === id ? { ...a, accountId } : a));
     return result;
-  }, []);
+  }, [companyId]);
 
   const applyTemplate = useCallback(async (template: 'trading' | 'manufacturing' | 'services') => {
     const result = await settingsApi.applyDefaultTemplate(companyId, template);

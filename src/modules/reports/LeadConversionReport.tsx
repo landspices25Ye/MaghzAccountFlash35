@@ -53,6 +53,7 @@ export const LeadConversionReport: React.FC = () => {
   const [funnelData, setFunnelData] = useState<Array<{ stage: string; count: number }>>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<Array<{ month: string; total: number; converted: number }>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -75,7 +76,8 @@ export const LeadConversionReport: React.FC = () => {
 
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
 
       const conditions: string[] = ['company_id = $1'];
       const params: unknown[] = [companyId];
@@ -87,7 +89,7 @@ export const LeadConversionReport: React.FC = () => {
         `SELECT
            COUNT(*)::int AS total,
            COALESCE(SUM(CASE WHEN status = 'contacted' THEN 1 ELSE 0 END))::int AS contacted,
-           COALESCE(SUM(CASE WHEN status IN ('qualified', 'converted') THEN 1 ELSE 0 END))::int AS qualified,
+           COALESCE(SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END))::int AS qualified,
            COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END))::int AS converted,
            COALESCE(SUM(CASE WHEN status = 'lost' THEN 1 ELSE 0 END))::int AS lost,
            COALESCE(SUM(estimated_value), 0) AS total_estimated,
@@ -101,7 +103,7 @@ export const LeadConversionReport: React.FC = () => {
            COALESCE(source, 'unknown') AS source,
            COUNT(*)::int AS total,
            COALESCE(SUM(CASE WHEN status = 'contacted' THEN 1 ELSE 0 END))::int AS contacted,
-           COALESCE(SUM(CASE WHEN status IN ('qualified', 'converted') THEN 1 ELSE 0 END))::int AS qualified,
+           COALESCE(SUM(CASE WHEN status = 'qualified' THEN 1 ELSE 0 END))::int AS qualified,
            COALESCE(SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END))::int AS converted,
            COALESCE(SUM(CASE WHEN status = 'lost' THEN 1 ELSE 0 END))::int AS lost
          FROM leads ${whereBase}
@@ -186,7 +188,15 @@ export const LeadConversionReport: React.FC = () => {
         setMonthlyTrend([]);
       }
 
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load lead conversion');
+        setSummary(null);
+        setSourceData([]);
+        setFunnelData([]);
+        setMonthlyTrend([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     load();

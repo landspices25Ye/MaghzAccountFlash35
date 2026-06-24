@@ -14,6 +14,7 @@ export const CustomerStatementReport: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [customers, setCustomers] = useState<ReturnType<typeof aggregateCustomerAging>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -24,7 +25,8 @@ export const CustomerStatementReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
       const contactsResult = await adapter.getContacts(companyId, 'customer');
       const contacts = (contactsResult.data || []) as Array<{ id: string; name: string; phone?: string; balance?: number }>;
 
@@ -45,7 +47,12 @@ export const CustomerStatementReport: React.FC = () => {
         contacts.map((c) => ({ id: c.id, name: c.name, phone: c.phone || '', balance: c.balance || 0 })),
       );
       setCustomers(aged);
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load customer statement');
+        setCustomers([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [activeCompany?.id, fromDate, toDate, asOfDate]);
@@ -166,12 +173,13 @@ export const CustomerStatementReport: React.FC = () => {
         {AGING_BUCKETS.map((bucket, i) => {
           const total = i === 0 ? totals.total0to30 : i === 1 ? totals.total31to60 : i === 2 ? totals.total61to90 : totals.total90plus;
           const count = i === 0 ? totals.count0to30 : i === 1 ? totals.count31to60 : i === 2 ? totals.count61to90 : totals.count90plus;
-          const color = i === 0 ? 'emerald' : i === 1 ? 'amber' : i === 2 ? 'orange' : 'rose';
+          const colorClass = i === 0 ? 'emerald' : i === 1 ? 'amber' : i === 2 ? 'orange' : 'rose';
+          const colorMap: Record<string, string> = { emerald: 'text-emerald-600 dark:text-emerald-400', amber: 'text-amber-600 dark:text-amber-400', orange: 'text-orange-600 dark:text-orange-400', rose: 'text-rose-600 dark:text-rose-400' };
           return (
             <Card key={bucket.label}>
               <div className="p-4 text-center">
                 <p className="text-sm text-slate-500 dark:text-slate-400">{bucket.label} {t('reports.days')}</p>
-                <p className={`text-xl font-bold text-${color}-600 dark:text-${color}-400`}>{formatCurrency(total)}</p>
+                <p className={`text-xl font-bold ${colorMap[colorClass]}`}>{formatCurrency(total)}</p>
                 <p className="text-xs text-slate-400 mt-1">{count} {t('reports.customerCount')}</p>
               </div>
             </Card>

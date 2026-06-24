@@ -18,7 +18,6 @@ interface SalesLine {
   date: string;
   customerName: string;
   productName: string;
-  repName: string;
   revenue: number;
   invoiceCount: number;
   avgValue: number;
@@ -47,7 +46,6 @@ export const SalesAnalysisReport: React.FC = () => {
   const [toDate, setToDate] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
   const [productFilter, setProductFilter] = useState('');
-  const [repFilter, setRepFilter] = useState('');
   const [pivotBy, setPivotBy] = useState<'none' | 'customer' | 'product' | 'month'>('none');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -73,35 +71,36 @@ export const SalesAnalysisReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
-      // Single SQL with JOINs: filter by sales_invoices.company_id (lines do not carry it).
-      // Expose invoice date + customer + product + line revenue.
-      const result = await adapter.query(
-        `SELECT i.id AS invoice_id,
-                i.date,
-                i.status,
-                i.total_amount,
-                i.paid_amount,
-                i.currency_code,
-                c.name AS customer_name,
-                l.id AS line_id,
-                l.product_id,
-                l.quantity,
-                l.unit_price,
-                l.line_total,
-                l.discount_percent,
-                l.vat_percent,
-                p.name_ar AS product_name,
-                p.name_en AS product_name_en
-           FROM sales_invoices i
-           LEFT JOIN customers c ON c.id = i.customer_id
-           LEFT JOIN sales_invoice_lines l ON l.invoice_id = i.id
-           LEFT JOIN products p ON p.id = l.product_id
-          WHERE i.company_id = $1
-            AND i.status != 'cancelled'
-          ORDER BY i.date DESC, i.id DESC, l.id ASC`,
-        [companyId]
-      );
+      try {
+        const adapter = await getDbAdapter();
+        const result = await adapter.query(
+          `SELECT i.id AS invoice_id,
+                  i.date,
+                  i.status,
+                  i.total_amount,
+                  i.paid_amount,
+                  i.currency_code,
+                  c.name_ar AS customer_name,
+                  l.id AS line_id,
+                  l.product_id,
+                  l.quantity,
+                  l.unit_price,
+                  l.line_total,
+                  l.discount_percent,
+                  l.vat_percent,
+                  p.name_ar AS product_name,
+                  p.name_en AS product_name_en
+             FROM sales_invoices i
+             LEFT JOIN customers c ON c.id = i.customer_id
+             LEFT JOIN sales_invoice_lines l ON l.invoice_id = i.id
+             LEFT JOIN products p ON p.id = l.product_id
+            WHERE i.company_id = $1
+              AND i.status != 'cancelled'
+              AND ($2::date IS NULL OR i.date >= $2::date)
+              AND ($3::date IS NULL OR i.date <= $3::date)
+            ORDER BY i.date DESC, i.id DESC, l.id ASC`,
+          [companyId, fromDate || null, toDate || null]
+        );
       const dbRows = (result.rows || []) as Record<string, unknown>[];
       const months = [t('reports.months.jan'),t('reports.months.feb'),t('reports.months.mar'),t('reports.months.apr'),t('reports.months.may'),t('reports.months.jun'),t('reports.months.jul'),t('reports.months.aug'),t('reports.months.sep'),t('reports.months.oct'),t('reports.months.nov'),t('reports.months.dec')];
 
@@ -148,7 +147,6 @@ export const SalesAnalysisReport: React.FC = () => {
             date: entry.date,
             customerName: entry.customerName,
             productName: '-',
-            repName: '-',
             revenue: 0,
             invoiceCount: 1,
             avgValue: 0,
@@ -161,7 +159,6 @@ export const SalesAnalysisReport: React.FC = () => {
               date: entry.date,
               customerName: entry.customerName,
               productName: l.productName,
-              repName: '-',
               revenue: l.lineTotal,
               invoiceCount: 1,
               avgValue: l.lineTotal,
@@ -171,25 +168,22 @@ export const SalesAnalysisReport: React.FC = () => {
         }
       }
       setRawData(rows);
-      setIsLoading(false);
+      } catch (_err) {
+        setRawData([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
-  }, [activeCompany?.id, currencies, t]);
+  }, [activeCompany?.id, currencies, fromDate, toDate, t]);
 
   const filteredData = useMemo(() => {
     return rawData.filter((row) => {
-      if (fromDate && row.date) {
-        if (new Date(row.date) < new Date(fromDate)) return false;
-      }
-      if (toDate && row.date) {
-        if (new Date(row.date) > new Date(toDate)) return false;
-      }
       if (customerFilter && !(row.customerName?.toLowerCase() || '').includes(customerFilter.toLowerCase())) return false;
       if (productFilter && !(row.productName?.toLowerCase() || '').includes(productFilter.toLowerCase())) return false;
-      if (repFilter && !(row.repName?.toLowerCase() || '').includes(repFilter.toLowerCase())) return false;
       return true;
     });
-  }, [rawData, fromDate, toDate, customerFilter, productFilter, repFilter]);
+  }, [rawData, customerFilter, productFilter]);
 
   const pivotData = useMemo((): PivotRow[] => {
     if (pivotBy === 'none') return [];
@@ -235,7 +229,6 @@ export const SalesAnalysisReport: React.FC = () => {
       { key: 'month', header: t('reports.month') },
       { key: 'customerName', header: t('reports.customer') },
       { key: 'productName', header: t('reports.product') },
-      { key: 'repName', header: t('reports.salesRep') },
       { key: 'revenue', header: t('reports.revenue') },
       { key: 'invoiceCount', header: t('reports.invoicesCount') },
     ];
@@ -261,7 +254,6 @@ export const SalesAnalysisReport: React.FC = () => {
     setToDate('');
     setCustomerFilter('');
     setProductFilter('');
-    setRepFilter('');
     setPivotBy('none');
   };
 
@@ -345,10 +337,6 @@ export const SalesAnalysisReport: React.FC = () => {
               <div>
                 <label className="block text-xs text-slate-500 mb-1">{t('reports.product')}</label>
                 <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.productName')} value={productFilter} onChange={(e) => setProductFilter(e.target.value)} />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">{t('reports.salesRep')}</label>
-                <input type="text" className="w-full px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" placeholder={t('reports.placeholder.repName')} value={repFilter} onChange={(e) => setRepFilter(e.target.value)} />
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">{t('reports.pivotTable')}</label>
@@ -448,7 +436,6 @@ export const SalesAnalysisReport: React.FC = () => {
                 { key: 'date', header: t('reports.date') },
                 { key: 'customerName', header: t('reports.customer') },
                 { key: 'productName', header: t('reports.product') },
-                { key: 'repName', header: t('reports.salesRep') },
                 { key: 'currencyCode', header: t('reports.currency'), align: 'right', render: (row) => <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{row.currencyCode}</span> },
                 { key: 'revenue', header: t('reports.revenue'), align: 'right', render: (row) => formatCurrency(row.revenue) },
               ]}

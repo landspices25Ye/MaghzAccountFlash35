@@ -403,17 +403,21 @@ export const CustomReportBuilder: React.FC = () => {
                 <div className="overflow-x-auto">
                   <Table
                     data={previewData.slice(0, 100)}
-                    columns={(selectedColumns.length ? selectedColumns : selectedTable!.columns.map((c) => ({ key: c.key, label: c.label }))).map((c) => ({
-                      key: c.key,
-                      header: c.label,
-                      align: typeof previewData[0]?.[c.key] === 'number' ? 'right' : 'left',
-                      render: (row: Record<string, unknown>) => {
-                        const val = row[c.key];
-                        if (val === null || val === undefined) return '-';
-                        if (typeof val === 'number') return formatCurrency(val);
-                        return String(val);
-                      },
-                    }))}
+                    columns={(selectedColumns.length ? selectedColumns : selectedTable!.columns.map((c) => ({ key: c.key, label: c.label }))).map((c) => {
+                      const colDef = selectedTable!.columns.find((tc) => tc.key === c.key);
+                      const isCurrency = colDef?.type === 'number';
+                      return {
+                        key: c.key,
+                        header: c.label,
+                        align: isCurrency ? 'right' : 'left',
+                        render: (row: Record<string, unknown>) => {
+                          const val = row[c.key];
+                          if (val === null || val === undefined) return '-';
+                          if (isCurrency && typeof val === 'number') return formatCurrency(val);
+                          return String(val);
+                        },
+                      };
+                    })}
                     keyExtractor={(row, i) => `${row.id || i}-${i}`}
                   />
                 </div>

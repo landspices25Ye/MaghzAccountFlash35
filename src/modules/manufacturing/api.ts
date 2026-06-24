@@ -342,6 +342,23 @@ export const manufacturingApi = {
     }
   },
 
+  async batchUpdateConsumptions(consumptions: { id: string; actualQuantity: number; actualUnitCost: number; unitCost: number }[], companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const adapter = await getDbAdapter();
+      const queries: { sql: string; params: unknown[] }[] = [];
+      for (const c of consumptions) {
+        queries.push({
+          sql: `UPDATE work_order_consumptions SET actual_quantity = $1, actual_unit_cost = $2 WHERE id = $3 AND work_order_id IN (SELECT id FROM work_orders WHERE company_id = $4)`,
+          params: [c.actualQuantity, c.actualUnitCost, c.id, companyId],
+        });
+      }
+      const result = await adapter.transaction(queries);
+      return { success: result.success, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async updateConsumption(consumptionId: string, data: { actualQuantity?: number; actualUnitCost?: number }, companyId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const adapter = await getDbAdapter();

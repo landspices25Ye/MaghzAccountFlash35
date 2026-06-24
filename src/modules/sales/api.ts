@@ -313,29 +313,26 @@ export const salesApi = {
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
       const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
-      const queries: { sql: string; params: unknown[] }[] = [
-        { sql: `INSERT INTO sales_invoices (company_id, invoice_number, customer_id, date, due_date, subtotal, discount_amount, vat_amount, total_amount, paid_amount, currency_code, exchange_rate, base_currency_amount, base_currency_paid, status, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-        params: [data.companyId, data.invoiceNumber, data.customerId, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes] },
-      ];
-      let lineIdx = 17;
-      for (const line of data.lines) {
-        const lineCurrencyCode = line.currencyCode || currencyCode;
-        const lineExchangeRate = line.exchangeRate ?? exchangeRate;
-        const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
-        queries.push({
-          sql: `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total, currency_code, exchange_rate, base_currency_line_total)
-          VALUES ((SELECT id FROM sales_invoices WHERE invoice_number = $2 AND company_id = $1 LIMIT 1), $${lineIdx}, $${lineIdx + 1}, $${lineIdx + 2}, $${lineIdx + 3}, $${lineIdx + 4}, $${lineIdx + 5}, $${lineIdx + 6}, $${lineIdx + 7}, $${lineIdx + 8})`,
-          params: [data.companyId, data.invoiceNumber, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal]
-        });
-        lineIdx += 9;
+      const params: unknown[] = [data.companyId, data.invoiceNumber, data.customerId, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes];
+      let sql = `WITH inv AS (INSERT INTO sales_invoices (company_id,invoice_number,customer_id,date,due_date,subtotal,discount_amount,vat_amount,total_amount,paid_amount,currency_code,exchange_rate,base_currency_amount,base_currency_paid,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
+        for (const line of data.lines) {
+          const lc = line.currencyCode || currencyCode;
+          const lr = line.exchangeRate ?? exchangeRate;
+          const lb = line.baseCurrencyLineTotal ?? (line.lineTotal * lr);
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6},$${off + 7},$${off + 8},$${off + 9})`);
+          params.push(line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lc, lr, lb);
+        }
+        sql += `,lines_ins AS (INSERT INTO sales_invoice_lines (invoice_id,product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT inv.id,v.* FROM inv JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
       }
-      const txResult = await adapter.transaction(queries);
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const invoiceId = txResult.results[0][0].id as string;
-        return { success: true, id: invoiceId };
+      sql += ' SELECT id FROM inv';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -370,16 +367,20 @@ export const salesApi = {
       }
       if (data.lines) {
         await adapter.query('DELETE FROM sales_invoice_lines WHERE invoice_id = $1 AND $2 = (SELECT company_id FROM sales_invoices WHERE id = $1)', [id, companyId]);
-        for (const line of data.lines) {
+        const lineValues = data.lines.map((_: typeof data.lines[0], i: number) => {
+          const off = i * 10;
+          return `($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7}, $${off + 8}, $${off + 9}, $${off + 10})`;
+        }).join(', ');
+        const lineParams = data.lines.flatMap((line: typeof data.lines[0]) => {
           const lineCurrencyCode = line.currencyCode || data.currencyCode || YER_CODE;
           const lineExchangeRate = line.exchangeRate ?? data.exchangeRate ?? 1;
           const lineBaseTotal = line.baseCurrencyLineTotal ?? (line.lineTotal * lineExchangeRate);
-          await adapter.query(
-            `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total, currency_code, exchange_rate, base_currency_line_total)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal]
-          );
-        }
+          return [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.vatPercent, line.lineTotal, lineCurrencyCode, lineExchangeRate, lineBaseTotal];
+        });
+        await adapter.query(
+          `INSERT INTO sales_invoice_lines (invoice_id, product_id, quantity, unit_price, discount_percent, vat_percent, line_total, currency_code, exchange_rate, base_currency_line_total) VALUES ${lineValues}`,
+          lineParams
+        );
       }
       return { success: true };
     } catch (e) {
@@ -502,24 +503,23 @@ export const salesApi = {
       const validation = validateInput(createQuotationSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const queries: { sql: string; params: unknown[] }[] = [
-        { sql: `INSERT INTO quotations (company_id, quotation_number, customer_id, date, expiry_date, total_amount, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-        params: [data.companyId, data.quotationNumber, data.customerId, data.date, data.expiryDate, data.totalAmount, data.status, data.notes] },
-      ];
-      let lineIdx = 9;
-      for (const line of data.lines) {
-        queries.push({
-          sql: `INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, line_total) VALUES ((SELECT id FROM quotations WHERE quotation_number = $2 AND company_id = $1 LIMIT 1), $${lineIdx}, $${lineIdx + 1}, $${lineIdx + 2}, $${lineIdx + 3}, $${lineIdx + 4})`,
-          params: [data.companyId, data.quotationNumber, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.lineTotal]
-        });
-        lineIdx += 5;
+      const params: unknown[] = [data.companyId, data.quotationNumber, data.customerId, data.date, data.expiryDate, data.totalAmount, data.status, data.notes];
+      let sql = `WITH quo AS (INSERT INTO quotations (company_id,quotation_number,customer_id,date,expiry_date,total_amount,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
+        for (const line of data.lines) {
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6})`);
+          params.push(line.productId, line.quantity, line.unitPrice, line.discountPercent, line.lineTotal);
+        }
+        sql += `,lines_ins AS (INSERT INTO quotation_lines (quotation_id,product_id,quantity,unit_price,discount_percent,line_total) SELECT quo.id,v.* FROM quo JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,discount_percent,line_total) ON true)`;
       }
-      const txResult = await adapter.transaction(queries);
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const qid = txResult.results[0][0].id as string;
-        return { success: true, id: qid };
+      sql += ' SELECT id FROM quo';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -542,10 +542,12 @@ export const salesApi = {
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE quotations SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
         await adapter.query('DELETE FROM quotation_lines WHERE quotation_id = $1 AND $2 = (SELECT company_id FROM quotations WHERE id = $1)', [id, companyId]);
-        for (const line of data.lines) {
-          await adapter.query(`INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, line_total) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.lineTotal]);
-        }
+        const lineValues = data.lines.map((_: typeof data.lines[0], i: number) => {
+          const off = i * 6;
+          return `($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6})`;
+        }).join(', ');
+        const lineParams = data.lines.flatMap((line: typeof data.lines[0]) => [id, line.productId, line.quantity, line.unitPrice, line.discountPercent, line.lineTotal]);
+        await adapter.query(`INSERT INTO quotation_lines (quotation_id, product_id, quantity, unit_price, discount_percent, line_total) VALUES ${lineValues}`, lineParams);
       }
       return { success: true };
     } catch (e) {
@@ -675,24 +677,23 @@ export const salesApi = {
       const validation = validateInput(createSalesReturnSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const queries: { sql: string; params: unknown[] }[] = [
-        { sql: `INSERT INTO sales_returns (company_id, return_number, invoice_id, customer_id, date, subtotal, vat_amount, total_amount, reason, status, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        params: [data.companyId, data.returnNumber, data.invoiceId, data.customerId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.reason, data.status, data.notes] },
-      ];
-      let lineIdx = 12;
-      for (const line of data.lines) {
-        queries.push({
-          sql: `INSERT INTO sales_return_lines (return_id, product_id, quantity, unit_price, line_total) VALUES ((SELECT id FROM sales_returns WHERE return_number = $2 AND company_id = $1 LIMIT 1), $${lineIdx}, $${lineIdx + 1}, $${lineIdx + 2}, $${lineIdx + 3})`,
-          params: [data.companyId, data.returnNumber, line.productId, line.quantity, line.unitPrice, line.lineTotal]
-        });
-        lineIdx += 4;
+      const params: unknown[] = [data.companyId, data.returnNumber, data.invoiceId, data.customerId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.reason, data.status, data.notes];
+      let sql = `WITH ret AS (INSERT INTO sales_returns (company_id,return_number,invoice_id,customer_id,date,subtotal,vat_amount,total_amount,reason,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id)`;
+      if (data.lines?.length) {
+        const lineValues: string[] = [];
+        for (const line of data.lines) {
+          const off = params.length;
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5})`);
+          params.push(line.productId, line.quantity, line.unitPrice, line.lineTotal);
+        }
+        sql += `,lines_ins AS (INSERT INTO sales_return_lines (return_id,product_id,quantity,unit_price,line_total) SELECT ret.id,v.* FROM ret JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,line_total) ON true)`;
       }
-      const txResult = await adapter.transaction(queries);
-      if (txResult.success && txResult.results?.[0]?.[0]) {
-        const rid = txResult.results[0][0].id as string;
-        return { success: true, id: rid };
+      sql += ' SELECT id FROM ret';
+      const result = await adapter.query(sql, params);
+      if (result.success && result.rows?.[0]) {
+        return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: txResult.error };
+      return { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }
@@ -718,10 +719,12 @@ export const salesApi = {
       if (fields.length > 0) { values.push(id); values.push(companyId); await adapter.query(`UPDATE sales_returns SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values); }
       if (data.lines) {
         await adapter.query('DELETE FROM sales_return_lines WHERE return_id = $1 AND $2 = (SELECT company_id FROM sales_returns WHERE id = $1)', [id, companyId]);
-        for (const line of data.lines) {
-          await adapter.query(`INSERT INTO sales_return_lines (return_id, product_id, quantity, unit_price, line_total) VALUES ($1,$2,$3,$4,$5)`,
-            [id, line.productId, line.quantity, line.unitPrice, line.lineTotal]);
-        }
+        const lineValues = data.lines.map((_: typeof data.lines[0], i: number) => {
+          const off = i * 5;
+          return `($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`;
+        }).join(', ');
+        const lineParams = data.lines.flatMap((line: typeof data.lines[0]) => [id, line.productId, line.quantity, line.unitPrice, line.lineTotal]);
+        await adapter.query(`INSERT INTO sales_return_lines (return_id, product_id, quantity, unit_price, line_total) VALUES ${lineValues}`, lineParams);
       }
       return { success: true };
     } catch (e) {

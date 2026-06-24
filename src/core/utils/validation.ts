@@ -83,7 +83,7 @@ export const createPaymentVoucherSchema = z.object({
   companyId: companyIdSchema,
   voucherNumber: nonEmptyString,
   date: dateSchema,
-  supplierId: uuidSchema,
+  supplierId: uuidSchema.optional(),
   expenseAccountId: uuidSchema.optional(),
   amount: currencyAmountSchema,
   paymentMethod: z.string().max(50),

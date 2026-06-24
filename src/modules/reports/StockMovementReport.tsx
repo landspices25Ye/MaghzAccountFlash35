@@ -5,7 +5,7 @@ import { useAppStore } from '@/core/store';
 import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
-import { useFormatters } from '@/core/utils/useFormatters';
+import { formatNumber } from '@/core/utils/locale';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import KpiCardPro from './components/KpiCardPro';
 
@@ -44,9 +44,8 @@ const CHART_COLORS: Record<string, string> = {
 
 const PIE_COLORS = ['#10b981', '#f59e0b', '#6366f1'];
 
-function monthDateToLabel(monthStr: string): string {
+function monthDateToLabel(monthStr: string, months: string[]): string {
   const d = new Date(monthStr);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return months[d.getMonth()] + ' ' + d.getFullYear();
 }
 
@@ -61,7 +60,7 @@ export const StockMovementReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((s) => s.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { formatCurrency } = useFormatters(companyId);
+  const months = useMemo(() => [t('reports.months.jan'), t('reports.months.feb'), t('reports.months.mar'), t('reports.months.apr'), t('reports.months.may'), t('reports.months.jun'), t('reports.months.jul'), t('reports.months.aug'), t('reports.months.sep'), t('reports.months.oct'), t('reports.months.nov'), t('reports.months.dec')], [t]);
 
   const [isLoading, setIsLoading] = useState(false);
   const [monthlyData, setMonthlyData] = useState<MonthlyRow[]>([]);
@@ -149,7 +148,7 @@ export const StockMovementReport: React.FC = () => {
       if (!map.has(row.month)) {
         map.set(row.month, {
           month: row.month,
-          monthLabel: monthDateToLabel(row.month),
+          monthLabel: monthDateToLabel(row.month, months),
           inQty: 0,
           outQty: 0,
           adjQty: 0,
@@ -161,7 +160,7 @@ export const StockMovementReport: React.FC = () => {
       else b.adjQty += row.totalQty;
     }
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
-  }, [monthlyData]);
+  }, [monthlyData, months]);
 
   const totalIn = useMemo(() => monthlyData.filter((r) => r.type === 'in').reduce((s, r) => s + r.totalQty, 0), [monthlyData]);
   const totalOut = useMemo(() => monthlyData.filter((r) => r.type === 'out').reduce((s, r) => s + r.totalQty, 0), [monthlyData]);
@@ -282,19 +281,19 @@ export const StockMovementReport: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCardPro
           title={t('reports.totalIn')}
-          value={formatCurrency(totalIn)}
+          value={formatNumber(totalIn)}
           icon={ArrowDown}
           color="blue"
         />
         <KpiCardPro
           title={t('reports.totalOut')}
-          value={formatCurrency(totalOut)}
+          value={formatNumber(totalOut)}
           icon={ArrowUp}
           color="amber"
         />
         <KpiCardPro
           title={t('reports.netChange')}
-          value={formatCurrency(Math.abs(netChange))}
+          value={formatNumber(Math.abs(netChange))}
           icon={ArrowLeftRight}
           color={netChange >= 0 ? 'emerald' : 'rose'}
           trend={netChange > 0 ? 'up' : netChange < 0 ? 'down' : 'neutral'}
@@ -383,7 +382,7 @@ export const StockMovementReport: React.FC = () => {
                             t('reports.stockAdjustment')}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatCurrency(p.totalQty)}</td>
+                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatNumber(p.totalQty)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -417,7 +416,7 @@ export const StockMovementReport: React.FC = () => {
                 ) : (
                   filteredDetail.map((row, i) => (
                     <tr key={i} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-2 px-3 text-slate-900 dark:text-slate-50">{monthDateToLabel(row.month)}</td>
+                      <td className="py-2 px-3 text-slate-900 dark:text-slate-50">{monthDateToLabel(row.month, months)}</td>
                       <td className="py-2 px-3">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                           row.type === 'in' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
@@ -429,8 +428,8 @@ export const StockMovementReport: React.FC = () => {
                             row.type}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatCurrency(row.totalQty)}</td>
-                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatCurrency(row.transactionCount)}</td>
+                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatNumber(row.totalQty)}</td>
+                      <td className="py-2 px-3 text-right text-slate-900 dark:text-slate-50">{formatNumber(row.transactionCount)}</td>
                     </tr>
                   ))
                 )}

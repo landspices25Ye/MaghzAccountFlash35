@@ -9,11 +9,11 @@ export async function getDocumentSequences(companyId: string): Promise<{ success
   return result.success ? { success: true, data: mapRows<DocumentSequence>(result.rows) } : { success: false, error: result.error };
 }
 
-export async function updateDocumentSequence(id: string, data: Partial<DocumentSequence>): Promise<{ success: boolean; error?: string }> {
+export async function updateDocumentSequence(id: string, data: Partial<DocumentSequence>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE document_sequences SET prefix = $1, suffix = $2, starting_number = $3, current_number = $4, increment_step = $5, padding_length = $6, year_reset = $7, is_active = $8, updated_at = NOW() WHERE id = $9',
-    [data.prefix, data.suffix, data.startingNumber, data.currentNumber, data.incrementStep, data.paddingLength, data.yearReset, data.isActive, id]
+    'UPDATE document_sequences SET prefix = $1, suffix = $2, starting_number = $3, current_number = $4, increment_step = $5, padding_length = $6, year_reset = $7, is_active = $8, updated_at = NOW() WHERE id = $9 AND company_id = $10',
+    [data.prefix, data.suffix, data.startingNumber, data.currentNumber, data.incrementStep, data.paddingLength, data.yearReset, data.isActive, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -39,7 +39,7 @@ export async function getNextDocumentNumber(companyId: string, documentType: str
   const seq = mapRows<DocumentSequence>([result.rows[0]])[0];
   const fullNumber = formatSequenceNumber(seq);
   // Increment
-  await adapter.query('UPDATE document_sequences SET current_number = current_number + increment_step WHERE id = $1', [seq.id]);
+  await adapter.query('UPDATE document_sequences SET current_number = current_number + increment_step WHERE id = $1 AND company_id = $2', [seq.id, companyId]);
   return { success: true, number: fullNumber };
 }
 
@@ -70,11 +70,11 @@ export async function createProductType(data: Omit<ProductType, 'id'>): Promise<
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updateProductType(id: string, data: Partial<ProductType>): Promise<{ success: boolean; error?: string }> {
+export async function updateProductType(id: string, data: Partial<ProductType>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    `UPDATE product_types SET name_ar = $1, name_en = $2, code = $3, appears_in_sales = $4, appears_in_purchases = $5, appears_in_inventory = $6, appears_in_manufacturing = $7, has_stock_tracking = $8, has_bom = $9, default_sales_account_id = $10, default_cogs_account_id = $11, default_inventory_account_id = $12, is_active = $13 WHERE id = $14`,
-    [data.nameAr, data.nameEn, data.code, data.appearsInSales, data.appearsInPurchases, data.appearsInInventory, data.appearsInManufacturing, data.hasStockTracking, data.hasBOM, data.defaultSalesAccountId, data.defaultCOGSAccountId, data.defaultInventoryAccountId, data.isActive, id]
+    `UPDATE product_types SET name_ar = $1, name_en = $2, code = $3, appears_in_sales = $4, appears_in_purchases = $5, appears_in_inventory = $6, appears_in_manufacturing = $7, has_stock_tracking = $8, has_bom = $9, default_sales_account_id = $10, default_cogs_account_id = $11, default_inventory_account_id = $12, is_active = $13 WHERE id = $14 AND company_id = $15`,
+    [data.nameAr, data.nameEn, data.code, data.appearsInSales, data.appearsInPurchases, data.appearsInInventory, data.appearsInManufacturing, data.hasStockTracking, data.hasBOM, data.defaultSalesAccountId, data.defaultCOGSAccountId, data.defaultInventoryAccountId, data.isActive, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -101,11 +101,11 @@ export async function createUnit(data: Omit<Unit, 'id'>): Promise<{ success: boo
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updateUnit(id: string, data: Partial<Unit>): Promise<{ success: boolean; error?: string }> {
+export async function updateUnit(id: string, data: Partial<Unit>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE units SET name_ar = $1, name_en = $2, code = $3, conversion_factor = $4, base_unit_id = $5, is_active = $6 WHERE id = $7',
-    [data.nameAr, data.nameEn, data.code, data.conversionFactor, data.baseUnitId, data.isActive, id]
+    'UPDATE units SET name_ar = $1, name_en = $2, code = $3, conversion_factor = $4, base_unit_id = $5, is_active = $6 WHERE id = $7 AND company_id = $8',
+    [data.nameAr, data.nameEn, data.code, data.conversionFactor, data.baseUnitId, data.isActive, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -132,11 +132,11 @@ export async function createCashBox(data: Omit<CashBox, 'id'>): Promise<{ succes
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updateCashBox(id: string, data: Partial<CashBox>): Promise<{ success: boolean; error?: string }> {
+export async function updateCashBox(id: string, data: Partial<CashBox>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE cash_boxes SET name = $1, code = $2, account_id = $3, branch_id = $4, responsible_user_id = $5, is_active = $6, current_balance = $7 WHERE id = $8',
-    [data.name, data.code, data.accountId, data.branchId, data.responsibleUserId, data.isActive, data.currentBalance, id]
+    'UPDATE cash_boxes SET name = $1, code = $2, account_id = $3, branch_id = $4, responsible_user_id = $5, is_active = $6, current_balance = $7 WHERE id = $8 AND company_id = $9',
+    [data.name, data.code, data.accountId, data.branchId, data.responsibleUserId, data.isActive, data.currentBalance, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -157,11 +157,11 @@ export async function createBank(data: Omit<Bank, 'id'>): Promise<{ success: boo
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updateBank(id: string, data: Partial<Bank>): Promise<{ success: boolean; error?: string }> {
+export async function updateBank(id: string, data: Partial<Bank>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE banks SET name = $1, bank_name = $2, account_number = $3, iban = $4, account_id = $5, branch_id = $6, is_active = $7, current_balance = $8 WHERE id = $9',
-    [data.name, data.bankName, data.accountNumber, data.iban, data.accountId, data.branchId, data.isActive, data.currentBalance, id]
+    'UPDATE banks SET name = $1, bank_name = $2, account_number = $3, iban = $4, account_id = $5, branch_id = $6, is_active = $7, current_balance = $8 WHERE id = $9 AND company_id = $10',
+    [data.name, data.bankName, data.accountNumber, data.iban, data.accountId, data.branchId, data.isActive, data.currentBalance, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -195,11 +195,11 @@ export async function createCostCenter(data: Omit<CostCenter, 'id'>): Promise<{ 
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updateCostCenter(id: string, data: Partial<CostCenter>): Promise<{ success: boolean; error?: string }> {
+export async function updateCostCenter(id: string, data: Partial<CostCenter>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    'UPDATE cost_centers SET name_ar = $1, name_en = $2, code = $3, parent_id = $4, type = $5, budget_amount = $6, is_active = $7 WHERE id = $8',
-    [data.nameAr, data.nameEn, data.code, data.parentId, data.type, data.budgetAmount, data.isActive, id]
+    'UPDATE cost_centers SET name_ar = $1, name_en = $2, code = $3, parent_id = $4, type = $5, budget_amount = $6, is_active = $7 WHERE id = $8 AND company_id = $9',
+    [data.nameAr, data.nameEn, data.code, data.parentId, data.type, data.budgetAmount, data.isActive, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -227,11 +227,11 @@ export async function createPayrollComponent(data: Omit<PayrollComponent, 'id'>)
   return result.success && result.rows?.[0] ? { success: true, id: result.rows[0].id } : { success: false, error: result.error };
 }
 
-export async function updatePayrollComponent(id: string, data: Partial<PayrollComponent>): Promise<{ success: boolean; error?: string }> {
+export async function updatePayrollComponent(id: string, data: Partial<PayrollComponent>, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
   const result = await adapter.query(
-    `UPDATE payroll_components SET name_ar = $1, name_en = $2, code = $3, type = $4, calculation_method = $5, default_amount = $6, affects_gross_salary = $7, affects_tax = $8, affects_social_insurance = $9, default_account_id = $10, is_active = $11 WHERE id = $12`,
-    [data.nameAr, data.nameEn, data.code, data.type, data.calculationMethod, data.defaultAmount, data.affectsGrossSalary, data.affectsTax, data.affectsSocialInsurance, data.defaultAccountId, data.isActive, id]
+    `UPDATE payroll_components SET name_ar = $1, name_en = $2, code = $3, type = $4, calculation_method = $5, default_amount = $6, affects_gross_salary = $7, affects_tax = $8, affects_social_insurance = $9, default_account_id = $10, is_active = $11 WHERE id = $12 AND company_id = $13`,
+    [data.nameAr, data.nameEn, data.code, data.type, data.calculationMethod, data.defaultAmount, data.affectsGrossSalary, data.affectsTax, data.affectsSocialInsurance, data.defaultAccountId, data.isActive, id, companyId]
   );
   return result.success ? { success: true } : { success: false, error: result.error };
 }
@@ -243,9 +243,9 @@ export async function getDefaultAccounts(companyId: string): Promise<{ success: 
   return result.success ? { success: true, data: mapRows<DefaultAccount>(result.rows) } : { success: false, error: result.error };
 }
 
-export async function updateDefaultAccount(id: string, accountId: string | null): Promise<{ success: boolean; error?: string }> {
+export async function updateDefaultAccount(id: string, accountId: string | null, companyId: string): Promise<{ success: boolean; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('UPDATE default_accounts SET account_id = $1, updated_at = NOW() WHERE id = $2', [accountId, id]);
+  const result = await adapter.query('UPDATE default_accounts SET account_id = $1, updated_at = NOW() WHERE id = $2 AND company_id = $3', [accountId, id, companyId]);
   return result.success ? { success: true } : { success: false, error: result.error };
 }
 

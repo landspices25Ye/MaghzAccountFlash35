@@ -72,6 +72,7 @@ export const ProfitAnalysisReport: React.FC = () => {
   const [currentPeriod, setCurrentPeriod] = useState<PeriodData | null>(null);
   const [previousPeriod, setPreviousPeriod] = useState<PeriodData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [fromDate, setFromDate] = useState('');
@@ -82,7 +83,8 @@ export const ProfitAnalysisReport: React.FC = () => {
     const companyId = activeCompany.id;
     async function load() {
       setIsLoading(true);
-      const adapter = await getDbAdapter();
+      try {
+        const adapter = await getDbAdapter();
       const activeCurrencies: Currency[] = currencies.length > 0 ? currencies : [];
 
       const computePeriod = async (from?: string, to?: string): Promise<PeriodData> => {
@@ -235,7 +237,8 @@ export const ProfitAnalysisReport: React.FC = () => {
 
         const monthlyResult = await adapter.query(
           `WITH months AS (
-             SELECT generate_series(1, 12) AS m
+             SELECT EXTRACT(MONTH FROM d)::int AS m
+               FROM generate_series(date_trunc('month', $2::date), date_trunc('month', $3::date), '1 month'::interval) AS d
            ),
            rev AS (
              SELECT EXTRACT(MONTH FROM date)::int AS m,
@@ -276,12 +279,13 @@ export const ProfitAnalysisReport: React.FC = () => {
           [companyId, fromD, toD],
         );
         const monthlyRows = (monthlyResult.rows || []) as Record<string, unknown>[];
-        const monthlyProfit = monthlyRows.map((r, i) => {
+        const monthlyProfit = monthlyRows.map((r) => {
           const revenue = toNumber(r.revenue);
           const cogs = toNumber(r.cogs);
           const exp = toNumber(r.exp);
+          const monthIdx = Math.max(0, Math.min(11, toNumber(r.m) - 1));
           return {
-            month: t(MONTHS_AR_KEYS[i]) || String(i + 1),
+            month: t(MONTHS_AR_KEYS[monthIdx]) || String(toNumber(r.m)),
             profit: revenue - cogs - exp,
           };
         });
@@ -316,8 +320,13 @@ export const ProfitAnalysisReport: React.FC = () => {
       } else {
         setPreviousPeriod(null);
       }
-
-      setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load report');
+        setCurrentPeriod(null);
+        setPreviousPeriod(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, [activeCompany?.id, fromDate, toDate, compareMode, currencies, t]);

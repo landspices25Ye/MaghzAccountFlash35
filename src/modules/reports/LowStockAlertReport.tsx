@@ -93,7 +93,7 @@ export const LowStockAlertReport: React.FC = () => {
             stockStatus: qty === 0 ? 'out' : 'low',
             costPrice: cost,
             salePrice: Number(r.sale_price || 0),
-            valueAtRisk: deficit * cost,
+            valueAtRisk: Math.abs(deficit) * cost,
           };
         });
         setItems(rows);
@@ -213,7 +213,7 @@ export const LowStockAlertReport: React.FC = () => {
         />
         <KpiCardPro
           title={t('reports.totalDeficit')}
-          value={formatCurrency(totalDeficit)}
+          value={totalDeficit.toLocaleString()}
           icon={Package}
           color="blue"
         />

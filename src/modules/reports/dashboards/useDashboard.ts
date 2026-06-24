@@ -389,8 +389,8 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
          LEFT JOIN journal_entries je ON je.company_id = $1
               AND date_trunc('month', je.created_at) = months.m
          LEFT JOIN accounts a ON je.account_id = a.id
-               AND a.code >= '111' AND a.code < '113'
-         WHERE je.id IS NULL OR a.id IS NOT NULL
+               AND (a.name_ar ILIKE '%صندوق%' OR a.name_ar ILIKE '%نقد%' OR a.name_ar ILIKE '%خزينة%' OR a.name_en ILIKE '%cash%' OR a.name_en ILIKE '%treasury%')
+          WHERE je.id IS NULL OR a.id IS NOT NULL
          GROUP BY months.m
          ORDER BY months.m`,
        [companyId, fromStr, toStr],
@@ -410,7 +410,7 @@ async function fetchDashboardData(adapter: DbAdapter, companyId: string, range: 
           LEFT JOIN journal_entries je ON je.company_id = $1
                AND je.created_at::date = days.d
           LEFT JOIN accounts a ON je.account_id = a.id
-               AND a.code >= '111' AND a.code < '113'
+               AND (a.name_ar ILIKE '%صندوق%' OR a.name_ar ILIKE '%نقد%' OR a.name_ar ILIKE '%خزينة%' OR a.name_en ILIKE '%cash%' OR a.name_en ILIKE '%treasury%')
         GROUP BY days.d
         ORDER BY days.d`,
       [companyId, fromStr, toStr],

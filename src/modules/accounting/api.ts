@@ -410,7 +410,7 @@ export const accountingApi = {
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
       const result = await adapter.query(
         `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
         [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
       if (result.success) return { success: true, id };
