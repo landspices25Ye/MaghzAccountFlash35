@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Banknote, FileDown, Calendar } from 'lucide-react';
 import { Card, Button, Input } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
@@ -10,6 +10,7 @@ import { exportToExcel } from '@/core/utils/exportEngine';
 import { exportToPdf } from '@/core/utils/export';
 import type { Account } from '../types';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useAsyncData } from '@/core/hooks/useAsyncData';
 
 interface CFRow {
   activity: string;
@@ -17,38 +18,35 @@ interface CFRow {
   isTotal?: boolean;
 }
 
+interface CashFlowData {
+  operating: CFRow[];
+  investing: CFRow[];
+  financing: CFRow[];
+  netChange: number;
+}
+
+const emptyData: CashFlowData = { operating: [], investing: [], financing: [], netChange: 0 };
+
 export const CashFlowReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const [operating, setOperating] = useState<CFRow[]>([]);
-  const [investing, setInvesting] = useState<CFRow[]>([]);
-  const [financing, setFinancing] = useState<CFRow[]>([]);
-  const [netChange, setNetChange] = useState(0);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const formatNumber = (n: number) => formatCurrency(Math.abs(n));
 
-  useEffect(() => {
-    if (!activeCompany?.id) return;
-    
-    async function load() {
-      setIsLoading(true);
+  const { data: cfData, isLoading } = useAsyncData<CashFlowData>(
+    async () => {
       const companyId = activeCompany!.id;
 
-      // Get profit/loss data
       const plResult = await accountingApi.getProfitLoss(companyId, startDate || undefined, endDate || undefined);
       const bsResult = await accountingApi.getBalanceSheet(companyId, endDate || undefined);
       const arResult = await salesApi.getCustomerArAging(companyId);
-      // AP total: single query instead of N+1 (was looping over suppliers)
       const apTotalResult = await purchasesApi.getApAgingTotal(companyId);
       const apTotal = apTotalResult.success ? (apTotalResult.total || 0) : 0;
-      
-      // Calculate net profit
+
       let netProfit = 0;
       if (plResult.success && plResult.data) {
         const accounts = plResult.data as Account[];
@@ -56,26 +54,22 @@ export const CashFlowReport: React.FC = () => {
         const expense = accounts.filter(a => a.type === 'expense').reduce((s, a) => s + Math.abs(a.balance), 0);
         netProfit = revenue - expense;
       }
-      
-      // Calculate changes in receivables/payables
+
       const arChange = arResult.data?.reduce((s, c) => s + (c.totalDue || 0), 0) || 0;
       const apChange = apTotal;
-      
-      // Build operating section
+
       const ops: CFRow[] = [];
       if (netProfit !== 0) ops.push({ activity: t('accounting.cashFlow.netProfit'), amount: netProfit });
-      
-      // Get depreciation (approximate from expense accounts with depreciation in name)
+
       if (plResult.success && plResult.data) {
         const accounts = plResult.data as Account[];
         const depreciationAcc = accounts.find(a => a.nameAr?.includes('إهلاك') || a.nameAr?.includes('اهلاك'));
         if (depreciationAcc) ops.push({ activity: t('accounting.cashFlow.depreciation'), amount: Math.abs(depreciationAcc.balance) });
       }
-      
+
       if (arChange !== 0) ops.push({ activity: t('accounting.cashFlow.receivablesChange'), amount: -arChange });
       if (apChange !== 0) ops.push({ activity: t('accounting.cashFlow.payablesChange'), amount: apChange });
-      
-      // Inventory change (approximate)
+
       let inventoryChange = 0;
       if (bsResult.success && bsResult.data) {
         const accounts = bsResult.data as Account[];
@@ -83,12 +77,10 @@ export const CashFlowReport: React.FC = () => {
         if (inventoryAcc) inventoryChange = inventoryAcc.balance;
       }
       if (inventoryChange !== 0) ops.push({ activity: t('accounting.cashFlow.inventoryChange'), amount: -inventoryChange });
-      
+
       const opsTotal = ops.reduce((s, r) => s + r.amount, 0);
       if (ops.length > 0) ops.push({ activity: t('accounting.cashFlow.netOperating'), amount: opsTotal, isTotal: true });
-      setOperating(ops);
-      
-      // Investing section (fixed assets)
+
       const inv: CFRow[] = [];
       if (bsResult.success && bsResult.data) {
         const accounts = bsResult.data as Account[];
@@ -98,9 +90,7 @@ export const CashFlowReport: React.FC = () => {
       }
       const invTotal = inv.reduce((s, r) => s + r.amount, 0);
       if (inv.length > 0) inv.push({ activity: t('accounting.cashFlow.netInvesting'), amount: invTotal, isTotal: true });
-      setInvesting(inv);
-      
-      // Financing section (loans, equity)
+
       const fin: CFRow[] = [];
       if (bsResult.success && bsResult.data) {
         const accounts = bsResult.data as Account[];
@@ -113,16 +103,19 @@ export const CashFlowReport: React.FC = () => {
       }
       const finTotal = fin.reduce((s, r) => s + r.amount, 0);
       if (fin.length > 0) fin.push({ activity: t('accounting.cashFlow.netFinancing'), amount: finTotal, isTotal: true });
-      setFinancing(fin);
-      
-      setNetChange(opsTotal + invTotal + finTotal);
-      setIsLoading(false);
-    }
-    
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCompany?.id, startDate, endDate]);
 
+      return {
+        operating: ops,
+        investing: inv,
+        financing: fin,
+        netChange: opsTotal + invTotal + finTotal,
+      };
+    },
+    [activeCompany?.id, startDate, endDate],
+    !!activeCompany?.id,
+  );
+
+  const { operating, investing, financing, netChange } = cfData ?? emptyData;
   const allRows = [...operating, ...investing, ...financing];
 
   const renderRows = (rows: CFRow[]) => (
@@ -174,9 +167,9 @@ export const CashFlowReport: React.FC = () => {
           <Button variant="secondary" size="sm" leftIcon={<Calendar size={14} />} onClick={() => setShowFilters(!showFilters)}>
             {t('filter')}
           </Button>
-          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToExcel(allRows.map(r => ({ [t('accounting.cashFlow.activity')]: r.activity, [t('accounting.amount')]: r.amount })), [
-            { key: t('accounting.cashFlow.activity'), header: t('accounting.cashFlow.activity'), width: 40 },
-            { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
+          <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToExcel(allRows.map(r => ({ activity: r.activity, amount: r.amount })), [
+            { key: 'activity', header: t('accounting.cashFlow.activity'), width: 40 },
+            { key: 'amount', header: t('accounting.amount'), width: 15 },
           ], 'CashFlow_Report')}>Excel</Button>
           <Button variant="secondary" size="sm" leftIcon={<FileDown size={14} />} onClick={() => exportToPdf('cf-print', 'CashFlow_Report', t('accounting.cashFlow.title'))}>PDF</Button>
         </div>

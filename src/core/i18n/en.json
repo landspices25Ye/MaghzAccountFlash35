@@ -95,8 +95,11 @@
     "dashboard": "Dashboard",
     "accounting": {
       "title": "Accounting",
-      "chartOfAccounts": "Chart of Accounts",
-      "journalEntries": "Journal Entries",
+    "chartOfAccounts": "Chart of Accounts",
+    "chartOfAccountsSubtitle": "Manage chart of accounts and classifications",
+    "ledgerSubtitle": "View transactions of a specific account",
+    "journalEntries": "Journal Entries",
+    "journalEntriesSubtitle": "Manage and view daily journal entries",
       "trialBalance": "Trial Balance",
       "balanceSheet": "Balance Sheet",
       "profitLoss": "Profit & Loss",

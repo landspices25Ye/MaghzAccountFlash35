@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Scale, FileDown, Calendar } from 'lucide-react';
 import { Card, Button, Input } from '@/core/ui/components';
 import { useAppStore } from '@/core/store';
@@ -6,6 +6,7 @@ import { useTranslation } from '@/core/i18n/useTranslation';
 import { accountingApi } from '../api';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useAsyncData } from '@/core/hooks/useAsyncData';
 import type { Account } from '../types';
 
 interface BSRow {
@@ -16,59 +17,60 @@ interface BSRow {
   isTotal?: boolean;
 }
 
+interface BalanceSheetData {
+  assets: BSRow[];
+  liabilities: BSRow[];
+  equity: BSRow[];
+}
+
+const emptyData: BalanceSheetData = { assets: [], liabilities: [], equity: [] };
+
 export const BalanceSheetReport: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
-  const [assets, setAssets] = useState<BSRow[]>([]);
-  const [liabilities, setLiabilities] = useState<BSRow[]>([]);
-  const [equity, setEquity] = useState<BSRow[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [asOfDate, setAsOfDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    if (!activeCompany?.id) return;
-    const companyId = activeCompany.id;
-    async function load() {
-      setIsLoading(true);
+  const { data: bsData, isLoading } = useAsyncData<BalanceSheetData>(
+    async () => {
+      const companyId = activeCompany!.id;
       const result = await accountingApi.getBalanceSheet(companyId, asOfDate || undefined);
-      if (result.success && result.data) {
-        const accounts = result.data as Account[];
-        const assetAccs = accounts.filter(a => a.type === 'asset');
-        const liabilityAccs = accounts.filter(a => a.type === 'liability');
-        const equityAccs = accounts.filter(a => a.type === 'equity');
+      if (!result.success || !result.data) return emptyData;
+      const accounts = result.data as Account[];
 
-        const buildRows = (accs: Account[]): BSRow[] => {
-          const rows: BSRow[] = [];
-          let total = 0;
-          for (const acc of accs) {
-            if (Math.abs(acc.balance) > 0) {
-              rows.push({ account: acc.nameAr, accountId: acc.id, amount: Math.abs(acc.balance) });
-              total += Math.abs(acc.balance);
-            }
+      const buildRows = (accs: Account[]): BSRow[] => {
+        const rows: BSRow[] = [];
+        let total = 0;
+        for (const acc of accs) {
+          if (Math.abs(acc.balance) > 0) {
+            rows.push({ account: acc.nameAr, accountId: acc.id, amount: Math.abs(acc.balance) });
+            total += Math.abs(acc.balance);
           }
-          if (total > 0) {
-            rows.push({ account: t('accounting.balanceSheet.total'), accountId: '', amount: total, isTotal: true });
-          }
-          return rows;
-        };
+        }
+        if (total > 0) {
+          rows.push({ account: t('accounting.balanceSheet.total'), accountId: '', amount: total, isTotal: true });
+        }
+        return rows;
+      };
 
-        setAssets(buildRows(assetAccs));
-        setLiabilities(buildRows(liabilityAccs));
-        setEquity(buildRows(equityAccs));
-      }
-      setIsLoading(false);
-    }
-    load();
-  }, [activeCompany?.id, asOfDate, t]);
+      return {
+        assets: buildRows(accounts.filter(a => a.type === 'asset')),
+        liabilities: buildRows(accounts.filter(a => a.type === 'liability')),
+        equity: buildRows(accounts.filter(a => a.type === 'equity')),
+      };
+    },
+    [activeCompany?.id, asOfDate],
+    !!activeCompany?.id,
+  );
 
+  const { assets, liabilities, equity } = bsData ?? emptyData;
   const allRows = [...assets, ...liabilities, ...equity];
 
   const handleExportExcel = () => {
-    exportToExcel(allRows.map(r => ({ [t('accounting.profitLoss.item')]: r.account, [t('accounting.amount')]: r.amount })), [
-      { key: t('accounting.profitLoss.item'), header: t('accounting.profitLoss.item'), width: 40 },
-      { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
+    exportToExcel(allRows.map(r => ({ item: r.account, amount: r.amount })), [
+      { key: 'item', header: t('accounting.profitLoss.item'), width: 40 },
+      { key: 'amount', header: t('accounting.amount'), width: 15 },
     ], 'BalanceSheet');
   };
 

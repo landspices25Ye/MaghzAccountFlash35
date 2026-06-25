@@ -5,6 +5,7 @@ import { ConfirmDialog, StatusBadge, ActionButtons } from '@/core/ui/components'
 import { AccountSelect } from '@/core/ui/components/smart';
 import { Pagination } from '@/core/ui/components/Pagination';
 import { useTransactionsPaginated } from '../hooks/useAccounting';
+import { accountingApi } from '../api';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { printDocument } from '@/core/utils/printDocument';
@@ -119,19 +120,25 @@ export const JournalEntriesPage: React.FC = () => {
     setIsSaving(false);
   };
 
-  const handleEdit = (tx: Transaction) => {
+  const handleEdit = async (tx: Transaction) => {
     setEditingId(tx.id);
     setIsEditMode(true);
     setDate(tx.date);
     setReference(tx.reference || '');
     setDescription(tx.description || '');
-    setEntries(tx.entries.length > 0 ? tx.entries.map(e => ({
-      accountId: e.accountId,
-      debit: e.debit,
-      credit: e.credit,
-      memo: e.memo || '',
-    })) : [emptyLine(), emptyLine()]);
+    setEntries([emptyLine(), emptyLine()]);
     setIsModalOpen(true);
+
+    if (!activeCompany) return;
+    const result = await accountingApi.getTransactionById(tx.id, activeCompany.id);
+    if (result.success && result.data && result.data.entries.length > 0) {
+      setEntries(result.data.entries.map(e => ({
+        accountId: e.accountId,
+        debit: Number(e.debit) || 0,
+        credit: Number(e.credit) || 0,
+        memo: e.memo || '',
+      })));
+    }
   };
 
   const handlePost = async (tx: Transaction) => {
@@ -145,14 +152,21 @@ export const JournalEntriesPage: React.FC = () => {
     }
   };
 
-  const handlePrint = (tx: Transaction) => {
+  const handlePrint = async (tx: Transaction) => {
+    let entries = tx.entries || [];
+    if (entries.length === 0 && activeCompany) {
+      const result = await accountingApi.getTransactionById(tx.id, activeCompany.id);
+      if (result.success && result.data) {
+        entries = result.data.entries;
+      }
+    }
     printDocument({
       type: 'journal-entry',
       docNumber: tx.reference || tx.id,
       date: tx.date,
       partyName: activeCompany?.name || '',
       partyLabel: t('accounting.company'),
-      lines: tx.entries.map(e => ({
+      lines: entries.map(e => ({
         description: `${e.account?.nameAr || e.accountId} - ${e.memo || ''}`,
         total: e.debit || e.credit,
       })),
@@ -181,7 +195,19 @@ export const JournalEntriesPage: React.FC = () => {
     { key: 'actions', header: t('edit'), render: (row: Transaction) => (
       <ActionButtons
         size="sm"
-        onView={() => { setSelectedTx(row); setIsDetailOpen(true); }}
+        onView={async () => {
+          if (activeCompany) {
+            const result = await accountingApi.getTransactionById(row.id, activeCompany.id);
+            if (result.success && result.data) {
+              setSelectedTx(result.data);
+            } else {
+              setSelectedTx(row);
+            }
+          } else {
+            setSelectedTx(row);
+          }
+          setIsDetailOpen(true);
+        }}
         onEdit={() => handleEdit(row)}
         onDelete={() => setConfirmDelete(row)}
         onPrint={() => handlePrint(row)}
@@ -199,7 +225,7 @@ export const JournalEntriesPage: React.FC = () => {
           <BookOpen size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.journalEntries')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.newJournalEntry')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.journalEntriesSubtitle')}</p>
           </div>
       </div>
       <div className="flex items-center gap-2">

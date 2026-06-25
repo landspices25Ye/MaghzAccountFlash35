@@ -59,7 +59,9 @@ export const TrialBalancePage: React.FC = () => {
           <Scale size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.trialBalance')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.trialBalance')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              {asOfDate ? `${t('accounting.toDate')}: ${asOfDate}` : t('accounting.all')}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

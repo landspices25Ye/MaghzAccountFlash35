@@ -1,34 +1,64 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { accountingApi } from '../api';
 import { useAuthStore } from '@/modules/auth/store';
 import { usePaginatedList } from '@/core/hooks/usePaginatedList';
 import type { Account, Transaction, TrialBalanceRow, LedgerRow, ReceiptVoucher, PaymentVoucher } from '../types';
 
+function buildAccountTree(accounts: Account[]): Account[] {
+  const accountMap = new Map<string, Account>();
+  const rootAccounts: Account[] = [];
+
+  accounts.forEach(acc => {
+    accountMap.set(acc.id, { ...acc, children: [] });
+  });
+
+  accounts.forEach(acc => {
+    const node = accountMap.get(acc.id)!;
+    if (acc.parentId && accountMap.has(acc.parentId)) {
+      const parent = accountMap.get(acc.parentId)!;
+      if (!parent.children) parent.children = [];
+      parent.children.push(node);
+    } else {
+      rootAccounts.push(node);
+    }
+  });
+
+  return rootAccounts;
+}
+
 export function useAccounts(companyId: string) {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [flatAccounts, setFlatAccounts] = useState<Account[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const auth = useAuthStore.getState();
       const ownedByUserId = auth.shouldFilterByOwner('accounting') ? auth.user?.id : undefined;
       const result = await accountingApi.getAccounts(companyId, ownedByUserId);
+      if (cancelled) return;
       if (result.success && result.data) {
-        setAccounts(result.data);
+        setFlatAccounts(result.data.map(a => ({ ...a, children: [] })));
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
+
+  const accounts = useMemo(() => buildAccountTree(flatAccounts), [flatAccounts]);
 
   const create = useCallback(async (data: Omit<Account, 'id'>) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return { success: false, error: 'User not authenticated' };
     const result = await accountingApi.createAccount(data, userId);
     if (result.success && result.id) {
-      setAccounts(prev => [...prev, { ...data, id: result.id! }]);
+      const newAccount: Account = { ...data, id: result.id!, children: [] };
+      setFlatAccounts(prev => [...prev, newAccount]);
     }
     return result;
   }, []);
@@ -38,7 +68,7 @@ export function useAccounts(companyId: string) {
     if (!userId) return { success: false, error: 'User not authenticated' };
     const result = await accountingApi.updateAccount(id, companyId, userId, data);
     if (result.success) {
-      setAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+      setFlatAccounts(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
     }
     return result;
   }, [companyId]);
@@ -46,7 +76,7 @@ export function useAccounts(companyId: string) {
   const remove = useCallback(async (id: string) => {
     const result = await accountingApi.deleteAccount(id, companyId);
     if (result.success) {
-      setAccounts(prev => prev.filter(a => a.id !== id));
+      setFlatAccounts(prev => prev.filter(a => a.id !== id));
     }
     return result;
   }, [companyId]);
@@ -60,17 +90,22 @@ export function useTransactions(companyId: string) {
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const auth = useAuthStore.getState();
       const ownedByUserId = auth.shouldFilterByOwner('accounting') ? auth.user?.id : undefined;
       const result = await accountingApi.getTransactions(companyId, ownedByUserId);
+      if (cancelled) return;
       if (result.success && result.data) {
         setTransactions(result.data);
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<Transaction, 'id'>) => {
@@ -177,15 +212,20 @@ export function useTrialBalance(companyId: string, asOfDate?: string) {
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const result = await accountingApi.getTrialBalance(companyId, asOfDate);
+      if (cancelled) return;
       if (result.success && result.data) {
         setRows(result.data);
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId, asOfDate]);
 
   return { rows, isLoading };
@@ -196,16 +236,24 @@ export function useAccountLedger(accountId: string, companyId: string, startDate
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!accountId || !companyId) return;
+    if (!accountId || !companyId) {
+      setRows([]);
+      return;
+    }
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const result = await accountingApi.getAccountLedger(accountId, companyId, startDate, endDate);
+      if (cancelled) return;
       if (result.success && result.data) {
         setRows(result.data);
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [accountId, companyId, startDate, endDate]);
 
   return { rows, isLoading };
@@ -217,17 +265,22 @@ export function useReceiptVouchers(companyId: string) {
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const auth = useAuthStore.getState();
       const ownedByUserId = auth.shouldFilterByOwner('accounting') ? auth.user?.id : undefined;
       const result = await accountingApi.getReceiptVouchers(companyId, ownedByUserId);
+      if (cancelled) return;
       if (result.success && result.data) {
         setVouchers(result.data);
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<ReceiptVoucher, 'id'>) => {
@@ -314,17 +367,22 @@ export function usePaymentVouchers(companyId: string) {
 
   useEffect(() => {
     if (!companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const auth = useAuthStore.getState();
       const ownedByUserId = auth.shouldFilterByOwner('accounting') ? auth.user?.id : undefined;
       const result = await accountingApi.getPaymentVouchers(companyId, ownedByUserId);
+      if (cancelled) return;
       if (result.success && result.data) {
         setVouchers(result.data);
       }
       setIsLoading(false);
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, [companyId]);
 
   const create = useCallback(async (data: Omit<PaymentVoucher, 'id'>) => {

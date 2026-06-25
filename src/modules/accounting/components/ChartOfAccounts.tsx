@@ -225,7 +225,7 @@ export const ChartOfAccounts: React.FC = () => {
           <Calculator size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.chartOfAccounts')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.accountLedger')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.chartOfAccountsSubtitle')}</p>
           </div>
         </div>
         <Can action="create" module="accounting">

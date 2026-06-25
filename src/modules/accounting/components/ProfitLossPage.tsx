@@ -65,15 +65,15 @@ export const ProfitLossReport: React.FC = () => {
 
       return rows;
     },
-    [startDate, endDate],
+    [activeCompany?.id, startDate, endDate],
     !!activeCompany?.id,
   );
 
   const handleExportExcel = () => {
     const pnlData = pnlDataResult ?? [];
-    exportToExcel(pnlData.map(r => ({ [t('accounting.profitLoss.item')]: r.account, [t('accounting.amount')]: r.amount })), [
-      { key: t('accounting.profitLoss.item'), header: t('accounting.profitLoss.item'), width: 40 },
-      { key: t('accounting.amount'), header: t('accounting.amount'), width: 15 },
+    exportToExcel(pnlData.map(r => ({ item: r.account, amount: r.amount })), [
+      { key: 'item', header: t('accounting.profitLoss.item'), width: 40 },
+      { key: 'amount', header: t('accounting.amount'), width: 15 },
     ], 'ProfitLoss');
   };
 

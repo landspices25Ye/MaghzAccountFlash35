@@ -362,6 +362,8 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { type: 'purchase_order',    prefix: 'PO-',  start: 1, current: 4,  pad: 4 },
     { type: 'purchase_invoice',  prefix: 'PINV-',start: 1, current: 4,  pad: 4 },
     { type: 'journal_voucher',   prefix: 'JV-',  start: 1, current: 1,  pad: 4 },
+    { type: 'receipt_voucher',  prefix: 'RV-',  start: 1, current: 1,  pad: 4 },
+    { type: 'payment_voucher',  prefix: 'PV-',  start: 1, current: 1,  pad: 4 },
     { type: 'work_order',        prefix: 'WO-',  start: 1, current: 4,  pad: 6 },
     { type: 'payroll_run',       prefix: 'PAY-', start: 1, current: 2,  pad: 6 },
   ];

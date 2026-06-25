@@ -81,7 +81,7 @@ export const AccountLedgerPage: React.FC = () => {
           <BookOpen size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('accounting.accountLedger')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.accountLedger')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('accounting.ledgerSubtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

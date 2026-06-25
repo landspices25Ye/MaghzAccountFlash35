@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import { useAppStore } from '@/core/store';
 import ar from './ar.json';
 import en from './en.json';
@@ -6,9 +7,12 @@ const translations = { ar, en } as const;
 
 export function useTranslation() {
   const language = useAppStore((state) => state.language);
-  const currentTranslations = translations[language] as Record<string, unknown>;
-  
-  const t = (key: string, params?: Record<string, string | number>): string => {
+  const currentTranslations = useMemo(
+    () => translations[language] as Record<string, unknown>,
+    [language]
+  );
+
+  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
     const keys = key.split('.');
     let value: unknown = currentTranslations;
     for (const k of keys) {
@@ -23,8 +27,8 @@ export function useTranslation() {
     return value.replace(/\{\{(\w+)\}\}/g, (_, paramKey) =>
       paramKey in params ? String(params[paramKey]) : `{{${paramKey}}}`
     );
-  };
-  
+  }, [currentTranslations]);
+
   return { t, language };
 }
 

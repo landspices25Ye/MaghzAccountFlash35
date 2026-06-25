@@ -95,8 +95,11 @@
     "dashboard": "لوحة التحكم",
     "accounting": {
       "title": "الحسابات",
-      "chartOfAccounts": "شجرة الحسابات",
-      "journalEntries": "القيود اليومية",
+    "chartOfAccounts": "شجرة الحسابات",
+    "chartOfAccountsSubtitle": "إدارة شجرة الحسابات والتصنيفات",
+    "ledgerSubtitle": "عرض حركات حساب معين",
+    "journalEntries": "القيود اليومية",
+    "journalEntriesSubtitle": "إدارة وعرض القيود المحاسبية اليومية",
       "trialBalance": "ميزان المراجعة",
       "balanceSheet": "الميزانية العمومية",
       "profitLoss": "قائمة الدخل",
