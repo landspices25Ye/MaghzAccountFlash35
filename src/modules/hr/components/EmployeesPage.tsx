@@ -1,5 +1,5 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { Users, Plus, User } from 'lucide-react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { Users, Plus, User, Search } from 'lucide-react';
 import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
@@ -20,7 +20,8 @@ export const EmployeesPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
-  const employeeFilters = useMemo(() => ({ isActive: isActiveFilter }), [isActiveFilter]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const employeeFilters = useMemo(() => ({ isActive: isActiveFilter, search: searchQuery || undefined }), [isActiveFilter, searchQuery]);
   const { employees, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useEmployeesPaginated(companyId, employeeFilters);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,21 +38,21 @@ export const EmployeesPage: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData({
       employeeNumber: '', fullName: '', nationalId: '', phone: '', email: '',
       address: '', departmentId: '', position: '', grade: '', hireDate: '', baseSalary: '',
       isActive: true, photoUrl: '', attachments: [],
     });
     setEditing(null);
-  };
+  }, []);
 
-  const openCreate = () => {
+  const openCreate = useCallback(() => {
     resetForm();
     setIsModalOpen(true);
-  };
+  }, [resetForm]);
 
-  const openEdit = (emp: Employee) => {
+  const openEdit = useCallback((emp: Employee) => {
     setEditing(emp);
     setFormData({
       employeeNumber: emp.employeeNumber,
@@ -64,21 +65,29 @@ export const EmployeesPage: React.FC = () => {
       position: emp.position || '',
       grade: emp.grade || '',
       hireDate: emp.hireDate || '',
-      baseSalary: String(emp.baseSalary || ''),
+      baseSalary: emp.baseSalary !== undefined ? String(emp.baseSalary) : '',
       isActive: emp.isActive,
       photoUrl: emp.photoUrl || '',
       attachments: emp.attachments || [],
     });
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const openView = (emp: Employee) => {
+  const openView = useCallback((emp: Employee) => {
     setViewing(emp);
     setIsDetailOpen(true);
-  };
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+    resetForm();
+  }, [resetForm]);
 
   const handleSave = async () => {
-    if (!formData.employeeNumber || !formData.fullName) return;
+    if (!formData.employeeNumber || !formData.fullName) {
+      addToast('error', t('hr.employeesPage.requiredFields') || 'يرجى ملء الحقول المطلوبة');
+      return;
+    }
     const payload = {
       companyId,
       employeeNumber: formData.employeeNumber,
@@ -91,32 +100,39 @@ export const EmployeesPage: React.FC = () => {
       position: formData.position || undefined,
       grade: formData.grade || undefined,
       hireDate: formData.hireDate || undefined,
-      baseSalary: Number(formData.baseSalary) || undefined,
+      baseSalary: formData.baseSalary ? Number(formData.baseSalary) : undefined,
       isActive: formData.isActive,
       photoUrl: formData.photoUrl || undefined,
       attachments: formData.attachments,
     };
-    if (editing) {
-      await update(editing.id, payload);
-      addToast('success', t('hr.employeesPage.updated'));
+    const res = editing ? await update(editing.id, payload) : await create(payload);
+    if (res.success) {
+      addToast('success', editing ? t('hr.employeesPage.updated') : t('hr.employeesPage.created'));
+      setIsModalOpen(false);
+      resetForm();
     } else {
-      await create(payload);
-      addToast('success', t('hr.employeesPage.created'));
+      addToast('error', res.error || t('common.error'));
     }
-    setIsModalOpen(false);
-    resetForm();
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    addToast('success', t('hr.employeesPage.deleted'));
+    const res = await remove(confirmDelete);
+    if (res.success) {
+      addToast('success', t('hr.employeesPage.deleted'));
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
     setConfirmDelete(null);
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('error', t('hr.employeesPage.photoTooLarge') || 'حجم الصورة كبير جداً (الحد 2 ميجابايت)');
+      return;
+    }
     const reader = new FileReader();
     reader.onloadend = () => {
       setFormData((prev) => ({ ...prev, photoUrl: reader.result as string }));
@@ -124,7 +140,7 @@ export const EmployeesPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     { key: 'employeeNumber', header: t('hr.employeesPage.employeeNumber'), width: '120px' },
     { key: 'fullName', header: t('hr.employeesPage.name'), render: (row: Employee) => (
       <div className="flex items-center gap-2">
@@ -139,11 +155,11 @@ export const EmployeesPage: React.FC = () => {
     { key: 'actions', header: '', width: '140px', render: (row: Employee) => (
       <ActionButtons onView={() => openView(row)} onEdit={() => openEdit(row)} onDelete={() => setConfirmDelete(row.id)} showPrint={false} />
     )},
-  ];
+  ], [t, formatCurrency, openView, openEdit]);
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Users size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
@@ -155,7 +171,7 @@ export const EmployeesPage: React.FC = () => {
       </div>
 
       <Card>
-        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700 flex-wrap">
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 dark:text-slate-300">{t('hr.employeesPage.filterLabel')}</label>
             <select
@@ -165,13 +181,26 @@ export const EmployeesPage: React.FC = () => {
                 setIsActiveFilter(v === 'all' ? undefined : v === 'active');
               }}
               className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600"
+              title={t('hr.employeesPage.filterLabel')}
             >
               <option value="all">{t('settings.common.all')}</option>
               <option value="active">{t('settings.common.active')}</option>
               <option value="inactive">{t('settings.common.inactive')}</option>
             </select>
           </div>
-          <span className="text-xs text-slate-500">{t('hr.employeesPage.total')} {total}</span>
+          <div className="flex-1 min-w-[200px] max-w-md">
+            <div className="relative">
+              <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t('hr.employeesPage.searchPlaceholder') || 'ابحث بالاسم، الرقم الوظيفي، أو البريد...'}
+                className="w-full pr-9 pl-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+          </div>
+          <span className="text-xs text-slate-500 mr-auto">{t('hr.employeesPage.total')} {total}</span>
         </div>
         {isLoading ? (
           <div className="py-12 text-center text-slate-500">{t('settings.common.loading')}</div>
@@ -197,12 +226,12 @@ export const EmployeesPage: React.FC = () => {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => { setIsModalOpen(false); resetForm(); }}
+        onClose={closeModal}
         title={editing ? t('hr.employeesPage.edit') : t('hr.employeesPage.new')}
         size="lg"
         footer={
           <div className="flex items-center gap-2 justify-end w-full">
-            <Button variant="secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>{t('settings.common.cancel')}</Button>
+            <Button variant="secondary" onClick={closeModal}>{t('settings.common.cancel')}</Button>
             <Button variant="primary" onClick={handleSave}>{t('settings.common.save')}</Button>
           </div>
         }
@@ -213,7 +242,7 @@ export const EmployeesPage: React.FC = () => {
               <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
                 {formData.photoUrl ? <img src={formData.photoUrl} alt="" className="w-full h-full object-cover" /> : <User size={32} className="text-slate-400" />}
               </div>
-              <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 left-0 bg-primary-600 text-white rounded-full p-1">
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 left-0 bg-primary-600 text-white rounded-full p-1" title={t('hr.employeesPage.uploadPhoto') || 'تحميل صورة'}>
                 <Plus size={12} />
               </button>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
@@ -221,8 +250,8 @@ export const EmployeesPage: React.FC = () => {
             <div className="flex-1" />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('hr.employeesPage.employeeNumber')} value={formData.employeeNumber} onChange={(e) => setFormData((prev) => ({ ...prev, employeeNumber: e.target.value }))} />
-            <Input label={t('hr.employeesPage.fullName')} value={formData.fullName} onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))} />
+            <Input label={t('hr.employeesPage.employeeNumber')} value={formData.employeeNumber} onChange={(e) => setFormData((prev) => ({ ...prev, employeeNumber: e.target.value }))} required />
+            <Input label={t('hr.employeesPage.fullName')} value={formData.fullName} onChange={(e) => setFormData((prev) => ({ ...prev, fullName: e.target.value }))} required />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('hr.employeesPage.nationalId')} value={formData.nationalId} onChange={(e) => setFormData((prev) => ({ ...prev, nationalId: e.target.value }))} />

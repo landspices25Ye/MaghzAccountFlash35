@@ -26,12 +26,12 @@ export const AttendancePage: React.FC = () => {
 
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(today);
-  const [selectedMonth, _setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedYear, _setSelectedYear] = useState(new Date().getFullYear());
+  const now = new Date();
   const [isOpen, setIsOpen] = useState(false);
 
   const { employees } = useEmployees(companyId);
-  const { records, isLoading, save } = useAttendance(companyId, selectedMonth, selectedYear);
+  const { records, isLoading, save } = useAttendance(companyId, now.getMonth() + 1, now.getFullYear());
+  void now;
 
   const filteredRecords = useMemo(() => records.filter((r) => r.date === selectedDate), [records, selectedDate]);
 
@@ -97,9 +97,13 @@ export const AttendancePage: React.FC = () => {
         notes: undefined,
       };
     });
-    await save(payload);
-    addToast('success', t('hr.attendancePage.created'));
-    setIsOpen(false);
+    const res = await save(payload);
+    if (res.success) {
+      addToast('success', t('hr.attendancePage.created'));
+      setIsOpen(false);
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
   };
 
   const updateRecord = (employeeId: string, field: keyof DailyFormRecord, value: string) => {
@@ -107,34 +111,42 @@ export const AttendancePage: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    exportToExcel(
-      filteredRecords.map((r) => ({ ...r, employeeName: r.employeeName || r.employeeId })),
-      [
-        { key: 'employeeName', header: t('hr.attendancePage.table.employee') },
-        { key: 'date', header: t('hr.attendancePage.table.date') },
-        { key: 'checkIn', header: t('hr.attendancePage.table.checkIn') },
-        { key: 'checkOut', header: t('hr.attendancePage.table.checkOut') },
-        { key: 'overtimeHours', header: t('hr.attendancePage.table.overtime') },
-        { key: 'status', header: t('hr.attendancePage.table.status') },
-      ],
-      `attendance-${selectedDate}`
-    );
+    try {
+      exportToExcel(
+        filteredRecords.map((r) => ({ ...r, employeeName: r.employeeName || r.employeeId })),
+        [
+          { key: 'employeeName', header: t('hr.attendancePage.table.employee') },
+          { key: 'date', header: t('hr.attendancePage.table.date') },
+          { key: 'checkIn', header: t('hr.attendancePage.table.checkIn') },
+          { key: 'checkOut', header: t('hr.attendancePage.table.checkOut') },
+          { key: 'overtimeHours', header: t('hr.attendancePage.table.overtime') },
+          { key: 'status', header: t('hr.attendancePage.table.status') },
+        ],
+        `attendance-${selectedDate}`
+      );
+    } catch (_err) {
+      addToast('error', t('hr.attendancePage.exportError') || 'فشل تصدير الحضور');
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(
-      filteredRecords.map((r) => ({ ...r, employeeName: r.employeeName || r.employeeId, status: statusLabel(r.status, t) })),
-      [
-        { key: 'employeeName', header: t('hr.attendancePage.table.employee') },
-        { key: 'date', header: t('hr.attendancePage.table.date') },
-        { key: 'checkIn', header: t('hr.attendancePage.table.checkIn') },
-        { key: 'checkOut', header: t('hr.attendancePage.table.checkOut') },
-        { key: 'overtimeHours', header: t('hr.attendancePage.table.overtime') },
-        { key: 'status', header: t('hr.attendancePage.table.status') },
-      ],
-      `attendance-${selectedDate}`,
-      { title: t('hr.attendancePage.exportTitle'), subtitle: t('hr.attendancePage.exportDatePrefix') + ' ' + selectedDate, rtl: true }
-    );
+    try {
+      exportToPDF(
+        filteredRecords.map((r) => ({ ...r, employeeName: r.employeeName || r.employeeId, status: statusLabel(r.status, t) })),
+        [
+          { key: 'employeeName', header: t('hr.attendancePage.table.employee') },
+          { key: 'date', header: t('hr.attendancePage.table.date') },
+          { key: 'checkIn', header: t('hr.attendancePage.table.checkIn') },
+          { key: 'checkOut', header: t('hr.attendancePage.table.checkOut') },
+          { key: 'overtimeHours', header: t('hr.attendancePage.table.overtime') },
+          { key: 'status', header: t('hr.attendancePage.table.status') },
+        ],
+        `attendance-${selectedDate}`,
+        { title: t('hr.attendancePage.exportTitle'), subtitle: t('hr.attendancePage.exportDatePrefix') + ' ' + selectedDate, rtl: true }
+      );
+    } catch (_err) {
+      addToast('error', t('hr.attendancePage.exportError') || 'فشل تصدير الحضور');
+    }
   };
 
   const columns = [

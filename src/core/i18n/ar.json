@@ -95,11 +95,11 @@
     "dashboard": "لوحة التحكم",
     "accounting": {
       "title": "الحسابات",
-    "chartOfAccounts": "شجرة الحسابات",
-    "chartOfAccountsSubtitle": "إدارة شجرة الحسابات والتصنيفات",
-    "ledgerSubtitle": "عرض حركات حساب معين",
-    "journalEntries": "القيود اليومية",
-    "journalEntriesSubtitle": "إدارة وعرض القيود المحاسبية اليومية",
+      "chartOfAccounts": "شجرة الحسابات",
+      "chartOfAccountsSubtitle": "إدارة شجرة الحسابات والتصنيفات",
+      "ledgerSubtitle": "عرض حركات حساب معين",
+      "journalEntries": "القيود اليومية",
+      "journalEntriesSubtitle": "إدارة وعرض القيود المحاسبية اليومية",
       "trialBalance": "ميزان المراجعة",
       "balanceSheet": "الميزانية العمومية",
       "profitLoss": "قائمة الدخل",
@@ -158,8 +158,8 @@
       "title": "التقارير",
       "hub": "مركز التقارير",
       "salesAnalysis": "تحليل المبيعات",
-    "inventoryAnalysis": "تحليل المخزون",
-    "stockValuation": "تقييم المخزون",
+      "inventoryAnalysis": "تحليل المخزون",
+      "stockValuation": "تقييم المخزون",
       "customerStatement": "كشف حساب عميل",
       "supplierStatement": "كشف حساب مورد",
       "profitAnalysis": "تحليل الأرباح",
@@ -515,7 +515,11 @@
     "unitPrice": "سعر الوحدة",
     "costPrice": "سعر التكلفة",
     "salePrice": "سعر البيع",
-    "warehouse": "المستودع",
+    "warehouse": {
+      "created": "تم إنشاء المستودع بنجاح",
+      "updated": "تم تحديث المستودع بنجاح",
+      "deleted": "تم حذف المستودع بنجاح"
+    },
     "branch": "الفرع",
     "lowStock": "مخزون منخفض",
     "stockValue": "قيمة المخزون",
@@ -544,7 +548,12 @@
     "in": "وارد",
     "out": "صادر",
     "transfer": "تحويل",
-    "adjustment": "تسوية",
+    "adjustment": {
+      "created": "تم إنشاء التسوية بنجاح",
+      "updated": "تم تحديث التسوية بنجاح",
+      "deleted": "تم حذف التسوية بنجاح",
+      "posted": "تم ترحيل التسوية بنجاح"
+    },
     "fromWarehouse": "من المستودع",
     "toWarehouse": "إلى المستودع",
     "date": "التاريخ",
@@ -582,17 +591,6 @@
       "updated": "تم تحديث المنتج بنجاح",
       "deleted": "تم حذف المنتج بنجاح"
     },
-    "warehouse": {
-      "created": "تم إنشاء المستودع بنجاح",
-      "updated": "تم تحديث المستودع بنجاح",
-      "deleted": "تم حذف المستودع بنجاح"
-    },
-    "adjustment": {
-      "created": "تم إنشاء التسوية بنجاح",
-      "updated": "تم تحديث التسوية بنجاح",
-      "deleted": "تم حذف التسوية بنجاح",
-      "posted": "تم ترحيل التسوية بنجاح"
-    },
     "transaction": {
       "created": "تم إنشاء الحركة بنجاح",
       "deleted": "تم حذف الحركة بنجاح"
@@ -624,7 +622,15 @@
         "title": "لا توجد تسويات",
         "description": "لم يتم إنشاء تسويات مخزنية بعد"
       }
-    }
+    },
+    "editWarehouse": "تعديل المستودع",
+    "editAdjustment": "تعديل التسوية",
+    "complete": "إكمال",
+    "approveSuccess": "تم اعتماد التسوية بنجاح",
+    "postSuccess": "تم ترحيل التسوية بنجاح",
+    "createTransferSuccess": "تم إنشاء التحويل بنجاح",
+    "completeTransferSuccess": "تم إكمال التحويل بنجاح",
+    "deleteTransferSuccess": "تم حذف التحويل بنجاح"
   },
   "sales": {
     "invoices": "فواتير المبيعات",
@@ -849,6 +855,9 @@
     "notes": "ملاحظات",
     "documentType": "نوع المستند",
     "documentNumber": "رقم المستند",
+    "currency": "العملة",
+    "exchangeRate": "سعر الصرف",
+    "baseCurrency": "المعادل بالأساسية",
     "page": {
       "title": "المشتريات",
       "subtitle": "إدارة المشتريات والموردين"
@@ -884,6 +893,7 @@
       "linkOrder": "ربط بأمر شراء",
       "print": "طباعة الفاتورة",
       "export": "تصدير الفواتير",
+      "numberError": "تعذر توليد رقم فاتورة المشتريات. حاول مرة أخرى.",
       "postFailed": "فشل ترحيل الفاتورة",
       "postErrorUnknown": "خطأ غير معروف",
       "created": "تم إنشاء فاتورة المشتريات بنجاح",
@@ -897,6 +907,7 @@
       "create": "أمر شراء جديد",
       "number": "رقم الأمر",
       "expectedDate": "تاريخ التوقع",
+      "numberError": "تعذر توليد رقم أمر الشراء. حاول مرة أخرى.",
       "deleteTitle": "حذف أمر الشراء",
       "deleteConfirm": "هل أنت متأكد من حذف أمر الشراء؟",
       "emptyTitle": "لا توجد أوامر شراء",
@@ -941,6 +952,7 @@
       "linkInvoice": "ربط بالفاتورة الأصلية",
       "accountingEffectDesc": "دائنون تجاريون / بضاعة",
       "inventoryEffectDesc": "صادر مخزني",
+      "numberError": "تعذر توليد رقم مردود المشتريات. حاول مرة أخرى.",
       "created": "تم إنشاء مردود المشتريات بنجاح",
       "updated": "تم تحديث مردود المشتريات بنجاح",
       "deleted": "تم حذف مردود المشتريات",
@@ -996,7 +1008,8 @@
       "unitCost": "تكلفة الوحدة",
       "totalCost": "التكلفة الإجمالية",
       "total": "الإجمالي",
-      "estimatedCost": "التكلفة التقديرية"
+      "estimatedCost": "التكلفة التقديرية",
+      "searchPlaceholder": "بحث في فاتير المواد..."
     },
     "production": "الإنتاج",
     "costs": "التكاليف",
@@ -1050,7 +1063,10 @@
       "notes": "ملاحظات",
       "notesPlaceholder": "ملاحظات اختيارية...",
       "product": "المنتج",
-      "selectProduct": "اختر المنتج..."
+      "selectProduct": "اختر المنتج...",
+      "bom": "فاتورة المواد",
+      "totalCost": "التكلفة الإجمالية",
+      "autoCalculatedCost": "التكلفة المحسوبة تلقائياً"
     },
     "actions": {
       "addMaterial": "إضافة مادة",
@@ -1106,7 +1122,7 @@
       "post": "ترحيل",
       "newPayroll": "مسير جديد",
       "draft": "مسودة",
-      "posted": "مرحل",
+      "posted": "تم ترحيل مسير الرواتب بنجاح",
       "emptyTitle": "لا يوجد مسير رواتب",
       "emptyDescription": "يمكنك إنشاء مسير جديد",
       "emptyMessage": "لا يوجد مسير رواتب",
@@ -1126,8 +1142,7 @@
       "printTitle": "مسير الرواتب",
       "printMonthYear": "الشهر/السنة:",
       "created": "تم إنشاء مسير الرواتب بنجاح",
-      "updated": "تم تحديث مسير الرواتب بنجاح",
-      "posted": "تم ترحيل مسير الرواتب بنجاح"
+      "updated": "تم تحديث مسير الرواتب بنجاح"
     },
     "leaves": {
       "title": "الإجازات",
@@ -1162,7 +1177,12 @@
       "emptyMessage": "لا توجد إجازات",
       "created": "تم إنشاء الإجازة بنجاح",
       "updated": "تم تحديث الإجازة بنجاح",
-      "deleted": "تم حذف الإجازة بنجاح"
+      "deleted": "تم حذف الإجازة بنجاح",
+      "exportError": "فشل تصدير الإجازات",
+      "reportDate": "تاريخ التقرير:",
+      "totalCount": "إجمالي السجلات:",
+      "requiredFields": "يرجى ملء الحقول المطلوبة",
+      "invalidDates": "تاريخ النهاية يجب أن يكون بعد تاريخ البداية"
     },
     "endOfService": "نهاية الخدمة",
     "departments": "الأقسام",
@@ -1212,7 +1232,11 @@
       "hireDateLabel": "تاريخ التعيين:",
       "created": "تم إنشاء الموظف بنجاح",
       "updated": "تم تحديث الموظف بنجاح",
-      "deleted": "تم حذف الموظف بنجاح"
+      "deleted": "تم حذف الموظف بنجاح",
+      "searchPlaceholder": "ابحث بالاسم، الرقم الوظيفي، أو البريد...",
+      "requiredFields": "يرجى ملء الحقول المطلوبة",
+      "photoTooLarge": "حجم الصورة كبير جداً (الحد 2 ميجابايت)",
+      "uploadPhoto": "تحميل صورة"
     },
     "attendancePage": {
       "title": "الحضور والانصراف",
@@ -1244,7 +1268,8 @@
       "exportDatePrefix": "بتاريخ:",
       "saveRegistration": "حفظ التسجيل",
       "created": "تم إنشاء الحضور بنجاح",
-      "updated": "تم تحديث الحضور بنجاح"
+      "updated": "تم تحديث الحضور بنجاح",
+      "exportError": "فشل تصدير الحضور"
     },
     "eos": {
       "title": "نهاية الخدمة",
@@ -1289,7 +1314,9 @@
       "approve": "اعتماد",
       "created": "تم إنشاء نهاية الخدمة بنجاح",
       "updated": "تم تحديث نهاية الخدمة بنجاح",
-      "deleted": "تم حذف نهاية الخدمة بنجاح"
+      "deleted": "تم حذف نهاية الخدمة بنجاح",
+      "reportError": "فشل تصدير التقرير",
+      "requiredFields": "يرجى اختيار الموظف وتاريخ النهاية"
     }
   },
   "crm": {
@@ -1355,9 +1382,28 @@
       "estimatedValue": "القيمة المتوقعة",
       "rating": "التقييم",
       "status": "الحالة",
+      "statusFilter": "الحالة",
+      "new": "عميل محتمل جديد",
+      "edit": "تعديل عميل محتمل",
+      "empty": "لا يوجد عملاء محتملين",
+      "emptyDescription": "يمكنك إضافة عميل محتمل جديد",
+      "convertTitle": "تحويل إلى عميل",
+      "convertMessage": "هل تريد تحويل هذا العميل المحتمل إلى عميل دائم؟",
+      "convertToCustomer": "تحويل إلى عميل",
+      "followUp": "متابعة جديدة",
+      "followUps": "متابعات",
+      "deleteTitle": "حذف العميل المحتمل",
+      "deleteMessage": "هل أنت متأكد من حذف هذا العميل المحتمل؟",
       "created": "تم إنشاء العميل المتوقع بنجاح",
       "updated": "تم تحديث العميل المتوقع بنجاح",
       "deleted": "تم حذف العميل المتوقع بنجاح"
+    },
+    "leadsPage": {
+      "title": "العملاء المحتملين",
+      "description": "إدارة ومتابعة العملاء المحتملين والفرص الجديدة",
+      "search": "ابحث عن عميل محتمل...",
+      "total": "إجمالي العملاء المحتملين",
+      "searchLabel": "البحث"
     },
     "opportunity": {
       "name": "اسم الفرصة",
@@ -1375,11 +1421,17 @@
       "totalValue": "إجمالي القيمة",
       "weightedValue": "القيمة المرجحة",
       "count": "فرص",
+      "funnelReport": "تقرير قمع المبيعات",
       "deleteTitle": "حذف الفرصة",
       "deleteMessage": "هل أنت متأكد من حذف هذه الفرصة؟",
       "created": "تم إنشاء الفرصة بنجاح",
       "updated": "تم تحديث الفرصة بنجاح",
       "deleted": "تم حذف الفرصة بنجاح"
+    },
+    "opportunitiesPage": {
+      "title": "الفرص",
+      "description": "متابعة الفرص البيعية عبر مراحل المبيعات",
+      "search": "ابحث عن فرصة..."
     },
     "task": {
       "title": "المهمة",
@@ -1392,11 +1444,23 @@
       "emptyDescription": "يمكنك إضافة مهمة جديدة",
       "statusCompleted": "✓ تم",
       "statusPending": "إنجاز",
+      "overdue": "متأخرة",
       "deleteTitle": "حذف المهمة",
       "deleteMessage": "هل أنت متأكد من حذف هذه المهمة؟",
       "created": "تم إنشاء المهمة بنجاح",
       "updated": "تم تحديث المهمة بنجاح",
       "deleted": "تم حذف المهمة بنجاح"
+    },
+    "tasksPage": {
+      "title": "المهام",
+      "description": "متابعة المهام اليومية والأسبوعية",
+      "search": "ابحث عن مهمة...",
+      "filter": {
+        "all": "الكل",
+        "pending": "قيد الانتظار",
+        "completed": "منجزة",
+        "cancelled": "ملغاة"
+      }
     },
     "activities": {
       "title": "الأنشطة",
@@ -1408,6 +1472,13 @@
       "repName": "المندوب",
       "activityCount": "عدد الأنشطة",
       "totalMinutes": "إجمالي الدقائق"
+    },
+    "activitiesPage": {
+      "title": "سجل الأنشطة",
+      "description": "تتبع المكالمات والاجتماعات والزيارات مع العملاء",
+      "filter": {
+        "all": "الكل"
+      }
     },
     "activity": {
       "type": "النوع",
@@ -1458,6 +1529,7 @@
     "previousPeriod": "الفترة السابقة",
     "currentPeriod": "الفترة الحالية",
     "noData": "لا توجد بيانات",
+    "noPermission": "ليس لديك صلاحية لعرض التقارير",
     "filter": "تصفية",
     "filter.myDocsOnly": "مستنداتي فقط",
     "filter.allDocs": "الكل",
@@ -2142,25 +2214,341 @@
     "range": "{{start}}-{{end}} من {{total}}"
   },
   "select": {
-    "default": { "placeholder": "اختر...", "search": "بحث...", "empty": "لا توجد نتائج", "addNew": "إضافة جديد" },
-    "customer": { "placeholder": "اختر العميل...", "search": "بحث في العملاء...", "empty": "لا يوجد عملاء", "balance": "الرصيد" },
-    "supplier": { "placeholder": "اختر المورد...", "search": "بحث في الموردين...", "empty": "لا يوجد موردين", "balance": "الرصيد" },
-    "product": { "placeholder": "اختر المنتج...", "search": "بحث في المنتجات...", "empty": "لا توجد منتجات" },
-    "account": { "placeholder": "اختر الحساب...", "search": "بحث في الحسابات...", "empty": "لا توجد حسابات" },
-    "employee": { "placeholder": "اختر الموظف...", "search": "بحث في الموظفين...", "empty": "لا يوجد موظفين" },
-    "branch": { "placeholder": "اختر الفرع...", "search": "بحث في الفروع...", "empty": "لا يوجد فروع" },
-    "currency": { "placeholder": "اختر العملة...", "search": "بحث في العملات...", "empty": "لا توجد عملات", "default": "الافتراضية", "exchangeRate": "سعر الصرف" },
-    "warehouse": { "placeholder": "اختر المستودع...", "search": "بحث في المخازن...", "empty": "لا يوجد مخازن" },
-    "user": { "placeholder": "اختر المستخدم...", "search": "بحث في المستخدمين...", "empty": "لا يوجد مستخدمين" },
-    "lead": { "placeholder": "اختر العميل المحتمل...", "search": "بحث في العملاء المحتملين...", "empty": "لا يوجد عملاء محتملين" },
-    "opportunity": { "placeholder": "اختر الفرصة...", "search": "بحث في الفرص...", "empty": "لا توجد فرص" },
-    "workOrder": { "placeholder": "اختر أمر الإنتاج...", "search": "بحث في أوامر الإنتاج...", "empty": "لا توجد أوامر إنتاج" },
-    "productType": { "placeholder": "اختر النوع...", "search": "بحث في الأنواع...", "empty": "لا يوجد أنواع" },
-    "unit": { "placeholder": "اختر الوحدة...", "search": "بحث في الوحدات...", "empty": "لا توجد وحدات" },
-    "costCenter": { "placeholder": "اختر مركز التكلفة...", "search": "بحث في المراكز...", "empty": "لا يوجد مراكز تكلفة" },
-    "cashBox": { "placeholder": "اختر الصندوق...", "search": "بحث في الصناديق...", "empty": "لا يوجد صناديق" },
-    "payrollComponent": { "placeholder": "اختر المكون...", "search": "بحث في المكونات...", "empty": "لا توجد مكونات" },
-    "bom": { "placeholder": "اختر قائمة المواد...", "search": "بحث في BOM...", "empty": "لا توجد قوائم مواد", "version": "الإصدار" },
-    "bank": { "placeholder": "اختر البنك...", "search": "بحث في البنوك...", "empty": "لا يوجد بنوك" }
+    "default": {
+      "placeholder": "اختر...",
+      "search": "بحث...",
+      "empty": "لا توجد نتائج",
+      "addNew": "إضافة جديد"
+    },
+    "customer": {
+      "placeholder": "اختر العميل...",
+      "search": "بحث في العملاء...",
+      "empty": "لا يوجد عملاء",
+      "balance": "الرصيد"
+    },
+    "supplier": {
+      "placeholder": "اختر المورد...",
+      "search": "بحث في الموردين...",
+      "empty": "لا يوجد موردين",
+      "balance": "الرصيد"
+    },
+    "product": {
+      "placeholder": "اختر المنتج...",
+      "search": "بحث في المنتجات...",
+      "empty": "لا توجد منتجات"
+    },
+    "account": {
+      "placeholder": "اختر الحساب...",
+      "search": "بحث في الحسابات...",
+      "empty": "لا توجد حسابات"
+    },
+    "employee": {
+      "placeholder": "اختر الموظف...",
+      "search": "بحث في الموظفين...",
+      "empty": "لا يوجد موظفين"
+    },
+    "branch": {
+      "placeholder": "اختر الفرع...",
+      "search": "بحث في الفروع...",
+      "empty": "لا يوجد فروع"
+    },
+    "currency": {
+      "placeholder": "اختر العملة...",
+      "search": "بحث في العملات...",
+      "empty": "لا توجد عملات",
+      "default": "الافتراضية",
+      "exchangeRate": "سعر الصرف"
+    },
+    "warehouse": {
+      "placeholder": "اختر المستودع...",
+      "search": "بحث في المخازن...",
+      "empty": "لا يوجد مخازن"
+    },
+    "user": {
+      "placeholder": "اختر المستخدم...",
+      "search": "بحث في المستخدمين...",
+      "empty": "لا يوجد مستخدمين"
+    },
+    "lead": {
+      "placeholder": "اختر العميل المحتمل...",
+      "search": "بحث في العملاء المحتملين...",
+      "empty": "لا يوجد عملاء محتملين"
+    },
+    "opportunity": {
+      "placeholder": "اختر الفرصة...",
+      "search": "بحث في الفرص...",
+      "empty": "لا توجد فرص"
+    },
+    "workOrder": {
+      "placeholder": "اختر أمر الإنتاج...",
+      "search": "بحث في أوامر الإنتاج...",
+      "empty": "لا توجد أوامر إنتاج"
+    },
+    "productType": {
+      "placeholder": "اختر النوع...",
+      "search": "بحث في الأنواع...",
+      "empty": "لا يوجد أنواع"
+    },
+    "unit": {
+      "placeholder": "اختر الوحدة...",
+      "search": "بحث في الوحدات...",
+      "empty": "لا توجد وحدات"
+    },
+    "costCenter": {
+      "placeholder": "اختر مركز التكلفة...",
+      "search": "بحث في المراكز...",
+      "empty": "لا يوجد مراكز تكلفة"
+    },
+    "cashBox": {
+      "placeholder": "اختر الصندوق...",
+      "search": "بحث في الصناديق...",
+      "empty": "لا يوجد صناديق"
+    },
+    "payrollComponent": {
+      "placeholder": "اختر المكون...",
+      "search": "بحث في المكونات...",
+      "empty": "لا توجد مكونات"
+    },
+    "bom": {
+      "placeholder": "اختر قائمة المواد...",
+      "search": "بحث في BOM...",
+      "empty": "لا توجد قوائم مواد",
+      "version": "الإصدار"
+    },
+    "bank": {
+      "placeholder": "اختر البنك...",
+      "search": "بحث في البنوك...",
+      "empty": "لا يوجد بنوك"
+    }
+  },
+  "currencies": {
+    "codeAndNameRequired": {
+      "codeAndNameRequired": "يجب إدخال رمز العملة واسمها"
+    },
+    "codeLength": {
+      "codeLength": "رمز العملة يجب أن يكون 3 أحرف"
+    },
+    "saveError": {
+      "saveError": "فشل حفظ العملة"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف العملة"
+    },
+    "setDefaultSuccess": {
+      "setDefaultSuccess": "تم تعيين العملة كافتراضية"
+    },
+    "emptyTitle": {
+      "emptyTitle": "لا توجد عملات"
+    },
+    "emptyDesc": {
+      "emptyDesc": "ابدأ بإضافة عملة جديدة"
+    }
+  },
+  "vat": {
+    "account": {
+      "account": "الحساب المحاسبي"
+    },
+    "deleted": {
+      "deleted": "تم حذف الضريبة"
+    },
+    "saveError": {
+      "saveError": "فشل حفظ الضريبة"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف الضريبة"
+    },
+    "nameRequired": {
+      "nameRequired": "اسم الضريبة مطلوب"
+    },
+    "rateInvalid": {
+      "rateInvalid": "نسبة الضريبة يجب أن تكون بين 0 و 100"
+    }
+  },
+  "units": {
+    "nameRequired": {
+      "nameRequired": "اسم الوحدة بالعربية مطلوب"
+    },
+    "deleteTitle": {
+      "deleteTitle": "حذف الوحدة"
+    },
+    "deleteMessage": {
+      "deleteMessage": "هل أنت متأكد من حذف هذه الوحدة؟ لا يمكن التراجع."
+    },
+    "createError": {
+      "createError": "فشل إنشاء الوحدة"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث الوحدة"
+    }
+  },
+  "banks": {
+    "deleteError": {
+      "deleteError": "فشل حذف الحساب البنكي"
+    },
+    "createError": {
+      "createError": "فشل إنشاء الحساب البنكي"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث الحساب البنكي"
+    },
+    "accountNameRequired": {
+      "accountNameRequired": "اسم الحساب مطلوب"
+    }
+  },
+  "cashBoxes": {
+    "nameRequired": {
+      "nameRequired": "اسم الصندوق مطلوب"
+    },
+    "createError": {
+      "createError": "فشل إنشاء الصندوق"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث الصندوق"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف الصندوق"
+    }
+  },
+  "costCenters": {
+    "nameRequired": {
+      "nameRequired": "اسم مركز التكلفة بالعربية مطلوب"
+    },
+    "createError": {
+      "createError": "فشل إنشاء مركز التكلفة"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث مركز التكلفة"
+    },
+    "removeError": {
+      "removeError": "فشل حذف مركز التكلفة"
+    },
+    "deleteTitle": {
+      "deleteTitle": "حذف مركز التكلفة"
+    },
+    "deleteMessage": {
+      "deleteMessage": "هل أنت متأكد من حذف هذا المركز؟"
+    },
+    "deleted": {
+      "deleted": "تم حذف مركز التكلفة"
+    },
+    "created": {
+      "created": "تم إنشاء مركز التكلفة"
+    },
+    "updated": {
+      "updated": "تم تحديث مركز التكلفة"
+    }
+  },
+  "productTypes": {
+    "nameRequired": {
+      "nameRequired": "اسم نوع المنتج بالعربية مطلوب"
+    },
+    "createError": {
+      "createError": "فشل إنشاء نوع المنتج"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث نوع المنتج"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف نوع المنتج"
+    },
+    "deleted": {
+      "deleted": "تم حذف نوع المنتج"
+    }
+  },
+  "productCategories": {
+    "nameRequired": {
+      "nameRequired": "اسم التصنيف مطلوب"
+    },
+    "createError": {
+      "createError": "فشل إنشاء التصنيف"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث التصنيف"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف التصنيف"
+    }
+  },
+  "users": {
+    "usernameRequired": {
+      "usernameRequired": "اسم المستخدم مطلوب"
+    },
+    "passwordRequired": {
+      "passwordRequired": "كلمة المرور مطلوبة"
+    },
+    "passwordTooShort": {
+      "passwordTooShort": "كلمة المرور يجب أن تكون 6 أحرف على الأقل"
+    },
+    "passwordReset": {
+      "passwordReset": "تم إعادة تعيين كلمة المرور بنجاح"
+    },
+    "created": {
+      "created": "تم إنشاء المستخدم بنجاح (كلمة المرور الافتراضية: 123456)"
+    },
+    "updated": {
+      "updated": "تم تحديث بيانات المستخدم"
+    },
+    "deleted": {
+      "deleted": "تم حذف المستخدم"
+    },
+    "saveError": {
+      "saveError": "فشل حفظ المستخدم"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف المستخدم"
+    },
+    "cannotDeleteSelf": {
+      "cannotDeleteSelf": "لا يمكنك حذف حسابك الحالي"
+    }
+  },
+  "branches": {
+    "nameRequired": {
+      "nameRequired": "اسم الفرع مطلوب"
+    },
+    "createError": {
+      "createError": "فشل إنشاء الفرع"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث الفرع"
+    },
+    "deleteError": {
+      "deleteError": "فشل حذف الفرع"
+    },
+    "setDefault": {
+      "setDefault": "تعيين كافتراضي"
+    }
+  },
+  "company": {
+    "saveError": {
+      "saveError": "فشل حفظ بيانات الشركة"
+    },
+    "updated": {
+      "updated": "تم تحديث بيانات الشركة"
+    },
+    "saved": {
+      "saved": "تم حفظ بيانات الشركة"
+    },
+    "nameRequired": {
+      "nameRequired": "اسم الشركة بالعربية مطلوب"
+    }
+  },
+  "sequences": {
+    "previewError": {
+      "previewError": "فشل معاينة الرقم"
+    },
+    "updateError": {
+      "updateError": "فشل تحديث تسلسل المستندات"
+    }
+  },
+  "defaultAccounts": {
+    "updateError": {
+      "updateError": "فشل تحديث الحساب الافتراضي"
+    },
+    "applyError": {
+      "applyError": "فشل تطبيق القالب"
+    },
+    "applied": {
+      "applied": "تم تطبيق القالب بنجاح"
+    }
   }
 }

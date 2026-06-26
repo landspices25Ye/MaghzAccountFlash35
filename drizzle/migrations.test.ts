@@ -417,10 +417,12 @@ describe('Migration 0009: Performance indexes phase 2', () => {
     expect(mig9).toMatch(/pg_constraint WHERE conname/i);
   });
 
-  it('_journal.json has 11 entries (0000-0010)', () => {
+  it('_journal.json has 14 entries (0000-0013)', () => {
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf-8'));
-    expect(journal.entries.length).toBe(11);
-    expect(journal.entries[10].tag).toBe('0010_schema_drift_fix');
+    expect(journal.entries.length).toBe(14);
+    expect(journal.entries[11].tag).toBe('0011_manufacturing_schema_fix');
+    expect(journal.entries[12].tag).toBe('0012_purchase_invoice_lines_percents');
+    expect(journal.entries[13].tag).toBe('0013_hr_schema_drift_fix');
   });
 });
 
@@ -525,5 +527,72 @@ describe('Drizzle schema TypeScript', () => {
     expect(mod.purchaseOrderLines.description).toBeDefined();
     expect(mod.purchaseOrderLines.receivedQuantity).toBeDefined();
     expect(mod.purchaseReturnLines.description).toBeDefined();
+  });
+});
+
+describe('Migration 0012: Purchase invoice lines percent columns', () => {
+  let mig12: string;
+
+  beforeAll(() => {
+    mig12 = readFileSync(join(MIGRATIONS_DIR, '0012_purchase_invoice_lines_percents.sql'), 'utf-8');
+  });
+
+  it('adds discount_percent to purchase_invoice_lines', () => {
+    expect(mig12).toMatch(/ALTER TABLE "purchase_invoice_lines"[\s\S]*?ADD COLUMN IF NOT EXISTS "discount_percent"/i);
+    expect(mig12).toMatch(/numeric\(5, 2\)/i);
+  });
+
+  it('adds vat_percent to purchase_invoice_lines', () => {
+    expect(mig12).toMatch(/ALTER TABLE "purchase_invoice_lines"[\s\S]*?ADD COLUMN IF NOT EXISTS "vat_percent"/i);
+    expect(mig12).toMatch(/numeric\(5, 2\)/i);
+  });
+
+  it('keeps sales_invoice_lines in sync with the same columns', () => {
+    expect(mig12).toMatch(/ALTER TABLE "sales_invoice_lines"[\s\S]*?ADD COLUMN IF NOT EXISTS "discount_percent"/i);
+    expect(mig12).toMatch(/ALTER TABLE "sales_invoice_lines"[\s\S]*?ADD COLUMN IF NOT EXISTS "vat_percent"/i);
+  });
+
+  it('is idempotent (all ADD COLUMN IF NOT EXISTS)', () => {
+    expect(mig12).not.toMatch(/ADD COLUMN\s+(?!IF NOT EXISTS)/i);
+  });
+
+  it('Drizzle schema has the new percent columns', { timeout: 30000 }, async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.purchaseInvoiceLines.discountPercent).toBeDefined();
+    expect(mod.purchaseInvoiceLines.vatPercent).toBeDefined();
+  });
+});
+
+describe('Migration 0013: HR schema drift fix', () => {
+  let mig13: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0013_hr_schema_drift_fix.sql');
+    mig13 = readFileSync(path, 'utf-8');
+  });
+
+  it('adds photo_url column to employees', () => {
+    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo_url/i);
+  });
+
+  it('adds attachments column to employees (jsonb)', () => {
+    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN IF NOT EXISTS attachments/i);
+    expect(mig13).toContain('jsonb');
+  });
+
+  it('creates index on employees.department_id for fast lookups', () => {
+    expect(mig13).toContain('idx_employees_department');
+    expect(mig13).toContain('CREATE INDEX IF NOT EXISTS');
+  });
+
+  it('uses IF NOT EXISTS for idempotency', () => {
+    expect(mig13).toMatch(/ADD COLUMN IF NOT EXISTS/);
+    expect(mig13).toMatch(/CREATE INDEX IF NOT EXISTS/);
+  });
+
+  it('Drizzle schema exposes photoUrl and attachments on employees', async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.employees.photoUrl).toBeDefined();
+    expect(mod.employees.attachments).toBeDefined();
   });
 });

@@ -54,7 +54,7 @@ export const PayrollPage: React.FC = () => {
   const totalPayroll = useMemo(() => lines.reduce((sum, l) => sum + l.netSalary, 0), [lines]);
 
   const handleSave = async () => {
-    await create({
+    const res = await create({
       companyId,
       month: formData.month,
       year: formData.year,
@@ -62,14 +62,22 @@ export const PayrollPage: React.FC = () => {
       status: 'draft',
       lines: [...lines],
     });
-    addToast('success', t('hr.payroll.created'));
-    setIsModalOpen(false);
-    setLines([]);
+    if (res.success) {
+      addToast('success', t('hr.payroll.created'));
+      setIsModalOpen(false);
+      setLines([]);
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
   };
 
   const handlePost = async (id: string) => {
-    await post(id);
-    addToast('success', t('hr.payroll.posted'));
+    const res = await post(id);
+    if (res.success) {
+      addToast('success', t('hr.payroll.posted'));
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
   };
 
   const selectedPayrollData = selectedPayroll ? payrolls.find((p) => p.id === selectedPayroll) || null : null;

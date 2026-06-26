@@ -51,23 +51,25 @@ export function useAttendance(companyId: string, month: number, year: number) {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!companyId) return;
-    async function load() {
-      setIsLoading(true);
-      const res = await hrApi.getAttendance(companyId, month, year);
-      if (res.success && res.data) setRecords(res.data);
-      setIsLoading(false);
-    }
-    load();
+    setIsLoading(true);
+    const res = await hrApi.getAttendance(companyId, month, year);
+    if (res.success && res.data) setRecords(res.data);
+    setIsLoading(false);
   }, [companyId, month, year]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const save = useCallback(async (data: Omit<AttendanceRecord, 'id'>[]) => {
     const res = await hrApi.saveAttendance(data);
+    if (res.success) await load();
     return res;
-  }, []);
+  }, [load]);
 
-  return { records, isLoading, save };
+  return { records, isLoading, save, refresh: load };
 }
 
 export function usePayrollRuns(companyId: string) {

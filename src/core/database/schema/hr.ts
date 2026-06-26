@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date, integer } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, numeric, boolean, date, integer, jsonb } from 'drizzle-orm/pg-core';
 import { companies } from './core';
 
 // ─── Departments ──────────────────────────────────────────────────────────────
@@ -29,6 +29,8 @@ export const employees = pgTable('employees', {
   terminationDate: date('termination_date'),
   baseSalary: numeric('base_salary', { precision: 18, scale: 4 }).notNull(),
   isActive: boolean('is_active').default(true).notNull(),
+  photoUrl: text('photo_url'),
+  attachments: jsonb('attachments'),
   createdBy: uuid('created_by'),
   updatedBy: uuid('updated_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

@@ -48,7 +48,7 @@ export const hrApi = {
       }
       if (filters?.search) {
         params.push(`%${filters.search}%`);
-        conditions.push(`(e.full_name ILIKE $${params.length} OR e.code ILIKE $${params.length} OR e.email ILIKE $${params.length})`);
+        conditions.push(`(e.full_name ILIKE $${params.length} OR e.employee_number ILIKE $${params.length} OR e.email ILIKE $${params.length})`);
       }
       const where = conditions.join(' AND ');
 
@@ -132,8 +132,9 @@ export const hrApi = {
       if (data.baseSalary !== undefined) { fields.push(`base_salary = $${idx++}`); values.push(data.baseSalary); }
       if (data.isActive !== undefined) { fields.push(`is_active = $${idx++}`); values.push(data.isActive); }
       if (data.photoUrl !== undefined) { fields.push(`photo_url = $${idx++}`); values.push(data.photoUrl); }
-      if (data.attachments !== undefined) { fields.push(`attachments = $${idx++}`); values.push(data.attachments ? JSON.stringify(data.attachments) : null); }
-      if (fields.length === 0) return { success: true };
+      if (data.attachments !== undefined) { fields.push(`attachments = $${idx++}`); values.push(JSON.stringify(data.attachments)); }
+      fields.push('updated_at = NOW()');
+      if (fields.length === 1) return { success: true };
       values.push(id);
       values.push(companyId);
       const result = await adapter.query(`UPDATE employees SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`, values);
@@ -580,9 +581,13 @@ export const hrApi = {
           [companyId],
         ),
         adapter.query<{ total: string | number }>(
-          `SELECT COALESCE(SUM(net_salary), 0) AS total FROM payroll_lines pl
-            JOIN payroll_runs pr ON pl.payroll_run_id = pr.id
-           WHERE pr.company_id = $1 AND pr.status = 'posted'`,
+          `SELECT COALESCE(SUM(pl.net_salary), 0) AS total
+             FROM payroll_lines pl
+             JOIN payroll_runs pr ON pl.payroll_run_id = pr.id
+             JOIN employees e ON pl.employee_id = e.id
+            WHERE pr.company_id = $1
+              AND e.company_id = $1
+              AND pr.status = 'posted'`,
           [companyId],
         ),
       ]);
@@ -617,10 +622,10 @@ function mapEmployeeRow(r: Record<string, unknown>): Employee {
     grade: r.grade ? String(r.grade) : undefined,
     hireDate: r.hire_date ? String(r.hire_date) : undefined,
     terminationDate: r.termination_date ? String(r.termination_date) : undefined,
-    baseSalary: r.base_salary ? Number(r.base_salary) : undefined,
+    baseSalary: r.base_salary !== undefined && r.base_salary !== null ? Number(r.base_salary) : undefined,
     isActive: r.is_active === true || r.is_active === 'true',
     photoUrl: r.photo_url ? String(r.photo_url) : undefined,
-    attachments: r.attachments ? JSON.parse(String(r.attachments)) : undefined,
+    attachments: r.attachments ? (typeof r.attachments === 'string' ? JSON.parse(r.attachments) : r.attachments) : undefined,
   };
 }
 
@@ -648,7 +653,6 @@ function mapPayrollRunRow(r: Record<string, unknown>): PayrollRun {
     totalAmount: Number(r.total_amount) || 0,
     status: String(r.status) as PayrollRun['status'],
     lines: [],
-    notes: r.notes ? String(r.notes) : undefined,
   };
 }
 

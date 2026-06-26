@@ -95,11 +95,11 @@
     "dashboard": "Dashboard",
     "accounting": {
       "title": "Accounting",
-    "chartOfAccounts": "Chart of Accounts",
-    "chartOfAccountsSubtitle": "Manage chart of accounts and classifications",
-    "ledgerSubtitle": "View transactions of a specific account",
-    "journalEntries": "Journal Entries",
-    "journalEntriesSubtitle": "Manage and view daily journal entries",
+      "chartOfAccounts": "Chart of Accounts",
+      "chartOfAccountsSubtitle": "Manage chart of accounts and classifications",
+      "ledgerSubtitle": "View transactions of a specific account",
+      "journalEntries": "Journal Entries",
+      "journalEntriesSubtitle": "Manage and view daily journal entries",
       "trialBalance": "Trial Balance",
       "balanceSheet": "Balance Sheet",
       "profitLoss": "Profit & Loss",
@@ -158,8 +158,8 @@
       "title": "Reports",
       "hub": "Reports Hub",
       "salesAnalysis": "Sales Analysis",
-    "inventoryAnalysis": "Inventory Analysis",
-    "stockValuation": "Stock Valuation",
+      "inventoryAnalysis": "Inventory Analysis",
+      "stockValuation": "Stock Valuation",
       "customerStatement": "Customer Statement",
       "supplierStatement": "Supplier Statement",
       "profitAnalysis": "Profit Analysis",
@@ -515,7 +515,11 @@
     "unitPrice": "Unit Price",
     "costPrice": "Cost Price",
     "salePrice": "Sale Price",
-    "warehouse": "Warehouse",
+    "warehouse": {
+      "created": "Warehouse created successfully",
+      "updated": "Warehouse updated successfully",
+      "deleted": "Warehouse deleted successfully"
+    },
     "branch": "Branch",
     "lowStock": "Low Stock",
     "stockValue": "Stock Value",
@@ -544,7 +548,12 @@
     "in": "In",
     "out": "Out",
     "transfer": "Transfer",
-    "adjustment": "Adjustment",
+    "adjustment": {
+      "created": "Adjustment created successfully",
+      "updated": "Adjustment updated successfully",
+      "deleted": "Adjustment deleted successfully",
+      "posted": "Adjustment posted successfully"
+    },
     "fromWarehouse": "From Warehouse",
     "toWarehouse": "To Warehouse",
     "date": "Date",
@@ -582,17 +591,6 @@
       "updated": "Product updated successfully",
       "deleted": "Product deleted successfully"
     },
-    "warehouse": {
-      "created": "Warehouse created successfully",
-      "updated": "Warehouse updated successfully",
-      "deleted": "Warehouse deleted successfully"
-    },
-    "adjustment": {
-      "created": "Adjustment created successfully",
-      "updated": "Adjustment updated successfully",
-      "deleted": "Adjustment deleted successfully",
-      "posted": "Adjustment posted successfully"
-    },
     "transaction": {
       "created": "Transaction created successfully",
       "deleted": "Transaction deleted successfully"
@@ -624,7 +622,15 @@
         "title": "No adjustments",
         "description": "No inventory adjustments have been created yet"
       }
-    }
+    },
+    "editWarehouse": "Edit Warehouse",
+    "editAdjustment": "Edit Adjustment",
+    "complete": "Complete",
+    "approveSuccess": "Adjustment approved successfully",
+    "postSuccess": "Adjustment posted successfully",
+    "createTransferSuccess": "Transfer created successfully",
+    "completeTransferSuccess": "Transfer completed successfully",
+    "deleteTransferSuccess": "Transfer deleted successfully"
   },
   "sales": {
     "invoices": "Sales Invoices",
@@ -849,9 +855,12 @@
     "notes": "Notes",
     "documentType": "Document Type",
     "documentNumber": "Document Number",
+    "currency": "Currency",
+    "exchangeRate": "Exchange Rate",
+    "baseCurrency": "Base Equivalent",
     "page": {
       "title": "Purchases",
-      "subtitle": "Manage Purchases and Suppliers"
+      "subtitle": "Manage purchases and suppliers"
     },
     "ordersCount": "Purchase Orders",
     "pendingOrders": "Pending Orders",
@@ -884,6 +893,7 @@
       "linkOrder": "Link to Purchase Order",
       "print": "Print Invoice",
       "export": "Export Invoices",
+      "numberError": "Could not generate a purchase invoice number. Please try again.",
       "postFailed": "Failed to post invoice",
       "postErrorUnknown": "Unknown error",
       "created": "Purchase invoice created successfully",
@@ -897,6 +907,7 @@
       "create": "New Purchase Order",
       "number": "Order Number",
       "expectedDate": "Expected Date",
+      "numberError": "Could not generate a purchase order number. Please try again.",
       "deleteTitle": "Delete Purchase Order",
       "deleteConfirm": "Are you sure you want to delete this purchase order?",
       "emptyTitle": "No Purchase Orders",
@@ -941,6 +952,7 @@
       "linkInvoice": "Link to Original Invoice",
       "accountingEffectDesc": "Trade creditors / Goods",
       "inventoryEffectDesc": "Inventory out",
+      "numberError": "Could not generate a purchase return number. Please try again.",
       "created": "Purchase return created successfully",
       "updated": "Purchase return updated successfully",
       "deleted": "Purchase return deleted",
@@ -996,7 +1008,8 @@
       "unitCost": "Unit Cost",
       "totalCost": "Total Cost",
       "total": "Total",
-      "estimatedCost": "Estimated Cost"
+      "estimatedCost": "Estimated Cost",
+      "searchPlaceholder": "Search bills of materials..."
     },
     "production": "Production",
     "costs": "Costs",
@@ -1050,7 +1063,10 @@
       "notes": "Notes",
       "notesPlaceholder": "Optional notes...",
       "product": "Product",
-      "selectProduct": "Select product..."
+      "selectProduct": "Select product...",
+      "bom": "Bill of Materials",
+      "totalCost": "Total Cost",
+      "autoCalculatedCost": "Auto-calculated cost"
     },
     "actions": {
       "addMaterial": "Add Material",
@@ -1106,7 +1122,7 @@
       "post": "Post",
       "newPayroll": "New Payroll",
       "draft": "Draft",
-      "posted": "Posted",
+      "posted": "Payroll posted successfully",
       "emptyTitle": "No payroll records",
       "emptyDescription": "You can create a new payroll",
       "emptyMessage": "No payroll records",
@@ -1126,8 +1142,7 @@
       "printTitle": "Payroll",
       "printMonthYear": "Month/Year:",
       "created": "Payroll created successfully",
-      "updated": "Payroll updated successfully",
-      "posted": "Payroll posted successfully"
+      "updated": "Payroll updated successfully"
     },
     "leaves": {
       "title": "Leaves",
@@ -1162,7 +1177,12 @@
       "emptyMessage": "No leaves",
       "created": "Leave created successfully",
       "updated": "Leave updated successfully",
-      "deleted": "Leave deleted successfully"
+      "deleted": "Leave deleted successfully",
+      "exportError": "Failed to export leaves",
+      "reportDate": "Report Date:",
+      "totalCount": "Total Records:",
+      "requiredFields": "Please fill in required fields",
+      "invalidDates": "End date must be after start date"
     },
     "endOfService": "End of Service",
     "departments": "Departments",
@@ -1212,7 +1232,11 @@
       "hireDateLabel": "Hire Date:",
       "created": "Employee created successfully",
       "updated": "Employee updated successfully",
-      "deleted": "Employee deleted successfully"
+      "deleted": "Employee deleted successfully",
+      "searchPlaceholder": "Search by name, employee number, or email...",
+      "requiredFields": "Please fill in required fields",
+      "photoTooLarge": "Image too large (max 2MB)",
+      "uploadPhoto": "Upload Photo"
     },
     "attendancePage": {
       "title": "Attendance",
@@ -1244,7 +1268,8 @@
       "exportDatePrefix": "Date:",
       "saveRegistration": "Save Registration",
       "created": "Attendance created successfully",
-      "updated": "Attendance updated successfully"
+      "updated": "Attendance updated successfully",
+      "exportError": "Failed to export attendance"
     },
     "eos": {
       "title": "End of Service",
@@ -1289,7 +1314,9 @@
       "approve": "Approve",
       "created": "End of service record created successfully",
       "updated": "End of service record updated successfully",
-      "deleted": "End of service record deleted successfully"
+      "deleted": "End of service record deleted successfully",
+      "reportError": "Failed to export report",
+      "requiredFields": "Please select employee and termination date"
     }
   },
   "crm": {
@@ -1355,9 +1382,28 @@
       "estimatedValue": "Estimated Value",
       "rating": "Rating",
       "status": "Status",
+      "statusFilter": "Status",
+      "new": "New Lead",
+      "edit": "Edit Lead",
+      "empty": "No leads found",
+      "emptyDescription": "You can add a new lead",
+      "convertTitle": "Convert to Customer",
+      "convertMessage": "Do you want to convert this lead to a permanent customer?",
+      "convertToCustomer": "Convert to Customer",
+      "followUp": "New Follow-up",
+      "followUps": "Follow-ups",
+      "deleteTitle": "Delete Lead",
+      "deleteMessage": "Are you sure you want to delete this lead?",
       "created": "Lead created successfully",
       "updated": "Lead updated successfully",
       "deleted": "Lead deleted successfully"
+    },
+    "leadsPage": {
+      "title": "Leads",
+      "description": "Manage and track leads and new opportunities",
+      "search": "Search for a lead...",
+      "total": "Total Leads",
+      "searchLabel": "Search"
     },
     "opportunity": {
       "name": "Opportunity Name",
@@ -1375,11 +1421,17 @@
       "totalValue": "Total Value",
       "weightedValue": "Weighted Value",
       "count": "opportunities",
+      "funnelReport": "Sales Funnel Report",
       "deleteTitle": "Delete Opportunity",
       "deleteMessage": "Are you sure you want to delete this opportunity?",
       "created": "Opportunity created successfully",
       "updated": "Opportunity updated successfully",
       "deleted": "Opportunity deleted successfully"
+    },
+    "opportunitiesPage": {
+      "title": "Opportunities",
+      "description": "Track sales opportunities across sales stages",
+      "search": "Search for an opportunity..."
     },
     "task": {
       "title": "Task",
@@ -1392,11 +1444,23 @@
       "emptyDescription": "You can add a new task",
       "statusCompleted": "✓ Done",
       "statusPending": "Complete",
+      "overdue": "Overdue",
       "deleteTitle": "Delete Task",
       "deleteMessage": "Are you sure you want to delete this task?",
       "created": "Task created successfully",
       "updated": "Task updated successfully",
       "deleted": "Task deleted successfully"
+    },
+    "tasksPage": {
+      "title": "Tasks",
+      "description": "Track daily and weekly tasks",
+      "search": "Search for a task...",
+      "filter": {
+        "all": "All",
+        "pending": "Pending",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
     },
     "activities": {
       "title": "Activities",
@@ -1408,6 +1472,13 @@
       "repName": "Rep",
       "activityCount": "Activity Count",
       "totalMinutes": "Total Minutes"
+    },
+    "activitiesPage": {
+      "title": "Activity Log",
+      "description": "Track calls, meetings, and visits with customers",
+      "filter": {
+        "all": "All"
+      }
     },
     "activity": {
       "type": "Type",
@@ -1457,7 +1528,8 @@
     "comparePrevious": "Compare to Previous Period",
     "previousPeriod": "Previous Period",
     "currentPeriod": "Current Period",
-    "noData": "No Data",
+    "noData": "No data",
+    "noPermission": "You don't have permission to view reports",
     "filter": "Filter",
     "filter.myDocsOnly": "My Documents Only",
     "filter.allDocs": "All",
@@ -2142,25 +2214,341 @@
     "range": "{{start}}-{{end}} of {{total}}"
   },
   "select": {
-    "default": { "placeholder": "Select...", "search": "Search...", "empty": "No results", "addNew": "Add new" },
-    "customer": { "placeholder": "Select customer...", "search": "Search customers...", "empty": "No customers", "balance": "Balance" },
-    "supplier": { "placeholder": "Select supplier...", "search": "Search suppliers...", "empty": "No suppliers", "balance": "Balance" },
-    "product": { "placeholder": "Select product...", "search": "Search products...", "empty": "No products" },
-    "account": { "placeholder": "Select account...", "search": "Search accounts...", "empty": "No accounts" },
-    "employee": { "placeholder": "Select employee...", "search": "Search employees...", "empty": "No employees" },
-    "branch": { "placeholder": "Select branch...", "search": "Search branches...", "empty": "No branches" },
-    "currency": { "placeholder": "Select currency...", "search": "Search currencies...", "empty": "No currencies", "default": "Default", "exchangeRate": "Exchange rate" },
-    "warehouse": { "placeholder": "Select warehouse...", "search": "Search warehouses...", "empty": "No warehouses" },
-    "user": { "placeholder": "Select user...", "search": "Search users...", "empty": "No users" },
-    "lead": { "placeholder": "Select lead...", "search": "Search leads...", "empty": "No leads" },
-    "opportunity": { "placeholder": "Select opportunity...", "search": "Search opportunities...", "empty": "No opportunities" },
-    "workOrder": { "placeholder": "Select work order...", "search": "Search work orders...", "empty": "No work orders" },
-    "productType": { "placeholder": "Select type...", "search": "Search types...", "empty": "No types" },
-    "unit": { "placeholder": "Select unit...", "search": "Search units...", "empty": "No units" },
-    "costCenter": { "placeholder": "Select cost center...", "search": "Search cost centers...", "empty": "No cost centers" },
-    "cashBox": { "placeholder": "Select cash box...", "search": "Search cash boxes...", "empty": "No cash boxes" },
-    "payrollComponent": { "placeholder": "Select component...", "search": "Search components...", "empty": "No components" },
-    "bom": { "placeholder": "Select BOM...", "search": "Search BOMs...", "empty": "No BOMs", "version": "Version" },
-    "bank": { "placeholder": "Select bank...", "search": "Search banks...", "empty": "No banks" }
+    "default": {
+      "placeholder": "Select...",
+      "search": "Search...",
+      "empty": "No results",
+      "addNew": "Add new"
+    },
+    "customer": {
+      "placeholder": "Select customer...",
+      "search": "Search customers...",
+      "empty": "No customers",
+      "balance": "Balance"
+    },
+    "supplier": {
+      "placeholder": "Select supplier...",
+      "search": "Search suppliers...",
+      "empty": "No suppliers",
+      "balance": "Balance"
+    },
+    "product": {
+      "placeholder": "Select product...",
+      "search": "Search products...",
+      "empty": "No products"
+    },
+    "account": {
+      "placeholder": "Select account...",
+      "search": "Search accounts...",
+      "empty": "No accounts"
+    },
+    "employee": {
+      "placeholder": "Select employee...",
+      "search": "Search employees...",
+      "empty": "No employees"
+    },
+    "branch": {
+      "placeholder": "Select branch...",
+      "search": "Search branches...",
+      "empty": "No branches"
+    },
+    "currency": {
+      "placeholder": "Select currency...",
+      "search": "Search currencies...",
+      "empty": "No currencies",
+      "default": "Default",
+      "exchangeRate": "Exchange rate"
+    },
+    "warehouse": {
+      "placeholder": "Select warehouse...",
+      "search": "Search warehouses...",
+      "empty": "No warehouses"
+    },
+    "user": {
+      "placeholder": "Select user...",
+      "search": "Search users...",
+      "empty": "No users"
+    },
+    "lead": {
+      "placeholder": "Select lead...",
+      "search": "Search leads...",
+      "empty": "No leads"
+    },
+    "opportunity": {
+      "placeholder": "Select opportunity...",
+      "search": "Search opportunities...",
+      "empty": "No opportunities"
+    },
+    "workOrder": {
+      "placeholder": "Select work order...",
+      "search": "Search work orders...",
+      "empty": "No work orders"
+    },
+    "productType": {
+      "placeholder": "Select type...",
+      "search": "Search types...",
+      "empty": "No types"
+    },
+    "unit": {
+      "placeholder": "Select unit...",
+      "search": "Search units...",
+      "empty": "No units"
+    },
+    "costCenter": {
+      "placeholder": "Select cost center...",
+      "search": "Search cost centers...",
+      "empty": "No cost centers"
+    },
+    "cashBox": {
+      "placeholder": "Select cash box...",
+      "search": "Search cash boxes...",
+      "empty": "No cash boxes"
+    },
+    "payrollComponent": {
+      "placeholder": "Select component...",
+      "search": "Search components...",
+      "empty": "No components"
+    },
+    "bom": {
+      "placeholder": "Select BOM...",
+      "search": "Search BOMs...",
+      "empty": "No BOMs",
+      "version": "Version"
+    },
+    "bank": {
+      "placeholder": "Select bank...",
+      "search": "Search banks...",
+      "empty": "No banks"
+    }
+  },
+  "currencies": {
+    "codeAndNameRequired": {
+      "codeAndNameRequired": "Currency code and name are required"
+    },
+    "codeLength": {
+      "codeLength": "Currency code must be exactly 3 characters"
+    },
+    "saveError": {
+      "saveError": "Failed to save currency"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete currency"
+    },
+    "setDefaultSuccess": {
+      "setDefaultSuccess": "Currency set as default"
+    },
+    "emptyTitle": {
+      "emptyTitle": "No currencies"
+    },
+    "emptyDesc": {
+      "emptyDesc": "Start by adding a new currency"
+    }
+  },
+  "vat": {
+    "account": {
+      "account": "Accounting account"
+    },
+    "deleted": {
+      "deleted": "VAT deleted"
+    },
+    "saveError": {
+      "saveError": "Failed to save VAT"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete VAT"
+    },
+    "nameRequired": {
+      "nameRequired": "VAT name is required"
+    },
+    "rateInvalid": {
+      "rateInvalid": "VAT rate must be between 0 and 100"
+    }
+  },
+  "units": {
+    "nameRequired": {
+      "nameRequired": "Unit name (Arabic) is required"
+    },
+    "deleteTitle": {
+      "deleteTitle": "Delete unit"
+    },
+    "deleteMessage": {
+      "deleteMessage": "Are you sure you want to delete this unit? This cannot be undone."
+    },
+    "createError": {
+      "createError": "Failed to create unit"
+    },
+    "updateError": {
+      "updateError": "Failed to update unit"
+    }
+  },
+  "banks": {
+    "deleteError": {
+      "deleteError": "Failed to delete bank account"
+    },
+    "createError": {
+      "createError": "Failed to create bank account"
+    },
+    "updateError": {
+      "updateError": "Failed to update bank account"
+    },
+    "accountNameRequired": {
+      "accountNameRequired": "Account name is required"
+    }
+  },
+  "cashBoxes": {
+    "nameRequired": {
+      "nameRequired": "Cash box name is required"
+    },
+    "createError": {
+      "createError": "Failed to create cash box"
+    },
+    "updateError": {
+      "updateError": "Failed to update cash box"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete cash box"
+    }
+  },
+  "costCenters": {
+    "nameRequired": {
+      "nameRequired": "Cost center name (Arabic) is required"
+    },
+    "createError": {
+      "createError": "Failed to create cost center"
+    },
+    "updateError": {
+      "updateError": "Failed to update cost center"
+    },
+    "removeError": {
+      "removeError": "Failed to remove cost center"
+    },
+    "deleteTitle": {
+      "deleteTitle": "Delete cost center"
+    },
+    "deleteMessage": {
+      "deleteMessage": "Are you sure you want to delete this cost center?"
+    },
+    "deleted": {
+      "deleted": "Cost center deleted"
+    },
+    "created": {
+      "created": "Cost center created"
+    },
+    "updated": {
+      "updated": "Cost center updated"
+    }
+  },
+  "productTypes": {
+    "nameRequired": {
+      "nameRequired": "Product type name (Arabic) is required"
+    },
+    "createError": {
+      "createError": "Failed to create product type"
+    },
+    "updateError": {
+      "updateError": "Failed to update product type"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete product type"
+    },
+    "deleted": {
+      "deleted": "Product type deleted"
+    }
+  },
+  "productCategories": {
+    "nameRequired": {
+      "nameRequired": "Category name is required"
+    },
+    "createError": {
+      "createError": "Failed to create category"
+    },
+    "updateError": {
+      "updateError": "Failed to update category"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete category"
+    }
+  },
+  "users": {
+    "usernameRequired": {
+      "usernameRequired": "Username is required"
+    },
+    "passwordRequired": {
+      "passwordRequired": "Password is required"
+    },
+    "passwordTooShort": {
+      "passwordTooShort": "Password must be at least 6 characters"
+    },
+    "passwordReset": {
+      "passwordReset": "Password reset successfully"
+    },
+    "created": {
+      "created": "User created successfully (default password: 123456)"
+    },
+    "updated": {
+      "updated": "User updated successfully"
+    },
+    "deleted": {
+      "deleted": "User deleted"
+    },
+    "saveError": {
+      "saveError": "Failed to save user"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete user"
+    },
+    "cannotDeleteSelf": {
+      "cannotDeleteSelf": "You cannot delete your own account"
+    }
+  },
+  "branches": {
+    "nameRequired": {
+      "nameRequired": "Branch name is required"
+    },
+    "createError": {
+      "createError": "Failed to create branch"
+    },
+    "updateError": {
+      "updateError": "Failed to update branch"
+    },
+    "deleteError": {
+      "deleteError": "Failed to delete branch"
+    },
+    "setDefault": {
+      "setDefault": "Set as default"
+    }
+  },
+  "company": {
+    "saveError": {
+      "saveError": "Failed to save company data"
+    },
+    "updated": {
+      "updated": "Company data updated"
+    },
+    "saved": {
+      "saved": "Company data saved"
+    },
+    "nameRequired": {
+      "nameRequired": "Company name (Arabic) is required"
+    }
+  },
+  "sequences": {
+    "previewError": {
+      "previewError": "Failed to preview number"
+    },
+    "updateError": {
+      "updateError": "Failed to update document sequence"
+    }
+  },
+  "defaultAccounts": {
+    "updateError": {
+      "updateError": "Failed to update default account"
+    },
+    "applyError": {
+      "applyError": "Failed to apply template"
+    },
+    "applied": {
+      "applied": "Template applied successfully"
+    }
   }
 }

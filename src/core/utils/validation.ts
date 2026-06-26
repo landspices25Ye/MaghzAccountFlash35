@@ -214,6 +214,8 @@ export const createPurchaseInvoiceSchema = z.object({
     description: z.string().max(1000).optional(),
     quantity: currencyAmountSchema,
     unitPrice: currencyAmountSchema,
+    discountPercent: z.number().min(0).max(100).optional().default(0),
+    vatPercent: z.number().min(0).max(100).optional().default(0),
     lineTotal: currencyAmountSchema,
     currencyCode: z.string().length(3).optional(),
     exchangeRate: currencyAmountSchema.optional(),
@@ -283,6 +285,63 @@ export const createProductSchema = z.object({
   updatedBy: uuidSchema.optional(),
 });
 
+export const createWarehouseSchema = z.object({
+  companyId: companyIdSchema,
+  name: nonEmptyString,
+  code: z.string().max(20).optional(),
+  branchId: uuidSchema.optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const createStockTransferSchema = z.object({
+  companyId: companyIdSchema,
+  fromWarehouseId: uuidSchema,
+  toWarehouseId: uuidSchema,
+  date: dateSchema,
+  reference: z.string().max(100).optional(),
+  notes: z.string().max(2000).optional(),
+  status: z.enum(['draft', 'pending', 'completed', 'cancelled']).default('draft'),
+  productId: uuidSchema.optional(),
+  quantity: currencyAmountSchema.optional(),
+  lines: z.array(z.object({
+    productId: uuidSchema,
+    quantity: currencyAmountSchema.positive(),
+  })).optional(),
+}).refine(d => d.fromWarehouseId !== d.toWarehouseId, {
+  message: 'مستودع المصدر والوجهة يجب أن يكونا مختلفين',
+  path: ['toWarehouseId'],
+});
+
+export const createStockAdjustmentSchema = z.object({
+  companyId: companyIdSchema,
+  date: dateSchema,
+  productId: uuidSchema,
+  warehouseId: uuidSchema,
+  systemQty: currencyAmountSchema.default(0),
+  actualQty: currencyAmountSchema.default(0),
+  difference: currencyAmountSchema.default(0),
+  unitCost: currencyAmountSchema.optional(),
+  reason: z.string().max(2000).optional(),
+  status: z.enum(['draft', 'pending', 'approved', 'rejected', 'posted']).default('draft'),
+});
+
+export const createInventoryTransactionSchema = z.object({
+  companyId: companyIdSchema,
+  date: dateSchema,
+  type: z.enum(['in', 'out', 'adjustment', 'transfer']),
+  productId: uuidSchema,
+  warehouseId: uuidSchema,
+  quantity: currencyAmountSchema.positive(),
+  reference: z.string().max(100).optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createProductCategorySchema = z.object({
+  companyId: companyIdSchema,
+  name: nonEmptyString,
+  parentId: uuidSchema.optional(),
+});
+
 export const createEmployeeSchema = z.object({
   companyId: companyIdSchema,
   employeeNumber: nonEmptyString,
@@ -298,6 +357,8 @@ export const createEmployeeSchema = z.object({
   terminationDate: dateSchema.optional(),
   baseSalary: currencyAmountSchema.optional(),
   isActive: z.boolean().default(true),
+  photoUrl: z.string().max(2000000).optional(),
+  attachments: z.array(z.string()).optional(),
 });
 
 export const createLeadSchema = z.object({
@@ -312,6 +373,94 @@ export const createLeadSchema = z.object({
   estimatedValue: currencyAmountSchema.optional(),
   assignedTo: uuidSchema.optional(),
   notes: z.string().max(2000).optional(),
+});
+
+export const updateLeadSchema = z.object({
+  name: nonEmptyString.optional(),
+  phone: phoneSchema,
+  email: emailSchema,
+  company: z.string().max(255).optional(),
+  source: z.string().max(100).optional(),
+  status: z.enum(['new', 'contacted', 'qualified', 'converted', 'lost']).optional(),
+  rating: z.enum(['hot', 'warm', 'cold']).optional(),
+  estimatedValue: currencyAmountSchema.optional(),
+  assignedTo: uuidSchema.optional().nullable(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createOpportunitySchema = z.object({
+  companyId: companyIdSchema,
+  name: nonEmptyString,
+  value: currencyAmountSchema.default(0),
+  stage: z.enum(['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost']).default('new'),
+  probability: percentageSchema.optional(),
+  expectedCloseDate: dateSchema.optional(),
+  leadId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const updateOpportunitySchema = z.object({
+  name: nonEmptyString.optional(),
+  value: currencyAmountSchema.optional(),
+  stage: z.enum(['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost']).optional(),
+  probability: percentageSchema.optional(),
+  expectedCloseDate: dateSchema.optional(),
+  leadId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createTaskSchema = z.object({
+  companyId: companyIdSchema,
+  title: nonEmptyString,
+  description: z.string().max(2000).optional(),
+  dueDate: dateSchema.optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+  status: z.enum(['pending', 'completed', 'cancelled']).default('pending'),
+  leadId: uuidSchema.optional().nullable(),
+  opportunityId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
+});
+
+export const updateTaskSchema = z.object({
+  title: nonEmptyString.optional(),
+  description: z.string().max(2000).optional(),
+  dueDate: dateSchema.optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  status: z.enum(['pending', 'completed', 'cancelled']).optional(),
+  leadId: uuidSchema.optional().nullable(),
+  opportunityId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
+});
+
+export const createActivitySchema = z.object({
+  companyId: companyIdSchema,
+  type: z.enum(['call', 'meeting', 'email', 'visit', 'note']),
+  subject: nonEmptyString,
+  description: z.string().max(2000).optional(),
+  activityDate: z.string().min(1),
+  durationMinutes: z.number().int().min(0).optional(),
+  leadId: uuidSchema.optional().nullable(),
+  opportunityId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
+});
+
+export const updateActivitySchema = z.object({
+  type: z.enum(['call', 'meeting', 'email', 'visit', 'note']).optional(),
+  subject: nonEmptyString.optional(),
+  description: z.string().max(2000).optional(),
+  activityDate: z.string().min(1).optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  leadId: uuidSchema.optional().nullable(),
+  opportunityId: uuidSchema.optional().nullable(),
+  customerId: uuidSchema.optional().nullable(),
+  assignedTo: uuidSchema.optional().nullable(),
 });
 
 export const createBomSchema = z.object({

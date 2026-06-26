@@ -33,11 +33,18 @@ export const LeavesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.employeeId || !formData.startDate || !formData.endDate) return;
+    if (!formData.employeeId || !formData.startDate || !formData.endDate) {
+      addToast('error', t('hr.leaves.requiredFields') || t('common.error'));
+      return;
+    }
     const start = new Date(formData.startDate);
     const end = new Date(formData.endDate);
+    if (end < start) {
+      addToast('error', t('hr.leaves.invalidDates') || t('common.error'));
+      return;
+    }
     const diffDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
-    await create({
+    const res = await create({
       companyId,
       employeeId: formData.employeeId,
       leaveType: formData.leaveType,
@@ -47,47 +54,63 @@ export const LeavesPage: React.FC = () => {
       status: 'pending',
       reason: formData.reason || undefined,
     });
-    addToast('success', t('hr.leaves.created'));
-    setIsModalOpen(false);
-    resetForm();
+    if (res.success) {
+      addToast('success', t('hr.leaves.created'));
+      setIsModalOpen(false);
+      resetForm();
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    addToast('success', t('hr.leaves.deleted'));
+    const res = await remove(confirmDelete);
+    if (res.success) {
+      addToast('success', t('hr.leaves.deleted'));
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
     setConfirmDelete(null);
   };
 
   const handleExportExcel = () => {
-    exportToExcel(
-      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
-      [
-        { key: 'employeeName', header: t('hr.leaves.employee') },
-        { key: 'leaveType', header: t('hr.leaves.leaveType') },
-        { key: 'startDate', header: t('hr.leaves.from') },
-        { key: 'endDate', header: t('hr.leaves.to') },
-        { key: 'days', header: t('hr.leaves.days') },
-        { key: 'status', header: t('hr.leaves.status') },
-      ],
-      `leaves-${new Date().toISOString().split('T')[0]}`
-    );
+    try {
+      exportToExcel(
+        leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
+        [
+          { key: 'employeeName', header: t('hr.leaves.employee') },
+          { key: 'leaveType', header: t('hr.leaves.leaveType') },
+          { key: 'startDate', header: t('hr.leaves.from') },
+          { key: 'endDate', header: t('hr.leaves.to') },
+          { key: 'days', header: t('hr.leaves.days') },
+          { key: 'status', header: t('hr.leaves.status') },
+        ],
+        `leaves-${new Date().toISOString().split('T')[0]}`
+      );
+    } catch (_err) {
+      addToast('error', t('hr.leaves.exportError') || 'فشل تصدير الإجازات');
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(
-      leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
-      [
-        { key: 'employeeName', header: t('hr.leaves.employee') },
-        { key: 'leaveType', header: t('hr.leaves.leaveType') },
-        { key: 'startDate', header: t('hr.leaves.from') },
-        { key: 'endDate', header: t('hr.leaves.to') },
-        { key: 'days', header: t('hr.leaves.days') },
-        { key: 'status', header: t('hr.leaves.status') },
-      ],
-      `leaves-${new Date().toISOString().split('T')[0]}`,
-      { title: t('hr.leaves.reportTitle'), subtitle: t('hr.leaves.allLeaves'), rtl: true }
-    );
+    try {
+      exportToPDF(
+        leaves.map((l) => ({ ...l, leaveType: leaveTypeLabel(l.leaveType, t) })),
+        [
+          { key: 'employeeName', header: t('hr.leaves.employee') },
+          { key: 'leaveType', header: t('hr.leaves.leaveType') },
+          { key: 'startDate', header: t('hr.leaves.from') },
+          { key: 'endDate', header: t('hr.leaves.to') },
+          { key: 'days', header: t('hr.leaves.days') },
+          { key: 'status', header: t('hr.leaves.status') },
+        ],
+        `leaves-${new Date().toISOString().split('T')[0]}`,
+        { title: t('hr.leaves.reportTitle'), subtitle: t('hr.leaves.allLeaves'), rtl: true }
+      );
+    } catch (_err) {
+      addToast('error', t('hr.leaves.exportError') || 'فشل تصدير الإجازات');
+    }
   };
 
   const handlePrint = () => {
@@ -108,8 +131,8 @@ export const LeavesPage: React.FC = () => {
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <style>body{font-family:'Cairo',sans-serif;background:#f8fafc;padding:24px}.page{max-width:210mm;margin:0 auto;background:white;padding:32px;box-shadow:0 4px 6px rgba(0,0,0,0.1);border-radius:8px}h2{color:#1e40af;border-bottom:2px solid #1e40af;padding-bottom:8px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px}th{background:#1e40af;color:white;padding:10px;border:1px solid #1e40af}td{border:1px solid #e2e8f0}</style></head><body>
     <div class="page"><h2>${t('hr.leaves.reportTitle')}</h2>
-    <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${new Date().toLocaleDateString(DEFAULT_LOCALE)}</p>
-    <p><strong>${t('hr.leaves.reportTitle')}:</strong> ${leaves.length}</p>
+    <p><strong>${t('hr.leaves.reportDate')}:</strong> ${new Date().toLocaleDateString(DEFAULT_LOCALE)}</p>
+    <p><strong>${t('hr.leaves.totalCount')}</strong> ${leaves.length}</p>
     <table><thead><tr><th>#</th><th>${t('hr.leaves.employee')}</th><th>${t('hr.leaves.leaveType')}</th><th>${t('hr.leaves.from')}</th><th>${t('hr.leaves.to')}</th><th>${t('hr.leaves.days')}</th><th>${t('hr.leaves.status')}</th></tr></thead><tbody>${rows}</tbody></table>
     <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8">${t('common.printReportFooter')}</div>
     </div></body></html>`;
@@ -129,10 +152,18 @@ export const LeavesPage: React.FC = () => {
       <div className="flex items-center gap-1">
         {row.status === 'pending' && (
           <>
-            <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => { await updateStatus(row.id, 'approved', 'manager'); addToast('success', t('hr.leaves.updated')); }} title={t('hr.leaves.approve')}>
+            <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => {
+              const res = await updateStatus(row.id, 'approved');
+              if (res.success) addToast('success', t('hr.leaves.updated'));
+              else addToast('error', res.error || t('common.error'));
+            }} title={t('hr.leaves.approve')}>
               <CheckCircle size={16} />
             </Button>
-            <Button variant="ghost" size="sm" className="text-rose-600" onClick={async () => { await updateStatus(row.id, 'rejected', 'manager'); addToast('success', t('hr.leaves.updated')); }} title={t('hr.leaves.reject')}>
+            <Button variant="ghost" size="sm" className="text-rose-600" onClick={async () => {
+              const res = await updateStatus(row.id, 'rejected');
+              if (res.success) addToast('success', t('hr.leaves.updated'));
+              else addToast('error', res.error || t('common.error'));
+            }} title={t('hr.leaves.reject')}>
               <XCircle size={16} />
             </Button>
           </>

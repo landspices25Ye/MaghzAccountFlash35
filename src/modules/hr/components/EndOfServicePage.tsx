@@ -54,8 +54,11 @@ export const EndOfServicePage: React.FC = () => {
   }, [serviceYears, lastSalary]);
 
   const handleSave = async () => {
-    if (!formData.employeeId || !formData.terminationDate) return;
-    await create({
+    if (!formData.employeeId || !formData.terminationDate) {
+      addToast('error', t('hr.eos.requiredFields') || t('common.error'));
+      return;
+    }
+    const res = await create({
       companyId,
       employeeId: formData.employeeId,
       terminationDate: formData.terminationDate,
@@ -66,15 +69,23 @@ export const EndOfServicePage: React.FC = () => {
       status: 'draft',
       notes: formData.notes || undefined,
     });
-    addToast('success', t('hr.eos.created'));
-    setIsModalOpen(false);
-    resetForm();
+    if (res.success) {
+      addToast('success', t('hr.eos.created'));
+      setIsModalOpen(false);
+      resetForm();
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
   };
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    await remove(confirmDelete);
-    addToast('success', t('hr.eos.deleted'));
+    const res = await remove(confirmDelete);
+    if (res.success) {
+      addToast('success', t('hr.eos.deleted'));
+    } else {
+      addToast('error', res.error || t('common.error'));
+    }
     setConfirmDelete(null);
   };
 
@@ -88,34 +99,42 @@ export const EndOfServicePage: React.FC = () => {
   };
 
   const handleExportExcel = () => {
-    exportToExcel(
-      items.map((i) => ({ ...i, employeeName: i.employeeName || i.employeeId })),
-      [
-        { key: 'employeeName', header: t('hr.eos.employee') },
-        { key: 'terminationDate', header: t('hr.eos.terminationDate') },
-        { key: 'serviceYears', header: t('hr.eos.serviceYears') },
-        { key: 'lastSalary', header: t('hr.eos.lastSalary') },
-        { key: 'eosAmount', header: t('hr.eos.eosAmount') },
-        { key: 'status', header: t('hr.eos.status') },
-      ],
-      `end-of-service-${new Date().toISOString().split('T')[0]}`
-    );
+    try {
+      exportToExcel(
+        items.map((i) => ({ ...i, employeeName: i.employeeName || i.employeeId })),
+        [
+          { key: 'employeeName', header: t('hr.eos.employee') },
+          { key: 'terminationDate', header: t('hr.eos.terminationDate') },
+          { key: 'serviceYears', header: t('hr.eos.serviceYears') },
+          { key: 'lastSalary', header: t('hr.eos.lastSalary') },
+          { key: 'eosAmount', header: t('hr.eos.eosAmount') },
+          { key: 'status', header: t('hr.eos.status') },
+        ],
+        `end-of-service-${new Date().toISOString().split('T')[0]}`
+      );
+    } catch (_err) {
+      addToast('error', t('hr.eos.reportError') || 'فشل تصدير التقرير');
+    }
   };
 
   const handleExportPDF = () => {
-    exportToPDF(
-      items.map((i) => ({ ...i, employeeName: i.employeeName || i.employeeId })),
-      [
-        { key: 'employeeName', header: t('hr.eos.employee') },
-        { key: 'terminationDate', header: t('hr.eos.terminationDate') },
-        { key: 'serviceYears', header: t('hr.eos.serviceYears') },
-        { key: 'lastSalary', header: t('hr.eos.lastSalary') },
-        { key: 'eosAmount', header: t('hr.eos.eosAmount') },
-        { key: 'status', header: t('hr.eos.status') },
-      ],
-      `end-of-service-${new Date().toISOString().split('T')[0]}`,
-      { title: t('hr.eos.reportTitle'), subtitle: t('hr.eos.allRecords'), rtl: true }
-    );
+    try {
+      exportToPDF(
+        items.map((i) => ({ ...i, employeeName: i.employeeName || i.employeeId })),
+        [
+          { key: 'employeeName', header: t('hr.eos.employee') },
+          { key: 'terminationDate', header: t('hr.eos.terminationDate') },
+          { key: 'serviceYears', header: t('hr.eos.serviceYears') },
+          { key: 'lastSalary', header: t('hr.eos.lastSalary') },
+          { key: 'eosAmount', header: t('hr.eos.eosAmount') },
+          { key: 'status', header: t('hr.eos.status') },
+        ],
+        `end-of-service-${new Date().toISOString().split('T')[0]}`,
+        { title: t('hr.eos.reportTitle'), subtitle: t('hr.eos.allRecords'), rtl: true }
+      );
+    } catch (_err) {
+      addToast('error', t('hr.eos.reportError') || 'فشل تصدير التقرير');
+    }
   };
 
   const columns = [
@@ -134,7 +153,11 @@ export const EndOfServicePage: React.FC = () => {
           <Printer size={16} />
         </Button>
           {row.status === 'draft' && (
-          <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => { await updateStatus(row.id, 'approved'); addToast('success', t('hr.eos.updated')); }} title={t('hr.eos.approve')}>
+          <Button variant="ghost" size="sm" className="text-emerald-600" onClick={async () => {
+            const res = await updateStatus(row.id, 'approved');
+            if (res.success) addToast('success', t('hr.eos.updated'));
+            else addToast('error', res.error || t('common.error'));
+          }} title={t('hr.eos.approve')}>
             <span className="text-xs">{t('hr.eos.approve')}</span>
           </Button>
         )}
