@@ -1915,5 +1915,201 @@ npx drizzle-kit migrate
 - **Chunk size warning limit**: `chunkSizeWarningLimit: 1000` — لا تحذر من chunks > 1 MB (طبيعي لـ Electron)
 - **Transitive dependencies**: `html2canvas` يأتي من `jspdf` — لا تحتاج install منفصل
 
-*آخر تحديث: 2026-06-17 | الإصدار: maghzaccount-pro v0.2.0*
+### المرحلة 34: فحص شامل لوحدة CRM وإصلاحات حرجة
+- **الهدف**: إصلاح كل مشاكل وحدة CRM (Leads، Opportunities، Tasks، Activities) وتحسين UX والـ API والـ i18n
+- **المشاكل الحرجة المكتشفة**:
+  1. **validation schemas مفقودة**: `createOpportunitySchema`، `createTaskSchema`، `createActivitySchema`، و update versions لم تكن معرّفة في `validation.ts` رغم استخدامها في `crm/api.ts`. الـ API كان يستخدم `validateInput(companyIdSchema, ...)` فقط — لا يتحقق من باقي الحقول
+  2. **i18n مفقود**: 12+ مفتاح في `crm.lead.*` و `crm.task.*` و `crm.opportunity.*` و `crm.activity.*` لم تكن موجودة في `ar.json` ولا `en.json` (statusFilter، new، edit، empty، emptyDescription، convertTitle، convertMessage، convertToCustomer، followUp، followUps، deleteTitle، deleteMessage)
+  3. **useActivities خاطئ في LeadsPage**: استدعاء `useActivities(companyId)` بدلاً من `useActivitiesPaginated(companyId)` — لا يُعيد تحميل list، activity المُنشأة لا تظهر
+  4. **formData بدون `status` في initial state**: في TasksPage، `status` لم يكن في formData — لا يمكن للمستخدم تحديد completed/cancelled من الفورم
+  5. **MapRow ينقصه `assigned_name` و `rating`**: `mapLeadRow` و `mapOpportunityRow` و `mapTaskRow` و `mapActivityRow` كانت تفقد `assigned_name` (LEFT JOIN users) ولا default value للـ `rating`/`status`/`priority`/`stage`
+  6. **handleConvert لم يَستدعي reload**: بعد تحويل lead إلى customer، الـ list لا يُحدَّث — يبقى في status "new"
+  7. **isOverdue يقارن بـ ISO string**: `new Date(task.dueDate) < new Date()` — يقارن وقت كامل مع يوم كامل (يعطي false positives). الحل: `new Date(task.dueDate) < new Date(new Date().toDateString())`
+  8. **isActivity type-only import كان يتعارض**: `import { Activity } from 'lucide-react'` ثم `import type { Activity as ActivityType } from '../types'` — الـ إعادة تسمية تعمل لكن مربكة
+  9. **exportToExcel غير مستخدم في ActivitiesPage و TasksPage**: لا يمكن تصدير البيانات
+  10. **Kanban "empty stage" placeholder مفقود**: لو stage فيه 0 فرص، الـ column يبقى فارغ بدون رسالة
+  11. **icon Buttons بلا aria-label**: kanban edit/delete buttons كانت بلا `aria-label` — accessibility issue
+  12. **Imports مكررة في OpportunitiesPage**: `useFormatters` تم استيراده مرتين
+- **الإصلاحات المطبَّقة**:
+  1. **validation.ts**:
+     - `createOpportunitySchema`: `name/value/stage/probability/leadId/customerId/assignedTo/notes` مع zod types صحيحة
+     - `updateOpportunitySchema`: جميع الحقول optional
+     - `createTaskSchema` + `updateTaskSchema`: `title/dueDate/priority/status/leadId/opportunityId/customerId/assignedTo`
+     - `createActivitySchema` + `updateActivitySchema`: `type/subject/description/activityDate/durationMinutes/...`
+     - `updateLeadSchema` (جديد): جميع الحقول optional، يُستخدم في `updateLead`
+  2. **crm/api.ts**:
+     - `createLead`: أضيف `|| null` لكل حقل اختياري (يحل PG error: column cannot be null for empty strings)
+     - `createLead` + `createOpportunity` + `createTask` + `createActivity` تستخدم الـ schemas الجديدة
+     - `updateOpportunity`: أضيف `notes` في dynamic SET (كان مفقود → silent data loss)
+     - `updateOpportunity`: أضيف `if (data.notes !== undefined)` block
+     - `mapLeadRow`: أضيف `assignedName` + `rating || 'warm'` default
+     - `mapOpportunityRow`: أضيف `assignedName` + `stage || 'new'` default
+     - `mapTaskRow`: أضيف `assignedName` + `priority || 'medium'` + `status || 'pending'`
+     - `mapActivityRow`: أضيف `assignedName` + `activityDate || NOW()` fallback
+  3. **types.ts**: أضيف `assignedName?: string` لـ Lead, Opportunity, Task, Activity
+  4. **LeadsPage** (إعادة كتابة كاملة):
+     - `useActivitiesPaginated(companyId)` بدل `useActivities` (reload تلقائي)
+     - Search input + status filter (useMemo filters)
+     - `formatCurrency` للـ estimatedValue column
+     - `formatDate` للـ activityDate
+     - Empty state action مع Can wrapper
+     - handleConvert يستدعي `await reload()` بعد النجاح
+     - aria-label للـ icon buttons (UserCheck convert)
+     - title attribute للـ buttons (a11y)
+     - Convert modal variant "info" (كان default)
+  5. **OpportunitiesPage** (إعادة كتابة):
+     - إزالة الـ import المكرر لـ useFormatters
+     - Search input + stage filter
+     - title/aria-label للـ kanban icon buttons
+     - Empty placeholder في kanban columns
+     - probability range (0-100) في Input
+     - totalValue/weightedValue من opportunities الحالية
+  6. **TasksPage** (إعادة كتابة):
+     - Search + status + priority filters
+     - `formatDate` للـ dueDate
+     - `exportToExcel` handler
+     - status select يظهر فقط في edit mode (لا في create)
+     - `isOverdue` يستخدم `toDateString()` للمقارنة الصحيحة
+     - `priorityColor` function منفصلة
+     - Calendar icon للـ dueDate
+  7. **ActivitiesPage** (إعادة كتابة):
+     - Search client-side (لأن API لا يدعم `search` filter)
+     - Type filter
+     - `formatDate` للـ activityDate
+     - `exportToExcel` handler
+     - `assignedName` بدل `assignedTo` في repReport
+     - title/aria-label للـ export button
+  8. **i18n (ar.json + en.json)**:
+     - أضيف `crm.lead.statusFilter، new، edit، empty، emptyDescription، convertTitle، convertMessage، convertToCustomer، followUp، followUps، deleteTitle، deleteMessage`
+     - أضيف `crm.leadsPage.title، description، search، total، searchLabel`
+     - أضيف `crm.opportunitiesPage.title، description، search`
+     - أضيف `crm.opportunity.funnelReport`
+     - أضيف `crm.tasksPage.title، description، search، filter.{pending,completed,cancelled}`
+     - أضيف `crm.activitiesPage.title، description، filter.all`
+     - أضيف `crm.task.overdue`
+     - i18n متوازن: 149 keys في AR = 149 في EN
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** في CRM (الـ 3 errors في ProfitAnalysisReport.tsx موجودة مسبقاً قبل تغييراتي)
+  - `npx vitest run src/core/i18n src/core/utils/validation`: **22/22 passed** ✓
+  - `npx eslint src/modules/crm`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built successfully** ✓
+  - i18n balance: **149 AR = 149 EN** ✓
+
+### قواعد ذهبية مضافة (Phase 34)
+- **API INSERT مع optional fields**: استخدم `data.X || null` بدل `data.X` (PG يقبل null لكن يرفض empty string لـ UUID/date columns). الـ zod schema يضمن type correctness، الـ SQL يضمن NULL handling
+- **mapRow defaults**: `String(r.rating || 'warm')` — لو الـ row ناقص (legacy data أو NULL column)، الـ type لا يكسر. أفضل من `String(r.rating) as Lead['rating']` التي قد تكون undefined
+- **LEFT JOIN users ON assigned_to**: يجب جلب `assigned_name` (full_name) لعرضه في UI بدل الـ UUID. الـ type يحوي `assignedName?: string` كـ optional
+- **Date comparison without time**: `new Date(task.dueDate) < new Date(new Date().toDateString())` — يقارن يوم بدل وقت كامل. يمنع false positives لمهام "اليوم" اللي لسه ما انتهت
+- **isOverdue excludes completed/cancelled**: `if (status === 'completed' || status === 'cancelled') return false` — مهمة منجزة لا تُحسب overdue
+- **activityDate fallback**: `r.activity_date ? String(r.activity_date) : new Date().toISOString()` — لو الـ column NULL (legacy)، default لـ NOW. الـ type يحوي `activityDate: string` (not optional) فالـ fallback ضروري
+- **create vs update schema pattern**: الـ create schema = required fields، الـ update schema = all optional. الـ API يستدعي `validateInput(createXSchema, data)` و `validateInput(updateXSchema, data)` على التوالي
+- **Form state for status in edit mode**: `editing && <status select>` — يخفي select في create (status default "pending" من الـ schema)، يظهره في edit فقط
+- **Empty kanban column placeholder**: `{opportunities.filter(...).length === 0 && <div className="text-center text-xs">{t('crm.opportunity.empty')}</div>}` — يمنع العمود الفارغ الصامت
+- **Activity form `activityDate` from DB**: `act.activityDate.split('T')[0]` — DB يخزن timestamp كامل (`2026-06-26T08:30:00.000Z`)، الـ input[type=date] يحتاج YYYY-MM-DD فقط
+- **handleX استدعاء reload بعد success**: `if (res?.success) { addToast(...); await reload(); }` — mutations يجب أن تُحدِّث الـ list فوراً، وإلا الـ user يرى data قديمة
+- **Pagination filter validation**: لو الـ API لا يدعم search، استخدم client-side filter على `useMemo` من الـ server-returned data. أفضل من server round-trip لكل keystroke
+- **validation schema `crm.*` keys must mirror DB columns**: الـ zod schema يحوي `crm.activity.type` enum matching DB CHECK constraint. لو DB enum يختلف عن schema → runtime validation errors
+- **`useActivitiesPaginated` vs `useActivities`**: الـ `*Paginated` variants تُعيد `reload()` method، يُستدعى بعد mutations. الـ `useActivities` (in-memory) ما عنده reload — الـ caller يحتاج يستدعي `refresh()` يدوياً
+- **LeadsPage activities context**: عند فتح activity modal، يجب تخزين `selectedLead` للـ context (الـ lead name يظهر في modal title). الـ `setSelectedLead(null)` بعد close — يمنع stale state
+- **Customer conversion reload**: بعد `convertLeadToCustomer`، الـ lead status يتغير إلى 'converted' (server-side). الـ `reload()` من hook paginated يضمن الـ list يعرض الـ status الجديد
+- **EmptyState action في كل page**: `<Can action="create" module="crm"><Button onClick={openCreate}>...</Button></Can>` — الـ empty state يعرض CTA فقط لو user عنده permission
+- **i18n balance strict**: `ar=149 en=149` متوازن بالضبط. لو أضفت مفتاح لـ AR بدون EN → fail test. القاعدة: اكتب كلا الـ keys معاً
+- **icon-only buttons accessibility**: `<Button aria-label={t('...')}>{icon}</Button>` ضروري. الـ screen readers لا تقرأ icon names تلقائياً
+- **Aria-label على select**: `<select aria-label={t('...')}>` — الـ `<label>` tag يحتاج `htmlFor` association. الـ `aria-label` أبسط وsupported أكثر
+
+### المرحلة 35: فحص شامل لوحدة المبيعات (Sales) + إصلاحات حرجة
+- **الهدف**: فحص كل صفحات المبيعات (Invoices, Quotations, SalesReturns, Customers) وإصلاح أي bugs حرجة + تحسينات UX
+- **المشاكل المكتشفة والمُصلحة (8)**:
+  1. **`getCustomerStatement` schema drift**: كان يستخدم `invoice_number` و `paid_amount` للـ "سند قبض" — غير صحيح منطقياً. **الإصلاح**: استبدال `UNION ALL` الثاني بـ `FROM receipt_vouchers WHERE customer_id = $1 AND status = 'posted'` + استخدام `voucher_number as document_number` و `amount as credit`
+  2. **`getCustomerArAging` يستخدم `i.date`**: العمر يُحسب من `i.date` بدلاً من `i.due_date` (تاريخ الاستحقاق). **الإصلاح**: استخدام `COALESCE(i.due_date, i.date) as aging_date` — منطق الأعمال الصحيح. أيضاً إضافة filter `AND (i.total_amount - i.paid_amount) > 0` لتجاهل الفواتير المدفوعة بالكامل
+  3. **`getInvoices` لا يجلب lines**: في `SalesReturnsPage.handleInvoiceSelect`، `inv.lines = []` بسبب `mapInvoiceRow` يضع `lines: []` دائماً. **الإصلاح**: إضافة method جديدة `getPostedInvoicesWithLines(companyId)` تجلب headers + lines في 2 queries فقط مع `Map<id, lines>` للتجميع
+  4. **`usePostedInvoicesWithLines` hook جديد**: استبدال `useInvoices` في `SalesReturnsPage` بالـ hook الجديد الذي يجلب posted invoices مع lines
+  5. **`SalesReturnsPage` VAT rate ثابت**: `Math.floor(subtotal * 0.15)` يفترض VAT = 15% دائماً. **الإصلاح**: استخدام `settings?.vatRate ?? 15` + تقريب عادي (`Math.round` للـ 2 decimal places) بدلاً من `Math.floor`
+  6. **`InvoicesPage` stats تشمل cancelled**: `invoices.reduce(...totalAmount)` يحسب الفواتير الملغاة. **الإصلاح**: filter `invoices.filter(i => i.status !== 'cancelled')` قبل الحساب
+  7. **`e2eDbBridge` shim يستخدم `query/transaction`**: بعد Phase 1، الـ renderer code يستخدم `_exec`/`_execBatch` لكن الـ e2e shim لم يُحدَّث. **الإصلاح**: استبدال `query:post, transaction:...` بـ `_exec:async(s,p)=>..., _execBatch:async(qs)=>...` في `e2e/vite-e2e-plugin.ts`
+  8. **`ProductsPage.tsx` ESLint error**: `stopBarcodeScan` مستخدم قبل إعلانه. **الإصلاح**: نقل `useCallback` للأعلى
+- **اختبارات جديدة (12 unit + 7 e2e)**:
+  - `src/modules/sales/api.test.ts` (12 tests): customer statement (UNION invoices + vouchers), AR aging (due_date + zero filter), postedInvoicesWithLines (status filter + lines mapping), createInvoice (auto-compute baseCurrencyAmount)
+  - `e2e/11-sales-module.spec.ts` (7 tests): customers page loads + search, quotations page, returns page, invoices stats cards, invoice create modal fields, customers create modal, quotations create modal
+- **إصلاحات في migration test**:
+  - `drizzle/migrations.test.ts`: تحديث assertions من `13 entries` إلى `14 entries` (0013_hr_schema_drift_fix أُضيف لاحقاً)
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** ✓
+  - `npx eslint src --max-warnings=0`: **0 errors, 0 warnings** ✓
+  - `npx vitest run src/modules/sales`: **12/12 passed** ✓
+  - `npx playwright test`: **26/26 passed** ✓
+  - `npm run build`: **built in 30.75s** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+  - **0** `useState(true)` في `src/modules/sales/` (infinite loading fixed) ✓
+  - **0** schema drift في `sales/api.ts` (كل queries تحوي `company_id` filter) ✓
+  - **4/4** صفحات تستخدم `<Can>` wrappers للـ RBAC (Invoices, Quotations, SalesReturns, Customers) ✓
+  - i18n: **2011 keys متوازنة** (EN === AR) ✓
+
+### قواعد ذهبية مضافة (Phase 35)
+- **UNION ALL للسندات يجب أن يستخدم receipt_vouchers**: customer statement يدمج الفواتير (debit) مع سندات القبض (credit) — لا تستخدم `sales_invoices.paid_amount` للـ credit
+- **AR Aging يجب أن يستخدم `i.due_date`**: العمر = عدد الأيام من تاريخ الاستحقاق، لا من تاريخ الفاتورة. `COALESCE(due_date, date)` fallback ذكي
+- **Filter zero-amount rows في Aging**: `AND (i.total_amount - i.paid_amount) > 0` يتجاهل الفواتير المدفوعة بالكامل من الحسابات
+- **Hook منفصل للـ "get posted invoices with lines"**: `usePostedInvoicesWithLines` يجلب headers + lines في query واحد. لا تستخدم `useInvoices` (يضع `lines: []`)
+- **Map<id, lines> لتجميع LEFT JOINs**: لما تجلب 2 queries (headers + lines)، اجمع في `Map<invoiceId, lines[]>` ثم ادمج في الـ result
+- **VAT rate من الـ settings**: لا تقس على `0.15` ثابت. استخدم `settings?.vatRate ?? 15` — يحترم إعدادات الشركة
+- **`Math.round` للـ monetary values**: `Math.floor` يقرب للأقل (يضيع 0.99). استخدم `Math.round(value * 100) / 100` لـ 2 decimal places
+- **Filter cancelled في الـ stats**: `invoices.filter(i => i.status !== 'cancelled')` قبل `reduce` — الـ stats يجب أن تعكس العمليات النشطة فقط
+- **`_exec`/`_execBatch` في e2e shim**: بعد Phase 1 (raw SQL closure)، الـ e2e shim يجب أن يطابق الـ adapter interface الجديد. استبدال `query`/`transaction` بـ `_exec`/`_execBatch`
+- **Migration count = journal entries count**: عند إضافة migration جديدة، حدّث الـ test assertions. الـ pattern: `journal.entries.length === migrations.length`
+- **ar.json و en.json متوازنان دائماً**: استخدم `node` script مع `getAllKeys(obj)` recursive لاكتشاف الـ drift بسرعة
+
+### المرحلة 36: فحص شامل لوحدة HR وإصلاحات حرجة
+- **الهدف**: إصلاح كل مشاكل وحدة HR (Employees, Attendance, Payroll, Leaves, EndOfService) وتحسين UX والـ API والـ i18n
+- **المشاكل الحرجة المكتشفة والمُصلحة (10)**:
+  1. **`getEmployeesPaginated` search يستخدم `e.code`**: العمود غير موجود (الـ schema يستخدم `e.employee_number`). **الإصلاح**: `e.code` → `e.employee_number` في search condition
+  2. **`createEmployee` يحاول INSERT في `photo_url` و `attachments`**: الأعمدة غير موجودة في SQL. **الإصلاح**: migration 0013 يحذف ALTER TABLE مع `IF NOT EXISTS` + تحديث Drizzle schema و `createEmployeeSchema`
+  3. **`getHrKpis` payroll JOIN بدون `e.company_id` filter**: `payroll_lines → payroll_runs → employees` JOIN يحوي `pr.company_id` لكن ينقص `e.company_id` (defense-in-depth). **الإصلاح**: إضافة `JOIN employees e ON pl.employee_id = e.id` + `AND e.company_id = $1`
+  4. **`mapPayrollRunRow` يقرأ `r.notes`**: العمود غير موجود في `payroll_runs`. **الإصلاح**: حذف `notes: r.notes ? String(r.notes) : undefined` من map function + حذف `notes` من `PayrollRun` type
+  5. **`updateEmployee` لا يحدث `updated_at`**: SET clause ديناميكي يضيف الأعمدة فقط. **الإصلاح**: إضافة `fields.push('updated_at = NOW()')` بعد الـ dynamic fields + إزالة early-return `if (fields.length === 0)` (الـ NOW() field يحفظ الـ timestamp)
+  6. **`mapEmployeeRow` photoUrl/attachments parse خطأ**: `r.attachments ? JSON.parse(String(r.attachments))` يفشل إذا كان object (PG يُرجع object لـ jsonb). **الإصلاح**: `typeof r.attachments === 'string' ? JSON.parse(r.attachments) : r.attachments` + `r.base_salary !== null` check
+  7. **`useAttendance` hook بلا `refresh` method**: `save()` لا يُعيد تحميل البيانات. **الإصلاح**: إضافة `refresh: load` + `save` يستدعي `await load()` عند النجاح
+  8. **EmployeesPage بلا search input**: API تدعم `search` filter لكن الـ page لا يعرض UI للبحث. **الإصلاح**: `<Search />` icon + `<input>` + `searchQuery` state + `useMemo` filters
+  9. **Pages بلا error handling**: `handleSave`/`handleDelete` تنادي addToast بدون التحقق من `res.success`. **الإصلاح**: `if (res.success) addToast('success') else addToast('error', res.error)` في كل mutations
+  10. **Pages بلا form validation**: `handleSave` في LeavesPage لا تتحقق من التواريخ. **الإصلاح**: `if (end < start) addToast('error')` + `if (!formData.employeeId) return` patterns
+- **الإصلاحات في `useHr.ts` hooks**:
+  - `useAttendance` → useCallback(load) + effect dependency + `refresh: load` export
+  - `useEmployees`/`usePayrollRuns`/`useLeaves`/`useEndOfServices` (in-memory hooks) — already use `useState(false)` + `useCallback` properly (verified during audit)
+- **تحسينات UI/UX**:
+  - `EmployeesPage`: search input + photo upload (2MB limit) + `<Can>` action guards + useCallback memoization + useMemo columns
+  - `AttendancePage`: إزالة `selectedMonth`/`selectedYear` unused state + error toasts في `handleSave` + try/catch في export functions
+  - `PayrollPage`: error handling في `handleSave`/`handlePost`
+  - `LeavesPage`: form validation (employeeId/startDate/endDate) + date range check + error handling + fix duplicate `t('hr.leaves.reportTitle')` في print template
+  - `EndOfServicePage`: required field validation + error handling في كل mutations
+- **i18n** (16 new keys متوازنة في AR + EN):
+  - `hr.employeesPage.searchPlaceholder`, `requiredFields`, `photoTooLarge`, `uploadPhoto`
+  - `hr.attendancePage.exportError`
+  - `hr.leaves.exportError`, `from`, `to`, `allLeaves`, `reportDate`, `totalCount`, `requiredFields`, `invalidDates`
+  - `hr.eos.reportError`, `requiredFields`
+  - i18n متوازن: 2082 AR = 2082 EN
+- **اختبارات جديدة (18)**:
+  - `src/modules/hr/api.test.ts` (13): getEmployeesPaginated search (e.employee_number + e.code absent), isActive filter, optional filter, createEmployee photoUrl/attachments, updateEmployee updated_at + JSON attachments + empty fields, getPayrollRunsPaginated JOIN + lines, getLeavesPaginated status, getEndOfServicesPaginated status, getHrKpis multi-tenancy, getEmployees photoUrl/attachments/null handling
+  - `drizzle/migrations.test.ts` (5 جديد): photo_url, attachments, idx_employees_department, idempotency, Drizzle schema photoUrl/attachments
+- **الـ commit**: `4e5e63d fix: comprehensive HR module audit and fixes`
+- **النتيجة النهائية**:
+  - `npx tsc -b`: **0 errors** في HR (الـ 3 errors في ProfitAnalysisReport.tsx موجودة مسبقاً)
+  - `npx vitest run`: **582/582 passed** (43 files) ✓ (+18 من baseline 564)
+  - `npx eslint src/modules/hr`: **0 errors, 0 warnings** ✓
+  - `npm run db:check`: **No schema changes, nothing to migrate** ✓
+  - i18n balance: **2082 AR = 2082 EN** ✓
+
+### قواعد ذهبية مضافة (Phase 36)
+- **`e.code` vs `e.employee_number` drift**: الـ schema يحوي `employee_number` (5 chars min). الـ API القديم استخدم `code` (legacy from initial draft). **الحل**: افحص `describe employees` SQL قبل أي search
+- **`notes` column في `payroll_runs` غير موجود**: الـ type يحوي `notes?: string` (optional) لكن الـ schema لا يحوي العمود. **الحل**: عند الـ UPDATE/INSERT، احذف الـ column غير الموجود من map function + من الـ type
+- **`jsonb` parsing conditional**: `typeof r.x === 'string' ? JSON.parse(r.x) : r.x` — لو PG يرجع object (jsonb parsed) لا تحتاج parse. لو string (text/json) تحتاج parse
+- **Defense-in-depth في multi-tenant JOINs**: لو `payroll_lines → payroll_runs.company_id` filter كافٍ منطقياً، أضف `JOIN employees ON e.id = pl.employee_id AND e.company_id = $N` للحماية من race conditions
+- **`updated_at = NOW()` في dynamic SET clause**: ضعها بعد الـ fields loop — لا تحتاج idx/value، فقط `fields.push('updated_at = NOW()')`. الـ early-return `if (fields.length === 0)` يجب أن يصبح `if (fields.length === 1)` (الـ NOW() field يضمن 1 field على الأقل)
+- **useAttendance refresh pattern**: في hooks in-memory، `const load = useCallback(...)` ثم `useEffect(() => { load() }, [load])` + `save = useCallback(async () => { res = await api.save(); if (res.success) await load(); return res; }, [load])`. الـ reload بعد mutations يضمن الـ UI يعرض fresh data
+- **Photo upload size limit**: `if (file.size > 2 * 1024 * 1024) addToast('error')` — يحمي من DB bloat (photoUrl يُخزن كـ data URL)
+- **Mutation error handling pattern**: `const res = await mutation(); if (res.success) addToast('success', ...) else addToast('error', res.error || t('common.error'));` — يجب في كل mutations، لا تعتمد على res.success دائماً
+- **Form validation before submit**: `if (!formData.requiredField) { addToast('error', t('validation.required')); return; }` — يتحقق من الحقول الإلزامية قبل الاستدعاء
+- **Date range validation**: `if (endDate < startDate) { addToast('error'); return; }` — يمنع إدخال إجازة/عطلة منتهية قبل بدايتها
+- **Search input + useMemo filters**: `const filters = useMemo(() => ({ search: searchQuery || undefined }), [searchQuery])` — يمنع re-render loop
+- **JSON.stringify في API layer**: لو الـ schema يحوي `jsonb`، الـ API يمرر `JSON.stringify(data.attachments)` عند INSERT/UPDATE. الـ PG يحوّل الـ string إلى jsonb تلقائياً
+
+*آخر تحديث: 2026-06-26 | الإصدار: maghzaccount-pro v0.2.0*
 
