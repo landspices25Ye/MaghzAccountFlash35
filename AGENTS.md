@@ -2138,5 +2138,74 @@ npx drizzle-kit migrate
 - **`isVisible().catch(() => false)` pattern**: يستخدم للـ buttons التي قد تكون مخفية (مثل `<Can>` blocks). أفضل من `try/catch` blocks
 - **e2e count بالـ page، لا بالـ flow**: صفحة واحدة = 1-2 tests. لا تكتب flows معقدة في e2e — استخدمها للـ smoke tests فقط
 
+### المرحلة 36: تغطية اختبارات CRM + تحسينات إضافية
+- **الهدف**: إنشاء unit tests + e2e tests شاملة لوحدة CRM وتحسين form data و status field
+- **Unit tests جديدة** (`src/modules/crm/api.test.ts` — 22 tests):
+  - **Leads** (7 tests): `getLeads` (assigned_name من LEFT JOIN) + `getLeadById` (defaults لـ rating/status) + `createLead` (null لـ optional fields) + `updateLead` (empty data short-circuit + SET clause) + `convertLeadToCustomer` (call order: select → insert → update status) + `getLeadsPaginated` (ILIKE search)
+  - **Opportunities** (4 tests): `getOpportunities` (stage/probability) + `createOpportunity` (notes في INSERT) + `updateOpportunity` (notes في SET clause — fix silent data loss) + update stage + probability معاً
+  - **Tasks** (4 tests): `getTasks` (status/priority) + `createTask` (null لـ optional) + `updateTask` (status toggle) + `getTasksPaginated` (search filter على title/description)
+  - **Activities** (4 tests): `getActivities` (activity_date/duration) + `createActivity` (null لـ durationMinutes) + `mapActivityRow` (fallback لـ NOW) + update subject + activityDate معاً
+  - **Pagination edge cases** (3 tests): getLeadsPaginated total=0 + getOpportunitiesPaginated pageSize clamping + getActivitiesPaginated type-only filter (no search)
+- **E2E tests جديدة** (`e2e/14-crm-module.spec.ts` — 8 tests):
+  - **Leads** (4): page loads with table + create form opens with fields + create lead + verify in table + search filter
+  - **Opportunities** (3): page loads with kanban + create form opens with stages + switch to list view shows table
+  - **Tasks** (2): page loads with filters + create task + verify in list
+  - **Activities** (3): page loads with type filter + create activity with subject + has export button
+- **تحسين form data** (LeadsPage):
+  - إضافة `status` field في formData (كان مفقود → لا يمكن تحديد status من الفورم)
+  - `handleSave` يستخدم `formData.status` بدل `editing ? editing.status : 'new'`
+  - إضافة status select في الفورم (يظهر في create + edit mode)
+  - `aria-label` للـ rating و status selects
+- **نتائج الاختبارات**:
+  - `npx vitest run src/modules/crm`: **22/22 passed** ✓
+  - `npx vitest run src/core/i18n src/modules/crm`: **28/28 passed** ✓
+  - `npx eslint src/modules/crm`: **0 errors, 0 warnings** ✓
+  - `npm run build`: **built in 6.87s** ✓
+  - i18n balance: **149 AR = 149 EN** ✓
+
+### قواعد ذهبية مضافة (Phase 36)
+- **Unit tests للـ CRM API ضرورية**: الـ CRM unit module كان بدون tests (0% coverage). إنشاء 22 tests يغطي: query building, validation, defaults, edge cases، mutations، و multi-tenancy filters
+- **Mock pattern للـ zod validation**: `vi.mock('@/core/utils/validation', () => ({ validateInput: vi.fn((_, data) => ({ success: true, data })) }))` — يمرر الـ data كما هو. يسمح للـ tests بفحص الـ SQL مع data types الصحيحة
+- **Mock pagination utilities**: `clampPageArgs` و `paginatedResult` mocked — يضمن الـ tests تتحقق من usage الـ API لا من الـ pagination internals
+- **Test SQL patterns via regex**: `expect(sql).toMatch(/status = \$1/)` يضمن الـ SET clause يحوي الـ column — يفشل عند schema drift
+- **Test SQL params via array index**: `expect(capturedParams).toEqual([...])` يتحقق من parameter order — يضمن compatibility مع PG placeholder system
+- **call order tests**: `callOrder` array tracks sequence of operations. `expect(callOrder).toEqual(['select', 'insert', 'update'])` يضمن الـ business logic flow (e.g., convertLeadToCustomer: select lead first, then insert customer, then update lead status)
+- **Defensive defaults في mapRow**: الـ tests تتحقق من `res.data?.[0].rating === 'warm'` (default) حتى لو الـ row ناقص — يحاكي legacy data scenario
+- **Null for empty strings في INSERT**: PG يرفض empty string لـ UUID/date columns. الـ tests تتحقق `expect(capturedParams?.[1]).toBeNull()` — يضمن الـ API يحول `''` إلى `null`
+- **E2E tests للـ CRM = flows حرجة**: 8 tests تغطي: page load + create + search + filter + view modes. لا CRUD كاملة (slow + brittle) — فقط الـ smoke tests
+- **E2E modal pattern**: `page.getByRole('heading', { name: /عنوان/i })` ثم `locator('..').locator('..').locator('..')` للوصول للـ modal panel (3 levels up من heading)
+- **E2E form fill pattern**: `modalPanel.getByLabel(/الحقل|Field/i).first().fill('value')` — يعتمد على `aria-label` أو `for` association
+- **E2E Escape للـ close modal**: `page.keyboard.press('Escape')` أسرع وأكثر reliability من البحث عن cancel button
+- **E2E unique data via Date.now()**: `` `مهمة اختبار ${Date.now()}` `` يضمن كل test run يستخدم unique identifier — يمنع duplicate detection بين tests
+- **E2E search filter test**: `searchInput.fill('محمد')` + `page.waitForTimeout(500)` للـ debounce — أسرع من `expect.poll` (فوري)
+- **formData status field للـ editable entities**: في الـ create mode، الـ status يبدأ كـ default ('new'، 'pending')، لكن في الفورم يجب أن يكون قابل للتعديل (lead قد يبدأ كـ 'contacted' لو الـ user يضيف lead من قائمة إحالة)
+- **`aria-label` للـ inline `<select>`**: `<select aria-label="...">` — الـ `<label>` tag يحتاج `htmlFor` association. الـ `aria-label` أبسط وsupported أكثر
+
+### المرحلة 38: تحسينات إضافية لـ HR (Payroll + EndOfService)
+- **الهدف**: إضافة form validation متقدمة + إصلاح JSX في PayrollPage
+- **PayrollPage إصلاحات**:
+  - JSX indentation خاطئ في الـ header div — السطر `</div>` كان في الـ indent الخاطئ
+  - `aria-label` للـ status select (a11y)
+  - `formData.month` validation: 1-12
+  - `formData.year` validation: 2000-2100
+  - `lines.length > 0` check قبل save
+  - 3 i18n keys جديدة: `invalidMonth`, `invalidYear`, `noEmployees`
+- **EndOfServicePage إصلاحات**:
+  - `terminationDate < hireDate` validation (تاريخ النهاية قبل تاريخ التعيين)
+  - `serviceYears > 0` check
+  - 2 i18n keys جديدة: `invalidDates`, `invalidServiceYears`
+- **النتائج**:
+  - `npx vitest run`: **604/604 passed** ✓
+  - `npx eslint src/modules/hr`: **0 errors, 0 warnings** ✓
+  - i18n متوازن: **2105 AR = 2105 EN** ✓
+- **الـ commit**: `518de9e feat(hr): add form validation + UI polish to Payroll/EndOfService`
+
+### قواعد ذهبية مضافة (Phase 38)
+- **JSX indentation matters for readability**: الـ header في PayrollPage كان يحوي `</div>` في الـ indent الخاطئ — يضر الـ readability لكن لا يكسر. القاعدة: استخدم 2-space indent متسق
+- **Month validation**: 1-12 (لا 0 ولا 13+). الـ `type="number"` لا يمنع القيم خارج النطاق
+- **Year range validation**: 2000-2100 (نطاق معقول للـ payroll). منع التواريخ التاريخية البعيدة
+- **Termination date validation**: `if (terminationDate < hireDate) addToast('error')` — لا يمكن للموظف أن ينتهي قبل تعيينه
+- **`aria-label` للـ inline `<select>`**: الـ `<label>` tag يحتاج `htmlFor` association. الـ `aria-label` أبسط وsupported أكثر
+
 *آخر تحديث: 2026-06-26 | الإصدار: maghzaccount-pro v0.2.0*
 
