@@ -4,6 +4,7 @@ import { Package, ArrowLeft, Pencil, Barcode, Tag, Box, DollarSign, AlertTriangl
 import { Card, Button, Badge } from '@/core/ui/components';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { useProducts } from '../hooks/useInventory';
+import { useProductCategories } from '../hooks/useInventory';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -22,6 +23,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
   const activeCompany = useAppStore(state => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const { products } = useProducts(activeCompany?.id || '');
+  const { categories } = useProductCategories(activeCompany?.id || '');
 
   const product = propProduct || products.find(p => p.id === id);
 
@@ -29,7 +31,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
     return (
       <div className="flex flex-col items-center justify-center h-96">
         <Package size={48} className="text-slate-300 mb-4" />
-        <h3 className="text-lg font-medium text-slate-500">{t('inventory.productName')}</h3>
+        <h3 className="text-lg font-medium text-slate-500">{t('inventory.productDetails')}</h3>
         <Button variant="secondary" className="mt-4" leftIcon={<ArrowLeft size={16} />} onClick={() => onBack ? onBack() : navigate('/inventory/products')}>
           {t('back')}
         </Button>
@@ -37,7 +39,12 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
     );
   }
 
-  const stockLevel = product.minStock && product.reorderPoint
+  const getCategoryName = (catId: string) => {
+    const cat = categories.find(c => c.id === catId);
+    return cat?.name || catId;
+  };
+
+  const stockLevel = product.minStock !== undefined && product.reorderPoint !== undefined
     ? product.quantity !== undefined && product.quantity < product.minStock
       ? 'critical'
       : product.quantity !== undefined && product.quantity < (product.reorderPoint || 0)
@@ -129,7 +136,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product: propProdu
             <div className="flex flex-wrap gap-2">
               {product.categoryIds && product.categoryIds.length > 0 ? (
                 product.categoryIds.map(catId => (
-                  <Badge key={catId} className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{catId}</Badge>
+                  <Badge key={catId} className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{getCategoryName(catId)}</Badge>
                 ))
               ) : (
                 <span className="text-slate-400 text-sm">-</span>

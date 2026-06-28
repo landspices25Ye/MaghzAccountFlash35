@@ -330,7 +330,7 @@ export const accountingApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = `
-        SELECT rv.*, c.name_ar as customer_name
+        SELECT rv.*, c.name as customer_name
         FROM receipt_vouchers rv
         LEFT JOIN customers c ON rv.customer_id = c.id
         WHERE rv.company_id = $1`;
@@ -382,7 +382,7 @@ export const accountingApi = {
       const offsetIdx = params.length;
 
       const dataResult = await adapter.query(
-        `SELECT rv.*, c.name_ar as customer_name
+        `SELECT rv.*, c.name as customer_name
          FROM receipt_vouchers rv
          LEFT JOIN customers c ON rv.customer_id = c.id
          WHERE ${where}
@@ -475,7 +475,7 @@ export const accountingApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       let sql = `
-        SELECT pv.*, c.name_ar as supplier_name, a.name_ar as expense_account_name
+        SELECT pv.*, c.name as supplier_name, a.name_ar as expense_account_name
         FROM payment_vouchers pv
         LEFT JOIN suppliers c ON pv.supplier_id = c.id
         LEFT JOIN accounts a ON pv.expense_account_id = a.id
@@ -528,7 +528,7 @@ export const accountingApi = {
       const offsetIdx = params.length;
 
       const dataResult = await adapter.query(
-        `SELECT pv.*, c.name_ar as supplier_name, a.name_ar as expense_account_name
+        `SELECT pv.*, c.name as supplier_name, a.name_ar as expense_account_name
          FROM payment_vouchers pv
          LEFT JOIN suppliers c ON pv.supplier_id = c.id
          LEFT JOIN accounts a ON pv.expense_account_id = a.id

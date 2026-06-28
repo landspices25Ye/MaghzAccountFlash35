@@ -566,7 +566,7 @@ CREATE TABLE IF NOT EXISTS "work_orders" (
 	"bom_id" uuid REFERENCES "boms"("id") ON DELETE SET NULL,
 	"quantity" numeric(18, 4) NOT NULL,
 	"produced_quantity" numeric(18, 4) DEFAULT '0',
-	"status" varchar(20) DEFAULT 'pending',
+	"status" varchar(20) DEFAULT 'planned',
 	"planned_start_date" date,
 	"planned_end_date" date,
 	"actual_start_date" date,

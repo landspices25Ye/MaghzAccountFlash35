@@ -145,11 +145,11 @@ export const salesApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT date, 'فاتورة' as document_type, invoice_number as document_number, total_amount as debit, paid_amount as credit, (total_amount - paid_amount) as balance, notes
+        `SELECT date, 'فاتورة' as document_type, invoice_number as document_number, total_amount as debit, 0 as credit, (total_amount - COALESCE(paid_amount, 0)) as balance, notes
         FROM sales_invoices WHERE customer_id = $1 AND status <> 'cancelled'
         UNION ALL
-        SELECT date, 'سند قبض' as document_type, invoice_number as document_number, 0 as debit, paid_amount as credit, 0 as balance, notes
-        FROM sales_invoices WHERE customer_id = $1 AND paid_amount > 0
+        SELECT date, 'سند قبض' as document_type, voucher_number as document_number, 0 as debit, amount as credit, 0 as balance, notes
+        FROM receipt_vouchers WHERE customer_id = $1 AND status = 'posted'
         ORDER BY date DESC`,
         [customerId]
       );
@@ -166,10 +166,10 @@ export const salesApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT c.id as customer_id, c.name as customer_name, i.total_amount - i.paid_amount as due_amount, i.date
+        `SELECT c.id as customer_id, c.name as customer_name, (i.total_amount - i.paid_amount) as due_amount, COALESCE(i.due_date, i.date) as aging_date
         FROM customers c
         JOIN sales_invoices i ON i.customer_id = c.id
-        WHERE c.company_id = $1 AND i.status IN ('posted', 'partially_paid')`,
+        WHERE c.company_id = $1 AND i.status IN ('posted', 'partially_paid') AND (i.total_amount - i.paid_amount) > 0`,
         [companyId]
       );
       if (!result.success) return { success: false, error: result.error };
@@ -180,7 +180,7 @@ export const salesApi = {
         const cid = String(r.customer_id);
         const cname = String(r.customer_name);
         const due = Number(r.due_amount) || 0;
-        const date = new Date(String(r.date));
+        const date = new Date(String(r.aging_date));
         const days = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
         const period = days <= 30 ? '0-30' : days <= 60 ? '31-60' : days <= 90 ? '61-90' : '>90';
         if (!map.has(cid)) {
@@ -218,6 +218,47 @@ export const salesApi = {
       );
       if (!result.success) return { success: false, error: result.error };
       const invoices = (result.rows || []).map((row: Record<string, unknown>) => mapInvoiceRow(row));
+      return { success: true, data: invoices };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async getPostedInvoicesWithLines(companyId: string): Promise<{ success: boolean; data?: SalesInvoice[]; error?: string }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const adapter = await getDbAdapter();
+      const headersRes = await adapter.query(
+        `SELECT i.*, c.name as customer_name
+         FROM sales_invoices i
+         LEFT JOIN customers c ON i.customer_id = c.id
+         WHERE i.company_id = $1 AND i.status IN ('posted', 'partially_paid', 'paid')
+         ORDER BY i.date DESC`,
+        [companyId]
+      );
+      if (!headersRes.success) return { success: false, error: headersRes.error };
+      const linesRes = await adapter.query(
+        `SELECT l.*, p.name_ar as product_name
+         FROM sales_invoice_lines l
+         LEFT JOIN products p ON l.product_id = p.id
+         JOIN sales_invoices i ON l.invoice_id = i.id
+         WHERE i.company_id = $1`,
+        [companyId]
+      );
+      const linesByInvoice = new Map<string, SalesInvoiceLine[]>();
+      for (const row of (linesRes.rows || []) as Record<string, unknown>[]) {
+        const invId = String(row.invoice_id);
+        const line = mapInvoiceLineRow(row);
+        const list = linesByInvoice.get(invId) || [];
+        list.push(line);
+        linesByInvoice.set(invId, list);
+      }
+      const invoices = (headersRes.rows || []).map((row: Record<string, unknown>) => {
+        const inv = mapInvoiceRow(row);
+        inv.lines = linesByInvoice.get(inv.id) || [];
+        return inv;
+      });
       return { success: true, data: invoices };
     } catch (e) {
       return { success: false, error: String(e) };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Scale, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input, Can } from '@/core/ui/components';
+import { Card, Button, Table, Modal, Input, ConfirmDialog, Can } from '@/core/ui/components';
 import { useUnits } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -14,6 +14,7 @@ export const UnitsPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Unit>>({ nameAr: '', nameEn: '', code: '', conversionFactor: 1 });
 
   const reset = () => {
@@ -21,19 +22,30 @@ export const UnitsPage: React.FC = () => {
     setEditingId(null);
   };
 
-  const handleDelete = async (id: string) => {
-    await remove(id);
-    addToast('success', t('settings.units.deleted'));
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const result = await remove(deleteId);
+    if (result.success) {
+      addToast('success', t('settings.units.deleted'));
+    } else {
+      addToast('error', result.error || t('settings.units.deleted'));
+    }
+    setDeleteId(null);
   };
 
   const handleSave = async () => {
-    if (!form.nameAr || !activeCompany?.id) return;
+    if (!form.nameAr || !activeCompany?.id) {
+      addToast('error', t('settings.units.nameRequired'));
+      return;
+    }
     if (editingId) {
-      await update(editingId, form);
-      addToast('success', t('settings.units.updated'));
+      const result = await update(editingId, form);
+      if (result.success) addToast('success', t('settings.units.updated'));
+      else addToast('error', result.error || t('settings.units.updated'));
     } else {
-      await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Unit, 'id'>);
-      addToast('success', t('settings.units.created'));
+      const result = await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Unit, 'id'>);
+      if (result.success) addToast('success', t('settings.units.created'));
+      else addToast('error', result.error || t('settings.units.created'));
     }
     setIsOpen(false);
     reset();
@@ -53,7 +65,7 @@ export const UnitsPage: React.FC = () => {
     { key: 'actions', header: '', width: '100px', render: (row: Unit) => (
       <div className="flex gap-1">
         <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} /></Can>
-        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => handleDelete(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></Can>
+        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => setDeleteId(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></Can>
       </div>
     )},
   ];
@@ -102,6 +114,16 @@ export const UnitsPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title={t('settings.units.deleteTitle')}
+        message={t('settings.units.deleteMessage')}
+        confirmText={t('settings.common.delete')}
+        variant="danger"
+      />
     </div>
   );
 };

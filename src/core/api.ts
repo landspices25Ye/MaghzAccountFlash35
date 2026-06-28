@@ -34,13 +34,74 @@ function formatSequenceNumber(seq: DocumentSequence): string {
 
 export async function getNextDocumentNumber(companyId: string, documentType: string): Promise<{ success: boolean; number?: string; error?: string }> {
   const adapter = await getDbAdapter();
-  const result = await adapter.query('SELECT * FROM document_sequences WHERE company_id = $1 AND document_type = $2 AND is_active = true', [companyId, documentType]);
-  if (!result.success || !result.rows?.[0]) return { success: false, error: 'Sequence not found' };
-  const seq = mapRows<DocumentSequence>([result.rows[0]])[0];
-  const fullNumber = formatSequenceNumber(seq);
-  // Increment
-  await adapter.query('UPDATE document_sequences SET current_number = current_number + increment_step WHERE id = $1 AND company_id = $2', [seq.id, companyId]);
-  return { success: true, number: fullNumber };
+  // Try up to 10 times to handle the case where the sequence is behind
+  // (e.g., after seed reset or manual inserts that didn't update the sequence)
+  for (let attempt = 0; attempt < 10; attempt++) {
+    // Atomically increment and return the new value
+    const updateResult = await adapter.query(
+      `UPDATE document_sequences
+       SET current_number = current_number + increment_step, updated_at = NOW()
+       WHERE company_id = $1 AND document_type = $2 AND is_active = true
+       RETURNING *`,
+      [companyId, documentType]
+    );
+    if (!updateResult.success || !updateResult.rows?.[0]) {
+      return { success: false, error: 'Sequence not found' };
+    }
+    const rawSeq = updateResult.rows[0] as Record<string, unknown>;
+    const incrementStep = Number(rawSeq.increment_step) || 1;
+    const usedSeq: DocumentSequence = {
+      ...mapRows<DocumentSequence>([rawSeq])[0],
+      currentNumber: Number(rawSeq.current_number) - incrementStep,
+    };
+    const fullNumber = formatSequenceNumber(usedSeq);
+
+    // Check if this number already exists for the given document type
+    const tableName = getTableForDocumentType(documentType);
+    if (!tableName) {
+      return { success: true, number: fullNumber };
+    }
+    const numberColumn = getNumberColumnForDocumentType(documentType);
+    const checkResult = await adapter.query(
+      `SELECT 1 FROM ${tableName} WHERE company_id = $1 AND ${numberColumn} = $2 LIMIT 1`,
+      [companyId, fullNumber]
+    );
+    if (checkResult.success && (!checkResult.rows || checkResult.rows.length === 0)) {
+      return { success: true, number: fullNumber };
+    }
+    // Number already used, loop will try again with incremented value
+  }
+  return { success: false, error: 'Could not generate unique document number after 10 attempts' };
+}
+
+function getTableForDocumentType(documentType: string): string | null {
+  const map: Record<string, string> = {
+    sales_invoice: 'sales_invoices',
+    quotation: 'quotations',
+    purchase_order: 'purchase_orders',
+    purchase_invoice: 'purchase_invoices',
+    journal_voucher: 'transactions',
+    receipt_voucher: 'receipt_vouchers',
+    payment_voucher: 'payment_vouchers',
+    work_order: 'work_orders',
+    payroll_run: 'payroll_runs',
+  };
+  return map[documentType] || null;
+}
+
+function getNumberColumnForDocumentType(documentType: string): string {
+  const map: Record<string, string> = {
+    sales_invoice: 'invoice_number',
+    quotation: 'quotation_number',
+    purchase_order: 'order_number',
+    purchase_invoice: 'invoice_number',
+    journal_voucher: 'reference',
+    receipt_voucher: 'voucher_number',
+    payment_voucher: 'voucher_number',
+    work_order: 'order_number',
+    payroll_run: 'run_number',
+  };
+  return map[documentType] || 'number';
 }
 
 export async function peekNextDocumentNumber(companyId: string, documentType: string): Promise<{ success: boolean; number?: string; error?: string }> {

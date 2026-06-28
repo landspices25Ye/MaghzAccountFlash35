@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, FileText, Package, ShoppingCart, Users, AlertTriangle,
   Calendar, ChevronDown, Download, FilePlus, BookOpen, PlusCircle, UserPlus, RotateCcw, Factory,
-  Target, XCircle, Award
+  Target, XCircle, Award, BarChart2
 } from 'lucide-react';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useAppStore } from '@/core/store';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 import { useDashboard, type PeriodFilter, type DashboardFilters, type DashboardData } from './useDashboard';
 import {
   MonthlyRevenueChart, TopProductsChart, ArAgingChart, CashFlowChart,
@@ -31,6 +32,9 @@ const periodOptions: { key: PeriodFilter; labelKey: string }[] = [
 
 const MainDashboard: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
+  void canExport;
   const navigate = useNavigate();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [filters, setFilters] = useState<DashboardFilters>({
@@ -75,6 +79,17 @@ const MainDashboard: React.FC = () => {
     const pct = Math.round(((curr - prev) / prev) * 100);
     return { value: `${Math.abs(pct)}%`, trend: pct >= 0 ? ('up' as const) : ('down' as const) };
   };
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <BarChart2 size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -183,7 +198,8 @@ const MainDashboard: React.FC = () => {
 
           <button
             onClick={handleExportDashboardPdf}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            disabled={!canExport}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title={t('reports.exportDashboardPdf')}
           >
             <Download size={16} />

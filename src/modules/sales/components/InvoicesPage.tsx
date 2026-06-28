@@ -411,10 +411,11 @@ export const InvoicesPage: React.FC = () => {
   ];
 
   const stats = useMemo(() => {
-  const total = invoices.reduce((s, i) => s + i.totalAmount, 0);
-  const paid = invoices.reduce((s, i) => s + i.paidAmount, 0);
-  const draftCount = invoices.filter(i => i.status === 'draft').length;
-  const postedCount = invoices.filter(i => i.status === 'posted' || i.status === 'partially_paid' || i.status === 'paid').length;
+    const active = invoices.filter(i => i.status !== 'cancelled');
+    const total = active.reduce((s, i) => s + i.totalAmount, 0);
+    const paid = active.reduce((s, i) => s + i.paidAmount, 0);
+    const draftCount = invoices.filter(i => i.status === 'draft').length;
+    const postedCount = active.length - draftCount;
     return { total, paid, draftCount, postedCount };
   }, [invoices]);
 

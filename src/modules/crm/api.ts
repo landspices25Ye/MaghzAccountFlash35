@@ -1,5 +1,17 @@
 import { getDbAdapter } from '@/core/database/adapters';
-import { validateInput, idCompanySchema, companyIdSchema, createLeadSchema } from '@/core/utils/validation';
+import {
+  validateInput,
+  idCompanySchema,
+  companyIdSchema,
+  createLeadSchema,
+  updateLeadSchema,
+  createOpportunitySchema,
+  updateOpportunitySchema,
+  createTaskSchema,
+  updateTaskSchema,
+  createActivitySchema,
+  updateActivitySchema,
+} from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Lead, Opportunity, Task, Activity } from './types';
 
@@ -112,7 +124,7 @@ export const crmApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query<{ id: string }>(
         `INSERT INTO leads (company_id, name, phone, email, company, source, status, rating, estimated_value, assigned_to, notes, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
-        [data.companyId, data.name, data.phone, data.email, data.company, data.source, data.status, data.rating, data.estimatedValue, data.assignedTo, data.notes, new Date().toISOString()]
+        [data.companyId, data.name, data.phone || null, data.email || null, data.company || null, data.source || null, data.status, data.rating, data.estimatedValue || null, data.assignedTo || null, data.notes || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
       return { success: false, error: result.error };
@@ -125,6 +137,8 @@ export const crmApi = {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
+      const dataValidation = validateInput(updateLeadSchema, data);
+      if (!dataValidation.success) return { success: false, error: dataValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -264,12 +278,12 @@ export const crmApi = {
 
   async createOpportunity(data: Omit<Opportunity, 'id' | 'createdAt'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createOpportunitySchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO opportunities (company_id, lead_id, customer_id, name, value, stage, probability, expected_close_date, assigned_to, notes, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        [data.companyId, data.leadId, data.customerId, data.name, data.value, data.stage, data.probability, data.expectedCloseDate, data.assignedTo, data.notes, new Date().toISOString()]
+        [data.companyId, data.leadId || null, data.customerId || null, data.name, data.value, data.stage, data.probability ?? null, data.expectedCloseDate || null, data.assignedTo || null, data.notes || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
       return { success: false, error: result.error };
@@ -282,6 +296,8 @@ export const crmApi = {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
+      const dataValidation = validateInput(updateOpportunitySchema, data);
+      if (!dataValidation.success) return { success: false, error: dataValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -294,6 +310,7 @@ export const crmApi = {
       if (data.leadId !== undefined) { fields.push(`lead_id = $${idx++}`); values.push(data.leadId); }
       if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
       if (data.assignedTo !== undefined) { fields.push(`assigned_to = $${idx++}`); values.push(data.assignedTo); }
+      if (data.notes !== undefined) { fields.push(`notes = $${idx++}`); values.push(data.notes); }
       if (fields.length === 0) return { success: true };
       values.push(id);
       values.push(companyId);
@@ -338,12 +355,12 @@ export const crmApi = {
 
   async createTask(data: Omit<Task, 'id' | 'createdAt'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createTaskSchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO tasks (company_id, opportunity_id, lead_id, customer_id, title, description, due_date, priority, status, assigned_to, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        [data.companyId, data.opportunityId, data.leadId, data.customerId, data.title, data.description, data.dueDate, data.priority, data.status, data.assignedTo, new Date().toISOString()]
+        [data.companyId, data.opportunityId || null, data.leadId || null, data.customerId || null, data.title, data.description || null, data.dueDate || null, data.priority, data.status, data.assignedTo || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
       return { success: false, error: result.error };
@@ -356,6 +373,8 @@ export const crmApi = {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
+      const dataValidation = validateInput(updateTaskSchema, data);
+      if (!dataValidation.success) return { success: false, error: dataValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -469,12 +488,12 @@ export const crmApi = {
 
   async createActivity(data: Omit<Activity, 'id' | 'createdAt'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createActivitySchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO activities (company_id, lead_id, opportunity_id, customer_id, type, subject, description, activity_date, duration_minutes, assigned_to, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-        [data.companyId, data.leadId, data.opportunityId, data.customerId, data.type, data.subject, data.description, data.activityDate, data.durationMinutes, data.assignedTo, new Date().toISOString()]
+        [data.companyId, data.leadId || null, data.opportunityId || null, data.customerId || null, data.type, data.subject, data.description || null, data.activityDate, data.durationMinutes ?? null, data.assignedTo || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
       return { success: false, error: result.error };
@@ -487,6 +506,8 @@ export const crmApi = {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
+      const dataValidation = validateInput(updateActivitySchema, data);
+      if (!dataValidation.success) return { success: false, error: dataValidation.error };
       const adapter = await getDbAdapter();
       const fields: string[] = [];
       const values: unknown[] = [];
@@ -584,10 +605,11 @@ function mapLeadRow(r: Record<string, unknown>): Lead {
     email: r.email ? String(r.email) : undefined,
     company: r.company ? String(r.company) : undefined,
     source: r.source ? String(r.source) : undefined,
-    status: String(r.status) as Lead['status'],
-    rating: String(r.rating) as Lead['rating'],
+    status: String(r.status || 'new') as Lead['status'],
+    rating: String(r.rating || 'warm') as Lead['rating'],
     estimatedValue: r.estimated_value ? Number(r.estimated_value) : undefined,
     assignedTo: r.assigned_to ? String(r.assigned_to) : undefined,
+    assignedName: r.assigned_name ? String(r.assigned_name) : undefined,
     notes: r.notes ? String(r.notes) : undefined,
     createdAt: r.created_at ? String(r.created_at) : undefined,
   };
@@ -601,10 +623,11 @@ function mapOpportunityRow(r: Record<string, unknown>): Opportunity {
     customerId: r.customer_id ? String(r.customer_id) : undefined,
     name: String(r.name),
     value: Number(r.value) || 0,
-    stage: String(r.stage) as Opportunity['stage'],
+    stage: String(r.stage || 'new') as Opportunity['stage'],
     probability: r.probability ? Number(r.probability) : undefined,
     expectedCloseDate: r.expected_close_date ? String(r.expected_close_date) : undefined,
     assignedTo: r.assigned_to ? String(r.assigned_to) : undefined,
+    assignedName: r.assigned_name ? String(r.assigned_name) : undefined,
     notes: r.notes ? String(r.notes) : undefined,
     createdAt: r.created_at ? String(r.created_at) : undefined,
   };
@@ -620,9 +643,10 @@ function mapTaskRow(r: Record<string, unknown>): Task {
     title: String(r.title),
     description: r.description ? String(r.description) : undefined,
     dueDate: r.due_date ? String(r.due_date) : undefined,
-    priority: String(r.priority) as Task['priority'],
-    status: String(r.status) as Task['status'],
+    priority: String(r.priority || 'medium') as Task['priority'],
+    status: String(r.status || 'pending') as Task['status'],
     assignedTo: r.assigned_to ? String(r.assigned_to) : undefined,
+    assignedName: r.assigned_name ? String(r.assigned_name) : undefined,
     createdAt: r.created_at ? String(r.created_at) : undefined,
   };
 }
@@ -637,9 +661,10 @@ function mapActivityRow(r: Record<string, unknown>): Activity {
     type: String(r.type) as Activity['type'],
     subject: String(r.subject),
     description: r.description ? String(r.description) : undefined,
-    activityDate: String(r.activity_date),
+    activityDate: r.activity_date ? String(r.activity_date) : new Date().toISOString(),
     durationMinutes: r.duration_minutes ? Number(r.duration_minutes) : undefined,
     assignedTo: r.assigned_to ? String(r.assigned_to) : undefined,
+    assignedName: r.assigned_name ? String(r.assigned_name) : undefined,
     createdAt: r.created_at ? String(r.created_at) : undefined,
   };
 }

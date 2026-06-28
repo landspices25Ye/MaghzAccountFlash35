@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Plus, Pencil, Trash2, Save } from 'lucide-react';
 import { Card, Button, Input, Table, ConfirmDialog, Can } from '@/core/ui/components';
+import { AccountSelect } from '@/core/ui/components/smart';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { getDbAdapter } from '@/core/database/adapters';
@@ -56,20 +57,27 @@ export const VatSettingsPage: React.FC = () => {
   useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!activeCompany?.id || !formData.name) return;
+    if (!activeCompany?.id || !formData.name) {
+      addToast('error', t('settings.vat.nameRequired'));
+      return;
+    }
+    if (formData.rate !== undefined && (formData.rate < 0 || formData.rate > 100)) {
+      addToast('error', t('settings.vat.rateInvalid'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       
       if (editingId) {
         await adapter.query(
-          `UPDATE vat_settings SET name = $1, vat_rate = $2, account_id = $3, is_active = $4, updated_at = $5 WHERE id = $6 AND company_id = $7`,
-          [formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString(), editingId, activeCompany.id]
+          `UPDATE vat_settings SET name = $1, vat_rate = $2, account_id = $3, is_active = $4, updated_at = NOW() WHERE id = $5 AND company_id = $6`,
+          [formData.name, formData.rate, formData.accountId, formData.isActive, editingId, activeCompany.id]
         );
       } else {
         await adapter.query(
-          `INSERT INTO vat_settings (id, company_id, name, vat_rate, account_id, is_active, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [crypto.randomUUID(), activeCompany.id, formData.name, formData.rate, formData.accountId, formData.isActive, new Date().toISOString()]
+          `INSERT INTO vat_settings (id, company_id, name, vat_rate, account_id, is_active, updated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [crypto.randomUUID(), activeCompany.id, formData.name, formData.rate, formData.accountId, formData.isActive]
         );
       }
 
@@ -86,7 +94,7 @@ export const VatSettingsPage: React.FC = () => {
       setFormData({ name: '', rate: 15, isActive: true });
       loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.vat.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -94,6 +102,7 @@ export const VatSettingsPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM vat_settings WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
@@ -104,10 +113,13 @@ export const VatSettingsPage: React.FC = () => {
         recordId: id,
         companyId: activeCompany.id,
       });
+      addToast('success', t('settings.vat.deleted'));
       setShowDeleteConfirm(null);
       loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.vat.deleteError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -149,14 +161,18 @@ export const VatSettingsPage: React.FC = () => {
       </div>
 
       <Card>
-        {(editingId !== null || formData.name) && (
+        {(editingId !== null || (formData.name && formData.name.length > 0)) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label={t('settings.vat.name')} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              <Input label={t('settings.vat.rate')} type="number" value={String(formData.rate)} onChange={e => setFormData(p => ({ ...p, rate: Number(e.target.value) }))} />
-              <div className="flex items-end gap-2">
+              <Input label={t('settings.vat.name')} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+              <Input label={t('settings.vat.rate')} type="number" min={0} max={100} step={0.01} value={String(formData.rate ?? 15)} onChange={e => setFormData(p => ({ ...p, rate: Number(e.target.value) }))} />
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('settings.vat.account')}</label>
+                <AccountSelect companyId={activeCompany?.id || ''} value={formData.accountId || ''} onChange={v => setFormData(p => ({ ...p, accountId: v || undefined }))} />
+              </div>
+              <div className="md:col-span-3 flex items-center gap-2">
                 <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={formData.isActive} onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))} className="w-4 h-4 rounded" />
+                  <input type="checkbox" checked={formData.isActive ?? true} onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))} className="w-4 h-4 rounded" />
                   <span className="text-sm">{t('settings.common.active')}</span>
                 </label>
               </div>

@@ -49,8 +49,8 @@ export interface PurchaseInvoiceLine {
   description?: string;
   quantity: number;
   unitPrice: number;
-  discountPercent?: number;
-  vatPercent?: number;
+  discountPercent: number;
+  vatPercent: number;
   lineTotal: number;
   currencyCode?: string;
   exchangeRate?: number;

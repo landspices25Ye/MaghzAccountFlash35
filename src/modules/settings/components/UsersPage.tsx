@@ -7,6 +7,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { logAudit } from '@/core/utils/auditLogger';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 interface User {
   id: string;
@@ -22,6 +23,7 @@ export const UsersPage: React.FC = () => {
   const activeCompany = useAppStore((state) => state.activeCompany);
   const currentUser = useAuthStore((state) => state.user);
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -58,7 +60,10 @@ export const UsersPage: React.FC = () => {
   useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!activeCompany?.id || !formData.username) return;
+    if (!activeCompany?.id || !formData.username) {
+      addToast('error', t('settings.users.usernameRequired'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
@@ -68,31 +73,42 @@ export const UsersPage: React.FC = () => {
           `UPDATE users SET username = $1, email = $2, role = $3, is_active = $4 WHERE id = $5 AND company_id = $6`,
           [formData.username, formData.email, formData.role, formData.isActive, editingId, activeCompany.id]
         );
+        addToast('success', t('settings.users.updated'));
       } else {
+        const defaultHash = await hashPassword('123456');
         await adapter.query(
           `INSERT INTO users (id, company_id, username, email, password_hash, role, is_active, full_name, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, '', formData.role, formData.isActive, formData.username, new Date().toISOString()]
+          [crypto.randomUUID(), activeCompany.id, formData.username, formData.email, defaultHash, formData.role, formData.isActive, formData.username, new Date().toISOString()]
         );
+        addToast('success', t('settings.users.created'));
       }
 
       await logAudit({ userId: currentUser?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'users', recordId: editingId || 'new', companyId: activeCompany.id });
       setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.users.saveError'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!activeCompany?.id || id === currentUser?.id) return;
+    if (!activeCompany?.id) return;
+    if (id === currentUser?.id) {
+      addToast('error', t('settings.users.cannotDeleteSelf'));
+      return;
+    }
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM users WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
+      addToast('success', t('settings.users.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.users.deleteError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -105,14 +121,25 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleResetPassword = async () => {
-    if (!showResetPassword || !newPassword) return;
+    if (!showResetPassword || !newPassword) {
+      addToast('error', t('settings.users.passwordRequired'));
+      return;
+    }
+    if (newPassword.length < 6) {
+      addToast('error', t('settings.users.passwordTooShort'));
+      return;
+    }
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       const hashed = await hashPassword(newPassword);
       await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2 AND company_id = $3`, [hashed, showResetPassword, activeCompany!.id]);
+      addToast('success', t('settings.users.passwordReset'));
       setShowResetPassword(null); setNewPassword('');
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.users.saveError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -173,18 +200,29 @@ export const UsersPage: React.FC = () => {
       </div>
 
       <Card>
-        {(editingId !== null || formData.username) && (
+        {(editingId !== null || (formData.username && formData.username.length > 0)) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Input label={`${t('settings.users.username')} *`} value={formData.username} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
-              <Input label={t('settings.users.email')} type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
+              <Input label={`${t('settings.users.username')} *`} value={formData.username || ''} onChange={e => setFormData(p => ({ ...p, username: e.target.value }))} />
+              <Input label={t('settings.users.email')} type="email" value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
               <div>
                 <label className="form-label block mb-1.5">{t('settings.users.role')}</label>
-                <select value={formData.role} onChange={e => setFormData(p => ({ ...p, role: e.target.value }))} className="form-control">
+                <select value={formData.role || 'accountant'} onChange={e => setFormData(p => ({ ...p, role: e.target.value }))} className="form-control">
                   {Object.entries(roleLabels).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
+              </div>
+              <div className="md:col-span-3 flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isActive ?? true}
+                    onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))}
+                    className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{t('settings.common.active')}</span>
+                </label>
               </div>
             </div>
             <div className="flex justify-end gap-2">

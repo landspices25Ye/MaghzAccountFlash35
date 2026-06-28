@@ -56,7 +56,7 @@ export type Permission =
   // Purchases
   | 'purchases.view' | 'purchases.create' | 'purchases.edit' | 'purchases.delete' | 'purchases.own'
   // Manufacturing
-  | 'manufacturing.view' | 'manufacturing.create' | 'manufacturing.edit' | 'manufacturing.own'
+  | 'manufacturing.view' | 'manufacturing.create' | 'manufacturing.edit' | 'manufacturing.delete' | 'manufacturing.post' | 'manufacturing.own'
   // HR
   | 'hr.view' | 'hr.create' | 'hr.edit' | 'hr.delete' | 'hr.own'
   // CRM

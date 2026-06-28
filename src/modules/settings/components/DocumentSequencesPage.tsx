@@ -43,22 +43,32 @@ export const DocumentSequencesPage: React.FC = () => {
     const changes = editing[seq.id];
     if (!changes) return;
     setSavingId(seq.id);
-    await update(seq.id, changes);
-    addToast('success', t('settings.sequences.updated'));
+    const result = await update(seq.id, changes);
+    if (result.success) {
+      addToast('success', t('settings.sequences.updated'));
+      setEditing(prev => { const n = { ...prev }; delete n[seq.id]; return n; });
+    } else {
+      addToast('error', result.error || t('settings.sequences.updateError'));
+    }
     setSavingId(null);
-    setEditing(prev => { const n = { ...prev }; delete n[seq.id]; return n; });
   };
 
   const handlePreview = async (seq: DocumentSequence) => {
     const result = await peekNextNumber(seq.documentType);
     if (result.success && result.number) {
       setPreviewNumber(prev => ({ ...prev, [seq.id]: result.number! }));
+    } else {
+      addToast('error', result.error || t('settings.sequences.previewError'));
     }
   };
 
   const toggleActive = async (seq: DocumentSequence) => {
-    await update(seq.id, { isActive: !seq.isActive });
-    addToast('success', t('settings.sequences.updated'));
+    const result = await update(seq.id, { isActive: !seq.isActive });
+    if (result.success) {
+      addToast('success', t('settings.sequences.updated'));
+    } else {
+      addToast('error', result.error || t('settings.sequences.updateError'));
+    }
   };
 
   const columns = [

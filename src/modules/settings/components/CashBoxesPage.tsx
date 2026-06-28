@@ -26,13 +26,18 @@ export const CashBoxesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name || !activeCompany?.id) return;
+    if (!form.name || !activeCompany?.id) {
+      addToast('error', t('settings.cashBoxes.nameRequired'));
+      return;
+    }
     if (editingId) {
-      await update(editingId, form);
-      addToast('success', t('settings.cashBoxes.updated'));
+      const result = await update(editingId, form);
+      if (result.success) addToast('success', t('settings.cashBoxes.updated'));
+      else addToast('error', result.error || t('settings.cashBoxes.updateError'));
     } else {
-      await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CashBox, 'id'>);
-      addToast('success', t('settings.cashBoxes.created'));
+      const result = await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CashBox, 'id'>);
+      if (result.success) addToast('success', t('settings.cashBoxes.created'));
+      else addToast('error', result.error || t('settings.cashBoxes.createError'));
     }
     setIsOpen(false);
     reset();
@@ -46,8 +51,12 @@ export const CashBoxesPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await remove(deleteId);
-    addToast('success', t('settings.cashBoxes.deleted'));
+    const result = await remove(deleteId);
+    if (result.success) {
+      addToast('success', t('settings.cashBoxes.deleted'));
+    } else {
+      addToast('error', result.error || t('settings.cashBoxes.deleteError'));
+    }
     setDeleteId(null);
   };
 

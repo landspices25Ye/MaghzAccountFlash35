@@ -1,7 +1,7 @@
 import { getDbAdapter } from '@/core/database/adapters';
 import { mapRows } from '@/core/utils/mapPgRow';
 import { z } from 'zod';
-import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createProductSchema } from '@/core/utils/validation';
+import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createProductSchema, createWarehouseSchema, createStockTransferSchema, createStockAdjustmentSchema, createInventoryTransactionSchema, createProductCategorySchema } from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import type { Product, Warehouse, Stock, StockItem, StockTransfer, InventoryTransaction, StockAdjustment, ProductCategory } from './types';
 
@@ -152,12 +152,12 @@ export const inventoryApi = {
 
   async createWarehouse(data: Omit<Warehouse, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createWarehouseSchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `INSERT INTO warehouses (company_id, name, code, branch_id, is_active) VALUES ($1, $2, $3, $4, true) RETURNING id`,
-        [data.companyId, data.name, data.code, data.branchId]
+        `INSERT INTO warehouses (company_id, name, code, branch_id, is_active) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+        [data.companyId, data.name, data.code ?? null, data.branchId ?? null, data.isActive ?? true]
       );
       if (result.success && result.rows?.[0]) {
         return { success: true, id: result.rows[0].id };
@@ -173,9 +173,19 @@ export const inventoryApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const fields: string[] = [];
+      const params: unknown[] = [];
+      let idx = 1;
+      if (data.name !== undefined) { fields.push(`name = $${idx++}`); params.push(data.name); }
+      if (data.code !== undefined) { fields.push(`code = $${idx++}`); params.push(data.code); }
+      if (data.branchId !== undefined) { fields.push(`branch_id = $${idx++}`); params.push(data.branchId); }
+      if (data.isActive !== undefined) { fields.push(`is_active = $${idx++}`); params.push(data.isActive); }
+      if (fields.length === 0) return { success: true };
+      params.push(id);
+      params.push(companyId);
       return adapter.query(
-        `UPDATE warehouses SET name = $1, code = $2, branch_id = $3, is_active = $4 WHERE id = $5 AND company_id = $6`,
-        [data.name, data.code, data.branchId, data.isActive, id, companyId]
+        `UPDATE warehouses SET ${fields.join(', ')} WHERE id = $${idx++} AND company_id = $${idx}`,
+        params
       );
     } catch (e) {
       return { success: false, error: String(e) };
@@ -257,25 +267,33 @@ export const inventoryApi = {
   },
 
   // ─── Stock Transfer (warehouse_transfers header + warehouse_transfer_lines) ──
-  async createStockTransfer(data: Omit<StockTransfer, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
+  async createStockTransfer(
+    data: Omit<StockTransfer, 'id'> & { lines?: Array<{ productId: string; quantity: number }> }
+  ): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createStockTransferSchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      // Insert header into warehouse_transfers
       const headerResult = await adapter.query(
         `INSERT INTO warehouse_transfers (company_id, from_warehouse_id, to_warehouse_id, date, reference, notes, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [data.companyId, data.fromWarehouseId, data.toWarehouseId, data.date, data.reference, data.notes, data.status]
+        [data.companyId, data.fromWarehouseId, data.toWarehouseId, data.date, data.reference ?? null, data.notes ?? null, data.status ?? 'draft']
       );
       if (!headerResult.success || !headerResult.rows?.[0]) {
         return { success: false, error: headerResult.error || 'Failed to create transfer header' };
       }
       const transferId = String(headerResult.rows[0].id);
-      // Insert line into warehouse_transfer_lines
+      const lines = data.lines && data.lines.length > 0
+        ? data.lines
+        : (data.productId && data.quantity ? [{ productId: data.productId, quantity: data.quantity }] : []);
+      if (lines.length === 0) {
+        return { success: false, error: 'يجب إضافة منتج واحد على الأقل' };
+      }
+      const placeholders = lines.map((_, i) => `($1, $${i * 2 + 2}, $${i * 2 + 3})`).join(', ');
+      const params: unknown[] = [transferId, ...lines.flatMap(l => [l.productId, l.quantity])];
       const lineResult = await adapter.query(
-        `INSERT INTO warehouse_transfer_lines (transfer_id, product_id, quantity) VALUES ($1, $2, $3)`,
-        [transferId, data.productId, String(data.quantity)]
+        `INSERT INTO warehouse_transfer_lines (transfer_id, product_id, quantity) VALUES ${placeholders}`,
+        params
       );
       if (!lineResult.success) {
         return { success: false, error: lineResult.error };
@@ -292,11 +310,17 @@ export const inventoryApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT wt.*, wl.product_id, wl.quantity, p.name_ar AS product_name
+        `SELECT wt.id, wt.company_id, wt.from_warehouse_id, wt.to_warehouse_id, wt.date,
+                wt.reference, wt.status, wt.notes, wt.created_at,
+                fw.name AS from_warehouse_name, tw.name AS to_warehouse_name,
+                COUNT(wl.id)::int AS lines_count,
+                COALESCE(SUM(wl.quantity), 0) AS total_quantity
          FROM warehouse_transfers wt
+         LEFT JOIN warehouses fw ON fw.id = wt.from_warehouse_id
+         LEFT JOIN warehouses tw ON tw.id = wt.to_warehouse_id
          LEFT JOIN warehouse_transfer_lines wl ON wl.transfer_id = wt.id
-         LEFT JOIN products p ON p.id = wl.product_id
          WHERE wt.company_id = $1
+         GROUP BY wt.id, fw.name, tw.name
          ORDER BY wt.created_at DESC`,
         [companyId]
       );
@@ -309,6 +333,62 @@ export const inventoryApi = {
     }
   },
 
+  async getStockTransferLines(transferId: string, companyId: string): Promise<{ success: boolean; data?: Array<{ id: string; productId: string; productName?: string; quantity: number }>; error?: string }> {
+    try {
+      const idValidation = validateInput(z.object({ id: uuidSchema, companyId: companyIdSchema }), { id: transferId, companyId });
+      if (!idValidation.success) return { success: false, error: idValidation.error };
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(
+        `SELECT wl.id, wl.product_id, wl.quantity, p.name_ar AS product_name, p.code AS product_code
+           FROM warehouse_transfer_lines wl
+           LEFT JOIN products p ON p.id = wl.product_id
+          WHERE wl.transfer_id = $1
+            AND EXISTS (SELECT 1 FROM warehouse_transfers wt WHERE wt.id = wl.transfer_id AND wt.company_id = $2)
+          ORDER BY p.name_ar`,
+        [transferId, companyId]
+      );
+      if (result.success) {
+        return { success: true, data: mapRows<{ id: string; productId: string; productName?: string; quantity: number }>(result.rows) };
+      }
+      return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async deleteStockTransfer(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const idValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!idValidation.success) return { success: false, error: idValidation.error };
+      const adapter = await getDbAdapter();
+      const del = await adapter.query(
+        `DELETE FROM warehouse_transfer_lines WHERE transfer_id IN (SELECT id FROM warehouse_transfers WHERE id = $1 AND company_id = $2)`,
+        [id, companyId]
+      );
+      if (!del.success) return { success: false, error: del.error };
+      return adapter.query(
+        `DELETE FROM warehouse_transfers WHERE id = $1 AND company_id = $2`,
+        [id, companyId]
+      );
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async completeStockTransfer(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const idValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!idValidation.success) return { success: false, error: idValidation.error };
+      const adapter = await getDbAdapter();
+      return adapter.query(
+        `UPDATE warehouse_transfers SET status = 'completed' WHERE id = $1 AND company_id = $2`,
+        [id, companyId]
+      );
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   // ─── Inventory Transactions (backed by stock_movements) ────────────────────
   async getInventoryTransactions(companyId: string): Promise<{ success: boolean; data?: InventoryTransaction[]; error?: string }> {
     try {
@@ -316,10 +396,15 @@ export const inventoryApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT id, company_id, product_id, warehouse_id, type, quantity, reference, notes, created_at
-           FROM stock_movements
-          WHERE company_id = $1
-          ORDER BY created_at DESC`,
+        `SELECT sm.id, sm.company_id, sm.product_id, sm.warehouse_id, sm.type, sm.quantity,
+                sm.reference, sm.notes, sm.created_at,
+                p.name_ar AS product_name, p.code AS product_code,
+                w.name AS warehouse_name
+           FROM stock_movements sm
+           LEFT JOIN products p ON p.id = sm.product_id
+           LEFT JOIN warehouses w ON w.id = sm.warehouse_id
+          WHERE sm.company_id = $1
+          ORDER BY sm.created_at DESC`,
         [companyId]
       );
       if (result.success) {
@@ -387,12 +472,12 @@ export const inventoryApi = {
 
   async createInventoryTransaction(data: Omit<InventoryTransaction, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createInventoryTransactionSchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO stock_movements (company_id, type, product_id, warehouse_id, quantity, reference, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [data.companyId, data.type, data.productId, data.warehouseId, data.quantity, data.reference, data.notes]
+        [data.companyId, data.type, data.productId, data.warehouseId, data.quantity, data.reference ?? null, data.notes ?? null]
       );
       if (result.success && result.rows?.[0]) {
         return { success: true, id: result.rows[0].id };
@@ -421,7 +506,14 @@ export const inventoryApi = {
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `SELECT * FROM stock_adjustments WHERE company_id = $1 ORDER BY date DESC`,
+        `SELECT sa.*, p.name_ar AS product_name, p.code AS product_code,
+                w.name AS warehouse_name, u.username AS approved_by_name
+           FROM stock_adjustments sa
+           LEFT JOIN products p ON p.id = sa.product_id
+           LEFT JOIN warehouses w ON w.id = sa.warehouse_id
+           LEFT JOIN users u ON u.id = sa.approved_by
+          WHERE sa.company_id = $1
+          ORDER BY sa.date DESC, sa.created_at DESC`,
         [companyId]
       );
       if (result.success) {
@@ -435,12 +527,12 @@ export const inventoryApi = {
 
   async createStockAdjustment(data: Omit<StockAdjustment, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createStockAdjustmentSchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO stock_adjustments (company_id, date, product_id, warehouse_id, system_qty, actual_qty, difference, reason, status, unit_cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-        [data.companyId, data.date, data.productId, data.warehouseId, data.systemQty, data.actualQty, data.difference, data.reason, data.status, data.unitCost]
+        [data.companyId, data.date, data.productId, data.warehouseId, data.systemQty, data.actualQty, data.difference, data.reason ?? null, data.status ?? 'draft', data.unitCost ?? null]
       );
       if (result.success && result.rows?.[0]) {
         return { success: true, id: result.rows[0].id };
@@ -451,14 +543,29 @@ export const inventoryApi = {
     }
   },
 
-  async updateStockAdjustment(id: string, companyId: string, data: Partial<StockAdjustment>): Promise<{ success: boolean; error?: string }> {
+  async updateStockAdjustment(id: string, companyId: string, data: Partial<StockAdjustment>, _updatedBy?: string): Promise<{ success: boolean; error?: string }> {
     try {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const fields: string[] = [];
+      const params: unknown[] = [];
+      let idx = 1;
+      if (data.systemQty !== undefined) { fields.push(`system_qty = $${idx++}`); params.push(data.systemQty); }
+      if (data.actualQty !== undefined) { fields.push(`actual_qty = $${idx++}`); params.push(data.actualQty); }
+      if (data.difference !== undefined) { fields.push(`difference = $${idx++}`); params.push(data.difference); }
+      if (data.reason !== undefined) { fields.push(`reason = $${idx++}`); params.push(data.reason); }
+      if (data.status !== undefined) { fields.push(`status = $${idx++}`); params.push(data.status); }
+      if (data.unitCost !== undefined) { fields.push(`unit_cost = $${idx++}`); params.push(data.unitCost); }
+      if (data.warehouseId !== undefined) { fields.push(`warehouse_id = $${idx++}`); params.push(data.warehouseId); }
+      if (_updatedBy !== undefined) { fields.push(`updated_by = $${idx++}`); params.push(_updatedBy); }
+      fields.push('updated_at = NOW()');
+      if (fields.length === 0) return { success: true };
+      params.push(id);
+      params.push(companyId);
       return adapter.query(
-        `UPDATE stock_adjustments SET system_qty = $1, actual_qty = $2, difference = $3, reason = $4, status = $5, unit_cost = $6 WHERE id = $7 AND company_id = $8`,
-        [data.systemQty, data.actualQty, data.difference, data.reason, data.status, data.unitCost, id, companyId]
+        `UPDATE stock_adjustments SET ${fields.join(', ')} WHERE id = $${idx++} AND company_id = $${idx}`,
+        params
       );
     } catch (e) {
       return { success: false, error: String(e) };
@@ -471,8 +578,22 @@ export const inventoryApi = {
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
       return adapter.query(
-        `UPDATE stock_adjustments SET status = 'approved', approved_by = $1, approved_at = $2 WHERE id = $3 AND company_id = $4`,
-        [approvedBy, new Date().toISOString(), id, companyId]
+        `UPDATE stock_adjustments SET status = 'approved', approved_by = $1, approved_at = NOW() WHERE id = $2 AND company_id = $3`,
+        [approvedBy, id, companyId]
+      );
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async postStockAdjustment(id: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const idValidation = validateInput(idCompanySchema, { id, companyId });
+      if (!idValidation.success) return { success: false, error: idValidation.error };
+      const adapter = await getDbAdapter();
+      return adapter.query(
+        `UPDATE stock_adjustments SET status = 'posted', posted_at = NOW() WHERE id = $1 AND company_id = $2`,
+        [id, companyId]
       );
     } catch (e) {
       return { success: false, error: String(e) };
@@ -511,12 +632,12 @@ export const inventoryApi = {
 
   async createProductCategory(data: Omit<ProductCategory, 'id'>): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const cidValidation = validateInput(companyIdSchema, data.companyId);
-      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const validation = validateInput(createProductCategorySchema, data);
+      if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         'INSERT INTO product_categories (company_id, name, parent_id) VALUES ($1, $2, $3) RETURNING id',
-        [data.companyId, data.name, data.parentId || null]
+        [data.companyId, data.name, data.parentId ?? null]
       );
       if (result.success && result.rows?.[0]) {
         return { success: true, id: result.rows[0].id };
@@ -532,11 +653,18 @@ export const inventoryApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      const result = await adapter.query(
-        'UPDATE product_categories SET name = $1, parent_id = $2 WHERE id = $3 AND company_id = $4',
-        [data.name, data.parentId || null, id, companyId]
+      const fields: string[] = [];
+      const params: unknown[] = [];
+      let idx = 1;
+      if (data.name !== undefined) { fields.push(`name = $${idx++}`); params.push(data.name); }
+      if (data.parentId !== undefined) { fields.push(`parent_id = $${idx++}`); params.push(data.parentId); }
+      if (fields.length === 0) return { success: true };
+      params.push(id);
+      params.push(companyId);
+      return adapter.query(
+        `UPDATE product_categories SET ${fields.join(', ')} WHERE id = $${idx++} AND company_id = $${idx}`,
+        params
       );
-      return result.success ? { success: true } : { success: false, error: result.error };
     } catch (e) {
       return { success: false, error: String(e) };
     }

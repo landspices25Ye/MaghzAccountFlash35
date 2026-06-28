@@ -26,13 +26,18 @@ export const BanksPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name || !activeCompany?.id) return;
+    if (!form.name || !activeCompany?.id) {
+      addToast('error', t('settings.banks.accountNameRequired'));
+      return;
+    }
     if (editingId) {
-      await update(editingId, form);
-      addToast('success', t('settings.banks.updated'));
+      const result = await update(editingId, form);
+      if (result.success) addToast('success', t('settings.banks.updated'));
+      else addToast('error', result.error || t('settings.banks.updateError'));
     } else {
-      await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Bank, 'id'>);
-      addToast('success', t('settings.banks.created'));
+      const result = await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<Bank, 'id'>);
+      if (result.success) addToast('success', t('settings.banks.created'));
+      else addToast('error', result.error || t('settings.banks.createError'));
     }
     setIsOpen(false);
     reset();
@@ -46,8 +51,12 @@ export const BanksPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await remove(deleteId);
-    addToast('success', t('settings.banks.deleted'));
+    const result = await remove(deleteId);
+    if (result.success) {
+      addToast('success', t('settings.banks.deleted'));
+    } else {
+      addToast('error', result.error || t('settings.banks.deleteError'));
+    }
     setDeleteId(null);
   };
 

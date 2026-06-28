@@ -7,9 +7,11 @@ import { DEFAULT_ACCOUNT_FUNCTIONS } from '@/core/types';
 import { useAccounts } from '@/modules/accounting/hooks/useAccounting';
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { useToastStore } from '@/core/store/toastStore';
 
 export const DefaultAccountsPage: React.FC = () => {
   const { t } = useTranslation();
+  const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const { accounts: defaultAccs, isLoading, update, applyTemplate } = useDefaultAccounts(activeCompany?.id || '');
   const { accounts: allAccounts } = useAccounts(activeCompany?.id || '');
@@ -24,6 +26,22 @@ export const DefaultAccountsPage: React.FC = () => {
     if (!accountId) return null;
     const acc = allAccounts.find(a => a.id === accountId);
     return acc ? `${acc.code} - ${acc.nameAr}` : accountId;
+  };
+
+  const handleUpdate = async (id: string, accountId: string | null) => {
+    const result = await update(id, accountId);
+    if (!result.success) {
+      addToast('error', result.error || t('settings.defaultAccounts.updateError'));
+    }
+  };
+
+  const handleApplyTemplate = async (template: 'trading' | 'manufacturing' | 'services') => {
+    const result = await applyTemplate(template);
+    if (result.success) {
+      addToast('success', t('settings.defaultAccounts.applied'));
+    } else {
+      addToast('error', result.error || t('settings.defaultAccounts.applyError'));
+    }
   };
 
   const columns = [
@@ -55,7 +73,7 @@ export const DefaultAccountsPage: React.FC = () => {
             companyId={activeCompany?.id || ''}
             value={acc?.accountId || ''}
             onChange={async (v) => {
-              if (acc) await update(acc.id, v || null);
+              if (acc) await handleUpdate(acc.id, v || null);
             }}
             size="sm"
             placeholder={row.required ? t('settings.defaultAccounts.selectAccount') : t('settings.defaultAccounts.none')}
@@ -85,13 +103,13 @@ export const DefaultAccountsPage: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <Can action="edit" module="settings">
-            <Button variant="secondary" size="sm" leftIcon={<ShoppingCart size={14} />} onClick={() => applyTemplate('trading')}>{t('settings.defaultAccounts.templateTrading')}</Button>
+            <Button variant="secondary" size="sm" leftIcon={<ShoppingCart size={14} />} onClick={() => handleApplyTemplate('trading')}>{t('settings.defaultAccounts.templateTrading')}</Button>
           </Can>
           <Can action="edit" module="settings">
-            <Button variant="secondary" size="sm" leftIcon={<Factory size={14} />} onClick={() => applyTemplate('manufacturing')}>{t('settings.defaultAccounts.templateManufacturing')}</Button>
+            <Button variant="secondary" size="sm" leftIcon={<Factory size={14} />} onClick={() => handleApplyTemplate('manufacturing')}>{t('settings.defaultAccounts.templateManufacturing')}</Button>
           </Can>
           <Can action="edit" module="settings">
-            <Button variant="secondary" size="sm" leftIcon={<Briefcase size={14} />} onClick={() => applyTemplate('services')}>{t('settings.defaultAccounts.templateServices')}</Button>
+            <Button variant="secondary" size="sm" leftIcon={<Briefcase size={14} />} onClick={() => handleApplyTemplate('services')}>{t('settings.defaultAccounts.templateServices')}</Button>
           </Can>
         </div>
       </div>

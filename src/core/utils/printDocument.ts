@@ -8,7 +8,7 @@ export interface PrintLine {
 }
 
 export interface PrintDocumentData {
-  type: 'sales-invoice' | 'purchase-invoice' | 'receipt-voucher' | 'payment-voucher' | 'journal-entry' | 'ledger';
+  type: 'sales-invoice' | 'purchase-invoice' | 'purchase-order' | 'purchase-return' | 'receipt-voucher' | 'payment-voucher' | 'journal-entry' | 'ledger';
   docNumber: string;
   date: string;
   dueDate?: string;
@@ -26,6 +26,8 @@ export interface PrintDocumentData {
 const typeTitles: Record<string, string> = {
   'sales-invoice': 'فاتورة ضريبية مبسطة',
   'purchase-invoice': 'فاتورة مشتريات',
+  'purchase-order': 'أمر شراء',
+  'purchase-return': 'مردود مشتريات',
   'receipt-voucher': 'سند قبض',
   'payment-voucher': 'سند صرف',
 };
@@ -33,6 +35,8 @@ const typeTitles: Record<string, string> = {
 const typeColors: Record<string, string> = {
   'sales-invoice': '#1e40af',
   'purchase-invoice': '#0f766e',
+  'purchase-order': '#7c3aed',
+  'purchase-return': '#be185d',
   'receipt-voucher': '#047857',
   'payment-voucher': '#b45309',
 };
@@ -48,7 +52,7 @@ function escapeLineBreaks(value: string): string {
 function generateHtml(data: PrintDocumentData): string {
   const color = typeColors[data.type];
   const title = typeTitles[data.type];
-  const isInvoice = data.type.includes('invoice');
+  const isInvoice = data.type.includes('invoice') || data.type === 'purchase-order' || data.type === 'purchase-return';
 
   const linesHtml = data.lines.map((line, i) => `
     <tr>

@@ -78,6 +78,27 @@
       "when": 1794000000000,
       "tag": "0010_schema_drift_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795000000000,
+      "tag": "0011_manufacturing_schema_fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795500000000,
+      "tag": "0012_purchase_invoice_lines_percents",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1796000000000,
+      "tag": "0013_hr_schema_drift_fix",
+      "breakpoints": true
     }
   ]
 }

@@ -103,9 +103,11 @@ export function useWorkOrderVariance(workOrderId: string, companyId: string) {
 
   useEffect(() => {
     if (!workOrderId || !companyId) return;
+    let cancelled = false;
     async function load() {
       setIsLoading(true);
       const res = await manufacturingApi.getWorkOrderById(workOrderId, companyId);
+      if (cancelled) return;
       if (res.success && res.data) {
         const lines = res.data.lines;
         const mapped = lines.map((l) => {
@@ -128,6 +130,7 @@ export function useWorkOrderVariance(workOrderId: string, companyId: string) {
       setIsLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, [workOrderId, companyId]);
 
   return { variances, isLoading };

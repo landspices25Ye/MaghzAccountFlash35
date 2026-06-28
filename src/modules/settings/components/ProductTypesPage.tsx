@@ -28,14 +28,19 @@ export const ProductTypesPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.nameAr || !activeCompany?.id) return;
+    if (!form.nameAr || !activeCompany?.id) {
+      addToast('error', t('settings.productTypes.nameRequired'));
+      return;
+    }
     if (editingId) {
-      await update(editingId, form);
-      addToast('success', t('settings.productTypes.updated'));
+      const result = await update(editingId, form);
+      if (result.success) addToast('success', t('settings.productTypes.updated'));
+      else addToast('error', result.error || t('settings.productTypes.updateError'));
       setEditingId(null);
     } else {
-      await create({ ...form, companyId: activeCompany.id } as Omit<ProductType, 'id'>);
-      addToast('success', t('settings.productTypes.created'));
+      const result = await create({ ...form, companyId: activeCompany.id } as Omit<ProductType, 'id'>);
+      if (result.success) addToast('success', t('settings.productTypes.created'));
+      else addToast('error', result.error || t('settings.productTypes.createError'));
     }
     setIsOpen(false);
     resetForm();
@@ -49,8 +54,12 @@ export const ProductTypesPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await remove(deleteId);
-    addToast('success', t('settings.productTypes.deleted'));
+    const result = await remove(deleteId);
+    if (result.success) {
+      addToast('success', t('settings.productTypes.deleted'));
+    } else {
+      addToast('error', result.error || t('settings.productTypes.deleteError'));
+    }
     setDeleteId(null);
   };
 

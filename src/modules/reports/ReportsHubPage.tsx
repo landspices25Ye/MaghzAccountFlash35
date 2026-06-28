@@ -3,6 +3,7 @@ import { BarChart2, PieChart, TrendingUp, Package, Users, Truck, Settings } from
 import { Card } from '@/core/ui/components';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '@/core/i18n/useTranslation';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 
 const reportModules = [
   {
@@ -65,6 +66,20 @@ const reportModules = [
 
 export const ReportsHubPage: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canCustom = usePermission('reports.custom');
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <BarChart2 size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -73,23 +88,27 @@ export const ReportsHubPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {reportModules.map((module) => (
-          <Link key={module.id} to={module.path}>
-            <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
-              <div className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className={`w-14 h-14 ${module.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
-                    <module.icon size={28} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">{t(module.titleKey)}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t(module.descriptionKey)}</p>
+        {reportModules.map((module) => {
+          // Hide the custom builder if user lacks reports.custom permission
+          if (module.id === 'custom-builder' && !canCustom) return null;
+          return (
+            <Link key={module.id} to={module.path}>
+              <Card className="h-full hover:shadow-md transition-shadow cursor-pointer">
+                <div className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 ${module.color} rounded-xl flex items-center justify-center text-white shadow-lg`}>
+                      <module.icon size={28} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 dark:text-slate-50">{t(module.titleKey)}</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t(module.descriptionKey)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          </Link>
-        ))}
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

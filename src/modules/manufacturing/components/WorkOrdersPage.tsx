@@ -80,6 +80,17 @@ export const WorkOrdersPage: React.FC = () => {
     const res = await manufacturingApi.getWorkOrderById(wo.id, companyId);
     if (res.success && res.data) {
       setLines(res.data.lines.map((l) => ({ materialId: l.materialId, plannedQuantity: l.plannedQuantity, unitCost: l.unitCost || 0 })));
+      if (wo.bomId) {
+        const bomsRes = await manufacturingApi.getBoms(companyId);
+        if (bomsRes.success && bomsRes.data) {
+          setAvailableBoms(bomsRes.data.filter((b) => b.productId === wo.productId));
+        }
+      } else {
+        const bomsRes = await manufacturingApi.getBoms(companyId);
+        if (bomsRes.success && bomsRes.data) {
+          setAvailableBoms(bomsRes.data.filter((b) => b.productId === wo.productId));
+        }
+      }
     } else {
       setLines([]);
     }
@@ -101,6 +112,8 @@ export const WorkOrdersPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.orderNumber || !formData.productId) return;
+    if (!formData.quantity || Number(formData.quantity) <= 0) return;
+    const totalCost = formData.totalCost ? Number(formData.totalCost) : estimatedTotal;
     const payload = {
       companyId,
       orderNumber: formData.orderNumber,
@@ -110,7 +123,7 @@ export const WorkOrdersPage: React.FC = () => {
       status: (editing ? editing.status : 'planned') as WorkOrder['status'],
       plannedStartDate: formData.plannedStartDate || undefined,
       plannedEndDate: formData.plannedEndDate || undefined,
-      totalCost: Number(formData.totalCost) || estimatedTotal || undefined,
+      totalCost: totalCost || undefined,
       notes: formData.notes || undefined,
       lines: lines.map((l) => ({ materialId: l.materialId, plannedQuantity: l.plannedQuantity, unitCost: l.unitCost })),
     };

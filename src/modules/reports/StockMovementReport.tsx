@@ -7,6 +7,7 @@ import { exportToExcel } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { formatNumber } from '@/core/utils/locale';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 import KpiCardPro from './components/KpiCardPro';
 
 interface MonthlyRow {
@@ -58,6 +59,8 @@ function formatDateInput(d: Date): string {
 
 export const StockMovementReport: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((s) => s.activeCompany);
   const companyId = activeCompany?.id || '';
   const months = useMemo(() => [t('reports.months.jan'), t('reports.months.feb'), t('reports.months.mar'), t('reports.months.apr'), t('reports.months.may'), t('reports.months.jun'), t('reports.months.jul'), t('reports.months.aug'), t('reports.months.sep'), t('reports.months.oct'), t('reports.months.nov'), t('reports.months.dec')], [t]);
@@ -191,6 +194,17 @@ export const StockMovementReport: React.FC = () => {
     await exportToExcel(monthlyData, cols, 'Stock_Movement_Analysis');
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Package size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!companyId) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -231,7 +245,7 @@ export const StockMovementReport: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={!canExport}>
             {t('reports.exportExcel')}
           </Button>
           <Button variant="secondary" leftIcon={<RefreshCw size={16} />} onClick={loadData}>

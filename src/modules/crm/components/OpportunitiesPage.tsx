@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useFormatters } from '@/core/utils/useFormatters';
-import { CheckSquare, Plus, TrendingUp, BarChart3, MoveHorizontal } from 'lucide-react';
+import { CheckSquare, Plus, TrendingUp, BarChart3, MoveHorizontal, Search } from 'lucide-react';
 import { Card, Button, Input, Modal, Table, Pagination } from '@/core/ui/components';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
 import { StatusBadge } from '@/core/ui/components/StatusBadge';
@@ -11,6 +10,7 @@ import type { Opportunity } from '../types';
 import { Can } from '@/core/ui/components/PermissionGate';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useToastStore } from '@/core/store/toastStore';
+import { useFormatters } from '@/core/utils/useFormatters';
 
 const STAGES: Opportunity['stage'][] = ['new', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
@@ -39,7 +39,14 @@ export const OpportunitiesPage: React.FC = () => {
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
   const [stageFilter, setStageFilter] = useState<string>('');
-  const opportunityFilters = useMemo(() => ({ stage: stageFilter || undefined }), [stageFilter]);
+  const [search, setSearch] = useState<string>('');
+  const opportunityFilters = useMemo(
+    () => ({
+      stage: stageFilter || undefined,
+      search: search.trim() || undefined,
+    }),
+    [stageFilter, search]
+  );
   const { opportunities, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useOpportunitiesPaginated(companyId, opportunityFilters);
 
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'funnel'>('kanban');
@@ -58,12 +65,23 @@ export const OpportunitiesPage: React.FC = () => {
   const openCreate = () => { resetForm(); setIsModalOpen(true); };
   const openEdit = (opp: Opportunity) => {
     setEditing(opp);
-    setFormData({ name: opp.name, value: String(opp.value), stage: opp.stage, probability: String(opp.probability || 50), expectedCloseDate: opp.expectedCloseDate || '', assignedTo: opp.assignedTo || '', notes: opp.notes || '' });
+    setFormData({
+      name: opp.name,
+      value: String(opp.value),
+      stage: opp.stage,
+      probability: String(opp.probability ?? 50),
+      expectedCloseDate: opp.expectedCloseDate || '',
+      assignedTo: opp.assignedTo || '',
+      notes: opp.notes || '',
+    });
     setIsModalOpen(true);
   };
 
   const handleSave = async () => {
-    if (!formData.name) return;
+    if (!formData.name) {
+      addToast('error', t('crm.opportunity.name') + ' ' + t('error'));
+      return;
+    }
     const payload = {
       companyId,
       name: formData.name,
@@ -127,12 +145,17 @@ export const OpportunitiesPage: React.FC = () => {
     { key: 'stage', header: t('crm.opportunity.stage'), render: (row: Opportunity) => <StatusBadge status={row.stage} /> },
     { key: 'probability', header: t('crm.opportunity.probability'), render: (row: Opportunity) => `${row.probability || 0}%` },
     { key: 'expectedCloseDate', header: t('crm.opportunity.expectedCloseDate'), width: '160px' },
-    { key: 'actions', header: '', width: '120px', render: (row: Opportunity) => (
-      <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => openEdit(row)}>{t('settings.common.edit')}</Button>
-        <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => setConfirmDelete(row.id)}>{t('settings.common.delete')}</Button>
-      </div>
-    )},
+    {
+      key: 'actions',
+      header: '',
+      width: '120px',
+      render: (row: Opportunity) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="text-amber-600" onClick={() => openEdit(row)}>{t('settings.common.edit')}</Button>
+          <Button variant="ghost" size="sm" className="text-rose-600" onClick={() => setConfirmDelete(row.id)}>{t('settings.common.delete')}</Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -141,8 +164,8 @@ export const OpportunitiesPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <CheckSquare size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('crm.opportunities.title')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('crm.opportunities.description')}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('crm.opportunitiesPage.title')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('crm.opportunitiesPage.description')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -156,10 +179,20 @@ export const OpportunitiesPage: React.FC = () => {
       </div>
 
       <Card>
-        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700">
+        <div className="p-4 flex items-center gap-4 border-b border-slate-200 dark:border-slate-700 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-[220px]">
+            <Search size={16} className="text-slate-400" />
+            <Input
+              placeholder={t('crm.opportunitiesPage.search')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-sm"
+              aria-label={t('crm.opportunitiesPage.search')}
+            />
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-slate-600 dark:text-slate-300">{t('crm.opportunity.stageFilter')}:</label>
-            <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
+            <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="px-2 py-1 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" aria-label={t('crm.opportunity.stageFilter')}>
               <option value="">{t('settings.common.all')}</option>
               {STAGES.map((s) => (<option key={s} value={s}>{t(STAGE_KEYS[s])}</option>))}
             </select>
@@ -215,12 +248,15 @@ export const OpportunitiesPage: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-slate-400">{opp.expectedCloseDate || '—'}</span>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="text-amber-600 p-1" onClick={() => openEdit(opp)}><MoveHorizontal size={12} /></Button>
-                        <Button variant="ghost" size="sm" className="text-rose-600 p-1" onClick={() => setConfirmDelete(opp.id)}><CheckSquare size={12} /></Button>
+                        <Button variant="ghost" size="sm" className="text-amber-600 p-1" onClick={() => openEdit(opp)} title={t('settings.common.edit')} aria-label={t('settings.common.edit')}><MoveHorizontal size={12} /></Button>
+                        <Button variant="ghost" size="sm" className="text-rose-600 p-1" onClick={() => setConfirmDelete(opp.id)} title={t('settings.common.delete')} aria-label={t('settings.common.delete')}><CheckSquare size={12} /></Button>
                       </div>
                     </div>
                   </div>
                 ))}
+                {opportunities.filter((o) => o.stage === stage).length === 0 && (
+                  <div className="text-center text-xs text-slate-400 py-4">{t('crm.opportunity.empty')}</div>
+                )}
               </div>
             </div>
           ))}
@@ -278,21 +314,21 @@ export const OpportunitiesPage: React.FC = () => {
         }
       >
         <div className="space-y-4">
-          <Input label={t('crm.opportunity.name')} value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
-          <Input label={t('crm.opportunity.value')} type="number" value={formData.value} onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))} />
+          <Input label={t('crm.opportunity.name')} value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} required />
           <div className="grid grid-cols-2 gap-4">
+            <Input label={t('crm.opportunity.value')} type="number" value={formData.value} onChange={(e) => setFormData((prev) => ({ ...prev, value: e.target.value }))} />
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('crm.opportunity.stage')}</label>
               <select value={formData.stage} onChange={(e) => setFormData((prev) => ({ ...prev, stage: e.target.value as Opportunity['stage'] }))} className="form-control">
                 {STAGES.map((s) => (<option key={s} value={s}>{t(STAGE_KEYS[s])}</option>))}
               </select>
             </div>
-            <Input label={t('crm.opportunity.probability')} type="number" value={formData.probability} onChange={(e) => setFormData((prev) => ({ ...prev, probability: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
+            <Input label={t('crm.opportunity.probability')} type="number" min={0} max={100} value={formData.probability} onChange={(e) => setFormData((prev) => ({ ...prev, probability: e.target.value }))} />
             <Input label={t('crm.opportunity.expectedCloseDate')} type="date" value={formData.expectedCloseDate} onChange={(e) => setFormData((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} />
-            <Input label={t('crm.opportunity.assignedTo')} value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
           </div>
+          <Input label={t('crm.opportunity.assignedTo')} value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
           <Input label={t('crm.form.notes')} value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} />
         </div>
       </Modal>

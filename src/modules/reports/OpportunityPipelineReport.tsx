@@ -8,6 +8,7 @@ import { exportToExcel } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { formatCurrency } from '@/core/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 
 interface StageSummary {
   stage: string;
@@ -36,6 +37,8 @@ const STAGE_KEYS: Record<string, string> = {
 
 export const OpportunityPipelineReport: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [stages, setStages] = useState<StageSummary[]>([]);
   const [repData, setRepData] = useState<RepSummary[]>([]);
@@ -149,6 +152,17 @@ export const OpportunityPipelineReport: React.FC = () => {
     .filter((s) => s.stage !== 'won' && s.stage !== 'lost')
     .map((s) => ({ name: t(STAGE_KEYS[s.stage] || s.stage), count: s.count, totalValue: s.totalValue }));
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <BarChart3 size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -173,7 +187,7 @@ export const OpportunityPipelineReport: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('reports.opportunityPipelineDesc')}</p>
           </div>
         </div>
-        {totalCount > 0 && <Button variant="secondary" onClick={handleExportExcel}>{t('reports.exportExcel')}</Button>}
+        {totalCount > 0 && <Button variant="secondary" onClick={handleExportExcel} disabled={!canExport}>{t('reports.exportExcel')}</Button>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -6,11 +6,12 @@ import { StatusBadge } from '@/core/ui/components/StatusBadge';
 import { ActionButtons } from '@/core/ui/components/ActionButtons';
 import { EmptyState } from '@/core/ui/components/EmptyState';
 import { CustomerSelect, ProductSelect } from '@/core/ui/components/smart';
-import { useReturnsPaginated, useInvoices } from '../hooks/useSales';
+import { useReturnsPaginated, usePostedInvoicesWithLines } from '../hooks/useSales';
 import { useAppStore } from '@/core/store';
 import { useAuthStore } from '@/modules/auth/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { useSettings } from '@/core/utils/useSettings';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { printDocument } from '@/core/utils/printDocument';
@@ -48,8 +49,9 @@ export const SalesReturnsPage: React.FC = () => {
     remove,
     post,
   } = useReturnsPaginated(activeCompany?.id || '');
-  const { invoices } = useInvoices(activeCompany?.id || '');
+  const { invoices } = usePostedInvoicesWithLines(activeCompany?.id || '');
   const { getNextNumber } = useDocumentSequence();
+  const { settings } = useSettings(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [formOpen, setFormOpen] = useState(false);
@@ -85,12 +87,13 @@ export const SalesReturnsPage: React.FC = () => {
     });
   };
 
+  const vatRate = settings?.vatRate ?? 15;
   const calculations = useMemo(() => {
     const subtotal = lines.reduce((s, l) => s + (l.quantity * l.unitPrice), 0);
-    const vatAmount = Math.floor(subtotal * 0.15); // simplified VAT 15%
+    const vatAmount = Math.round(subtotal * (vatRate / 100) * 100) / 100;
     const totalAmount = subtotal + vatAmount;
     return { subtotal, vatAmount, totalAmount };
-  }, [lines]);
+  }, [lines, vatRate]);
 
   const handleInvoiceSelect = (invoiceId: string) => {
     const inv = invoices.find(i => i.id === invoiceId);

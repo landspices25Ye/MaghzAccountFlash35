@@ -42,7 +42,9 @@ export const SuppliersPage: React.FC = () => {
   const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
-  const { suppliers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useSuppliersPaginated(activeCompany?.id || '');
+  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
+  const supplierFilters = useMemo(() => ({ isActive: isActiveFilter }), [isActiveFilter]);
+  const { suppliers, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useSuppliersPaginated(activeCompany?.id || '', supplierFilters);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -116,9 +118,13 @@ export const SuppliersPage: React.FC = () => {
 
   const confirmDeleteAction = useCallback(async () => {
     if (!confirmDelete || !activeCompany?.id) return;
-    await remove(confirmDelete);
-    addToast('success', t('purchases.supplier.deleted'));
-    await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'suppliers', recordId: confirmDelete, companyId: activeCompany.id });
+    const result = await remove(confirmDelete);
+    if (result.success) {
+      addToast('success', t('purchases.supplier.deleted'));
+      await logAudit({ userId: user?.id || '', action: 'delete', tableName: 'suppliers', recordId: confirmDelete, companyId: activeCompany.id });
+    } else {
+      addToast('error', result.error || t('common.error'));
+    }
     setConfirmDelete(null);
   }, [confirmDelete, activeCompany, remove, user, addToast, t]);
 
@@ -193,6 +199,23 @@ export const SuppliersPage: React.FC = () => {
             {t('purchases.supplier.new')}
           </Button>
         </Can>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <select
+          value={isActiveFilter === undefined ? 'all' : isActiveFilter ? 'active' : 'inactive'}
+          onChange={(e) => {
+            const v = e.target.value;
+            setIsActiveFilter(v === 'all' ? undefined : v === 'active');
+          }}
+          className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600"
+          aria-label={t('purchases.supplier.isActive')}
+          title={t('purchases.supplier.isActive')}
+        >
+          <option value="all">{t('purchases.filter.all')}</option>
+          <option value="active">{t('settings.common.active')}</option>
+          <option value="inactive">{t('settings.common.inactive')}</option>
+        </select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

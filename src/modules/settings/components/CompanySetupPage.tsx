@@ -77,12 +77,19 @@ export const CompanySetupPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!activeCompany?.id) return;
+    if (!activeCompany?.id) {
+      addToast('error', t('settings.company.noCompany'));
+      return;
+    }
+    if (!formData.name || formData.name.trim().length === 0) {
+      addToast('error', t('settings.company.nameRequired'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(
-        `UPDATE companies SET name = $1, name_en = $2, tax_number = $3, address = $4, phone = $5, email = $6, logo_url = $7, fiscal_year_start = $8, currency = $9, date_format = $10, decimal_places = $11, calendar = $12, updated_at = $13 WHERE id = $14`,
+        `UPDATE companies SET name = $1, name_en = $2, tax_number = $3, address = $4, phone = $5, email = $6, logo_url = $7, fiscal_year_start = $8, currency = $9, date_format = $10, decimal_places = $11, calendar = $12, updated_at = NOW() WHERE id = $13`,
         [
           formData.name,
           formData.nameEn,
@@ -91,12 +98,11 @@ export const CompanySetupPage: React.FC = () => {
           formData.phone,
           formData.email,
           formData.logoUrl,
-          formData.fiscalYearStart,
+          formData.fiscalYearStart || null,
           formData.currency,
           formData.dateFormat,
           formData.decimalPlaces,
           formData.calendar,
-          new Date().toISOString(),
           activeCompany.id,
         ]
       );
@@ -109,16 +115,15 @@ export const CompanySetupPage: React.FC = () => {
         companyId: activeCompany.id,
       });
 
-      addToast('success', t('settings.company.updated'));
+      addToast('success', t('settings.company.saved'));
 
-      // Update store
       useAppStore.getState().setActiveCompany(formData.name, activeCompany.id, formData.currency, {
         dateFormat: formData.dateFormat,
         decimalPlaces: formData.decimalPlaces,
         calendar: formData.calendar,
       });
     } catch {
-      // Error saved by caller
+      addToast('error', t('settings.company.saveError'));
     } finally {
       setIsSaving(false);
     }

@@ -65,53 +65,73 @@ updatedBy?: string;
 }
 
 export interface StockTransfer {
-id: string;
-companyId: string;
-productId: string;
-fromWarehouseId: string;
-toWarehouseId: string;
-quantity: number;
-date: string;
-reference?: string;
-notes?: string;
-status: 'draft' | 'completed' | 'cancelled';
-createdAt?: string;
-createdBy?: string;
-updatedBy?: string;
+  id: string;
+  companyId: string;
+  productId?: string;
+  fromWarehouseId: string;
+  toWarehouseId: string;
+  quantity?: number;
+  date: string;
+  reference?: string;
+  notes?: string;
+  status: 'draft' | 'pending' | 'completed' | 'cancelled';
+  createdAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+  fromWarehouseName?: string;
+  toWarehouseName?: string;
+  linesCount?: number;
+  totalQuantity?: number;
+}
+
+export interface StockTransferLine {
+  id: string;
+  transferId: string;
+  productId: string;
+  productName?: string;
+  productCode?: string;
+  quantity: number;
 }
 
 export interface InventoryTransaction {
-id: string;
-companyId: string;
-date: string;
-type: 'in' | 'out' | 'adjustment' | 'transfer';
-productId: string;
-warehouseId: string;
-quantity: number;
-reference: string;
-notes?: string;
-createdAt?: string;
-createdBy?: string;
-updatedBy?: string;
+  id: string;
+  companyId: string;
+  date: string;
+  type: 'in' | 'out' | 'adjustment' | 'transfer';
+  productId: string;
+  warehouseId: string;
+  quantity: number;
+  reference: string;
+  notes?: string;
+  productName?: string;
+  productCode?: string;
+  warehouseName?: string;
+  createdAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface StockAdjustment {
-id: string;
-companyId: string;
-date: string;
-productId: string;
-warehouseId: string;
-systemQty: number;
-actualQty: number;
-difference: number;
-reason: string;
-status: 'draft' | 'pending' | 'approved' | 'rejected' | 'posted';
-unitCost?: number;
-approvedBy?: string;
-approvedAt?: string;
-postedAt?: string;
-createdBy?: string;
-updatedBy?: string;
+  id: string;
+  companyId: string;
+  date: string;
+  productId: string;
+  warehouseId: string;
+  systemQty: number;
+  actualQty: number;
+  difference: number;
+  reason: string;
+  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'posted';
+  unitCost?: number;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedAt?: string;
+  postedAt?: string;
+  productName?: string;
+  productCode?: string;
+  warehouseName?: string;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface ProductCategory {

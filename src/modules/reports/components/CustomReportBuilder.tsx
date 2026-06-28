@@ -8,6 +8,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { cn } from '@/core/utils';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 
 interface TableMeta {
   name: string;
@@ -103,6 +104,8 @@ type Step = 'table' | 'columns' | 'filters' | 'preview';
 
 export const CustomReportBuilder: React.FC = () => {
   const { t } = useTranslation();
+  const canCustom = usePermission('reports.custom');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [step, setStep] = useState<Step>('table');
@@ -148,7 +151,15 @@ export const CustomReportBuilder: React.FC = () => {
     setError(null);
     try {
       const adapter = await getDbAdapter();
-      const result = await adapter.query(`SELECT * FROM ${selectedTable.name} WHERE company_id = $1 LIMIT 500`, [activeCompany.id]);
+      // Validate table name against whitelist to prevent SQL injection.
+      // selectedTable.name comes from AVAILABLE_TABLES (hardcoded) but we re-validate.
+      const allowedTable = AVAILABLE_TABLES.find((t) => t.name === selectedTable.name);
+      if (!allowedTable) {
+        setError('Invalid table selection');
+        setIsLoading(false);
+        return;
+      }
+      const result = await adapter.query(`SELECT * FROM ${allowedTable.name} WHERE company_id = $1 LIMIT 500`, [activeCompany.id]);
       let rows = (result.rows || []) as Record<string, unknown>[];
 
       if (!result.success) {
@@ -228,6 +239,17 @@ export const CustomReportBuilder: React.FC = () => {
     const idx = steps.findIndex((s) => s.key === step);
     if (idx > 0) setStep(steps[idx - 1].key);
   };
+
+  if (!canCustom) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Settings size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -381,10 +403,10 @@ export const CustomReportBuilder: React.FC = () => {
                     value={reportName}
                     onChange={(e) => setReportName(e.target.value)}
                   />
-                  <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={isLoading}>
+                  <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={isLoading || !canExport}>
                     Excel
                   </Button>
-                  <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF} disabled={isLoading}>
+                  <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF} disabled={isLoading || !canExport}>
                     PDF
                   </Button>
                 </div>

@@ -69,30 +69,39 @@ export const ProductCategoriesPage: React.FC = () => {
   const tree = buildTree(categories);
 
   const handleSave = async () => {
-    if (!form.name || !activeCompany?.id) return;
+    if (!form.name || !activeCompany?.id) {
+      addToast('error', t('settings.productCategories.nameRequired'));
+      return;
+    }
     try {
       if (editingId) {
-        await update(editingId, { name: form.name, parentId: form.parentId || undefined });
-        addToast('success', t('settings.productCategories.updated'));
+        const result = await update(editingId, { name: form.name, parentId: form.parentId || undefined });
+        if (result.success) addToast('success', t('settings.productCategories.updated'));
+        else addToast('error', result.error || t('settings.productCategories.updateError'));
       } else {
-        await create({ companyId: activeCompany.id, name: form.name, parentId: form.parentId || undefined });
-        addToast('success', t('settings.productCategories.created'));
+        const result = await create({ companyId: activeCompany.id, name: form.name, parentId: form.parentId || undefined });
+        if (result.success) addToast('success', t('settings.productCategories.created'));
+        else addToast('error', result.error || t('settings.productCategories.createError'));
       }
       setIsOpen(false);
       setForm({ name: '', parentId: '' });
       setEditingId(null);
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.productCategories.createError'));
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await remove(id);
-      addToast('success', t('settings.productCategories.deleted'));
+      const result = await remove(id);
+      if (result.success) {
+        addToast('success', t('settings.productCategories.deleted'));
+      } else {
+        addToast('error', result.error || t('settings.productCategories.deleteError'));
+      }
       setShowDeleteConfirm(null);
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.productCategories.deleteError'));
     }
   };
 

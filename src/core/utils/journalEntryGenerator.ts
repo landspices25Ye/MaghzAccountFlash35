@@ -307,10 +307,13 @@ export async function postSalesReturn(
  * Post a Purchase Return to accounting
  * Dr: Trade Creditors
  * Cr: Inventory
+ *
+ * Side effect: also creates stock_movements (type='out') for each return line
+ * to keep inventory synchronized with the accounting reversal.
  */
 export async function postPurchaseReturn(
   companyId: string,
-  ret: { returnNumber: string; date: string; supplier: string; amount: number }
+  ret: { id?: string; returnNumber: string; date: string; supplier: string; amount: number }
 ) {
   const creditorsId = await getDefaultAccountId(companyId, 'default_creditors');
   const inventoryId = await getDefaultAccountId(companyId, 'default_inventory');
@@ -324,13 +327,50 @@ export async function postPurchaseReturn(
     { accountId: inventoryId, debit: 0, credit: ret.amount, memo: `إخراج بضاعة مردودة ${ret.returnNumber}` },
   ];
 
-  return createTransaction(companyId, {
+  const journalResult = await createTransaction(companyId, {
     reference: ret.returnNumber,
     description: `قيد تلقائي - مردود مشتريات ${ret.returnNumber}`,
     date: ret.date,
     totalAmount: ret.amount,
     entries,
   });
+
+  if (!journalResult.success) {
+    return journalResult;
+  }
+
+  // Insert stock_movements (type='out') for each return line so the inventory
+  // reflects the goods leaving the warehouse. The warehouse is derived from
+  // the `stock` table (the warehouse that currently holds the product). When
+  // a product exists in multiple warehouses we pick the first one
+  // (DISTINCT ON product_id). If the product isn't in any warehouse we skip
+  // the movement (no stock to remove). If the return has no id we skip.
+  if (ret.id) {
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(
+        `INSERT INTO stock_movements (company_id, product_id, warehouse_id, quantity, type, reference, created_at)
+         SELECT pr.company_id, prl.product_id, wh.warehouse_id, prl.quantity, 'out', $1, NOW()
+           FROM purchase_returns pr
+           JOIN purchase_return_lines prl ON prl.return_id = pr.id
+           JOIN LATERAL (
+             SELECT s.warehouse_id
+               FROM stock s
+              WHERE s.product_id = prl.product_id AND s.company_id = pr.company_id
+              ORDER BY s.quantity DESC
+              LIMIT 1
+           ) wh ON true
+          WHERE pr.id = $2 AND pr.company_id = $3`,
+        [ret.returnNumber, ret.id, companyId]
+      );
+    } catch (e) {
+      // Stock movement failure should not roll back the journal entry, but
+      // surface a warning so the caller can investigate.
+      return { ...journalResult, warning: `Journal entry created but stock movement failed: ${String(e)}` };
+    }
+  }
+
+  return journalResult;
 }
 
 /**

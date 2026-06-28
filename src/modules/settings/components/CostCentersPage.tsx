@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Target, Plus, Pencil, CheckSquare } from 'lucide-react';
-import { Card, Button, Table, Modal, Input, Can } from '@/core/ui/components';
+import { Target, Plus, Pencil, Trash2, CheckSquare } from 'lucide-react';
+import { Card, Button, Table, Modal, Input, ConfirmDialog, Can } from '@/core/ui/components';
 import { useCostCenters } from '@/core/hooks/useSettings';
 import { useAppStore } from '@/core/store';
 import { useFormatters } from '@/core/utils/useFormatters';
@@ -12,10 +12,11 @@ export const CostCentersPage: React.FC = () => {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const activeCompany = useAppStore(state => state.activeCompany);
-  const { centers, isLoading, create, update } = useCostCenters(activeCompany?.id || '');
+  const { centers, isLoading, create, update, remove } = useCostCenters(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [isOpen, setIsOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<CostCenter>>({ nameAr: '', nameEn: '', code: '', type: 'department', budgetAmount: 0 });
 
   const reset = () => {
@@ -24,16 +25,32 @@ export const CostCentersPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.nameAr || !activeCompany?.id) return;
+    if (!form.nameAr || !activeCompany?.id) {
+      addToast('error', t('settings.costCenters.nameRequired'));
+      return;
+    }
     if (editingId) {
-      await update(editingId, form);
-      addToast('success', t('settings.costCenters.updated'));
+      const result = await update(editingId, form);
+      if (result.success) addToast('success', t('settings.costCenters.updated'));
+      else addToast('error', result.error || t('settings.costCenters.updateError'));
     } else {
-      await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CostCenter, 'id'>);
-      addToast('success', t('settings.costCenters.created'));
+      const result = await create({ ...form, companyId: activeCompany.id, isActive: true } as Omit<CostCenter, 'id'>);
+      if (result.success) addToast('success', t('settings.costCenters.created'));
+      else addToast('error', result.error || t('settings.costCenters.createError'));
     }
     setIsOpen(false);
     reset();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const result = await remove(deleteId);
+    if (result.success) {
+      addToast('success', t('settings.costCenters.deleted'));
+    } else {
+      addToast('error', result.error || t('settings.costCenters.removeError'));
+    }
+    setDeleteId(null);
   };
 
   const openEdit = (c: CostCenter) => {
@@ -56,9 +73,10 @@ export const CostCentersPage: React.FC = () => {
     { key: 'type', header: t('settings.costCenters.type'), width: '120px', render: (row: CostCenter) => <span>{typeLabel(row.type)}</span> },
     { key: 'budgetAmount', header: t('settings.costCenters.budget'), width: '140px', align: 'right' as const, render: (row: CostCenter) => <span>{formatCurrency(row.budgetAmount)}</span> },
     { key: 'isActive', header: t('settings.common.active'), width: '80px', render: (row: CostCenter) => <span className={row.isActive ? 'text-emerald-600' : 'text-slate-400'}>{row.isActive ? t('settings.common.yes') : t('settings.common.no')}</span> },
-    { key: 'actions', header: '', width: '100px', render: (row: CostCenter) => (
+    { key: 'actions', header: '', width: '120px', render: (row: CostCenter) => (
       <div className="flex gap-1">
         <Can action="edit" module="settings"><Button size="sm" variant="ghost" onClick={() => openEdit(row)} leftIcon={<Pencil size={14} />} /></Can>
+        <Can action="delete" module="settings"><Button size="sm" variant="ghost" onClick={() => setDeleteId(row.id)} leftIcon={<Trash2 size={14} className="text-rose-500" />} /></Can>
       </div>
     )},
   ];
@@ -115,6 +133,16 @@ export const CostCentersPage: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title={t('settings.costCenters.deleteTitle')}
+        message={t('settings.costCenters.deleteMessage')}
+        confirmText={t('settings.common.delete')}
+        variant="danger"
+      />
     </div>
   );
 };

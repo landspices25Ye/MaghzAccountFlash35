@@ -3,6 +3,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { validateInput, idCompanySchema, companyIdSchema, uuidSchema, createSupplierSchema, createPurchaseInvoiceSchema, createPurchaseOrderSchema, createPurchaseReturnSchema } from '@/core/utils/validation';
 import { clampPageArgs, paginatedResult, type PaginatedQueryResult } from '@/core/utils/pagination';
 import { YER_CODE } from '@/core/utils/currencyConverter';
+import { getNextDocumentNumber } from '@/core/api';
 import type {
   Supplier,
   PurchaseInvoice,
@@ -74,8 +75,8 @@ function mapInvoiceLine(row: Record<string, unknown>): PurchaseInvoiceLine {
     description: row.description ? String(row.description) : undefined,
     quantity: toNum(row.quantity),
     unitPrice: toNum(row.unit_price || row.unitPrice),
-    discountPercent: toNum(row.discount_percent || row.discountPercent),
-    vatPercent: toNum(row.vat_percent || row.vatPercent),
+    discountPercent: toNum(row.discount_percent ?? row.discountPercent),
+    vatPercent: toNum(row.vat_percent ?? row.vatPercent),
     lineTotal: toNum(row.line_total || row.lineTotal),
     currencyCode: row.currency_code ? String(row.currency_code) : YER_CODE,
     exchangeRate: row.exchange_rate !== undefined ? toNum(row.exchange_rate) : 1,
@@ -395,7 +396,10 @@ export const purchasesApi = {
       const now = new Date();
 
       for (const row of result.rows || []) {
-        const due = new Date(row.due_date || row.date);
+        const dueRaw = row.due_date || row.date;
+        if (!dueRaw) continue; // skip rows without a date to avoid NaN buckets
+        const due = new Date(dueRaw);
+        if (isNaN(due.getTime())) continue; // skip invalid dates
         const remaining = Number(row.total_amount) - Number(row.paid_amount || 0);
         if (remaining <= 0) continue;
         const diffDays = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
@@ -554,10 +558,20 @@ export const purchasesApi = {
           const lr = line.exchangeRate ?? exchangeRate;
           const lb = line.baseCurrencyLineTotal ?? (line.lineTotal * lr);
           const off = params.length;
-          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6},$${off + 7})`);
-          params.push(line.productId, line.quantity, line.unitPrice, line.lineTotal, lc, lr, lb);
+          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6},$${off + 7},$${off + 8},$${off + 9})`);
+          params.push(
+            line.productId,
+            line.quantity,
+            line.unitPrice,
+            line.discountPercent ?? 0,
+            line.vatPercent ?? 0,
+            line.lineTotal,
+            lc,
+            lr,
+            lb,
+          );
         }
-        sql += `,lines_ins AS (INSERT INTO purchase_invoice_lines (invoice_id,product_id,quantity,unit_price,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT inv.id,v.* FROM inv JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
+        sql += `,lines_ins AS (INSERT INTO purchase_invoice_lines (invoice_id,product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT inv.id,v.* FROM inv JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
       }
       sql += ' SELECT id FROM inv';
       const result = await adapter.query(sql, params);
@@ -814,20 +828,19 @@ export const purchasesApi = {
       const order = await purchasesApi.getOrderById(orderId, companyId);
       if (!order.success || !order.data) return { success: false, error: 'Order not found' };
 
-      const invNumberResult = await adapter.query(
-        `SELECT COUNT(*) as cnt FROM purchase_invoices WHERE company_id = $1`,
-        [companyId]
-      );
-      const count = Number(invNumberResult.rows?.[0]?.cnt || 0) + 1;
-      const invoiceNumber = `PINV-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+      const today = new Date().toISOString().split('T')[0];
+      const seq = await getNextDocumentNumber(companyId, 'purchase_invoice');
+      if (!seq.success || !seq.number) {
+        return { success: false, error: seq.error || 'Failed to generate invoice number' };
+      }
 
       const invData: Omit<PurchaseInvoice, 'id'> = {
         companyId,
-        invoiceNumber,
+        invoiceNumber: seq.number,
         supplierId: order.data.supplierId,
         purchaseOrderId: orderId,
-        date: new Date().toISOString().split('T')[0],
-        dueDate: new Date().toISOString().split('T')[0],
+        date: today,
+        dueDate: order.data.expectedDate || today,
         subtotal: order.data.totalAmount,
         discountAmount: 0,
         vatAmount: 0,
@@ -837,8 +850,11 @@ export const purchasesApi = {
         notes: `تم التحويل من أمر الشراء ${order.data.orderNumber}`,
         lines: (order.data.lines || []).map(l => ({
           productId: l.productId,
+          description: l.description,
           quantity: l.quantity,
           unitPrice: l.unitPrice,
+          discountPercent: 0,
+          vatPercent: 0,
           lineTotal: l.lineTotal,
         })),
       };

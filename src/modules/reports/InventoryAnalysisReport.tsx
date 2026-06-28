@@ -7,6 +7,7 @@ import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 
 interface StockItem {
   product: string;
@@ -26,6 +27,8 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 export const InventoryAnalysisReport: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
   const [items, setItems] = useState<StockItem[]>([]);
@@ -185,6 +188,17 @@ export const InventoryAnalysisReport: React.FC = () => {
     });
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Package size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -207,10 +221,10 @@ export const InventoryAnalysisReport: React.FC = () => {
           <Button variant="secondary" leftIcon={<Filter size={16} />} onClick={() => setShowFilters((s) => !s)}>
             {t('reports.filter')}
           </Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={!canExport}>
             {t('reports.exportExcel')}
           </Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF}>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportPDF} disabled={!canExport}>
             {t('reports.exportPdf')}
           </Button>
         </div>

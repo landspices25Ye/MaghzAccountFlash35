@@ -11,6 +11,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel, exportToPDF } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { formatCurrency } from '@/core/utils';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 
 interface LeadSourceRow {
   source: string;
@@ -47,6 +48,8 @@ function yearStart(): string {
 
 export const LeadConversionReport: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const [summary, setSummary] = useState<ConversionSummary | null>(null);
   const [sourceData, setSourceData] = useState<LeadSourceRow[]>([]);
@@ -253,6 +256,17 @@ export const LeadConversionReport: React.FC = () => {
     });
   };
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Users size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -294,8 +308,8 @@ export const LeadConversionReport: React.FC = () => {
           </Button>
           {summary.totalLeads > 0 && (
             <>
-              <Button variant="secondary" onClick={handleExportExcel}>{t('reports.exportExcel')}</Button>
-              <Button variant="secondary" onClick={handleExportPDF}>{t('reports.exportPdf')}</Button>
+              <Button variant="secondary" onClick={handleExportExcel} disabled={!canExport}>{t('reports.exportExcel')}</Button>
+              <Button variant="secondary" onClick={handleExportPDF} disabled={!canExport}>{t('reports.exportPdf')}</Button>
             </>
           )}
         </div>

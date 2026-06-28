@@ -19,6 +19,7 @@ import { useFormatters } from '@/core/utils/useFormatters';
 import { YER_CODE } from '@/core/utils/currencyConverter';
 import { useToastStore } from '@/core/store/toastStore';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
+import { useSettings } from '@/core/utils/useSettings';
 
 interface ReturnFormLine {
   productId: string;
@@ -60,11 +61,13 @@ export const PurchaseReturnsPage: React.FC = () => {
   const activeCompany = useAppStore(state => state.activeCompany);
   const user = useAuthStore(state => state.user);
   const { getNextNumber } = useDocumentSequence();
+  const { settings } = useSettings(activeCompany?.id || '');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const returnFilters = useMemo(() => ({ status: statusFilter || undefined }), [statusFilter]);
   const { returns, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove, post } = usePurchaseReturnsPaginated(activeCompany?.id || '', returnFilters);
   const { invoices } = usePurchaseInvoices(activeCompany?.id || '');
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
+  const currencySymbol = settings?.defaultCurrency || activeCompany?.currency || YER_CODE;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -131,6 +134,9 @@ export const PurchaseReturnsPage: React.FC = () => {
       const seq = await getNextNumber('purchase_return', activeCompany.id);
       if (!seq.success || !seq.number) {
         addToast('error', seq.error || t('purchases.return.numberError'));
+        setModalOpen(false);
+        setEditingId(null);
+        setForm(initialForm());
         return;
       }
       returnNumber = seq.number;
@@ -192,6 +198,7 @@ export const PurchaseReturnsPage: React.FC = () => {
     if (!ret) { setPostingId(null); setConfirmPost(null); return; }
 
     const result = await postPurchaseReturn(activeCompany.id, {
+      id: ret.id,
       returnNumber: ret.returnNumber,
       date: ret.date,
       supplier: ret.supplier?.name || ret.supplierId,
@@ -211,7 +218,7 @@ export const PurchaseReturnsPage: React.FC = () => {
 
   const handlePrint = useCallback((ret: PurchaseReturn) => {
     printDocument({
-      type: 'purchase-invoice',
+      type: 'purchase-return',
       docNumber: ret.returnNumber,
       date: ret.date,
       partyName: ret.supplier?.name || ret.supplierId,
@@ -227,9 +234,9 @@ export const PurchaseReturnsPage: React.FC = () => {
       totalAmount: ret.totalAmount,
       notes: ret.notes,
       companyName: activeCompany?.name,
-      currency: activeCompany?.currency,
+      currency: currencySymbol,
     });
-  }, [activeCompany, t]);
+  }, [activeCompany, t, currencySymbol]);
 
   const totalPosted = useMemo(() => returns.filter(r => r.status === 'posted').reduce((s, r) => s + r.totalAmount, 0), [returns]);
 

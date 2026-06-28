@@ -6,6 +6,7 @@ import { useAppStore } from '@/core/store';
 import { Card, Button, Table } from '@/core/ui/components';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { Package, Layers, Warehouse, FileDown } from 'lucide-react';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 import KpiCardPro from './components/KpiCardPro';
 
 interface ProductValuation {
@@ -40,6 +41,8 @@ type ViewMode = 'products' | 'categories' | 'warehouses';
 
 export const StockValuationReport = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const { formatCurrency } = useFormatters(activeCompany?.id || '');
 
@@ -64,12 +67,13 @@ export const StockValuationReport = () => {
                 COALESCE(SUM(s.quantity), 0) as total_qty,
                 COALESCE(SUM(s.quantity * p.cost_price), 0) as total_cost_value,
                 COALESCE(SUM(s.quantity * p.sale_price), 0) as total_sale_value,
-                COALESCE(pc.name, '') as category_name
+                COALESCE(MAX(pc.name), '') as category_name
            FROM products p
            LEFT JOIN stock s ON s.product_id = p.id
-           LEFT JOIN product_categories pc ON p.category_id = pc.id
+           LEFT JOIN product_product_categories ppc ON ppc.product_id = p.id
+           LEFT JOIN product_categories pc ON ppc.category_id = pc.id
           WHERE p.company_id = $1 AND p.is_active = true
-          GROUP BY p.id, p.name_ar, p.sku, p.code, p.cost_price, p.sale_price, pc.name
+          GROUP BY p.id, p.name_ar, p.sku, p.code, p.cost_price, p.sale_price
           ORDER BY total_cost_value DESC`,
         [companyId],
       );
@@ -98,7 +102,8 @@ export const StockValuationReport = () => {
                 COALESCE(SUM(s.quantity * p.cost_price), 0) as total_value
            FROM products p
            LEFT JOIN stock s ON s.product_id = p.id
-           LEFT JOIN product_categories pc ON p.category_id = pc.id
+           LEFT JOIN product_product_categories ppc ON ppc.product_id = p.id
+           LEFT JOIN product_categories pc ON ppc.category_id = pc.id
           WHERE p.company_id = $1 AND p.is_active = true
           GROUP BY pc.name
           ORDER BY total_value DESC`,
@@ -219,6 +224,17 @@ export const StockValuationReport = () => {
     await exportToExcel(data, cols, filename);
   }, [viewMode, products, categories, warehouses, t]);
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <Package size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -237,7 +253,7 @@ export const StockValuationReport = () => {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={!canExport}>
             {t('reports.exportExcel')}
           </Button>
         </div>

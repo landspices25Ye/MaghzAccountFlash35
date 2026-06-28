@@ -64,6 +64,7 @@ export async function exportToPDF(
     companyName?: string;
     logo?: string;
     rtl?: boolean;
+    currency?: string;
   }
 ): Promise<void> {
   const rows = data as Record<string, unknown>[];
@@ -75,7 +76,7 @@ export async function exportToPDF(
   const autoTable = autoTableModule.default;
 
   const doc = new jsPDF(options?.rtl ? { orientation: 'portrait', unit: 'mm', format: 'a4' } : {});
-  
+
   if (options?.rtl) {
     doc.setR2L(true);
   }
@@ -89,6 +90,10 @@ export async function exportToPDF(
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(options.subtitle, options?.rtl ? doc.internal.pageSize.width - 14 : 14, 28, { align: options?.rtl ? 'right' : 'left' });
+  } else if (options?.currency) {
+    doc.setFontSize(10);
+    doc.setTextColor(120);
+    doc.text(`العملة: ${options.currency}`, options?.rtl ? doc.internal.pageSize.width - 14 : 14, 28, { align: options?.rtl ? 'right' : 'left' });
   }
 
   autoTable(doc, {

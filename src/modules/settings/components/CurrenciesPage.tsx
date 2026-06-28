@@ -59,7 +59,14 @@ export const CurrenciesPage: React.FC = () => {
   useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!activeCompany?.id || !formData.code || !formData.name) return;
+    if (!activeCompany?.id || !formData.code || !formData.name) {
+      addToast('error', t('settings.currencies.codeAndNameRequired'));
+      return;
+    }
+    if (formData.code && formData.code.length !== 3) {
+      addToast('error', t('settings.currencies.codeLength'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
@@ -80,7 +87,7 @@ export const CurrenciesPage: React.FC = () => {
       addToast('success', t(editingId ? 'settings.currencies.updated' : 'settings.currencies.created'));
       setEditingId(null); setFormData({ code: '', name: '', symbol: '', exchangeRate: 1, isActive: true }); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.currencies.saveError'));
     } finally {
       setIsSaving(false);
     }
@@ -88,18 +95,24 @@ export const CurrenciesPage: React.FC = () => {
 
   const handleSetDefault = async (id: string) => {
     if (!activeCompany?.id) return;
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`UPDATE currencies SET is_default = false WHERE company_id = $1`, [activeCompany.id]);
       await adapter.query(`UPDATE currencies SET is_default = true WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
+      await logAudit({ userId: user?.id || 'system', action: 'update', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
+      addToast('success', t('settings.currencies.setDefaultSuccess'));
       loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.currencies.saveError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM currencies WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
@@ -107,7 +120,9 @@ export const CurrenciesPage: React.FC = () => {
       addToast('success', t('settings.currencies.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.currencies.deleteError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 

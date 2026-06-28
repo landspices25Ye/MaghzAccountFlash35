@@ -6,6 +6,7 @@ import { getDbAdapter } from '@/core/database/adapters';
 import { exportToExcel } from '@/core/utils/exportEngine';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useFormatters } from '@/core/utils/useFormatters';
+import { usePermission } from '@/modules/auth/hooks/usePermission';
 import KpiCardPro from './components/KpiCardPro';
 
 interface LowStockItem {
@@ -32,6 +33,8 @@ interface WarehouseOption {
 
 export const LowStockAlertReport: React.FC = () => {
   const { t } = useTranslation();
+  const canView = usePermission('reports.view');
+  const canExport = usePermission('reports.export');
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
   const { formatCurrency } = useFormatters(companyId);
@@ -152,6 +155,17 @@ export const LowStockAlertReport: React.FC = () => {
     await exportToExcel(filteredItems, cols, 'Low_Stock_Alert');
   }, [filteredItems, t]);
 
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertTriangle size={48} className="mx-auto mb-4 text-slate-400" />
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-200">{t('reports.noPermission')}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -191,7 +205,7 @@ export const LowStockAlertReport: React.FC = () => {
           >
             {t('reports.purchaseOrder')}
           </Button>
-          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel}>
+          <Button variant="secondary" leftIcon={<FileDown size={16} />} onClick={handleExportExcel} disabled={!canExport}>
             {t('reports.exportExcel')}
           </Button>
         </div>

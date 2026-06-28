@@ -189,7 +189,7 @@ export const PurchaseOrdersPage: React.FC = () => {
 
   const handlePrint = useCallback((order: PurchaseOrder) => {
     printDocument({
-      type: 'purchase-invoice',
+      type: 'purchase-order',
       docNumber: order.orderNumber,
       date: order.date,
       partyName: order.supplier?.name || order.supplierId,
@@ -265,10 +265,12 @@ export const PurchaseOrdersPage: React.FC = () => {
           </div>
       </div>
       <div className="flex items-center gap-2">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1.5 text-sm border rounded-md dark:bg-slate-900 dark:border-slate-600" aria-label={t('purchases.status')} title={t('purchases.status')}>
           <option value="">{t('purchases.filter.all')}</option>
           <option value="draft">{t('purchases.filter.draft')}</option>
-          <option value="confirmed">{t('purchases.filter.confirmed')}</option>
+          <option value="sent">{t('purchases.order.sent')}</option>
+          <option value="partially_received">{t('purchases.order.partiallyReceived')}</option>
+          <option value="received">{t('purchases.order.received')}</option>
           <option value="invoiced">{t('purchases.filter.invoiced')}</option>
           <option value="cancelled">{t('purchases.filter.cancelled')}</option>
         </select>

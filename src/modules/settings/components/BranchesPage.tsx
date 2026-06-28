@@ -56,7 +56,10 @@ export const BranchesPage: React.FC = () => {
   useEffect(() => { loadData(); }, [activeCompany?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
-    if (!activeCompany?.id || !formData.name) return;
+    if (!activeCompany?.id || !formData.name) {
+      addToast('error', t('settings.branches.nameRequired'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
@@ -68,8 +71,8 @@ export const BranchesPage: React.FC = () => {
         );
       } else {
         await adapter.query(
-          `INSERT INTO branches (id, company_id, name, code, city, phone, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-          [crypto.randomUUID(), activeCompany.id, formData.name, formData.code, formData.city, formData.phone, formData.isActive, new Date().toISOString()]
+          `INSERT INTO branches (id, company_id, name, code, city, phone, is_active, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
+          [crypto.randomUUID(), activeCompany.id, formData.name, formData.code, formData.city, formData.phone, formData.isActive]
         );
       }
 
@@ -77,7 +80,7 @@ export const BranchesPage: React.FC = () => {
       addToast('success', t(editingId ? 'settings.branches.updated' : 'settings.branches.created'));
       setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t(editingId ? 'settings.branches.updateError' : 'settings.branches.createError'));
     } finally {
       setIsSaving(false);
     }
@@ -85,6 +88,7 @@ export const BranchesPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!activeCompany?.id) return;
+    setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM branches WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
@@ -92,7 +96,9 @@ export const BranchesPage: React.FC = () => {
       addToast('success', t('settings.branches.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
-      // Error handled by caller
+      addToast('error', t('settings.branches.deleteError'));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -138,13 +144,24 @@ export const BranchesPage: React.FC = () => {
       </div>
 
       <Card>
-        {(editingId !== null || formData.name) && (
+        {(editingId !== null || (formData.name && formData.name.length > 0)) && (
           <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Input label={t('settings.branches.name')} value={formData.name} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              <Input label={t('settings.branches.code')} value={formData.code} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
-              <Input label={t('settings.branches.city')} value={formData.city} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} />
-              <Input label={t('settings.branches.phone')} value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
+              <Input label={t('settings.branches.name')} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
+              <Input label={t('settings.branches.code')} value={formData.code || ''} onChange={e => setFormData(p => ({ ...p, code: e.target.value }))} />
+              <Input label={t('settings.branches.city')} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} />
+              <Input label={t('settings.branches.phone')} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.isActive ?? true}
+                  onChange={e => setFormData(p => ({ ...p, isActive: e.target.checked }))}
+                  className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-200">{t('settings.common.active')}</span>
+              </label>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => { setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); }}>{t('settings.common.cancel')}</Button>

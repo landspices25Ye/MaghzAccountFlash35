@@ -361,9 +361,9 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { type: 'quotation',         prefix: 'QOT-', start: 1, current: 3,  pad: 4 },
     { type: 'purchase_order',    prefix: 'PO-',  start: 1, current: 4,  pad: 4 },
     { type: 'purchase_invoice',  prefix: 'PINV-',start: 1, current: 4,  pad: 4 },
-    { type: 'journal_voucher',   prefix: 'JV-',  start: 1, current: 1,  pad: 4 },
-    { type: 'receipt_voucher',  prefix: 'RV-',  start: 1, current: 1,  pad: 4 },
-    { type: 'payment_voucher',  prefix: 'PV-',  start: 1, current: 1,  pad: 4 },
+    { type: 'journal_voucher',   prefix: 'JV-',  start: 1, current: 0,  pad: 4 },
+    { type: 'receipt_voucher',  prefix: 'RV-',  start: 1, current: 0,  pad: 4 },
+    { type: 'payment_voucher',  prefix: 'PV-',  start: 1, current: 0,  pad: 4 },
     { type: 'work_order',        prefix: 'WO-',  start: 1, current: 4,  pad: 6 },
     { type: 'payroll_run',       prefix: 'PAY-', start: 1, current: 2,  pad: 6 },
   ];
@@ -864,8 +864,8 @@ export async function seedComprehensiveDemoData(client, companyId) {
   console.log('[SEED] Inserting BOMs and work orders...');
   if (prodInfos.length >= 2) {
     const bomRes = await client.query(
-      `INSERT INTO boms (company_id, product_id, version, is_active, created_by, updated_by)
-       SELECT $1::uuid, $2::uuid, '1.0', TRUE, $3::uuid, $3::uuid
+      `INSERT INTO boms (company_id, product_id, version, is_active, total_cost, notes, created_by, updated_by)
+       SELECT $1::uuid, $2::uuid, '1.0', TRUE, 5600, 'BOM للسلع النهائية - المواد الخام', $3::uuid, $3::uuid
        WHERE NOT EXISTS (SELECT 1 FROM boms WHERE company_id = $1::uuid AND product_id = $2::uuid)
        RETURNING id;`,
       [companyId, prodInfos[0].id, adminId]
@@ -873,13 +873,13 @@ export async function seedComprehensiveDemoData(client, companyId) {
     const bomId = bomRes.rows[0]?.id;
     if (bomId) {
       await client.query(
-        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost)
-         VALUES ($1::uuid, $2::uuid, 2, 2800);`,
+        `INSERT INTO bom_lines (bom_id, material_id, quantity, unit_cost, total_cost)
+         VALUES ($1::uuid, $2::uuid, 2, 2800, 5600);`,
         [bomId, prodInfos[1].id]
       );
       await client.query(
-        `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, created_by, updated_by)
-         SELECT $1::uuid, 'WO-0001', $2::uuid, $3::uuid, 50, 'planned', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', $4::uuid, $4::uuid
+        `INSERT INTO work_orders (company_id, order_number, product_id, bom_id, quantity, status, planned_start_date, planned_end_date, total_cost, notes, created_by, updated_by)
+         SELECT $1::uuid, 'WO-0001', $2::uuid, $3::uuid, 50, 'planned', CURRENT_DATE, CURRENT_DATE + INTERVAL '7 days', 280000, 'أمر تشغيل تجريبي', $4::uuid, $4::uuid
          WHERE NOT EXISTS (SELECT 1 FROM work_orders WHERE company_id = $1::uuid AND order_number = 'WO-0001');`,
         [companyId, prodInfos[0].id, bomId, adminId]
       );

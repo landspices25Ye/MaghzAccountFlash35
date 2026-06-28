@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Eye, GitBranch, Pencil, Plus, Printer, Trash2 } from 'lucide-react';
+import { Eye, GitBranch, Pencil, Plus, Printer, Search, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Modal, Table } from '@/core/ui/components';
 import { Pagination } from '@/core/ui/components/Pagination';
 import { ConfirmDialog } from '@/core/ui/components/ConfirmDialog';
@@ -9,6 +9,7 @@ import { EmptyState } from '@/core/ui/components/EmptyState';
 import { ProductSelect } from '@/core/ui/components/smart/fields/ProductSelect';
 import { useAppStore } from '@/core/store';
 import { useBomsPaginated } from '../hooks/useManufacturing';
+import { useDebouncedValue } from '@/core/hooks/useDebouncedValue';
 import { manufacturingApi } from '../api';
 import { useFormatters } from '@/core/utils/useFormatters';
 import { useTranslation } from '@/core/i18n/useTranslation';
@@ -25,7 +26,10 @@ export const BomPage: React.FC = () => {
   const { t } = useTranslation();
   const activeCompany = useAppStore((state) => state.activeCompany);
   const companyId = activeCompany?.id || '';
-  const { items: boms, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useBomsPaginated(companyId);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm, 300);
+  const filters = useMemo(() => ({ search: debouncedSearch || undefined }), [debouncedSearch]);
+  const { items: boms, total, page, pageSize, isLoading, goToPage, changePageSize, create, update, remove } = useBomsPaginated(companyId, filters);
   const { formatCurrency } = useFormatters(companyId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,7 +38,7 @@ export const BomPage: React.FC = () => {
   const [viewing, setViewing] = useState<{ bom: BOM; lines: BOMLine[] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({ productId: '', productName: '', version: '1.0', isActive: true, notes: '' });
+  const [formData, setFormData] = useState({ productId: '', productName: '', version: '1.0', isActive: true, notes: '', totalCost: '' });
   const [lines, setLines] = useState<BomFormLine[]>([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
 
   const estimatedTotal = useMemo(() =>
@@ -42,7 +46,7 @@ export const BomPage: React.FC = () => {
   [lines]);
 
   const resetForm = () => {
-    setFormData({ productId: '', productName: '', version: '1.0', isActive: true, notes: '' });
+    setFormData({ productId: '', productName: '', version: '1.0', isActive: true, notes: '', totalCost: '' });
     setLines([{ materialId: '', materialName: '', quantity: 1, unitCost: 0 }]);
     setEditing(null);
   };
@@ -54,9 +58,16 @@ export const BomPage: React.FC = () => {
 
   const openEdit = async (bom: BOM) => {
     setEditing(bom);
-    setFormData({ productId: bom.productId, productName: bom.productName || '', version: bom.version, isActive: bom.isActive, notes: bom.notes || '' });
     const res = await manufacturingApi.getBomById(bom.id, companyId);
     if (res.success && res.data) {
+      setFormData({
+        productId: res.data.bom.productId,
+        productName: res.data.bom.productName || bom.productName || '',
+        version: res.data.bom.version,
+        isActive: res.data.bom.isActive,
+        notes: res.data.bom.notes || '',
+        totalCost: res.data.bom.totalCost !== undefined ? String(res.data.bom.totalCost) : '',
+      });
       setLines(res.data.lines.map((l) => ({
         materialId: l.materialId,
         materialName: l.materialName || l.materialId,
@@ -64,6 +75,14 @@ export const BomPage: React.FC = () => {
         unitCost: l.unitCost || 0,
       })));
     } else {
+      setFormData({
+        productId: bom.productId,
+        productName: bom.productName || '',
+        version: bom.version,
+        isActive: bom.isActive,
+        notes: bom.notes || '',
+        totalCost: bom.totalCost !== undefined ? String(bom.totalCost) : '',
+      });
       setLines([]);
     }
     setIsModalOpen(true);
@@ -79,12 +98,13 @@ export const BomPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.productId || lines.length === 0 || lines.some((l) => !l.materialId)) return;
+    const totalCost = formData.totalCost ? Number(formData.totalCost) : estimatedTotal;
     const payload = {
       companyId,
       productId: formData.productId,
       version: formData.version,
       isActive: formData.isActive,
-      totalCost: estimatedTotal,
+      totalCost,
       notes: formData.notes || undefined,
       lines: lines.map((l) => ({ materialId: l.materialId, quantity: l.quantity, unitCost: l.unitCost })),
     };
@@ -154,11 +174,25 @@ export const BomPage: React.FC = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('manufacturing.bom.subtitle')}</p>
           </div>
         </div>
-        <Can action="create" module="manufacturing">
-          <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
-            {t('manufacturing.bom.newBom')}
-          </Button>
-        </Can>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={t('manufacturing.bom.searchPlaceholder')}
+              aria-label={t('manufacturing.bom.searchPlaceholder')}
+              title={t('manufacturing.bom.searchPlaceholder')}
+              className="w-56 pl-9 pr-3 py-2 text-sm border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            />
+          </div>
+          <Can action="create" module="manufacturing">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={openCreate}>
+              {t('manufacturing.bom.newBom')}
+            </Button>
+          </Can>
+        </div>
       </div>
 
       <Card>
@@ -203,6 +237,16 @@ export const BomPage: React.FC = () => {
               <ProductSelect companyId={companyId} value={formData.productId} onChange={(v) => setFormData((prev) => ({ ...prev, productId: typeof v === 'string' ? v : '' }))} placeholder={t('manufacturing.form.selectFinishedProduct')} />
             </div>
             <Input label={t('manufacturing.form.version')} value={formData.version} onChange={(e) => setFormData((prev) => ({ ...prev, version: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label={t('manufacturing.form.totalCost')}
+              type="number"
+              value={formData.totalCost}
+              onChange={(e) => setFormData((prev) => ({ ...prev, totalCost: e.target.value }))}
+              placeholder={String(estimatedTotal)}
+              helperText={t('manufacturing.form.autoCalculatedCost') + ': ' + formatCurrency(estimatedTotal)}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2 pt-6">

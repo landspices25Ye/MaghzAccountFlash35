@@ -40,7 +40,10 @@ export function useAccounts(companyId: string) {
       const result = await accountingApi.getAccounts(companyId, ownedByUserId);
       if (cancelled) return;
       if (result.success && result.data) {
-        setFlatAccounts(result.data.map(a => ({ ...a, children: [] })));
+        // API returns a tree; flatten it (DFS) to get a flat list of all accounts
+        const flatten = (items: Account[]): Account[] =>
+          items.flatMap(item => [item, ...flatten(item.children || [])]);
+        setFlatAccounts(flatten(result.data));
       }
       setIsLoading(false);
     }

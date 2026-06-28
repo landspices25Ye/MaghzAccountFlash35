@@ -291,7 +291,11 @@ export const PurchaseInvoicesPage: React.FC = () => {
     if (!confirmPost || !activeCompany?.id) return;
     setPostingId(confirmPost);
     const invoice = invoices.find(i => i.id === confirmPost);
-    if (!invoice) return;
+    if (!invoice) {
+      setPostingId(null);
+      setConfirmPost(null);
+      return;
+    }
 
     const result = await postPurchaseInvoice(activeCompany.id, {
       invoiceNumber: invoice.invoiceNumber,
@@ -366,8 +370,9 @@ export const PurchaseInvoicesPage: React.FC = () => {
       title: t('purchases.invoices'),
       rtl: true,
       companyName: activeCompany?.name,
+      currency: currencySymbol,
     });
-  }, [t, activeCompany, invoices]);
+  }, [t, activeCompany, invoices, currencySymbol]);
 
   const columns = useMemo<ColumnDef<PurchaseInvoice>[]>(() => [
     {
@@ -535,11 +540,11 @@ export const PurchaseInvoicesPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.currency')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('purchases.currency')}</label>
               <CurrencySelect companyId={activeCompany?.id || ''} value={currencyCode} onChange={handleCurrencyChange} />
             </div>
             <Input
-              label={t('sales.exchangeRate')}
+              label={t('purchases.exchangeRate')}
               type="number"
               min={0}
               step="0.0001"
@@ -547,7 +552,7 @@ export const PurchaseInvoicesPage: React.FC = () => {
               onChange={e => setExchangeRate(Number(e.target.value) || 1)}
             />
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('sales.baseCurrency')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('purchases.baseCurrency')}</label>
               <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200">
                 {formatCurrency(formTotals.totalAmount * exchangeRate)} <span className="text-slate-500">{currencySymbol}</span>
               </div>
