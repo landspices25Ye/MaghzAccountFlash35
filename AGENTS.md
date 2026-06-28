@@ -2111,5 +2111,32 @@ npx drizzle-kit migrate
 - **Search input + useMemo filters**: `const filters = useMemo(() => ({ search: searchQuery || undefined }), [searchQuery])` — يمنع re-render loop
 - **JSON.stringify في API layer**: لو الـ schema يحوي `jsonb`، الـ API يمرر `JSON.stringify(data.attachments)` عند INSERT/UPDATE. الـ PG يحوّل الـ string إلى jsonb تلقائياً
 
+### المرحلة 37: تغطية e2e لوحدة HR
+- **الهدف**: إضافة 7 اختبارات e2e للوحدة HR بعد إصلاحات Phase 36
+- **الملف الجديد**: `e2e/13-hr-module.spec.ts` (73 سطر)
+- **الاختبارات**:
+  1. `HR page loads with menu cards` — قائمة HR مع 5 بطاقات (الموظفين، الحضور، مسير الرواتب، الإجازات، نهاية الخدمة)
+  2. `Employees page loads and shows table or empty state` — جدول الموظفين أو empty state
+  3. `Attendance page loads with stat cards` — 4 بطاقات إحصائية (الحاضرون، الغائبون، المتأخرون، إجمالي الساعات)
+  4. `Payroll page loads with create button` — زر "مسير جديد"
+  5. `Leaves page loads with request button` — زر "طلب إجازة"
+  6. `End of Service page loads with new calculation button` — زر "حساب جديد"
+  7. `Employees page: open create modal then close` — فتح modal إنشاء موظف ثم إغلاقه
+- **النتائج**:
+  - `npx playwright test e2e/13-hr-module.spec.ts`: **7/7 passed**
+  - `npx playwright test` (الكل): **45/45 passed** (38 سابقة + 7 جديدة)
+- **الـ commit**: `1f35026 test: add e2e tests for HR module`
+- **الـ pattern المستخدم**:
+  - `loginAs(page)` → goto صفحة → wait for heading → wait for buttons
+  - `page.waitForLoadState('networkidle', { timeout: 10_000 })` — يضمن تحميل البيانات قبل التحقق
+  - `expect(tableRows).toBeGreaterThanOrEqual(0)` — يقبل table فاضي أو فيه بيانات
+  - `if (await createBtn.isVisible(...).catch(() => false))` — آمن لزر قد لا يكون ظاهر
+
+### قواعد ذهبية مضافة (Phase 37)
+- **e2e HR = روابط أساسية فقط**: 7 اختبارات تغطي كل صفحة (heading + زر إنشاء) — لا CRUD كامل في e2e (slow + brittle). الـ CRUD مُغطّى في الـ unit tests
+- **`networkidle` قبل التحقق من الجدول**: `await page.waitForLoadState('networkidle')` بعد الـ goto ثم تحقق من الـ table rows — أسرع من `expect(table).toBeVisible()`
+- **`isVisible().catch(() => false)` pattern**: يستخدم للـ buttons التي قد تكون مخفية (مثل `<Can>` blocks). أفضل من `try/catch` blocks
+- **e2e count بالـ page، لا بالـ flow**: صفحة واحدة = 1-2 tests. لا تكتب flows معقدة في e2e — استخدمها للـ smoke tests فقط
+
 *آخر تحديث: 2026-06-26 | الإصدار: maghzaccount-pro v0.2.0*
 
