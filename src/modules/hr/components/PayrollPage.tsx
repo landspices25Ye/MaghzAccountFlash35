@@ -54,6 +54,18 @@ export const PayrollPage: React.FC = () => {
   const totalPayroll = useMemo(() => lines.reduce((sum, l) => sum + l.netSalary, 0), [lines]);
 
   const handleSave = async () => {
+    if (!formData.month || formData.month < 1 || formData.month > 12) {
+      addToast('error', t('hr.payroll.invalidMonth') || t('common.error'));
+      return;
+    }
+    if (!formData.year || formData.year < 2000 || formData.year > 2100) {
+      addToast('error', t('hr.payroll.invalidYear') || t('common.error'));
+      return;
+    }
+    if (lines.length === 0) {
+      addToast('error', t('hr.payroll.noEmployees') || t('common.error'));
+      return;
+    }
     const res = await create({
       companyId,
       month: formData.month,
@@ -98,30 +110,33 @@ export const PayrollPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Banknote size={28} className="text-primary-600 dark:text-primary-400" />
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-50">{t('hr.payroll.title')}</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">{t('hr.payroll.subtitle')}</p>
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="form-control w-auto"
+            title={t('hr.payroll.status')}
+            aria-label={t('hr.payroll.status')}
+          >
+            <option value="">{t('settings.common.all')}</option>
+            <option value="draft">{t('hr.payroll.draft')}</option>
+            <option value="posted">{t('hr.payroll.posted')}</option>
+          </select>
+          <Can action="create" module="hr">
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>
+              {t('hr.payroll.newPayroll')}
+            </Button>
+          </Can>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="form-control w-auto"
-          title={t('hr.payroll.status')}
-        >
-          <option value="">{t('settings.common.all')}</option>
-          <option value="draft">{t('hr.payroll.draft')}</option>
-          <option value="posted">{t('hr.payroll.posted')}</option>
-        </select>
-        <Can action="create" module="hr"><Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => { initLines(); setIsModalOpen(true); }}>
-          {t('hr.payroll.newPayroll')}
-        </Button></Can>
-      </div>
-    </div>
 
       <Card>
         {isLoading ? (

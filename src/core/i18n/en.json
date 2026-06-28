@@ -1142,7 +1142,10 @@
       "printTitle": "Payroll",
       "printMonthYear": "Month/Year:",
       "created": "Payroll created successfully",
-      "updated": "Payroll updated successfully"
+      "updated": "Payroll updated successfully",
+      "invalidMonth": "Month must be between 1 and 12",
+      "invalidYear": "Year must be between 2000 and 2100",
+      "noEmployees": "No employees to create payroll"
     },
     "leaves": {
       "title": "Leaves",
@@ -1316,7 +1319,9 @@
       "updated": "End of service record updated successfully",
       "deleted": "End of service record deleted successfully",
       "reportError": "Failed to export report",
-      "requiredFields": "Please select employee and termination date"
+      "requiredFields": "Please select employee and termination date",
+      "invalidDates": "Termination date must be after hire date",
+      "invalidServiceYears": "Cannot calculate service years (hire date not set)"
     }
   },
   "crm": {
@@ -1734,10 +1739,6 @@
     "from": "From",
     "to": "To",
     "typeDistribution": "Type Distribution",
-    "expenseItem": "Item",
-    "expenseDetails": "Expense Details",
-    "expenseDistribution": "Expense Distribution",
-    "good": "Good",
     "none": "None",
     "charts": {
       "monthlySalesAndExpenses": "Monthly Sales and Expenses",

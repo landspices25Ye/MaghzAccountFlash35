@@ -58,6 +58,14 @@ export const EndOfServicePage: React.FC = () => {
       addToast('error', t('hr.eos.requiredFields') || t('common.error'));
       return;
     }
+    if (selectedEmployee?.hireDate && new Date(formData.terminationDate) < new Date(selectedEmployee.hireDate)) {
+      addToast('error', t('hr.eos.invalidDates') || t('common.error'));
+      return;
+    }
+    if (serviceYears <= 0) {
+      addToast('error', t('hr.eos.invalidServiceYears') || t('common.error'));
+      return;
+    }
     const res = await create({
       companyId,
       employeeId: formData.employeeId,
