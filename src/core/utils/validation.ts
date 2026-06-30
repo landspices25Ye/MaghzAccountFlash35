@@ -66,7 +66,9 @@ export const createReceiptVoucherSchema = z.object({
   voucherNumber: nonEmptyString,
   date: dateSchema,
   customerId: uuidSchema,
+  invoiceId: uuidSchema.optional(),
   amount: currencyAmountSchema,
+  amountApplied: currencyAmountSchema.optional(),
   paymentMethod: z.string().max(50),
   bankAccountId: uuidSchema.optional(),
   cashBoxId: uuidSchema.optional(),
@@ -76,6 +78,7 @@ export const createReceiptVoucherSchema = z.object({
   currencyCode: z.string().length(3).optional(),
   exchangeRate: currencyAmountSchema.optional(),
   baseCurrencyAmount: currencyAmountSchema.optional(),
+  baseCurrencyApplied: currencyAmountSchema.optional(),
   status: z.enum(['draft', 'posted', 'cancelled']).default('draft'),
 });
 
@@ -84,8 +87,10 @@ export const createPaymentVoucherSchema = z.object({
   voucherNumber: nonEmptyString,
   date: dateSchema,
   supplierId: uuidSchema.optional(),
+  invoiceId: uuidSchema.optional(),
   expenseAccountId: uuidSchema.optional(),
   amount: currencyAmountSchema,
+  amountApplied: currencyAmountSchema.optional(),
   paymentMethod: z.string().max(50),
   bankAccountId: uuidSchema.optional(),
   cashBoxId: uuidSchema.optional(),
@@ -95,6 +100,7 @@ export const createPaymentVoucherSchema = z.object({
   currencyCode: z.string().length(3).optional(),
   exchangeRate: currencyAmountSchema.optional(),
   baseCurrencyAmount: currencyAmountSchema.optional(),
+  baseCurrencyApplied: currencyAmountSchema.optional(),
   status: z.enum(['draft', 'posted', 'cancelled']).default('draft'),
 });
 

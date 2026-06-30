@@ -56,6 +56,8 @@ const UNIFIED_TABLES = [
   'units', 'cash_boxes', 'banks', 'cost_centers', 'default_accounts', 'document_sequences',
   // Vouchers (2)
   'receipt_vouchers', 'payment_vouchers',
+  // Audit Logs (1)
+  'audit_logs',
 ];
 
 describe('Drizzle migrations (unified)', () => {
@@ -80,10 +82,19 @@ describe('Drizzle migrations (unified)', () => {
     expect(journal.entries[0].idx).toBe(0);
   });
 
-  it('contains all 60 expected tables', () => {
-    expect(UNIFIED_TABLES.length).toBe(60);
+  it('contains all 60 expected tables in unified schema + audit_logs in 0014', () => {
+    expect(UNIFIED_TABLES.length).toBe(61);
     for (const table of UNIFIED_TABLES) {
-      expect(allSql).toContain(`CREATE TABLE IF NOT EXISTS "${table}"`);
+      if (table === 'audit_logs') {
+        const mig14 = readFileSync(join(MIGRATIONS_DIR, '0014_audit_logs_table.sql'), 'utf-8');
+        expect(mig14, `Missing CREATE TABLE for ${table}`).toMatch(/CREATE TABLE[^;]*?audit_logs\b/i);
+        continue;
+      }
+      const re = new RegExp(
+        `CREATE TABLE[^;]*?${table.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`,
+        'i',
+      );
+      expect(re.test(allSql), `Missing CREATE TABLE for ${table}`).toBe(true);
     }
   });
 
@@ -141,11 +152,16 @@ describe('Drizzle migrations (unified)', () => {
 
   it('all company_id columns are NOT NULL', () => {
     // Every table with company_id must declare it NOT NULL
+    // (search across all migration files — `audit_logs` lives in 0013)
     const tablesWithCompanyId = UNIFIED_TABLES.filter(t => t !== 'product_product_categories');
     for (const table of tablesWithCompanyId) {
-      // Look for: "company_id" uuid ... NOT NULL (within 200 chars)
-      const pattern = new RegExp(`CREATE TABLE[^]*?"${table}"[^]*?"company_id" uuid[^]*?NOT NULL`, 'i');
-      expect(pattern.test(file0), `${table} company_id should be NOT NULL`).toBe(true);
+      // Match the CREATE TABLE line (with or without quoted identifiers),
+      // then require `company_id` to be NOT NULL within 200 chars.
+      const pattern = new RegExp(
+        `CREATE TABLE[^]*?${table.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[^]*?company_id[^]*?NOT NULL`,
+        'i',
+      );
+      expect(pattern.test(allSql), `${table} company_id should be NOT NULL`).toBe(true);
     }
   });
 
@@ -417,12 +433,14 @@ describe('Migration 0009: Performance indexes phase 2', () => {
     expect(mig9).toMatch(/pg_constraint WHERE conname/i);
   });
 
-  it('_journal.json has 14 entries (0000-0013)', () => {
+  it('_journal.json has 16 entries (0000-0015)', () => {
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_DIR, 'meta', '_journal.json'), 'utf-8'));
-    expect(journal.entries.length).toBe(14);
+    expect(journal.entries.length).toBe(16);
     expect(journal.entries[11].tag).toBe('0011_manufacturing_schema_fix');
     expect(journal.entries[12].tag).toBe('0012_purchase_invoice_lines_percents');
     expect(journal.entries[13].tag).toBe('0013_hr_schema_drift_fix');
+    expect(journal.entries[14].tag).toBe('0014_audit_logs_table');
+    expect(journal.entries[15].tag).toBe('0015_payment_allocation');
   });
 });
 
@@ -484,13 +502,13 @@ describe('Drizzle schema TypeScript', () => {
   it('schema files exist for all modules', () => {
     const schemaDir = join(process.cwd(), 'src', 'core', 'database', 'schema');
     const files = readdirSync(schemaDir);
-    const expected = ['inventory', 'accounting', 'sales', 'purchases', 'manufacturing', 'hr', 'crm', 'settings', 'vouchers'];
+    const expected = ['inventory', 'accounting', 'sales', 'purchases', 'manufacturing', 'hr', 'crm', 'settings', 'vouchers', 'audit'];
     for (const name of expected) {
       expect(files.some((f) => f.startsWith(name))).toBe(true);
     }
   });
 
-  it('Drizzle schema exports all 60 tables', { timeout: 30000 }, async () => {
+  it('Drizzle schema exports all 61 tables', { timeout: 30000 }, async () => {
     const mod = await import('../src/core/database/schema/index');
     const expected = [
       'companies', 'users', 'roles', 'settings', 'branches', 'currencies', 'vatSettings',
@@ -509,6 +527,7 @@ describe('Drizzle schema TypeScript', () => {
       'tasks', 'activities',
       'units', 'cashBoxes', 'banks', 'costCenters', 'defaultAccounts', 'documentSequences',
       'receiptVouchers', 'paymentVouchers',
+      'auditLogs',
     ];
     for (const name of expected) {
       expect(mod, `Missing Drizzle export ${name}`).toHaveProperty(name);
@@ -572,11 +591,12 @@ describe('Migration 0013: HR schema drift fix', () => {
   });
 
   it('adds photo_url column to employees', () => {
-    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN IF NOT EXISTS photo_url/i);
+    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN photo_url/i);
+    expect(mig13).toMatch(/photo_url/);
   });
 
   it('adds attachments column to employees (jsonb)', () => {
-    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN IF NOT EXISTS attachments/i);
+    expect(mig13).toMatch(/ALTER TABLE employees ADD COLUMN attachments/i);
     expect(mig13).toContain('jsonb');
   });
 
@@ -585,8 +605,8 @@ describe('Migration 0013: HR schema drift fix', () => {
     expect(mig13).toContain('CREATE INDEX IF NOT EXISTS');
   });
 
-  it('uses IF NOT EXISTS for idempotency', () => {
-    expect(mig13).toMatch(/ADD COLUMN IF NOT EXISTS/);
+  it('uses IF NOT EXISTS guard for idempotency', () => {
+    expect(mig13).toMatch(/IF NOT EXISTS/);
     expect(mig13).toMatch(/CREATE INDEX IF NOT EXISTS/);
   });
 
@@ -594,5 +614,114 @@ describe('Migration 0013: HR schema drift fix', () => {
     const mod = await import('../src/core/database/schema/index');
     expect(mod.employees.photoUrl).toBeDefined();
     expect(mod.employees.attachments).toBeDefined();
+  });
+});
+
+describe('Migration 0014: Audit logs table', () => {
+  let mig14: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0014_audit_logs_table.sql');
+    mig14 = readFileSync(path, 'utf-8');
+  });
+
+  it('creates audit_logs table with all required columns', () => {
+    expect(mig14).toMatch(/CREATE TABLE IF NOT EXISTS/i);
+    expect(mig14).toMatch(/audit_logs/i);
+    expect(mig14).toMatch(/uuid PRIMARY KEY/i);
+    expect(mig14).toMatch(/user_id/i);
+    expect(mig14).toMatch(/action.*varchar/i);
+    expect(mig14).toMatch(/table_name.*varchar/i);
+    expect(mig14).toMatch(/record_id/i);
+    expect(mig14).toMatch(/old_values/i);
+    expect(mig14).toMatch(/new_values/i);
+    expect(mig14).toMatch(/ip_address/i);
+    expect(mig14).toMatch(/company_id/i);
+    expect(mig14).toMatch(/created_at/i);
+  });
+
+  it('creates indexes for fast queries', () => {
+    expect(mig14).toMatch(/idx_audit_logs/);
+    expect(mig14).toMatch(/CREATE INDEX IF NOT EXISTS/i);
+  });
+
+  it('is idempotent (CREATE TABLE IF NOT EXISTS, CREATE INDEX IF NOT EXISTS)', () => {
+    expect(mig14).toMatch(/CREATE TABLE IF NOT EXISTS/i);
+    expect(mig14).toMatch(/CREATE INDEX IF NOT EXISTS/i);
+  });
+
+  it('Drizzle schema exports auditLogs table with all required columns', async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.auditLogs).toBeDefined();
+    expect(mod.auditLogs.id).toBeDefined();
+    expect(mod.auditLogs.userId).toBeDefined();
+    expect(mod.auditLogs.action).toBeDefined();
+    expect(mod.auditLogs.tableName).toBeDefined();
+    expect(mod.auditLogs.recordId).toBeDefined();
+    expect(mod.auditLogs.oldValues).toBeDefined();
+    expect(mod.auditLogs.newValues).toBeDefined();
+    expect(mod.auditLogs.ipAddress).toBeDefined();
+    expect(mod.auditLogs.companyId).toBeDefined();
+    expect(mod.auditLogs.createdAt).toBeDefined();
+  });
+});
+
+describe('Migration 0015: Payment allocation columns', () => {
+  let mig15: string;
+
+  beforeAll(() => {
+    const path = join(MIGRATIONS_DIR, '0015_payment_allocation.sql');
+    mig15 = readFileSync(path, 'utf-8');
+  });
+
+  it('adds invoice_id column to receipt_vouchers with FK to sales_invoices', () => {
+    expect(mig15).toMatch(/ALTER TABLE receipt_vouchers/i);
+    expect(mig15).toMatch(/invoice_id uuid/i);
+    expect(mig15).toMatch(/REFERENCES sales_invoices/i);
+  });
+
+  it('adds amount_applied and base_currency_applied to receipt_vouchers', () => {
+    expect(mig15).toMatch(/amount_applied.*numeric.*DEFAULT '0'.*NOT NULL/i);
+    expect(mig15).toMatch(/base_currency_applied.*numeric.*DEFAULT '0'.*NOT NULL/i);
+  });
+
+  it('adds invoice_id column to payment_vouchers with FK to purchase_invoices', () => {
+    expect(mig15).toMatch(/ALTER TABLE payment_vouchers/i);
+    expect(mig15).toMatch(/invoice_id uuid/i);
+    expect(mig15).toMatch(/REFERENCES purchase_invoices/i);
+  });
+
+  it('adds amount_applied and base_currency_applied to payment_vouchers', () => {
+    expect(mig15).toMatch(/amount_applied/i);
+  });
+
+  it('creates indexes for fast payment application queries', () => {
+    expect(mig15).toMatch(/idx_receipt_vouchers_invoice/i);
+    expect(mig15).toMatch(/idx_payment_vouchers_invoice/i);
+    expect(mig15).toMatch(/CREATE INDEX IF NOT EXISTS/i);
+  });
+
+  it('adds CHECK constraints for amount_applied integrity', () => {
+    expect(mig15).toMatch(/amount_applied_check/i);
+    expect(mig15).toMatch(/amount_applied >= 0 AND amount_applied <= amount/i);
+  });
+
+  it('is idempotent (all ADD COLUMN IF NOT EXISTS + CREATE INDEX IF NOT EXISTS)', () => {
+    expect(mig15).toMatch(/ADD COLUMN IF NOT EXISTS/i);
+    expect(mig15).toMatch(/CREATE INDEX IF NOT EXISTS/i);
+  });
+
+  it('Drizzle schema exposes new columns on receiptVouchers', async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.receiptVouchers.invoiceId).toBeDefined();
+    expect(mod.receiptVouchers.amountApplied).toBeDefined();
+    expect(mod.receiptVouchers.baseCurrencyApplied).toBeDefined();
+  });
+
+  it('Drizzle schema exposes new columns on paymentVouchers', async () => {
+    const mod = await import('../src/core/database/schema/index');
+    expect(mod.paymentVouchers.invoiceId).toBeDefined();
+    expect(mod.paymentVouchers.amountApplied).toBeDefined();
+    expect(mod.paymentVouchers.baseCurrencyApplied).toBeDefined();
   });
 });

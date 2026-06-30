@@ -129,6 +129,18 @@ export const SalesReturnsPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!header.customerId || !header.invoiceId || lines.length === 0 || !activeCompany?.id) return;
+    if (lines.some(l => !l.productId)) {
+      addToast('error', t('sales.invoice.productRequired') || t('common.error'));
+      return;
+    }
+    if (lines.some(l => l.quantity <= 0)) {
+      addToast('error', t('sales.invoice.quantityPositive') || t('common.error'));
+      return;
+    }
+    if (!header.reason.trim()) {
+      addToast('error', t('sales.return.reason') + ' ' + (t('validation.required') || ''));
+      return;
+    }
     setSaving(true);
     let returnNumber: string;
     if (editingId) {
@@ -194,6 +206,7 @@ export const SalesReturnsPage: React.FC = () => {
         if (!activeCompany?.id) return;
         setPostingId(ret.id);
         const postResult = await postSalesReturn(activeCompany.id, {
+          id: ret.id,
           returnNumber: ret.returnNumber,
           date: ret.date,
           customer: ret.customer?.name || ret.customerId,

@@ -189,6 +189,27 @@ export interface SupplierFilters {
   search?: string;
 }
 
+export function useOutstandingInvoicesForSupplier(companyId: string, supplierId: string) {
+  const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!companyId || !supplierId) {
+      setInvoices([]);
+      return;
+    }
+    setIsLoading(true);
+    const result = await purchasesApi.getOutstandingInvoicesForSupplier(companyId, supplierId);
+    if (result.success && result.data) setInvoices(result.data);
+    else setInvoices([]);
+    setIsLoading(false);
+  }, [companyId, supplierId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return { invoices, isLoading, reload: load };
+}
+
 export function useSuppliersPaginated(companyId: string, filters?: SupplierFilters) {
   const { reload: reloadList, ...list } = usePaginatedList<Supplier>(
     (page, pageSize) => purchasesApi.getSuppliersPaginated(companyId, page, pageSize, filters),

@@ -123,7 +123,7 @@ export const crmApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query<{ id: string }>(
-        `INSERT INTO leads (company_id, name, phone, email, company, source, status, rating, estimated_value, assigned_to, notes, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+        `INSERT INTO leads (company_id, name, phone, email, company, source, status, rating, estimated_value, assigned_to, notes, created_at) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10::uuid,$11,$12) RETURNING id`,
         [data.companyId, data.name, data.phone || null, data.email || null, data.company || null, data.source || null, data.status, data.rating, data.estimatedValue || null, data.assignedTo || null, data.notes || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
@@ -187,7 +187,7 @@ export const crmApi = {
         ? customerData.code.trim()
         : await nextCustomerCode(companyId);
       const custResult = await adapter.query(
-        `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, credit_limit, balance, is_active) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+        `INSERT INTO customers (company_id, code, name, phone, email, address, tax_number, credit_limit, balance, is_active) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
         [lead.company_id, customerCode, lead.name, lead.phone, lead.email, customerData.address || null, customerData.taxNumber || null, customerData.creditLimit || 0, 0, true]
       );
       if (custResult.success && custResult.rows?.[0]) {
@@ -282,7 +282,7 @@ export const crmApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `INSERT INTO opportunities (company_id, lead_id, customer_id, name, value, stage, probability, expected_close_date, assigned_to, notes, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        `INSERT INTO opportunities (company_id, lead_id, customer_id, name, value, stage, probability, expected_close_date, assigned_to, notes, created_at) VALUES ($1::uuid,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9::uuid,$10,$11) RETURNING id`,
         [data.companyId, data.leadId || null, data.customerId || null, data.name, data.value, data.stage, data.probability ?? null, data.expectedCloseDate || null, data.assignedTo || null, data.notes || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
@@ -359,7 +359,7 @@ export const crmApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `INSERT INTO tasks (company_id, opportunity_id, lead_id, customer_id, title, description, due_date, priority, status, assigned_to, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        `INSERT INTO tasks (company_id, opportunity_id, lead_id, customer_id, title, description, due_date, priority, status, assigned_to, created_at) VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5,$6,$7::date,$8,$9,$10::uuid,$11) RETURNING id`,
         [data.companyId, data.opportunityId || null, data.leadId || null, data.customerId || null, data.title, data.description || null, data.dueDate || null, data.priority, data.status, data.assignedTo || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };
@@ -492,7 +492,7 @@ export const crmApi = {
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
       const result = await adapter.query(
-        `INSERT INTO activities (company_id, lead_id, opportunity_id, customer_id, type, subject, description, activity_date, duration_minutes, assigned_to, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+        `INSERT INTO activities (company_id, lead_id, opportunity_id, customer_id, type, subject, description, activity_date, duration_minutes, assigned_to, created_at) VALUES ($1::uuid,$2::uuid,$3::uuid,$4::uuid,$5,$6,$7,$8::date,$9,$10::uuid,$11) RETURNING id`,
         [data.companyId, data.leadId || null, data.opportunityId || null, data.customerId || null, data.type, data.subject, data.description || null, data.activityDate, data.durationMinutes ?? null, data.assignedTo || null, new Date().toISOString()]
       );
       if (result.success && result.rows?.[0]) return { success: true, id: result.rows[0].id };

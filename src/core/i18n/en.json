@@ -447,6 +447,11 @@
     "check": "Check",
     "checkNumber": "Check Number",
     "checkDate": "Check Date",
+    "applyToInvoice": "Apply to Invoice",
+    "onAccount": "On Account (without linking)",
+    "amountWillBeApplied": "Amount will be applied to the selected invoice automatically",
+    "invoiceLinked": "Invoice: ",
+    "outstanding": "Outstanding",
     "bankAccount": "Bank Account",
     "expenseAccount": "Expense Account",
     "notes": "Notes",
@@ -630,7 +635,28 @@
     "postSuccess": "Adjustment posted successfully",
     "createTransferSuccess": "Transfer created successfully",
     "completeTransferSuccess": "Transfer completed successfully",
-    "deleteTransferSuccess": "Transfer deleted successfully"
+    "deleteTransferSuccess": "Transfer deleted successfully",
+    "unitName": "Unit",
+    "autoNumber": "Auto",
+    "manual": "Manual",
+    "codeAutoOn": "Auto-numbering is enabled",
+    "codeAutoOff": "Auto-numbering is disabled",
+    "refreshCode": "Refresh code",
+    "nextCodeWillBe": "Next code will be",
+    "codePlaceholder": "Enter product code",
+    "barcodePlaceholder": "Scan or enter barcode",
+    "skuPlaceholder": "Internal SKU",
+    "productNamePlaceholder": "Product name in Arabic",
+    "nameEnglishPlaceholder": "Product name in English",
+    "noCategoriesAvailable": "No categories available. Add categories in Product Settings first.",
+    "errors": {
+      "nameRequired": "Please enter the product name",
+      "unitRequired": "Please select a unit",
+      "codeRequired": "Please enter a product code or enable auto-numbering",
+      "codeGenerationFailed": "Failed to generate auto code",
+      "imageTooLarge": "Image size exceeds 2MB",
+      "cameraFailed": "Failed to start camera"
+    }
   },
   "sales": {
     "invoices": "Sales Invoices",
@@ -735,6 +761,8 @@
       "select": "Select Invoice",
       "postFailed": "Failed to post invoice",
       "unknownError": "Unknown error",
+      "productRequired": "A product must be selected for every line",
+      "quantityPositive": "Quantity must be greater than zero",
       "created": "Invoice created successfully",
       "updated": "Invoice updated successfully",
       "deleted": "Invoice deleted",
@@ -1946,7 +1974,31 @@
       "viewer": "Viewer"
     },
     "roles": "Roles & Permissions",
-    "backup": "Backup",
+    "backup": {
+      "title": "Backup & Restore",
+      "subtitle": "Create and restore database backups",
+      "createTitle": "Create Backup",
+      "createDesc": "Download a complete backup of the database",
+      "create": "Create Backup",
+      "restoreTitle": "Restore",
+      "restoreDesc": "Restore data from a previous backup file",
+      "restore": "Restore Data",
+      "chooseFile": "Choose backup file",
+      "recentTitle": "Recent Backups",
+      "typeAuto": "Automatic",
+      "typeManual": "Manual",
+      "creatingBackup": "Creating backup...",
+      "restoring": "Restoring data...",
+      "successMessage": "Backup created successfully ({{tables}} tables)",
+      "errorMessage": "Failed: {{error}}",
+      "successToast": "Backup created",
+      "errorToast": "Backup/restore failed",
+      "noCompany": "No active company",
+      "noFileSelected": "Please select a backup file",
+      "invalidFile": "Invalid backup file",
+      "restoreNote": "Restore request recorded. Manual review required by an administrator before actual restoration.",
+      "restoreRecorded": "Restore request recorded for review"
+    },
     "language": "Language",
     "theme": "Theme",
     "common": {
@@ -2041,7 +2093,8 @@
       "workOrder": "Work Order",
       "stockAdjustment": "Stock Adjustment",
       "inventoryTransfer": "Inventory Transfer",
-      "payrollRun": "Payroll Run"
+      "payrollRun": "Payroll Run",
+      "product": "Product"
     },
     "productTypes": {
       "title": "Product Types",
@@ -2522,6 +2575,12 @@
     },
     "cannotDeleteSelf": {
       "cannotDeleteSelf": "You cannot delete your own account"
+    },
+    "passwordInsecure": {
+      "passwordInsecure": "This password is too common. Please choose a stronger one."
+    },
+    "passwordWeak": {
+      "passwordWeak": "Password must contain letters and numbers"
     }
   },
   "branches": {
@@ -2572,6 +2631,77 @@
     },
     "applied": {
       "applied": "Template applied successfully"
+    }
+  },
+  "backup": {
+    "title": {
+      "title": "Backup & Restore"
+    },
+    "subtitle": {
+      "subtitle": "Create and restore database backups"
+    },
+    "createTitle": {
+      "createTitle": "Create Backup"
+    },
+    "createDesc": {
+      "createDesc": "Download a complete backup of the database"
+    },
+    "create": {
+      "create": "Create Backup"
+    },
+    "restoreTitle": {
+      "restoreTitle": "Restore"
+    },
+    "restoreDesc": {
+      "restoreDesc": "Restore data from a previous backup file"
+    },
+    "restore": {
+      "restore": "Restore Data"
+    },
+    "chooseFile": {
+      "chooseFile": "Choose backup file"
+    },
+    "recentTitle": {
+      "recentTitle": "Recent Backups"
+    },
+    "typeAuto": {
+      "typeAuto": "Automatic"
+    },
+    "typeManual": {
+      "typeManual": "Manual"
+    },
+    "creatingBackup": {
+      "creatingBackup": "Creating backup..."
+    },
+    "restoring": {
+      "restoring": "Restoring data..."
+    },
+    "successMessage": {
+      "successMessage": "Backup created successfully ({{tables}} tables)"
+    },
+    "errorMessage": {
+      "errorMessage": "Failed: {{error}}"
+    },
+    "successToast": {
+      "successToast": "Backup created"
+    },
+    "errorToast": {
+      "errorToast": "Backup/restore failed"
+    },
+    "noCompany": {
+      "noCompany": "No active company"
+    },
+    "noFileSelected": {
+      "noFileSelected": "Please select a backup file"
+    },
+    "invalidFile": {
+      "invalidFile": "Invalid backup file"
+    },
+    "restoreNote": {
+      "restoreNote": "Restore request recorded. Manual review required by an administrator before actual restoration."
+    },
+    "restoreRecorded": {
+      "restoreRecorded": "Restore request recorded for review"
     }
   }
 }

@@ -1,34 +1,60 @@
 import { getDbAdapter } from '@/core/database/adapters';
 
+export type AuditAction =
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'post'
+  | 'cancel'
+  | 'login'
+  | 'logout'
+  | 'reset_password'
+  | 'toggle_active';
+
 interface AuditLogEntry {
   userId: string;
-  action: 'create' | 'update' | 'delete' | 'post' | 'cancel' | 'login' | 'logout';
+  username?: string;
+  action: AuditAction;
   tableName: string;
   recordId: string;
+  recordLabel?: string;
   oldValues?: Record<string, unknown>;
   newValues?: Record<string, unknown>;
   ipAddress?: string;
   companyId: string;
 }
 
+function safeStringify(value: Record<string, unknown> | undefined): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
 export async function logAudit(entry: AuditLogEntry): Promise<void> {
   try {
     const adapter = await getDbAdapter();
-    
+
+    const enrichedNewValues = entry.recordLabel
+      ? { ...(entry.newValues || {}), _label: entry.recordLabel, _username: entry.username }
+      : entry.newValues;
+
     await adapter.query(
-      `INSERT INTO audit_logs (id, user_id, action, table_name, record_id, old_values, new_values, ip_address, company_id, created_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO audit_logs (id, user_id, action, table_name, record_id, old_values, new_values, ip_address, company_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
       [
         crypto.randomUUID(),
         entry.userId,
         entry.action,
         entry.tableName,
         entry.recordId,
-        entry.oldValues ? JSON.stringify(entry.oldValues) : null,
-        entry.newValues ? JSON.stringify(entry.newValues) : null,
+        safeStringify(entry.oldValues),
+        safeStringify(enrichedNewValues),
         entry.ipAddress || null,
         entry.companyId,
-        new Date().toISOString(),
       ]
     );
   } catch (_error) {

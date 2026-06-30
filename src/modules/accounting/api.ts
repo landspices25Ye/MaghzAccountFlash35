@@ -403,16 +403,30 @@ export const accountingApi = {
     try {
       const validation = validateInput(createReceiptVoucherSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
+      if ((data.amountApplied ?? 0) > data.amount) {
+        return { success: false, error: 'Amount applied cannot exceed voucher amount.' };
+      }
+      if (data.invoiceId && (data.amountApplied ?? 0) === 0) {
+        return { success: false, error: 'Amount applied must be > 0 when invoice is specified.' };
+      }
+      if (!data.invoiceId && (data.amountApplied ?? 0) > 0) {
+        return { success: false, error: 'Amount applied requires an invoice.' };
+      }
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
       const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
+      const amountApplied = data.amountApplied ?? 0;
+      const baseCurrencyApplied = data.baseCurrencyApplied ?? (amountApplied * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO receipt_vouchers (id, company_id, voucher_number, date, customer_id, invoice_id, amount, amount_applied, currency_code, exchange_rate, base_currency_amount, base_currency_applied, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.customerId, data.invoiceId || null, data.amount, amountApplied, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyApplied, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
+      if (result.success && data.invoiceId && amountApplied > 0) {
+        await this.applyPaymentToInvoice(id, data.companyId, data.invoiceId, amountApplied, baseCurrencyApplied, 'receipt', userId);
+      }
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
     } catch (e) {
@@ -425,15 +439,30 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const current = await adapter.query(
+        'SELECT status, amount_applied, base_currency_applied, invoice_id FROM receipt_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
+        [id, companyId]
+      );
+      if (!current.success || !current.rows?.[0]) {
+        return { success: false, error: 'Voucher not found' };
+      }
+      const cv = current.rows[0] as Record<string, unknown>;
+      const currentStatus = String(cv.status);
+      if (currentStatus === 'posted' && (data.invoiceId !== undefined || data.amountApplied !== undefined)) {
+        return { success: false, error: 'Cannot modify invoice link or amount applied on a posted voucher.' };
+      }
       const fields: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
       if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
       if (data.customerId !== undefined) { fields.push(`customer_id = $${idx++}`); values.push(data.customerId); }
+      if (data.invoiceId !== undefined) { fields.push(`invoice_id = $${idx++}`); values.push(data.invoiceId); }
       if (data.amount !== undefined) { fields.push(`amount = $${idx++}`); values.push(data.amount); }
+      if (data.amountApplied !== undefined) { fields.push(`amount_applied = $${idx++}`); values.push(data.amountApplied); }
       if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
       if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
       if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.baseCurrencyApplied !== undefined) { fields.push(`base_currency_applied = $${idx++}`); values.push(data.baseCurrencyApplied); }
       if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
       if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
       if (data.cashBoxId !== undefined) { fields.push(`cash_box_id = $${idx++}`); values.push(data.cashBoxId); }
@@ -446,7 +475,7 @@ export const accountingApi = {
       values.push(id);
       values.push(companyId);
       return await adapter.query(
-        `UPDATE receipt_vouchers SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`,
+        `UPDATE receipt_vouchers SET ${fields.join(', ')} WHERE id = $${idx}::uuid AND company_id = $${idx + 1}::uuid`,
         values
       );
     } catch (e) {
@@ -459,12 +488,34 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      return await adapter.query(
-        `DELETE FROM receipt_vouchers WHERE id = $1 AND company_id = $2`,
+      const check = await adapter.query(
+        'SELECT invoice_id, amount_applied, base_currency_applied, status FROM receipt_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
         [id, companyId]
       );
+      if (!check.success || !check.rows?.[0]) {
+        return { success: false, error: 'Voucher not found' };
+      }
+      const v = check.rows[0] as Record<string, unknown>;
+      const amountApplied = Number(v.amount_applied) || 0;
+      if (amountApplied > 0) {
+        return { success: false, error: 'Cannot delete voucher with applied payments. Reverse the payment first by creating a reversal voucher.' };
+      }
+      const result = await adapter.query(
+        'DELETE FROM receipt_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
+        [id, companyId]
+      );
+      if (result.success) return { success: true };
+      const msg = result.error || '';
+      if (msg.includes('foreign key') || msg.includes('violates')) {
+        return { success: false, error: 'Cannot delete voucher with linked records. Cancel it instead.' };
+      }
+      return { success: false, error: result.error };
     } catch (e) {
-      return { success: false, error: String(e) };
+      const msg = String(e);
+      if (msg.includes('foreign key') || msg.includes('violates')) {
+        return { success: false, error: 'Cannot delete voucher with linked records. Cancel it instead.' };
+      }
+      return { success: false, error: msg };
     }
   },
 
@@ -550,16 +601,30 @@ export const accountingApi = {
     try {
       const validation = validateInput(createPaymentVoucherSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
+      if ((data.amountApplied ?? 0) > data.amount) {
+        return { success: false, error: 'Amount applied cannot exceed voucher amount.' };
+      }
+      if (data.invoiceId && (data.amountApplied ?? 0) === 0) {
+        return { success: false, error: 'Amount applied must be > 0 when invoice is specified.' };
+      }
+      if (!data.invoiceId && (data.amountApplied ?? 0) > 0) {
+        return { success: false, error: 'Amount applied requires an invoice.' };
+      }
       const adapter = await getDbAdapter();
       const id = crypto.randomUUID();
       const currencyCode = data.currencyCode || YER_CODE;
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.amount * exchangeRate);
+      const amountApplied = data.amountApplied ?? 0;
+      const baseCurrencyApplied = data.baseCurrencyApplied ?? (amountApplied * exchangeRate);
       const result = await adapter.query(
-        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, expense_account_id, amount, currency_code, exchange_rate, base_currency_amount, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.expenseAccountId, data.amount, currencyCode, exchangeRate, baseCurrencyAmount, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
+        `INSERT INTO payment_vouchers (id, company_id, voucher_number, date, supplier_id, invoice_id, expense_account_id, amount, amount_applied, currency_code, exchange_rate, base_currency_amount, base_currency_applied, payment_method, bank_account_id, cash_box_id, check_number, check_date, notes, status, created_by, updated_by)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+        [id, data.companyId, data.voucherNumber, data.date, data.supplierId, data.invoiceId || null, data.expenseAccountId, data.amount, amountApplied, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyApplied, data.paymentMethod, data.bankAccountId, data.cashBoxId, data.checkNumber, data.checkDate, data.notes, data.status, userId, userId]
       );
+      if (result.success && data.invoiceId && amountApplied > 0) {
+        await this.applyPaymentToInvoice(id, data.companyId, data.invoiceId, amountApplied, baseCurrencyApplied, 'payment', userId);
+      }
       if (result.success) return { success: true, id };
       return { success: false, error: result.error };
     } catch (e) {
@@ -572,16 +637,31 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
+      const current = await adapter.query(
+        'SELECT status, amount_applied, base_currency_applied, invoice_id FROM payment_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
+        [id, companyId]
+      );
+      if (!current.success || !current.rows?.[0]) {
+        return { success: false, error: 'Voucher not found' };
+      }
+      const cv = current.rows[0] as Record<string, unknown>;
+      const currentStatus = String(cv.status);
+      if (currentStatus === 'posted' && (data.invoiceId !== undefined || data.amountApplied !== undefined)) {
+        return { success: false, error: 'Cannot modify invoice link or amount applied on a posted voucher.' };
+      }
       const fields: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
       if (data.date !== undefined) { fields.push(`date = $${idx++}`); values.push(data.date); }
       if (data.supplierId !== undefined) { fields.push(`supplier_id = $${idx++}`); values.push(data.supplierId); }
+      if (data.invoiceId !== undefined) { fields.push(`invoice_id = $${idx++}`); values.push(data.invoiceId); }
       if (data.expenseAccountId !== undefined) { fields.push(`expense_account_id = $${idx++}`); values.push(data.expenseAccountId); }
       if (data.amount !== undefined) { fields.push(`amount = $${idx++}`); values.push(data.amount); }
+      if (data.amountApplied !== undefined) { fields.push(`amount_applied = $${idx++}`); values.push(data.amountApplied); }
       if (data.currencyCode !== undefined) { fields.push(`currency_code = $${idx++}`); values.push(data.currencyCode); }
       if (data.exchangeRate !== undefined) { fields.push(`exchange_rate = $${idx++}`); values.push(data.exchangeRate); }
       if (data.baseCurrencyAmount !== undefined) { fields.push(`base_currency_amount = $${idx++}`); values.push(data.baseCurrencyAmount); }
+      if (data.baseCurrencyApplied !== undefined) { fields.push(`base_currency_applied = $${idx++}`); values.push(data.baseCurrencyApplied); }
       if (data.paymentMethod !== undefined) { fields.push(`payment_method = $${idx++}`); values.push(data.paymentMethod); }
       if (data.bankAccountId !== undefined) { fields.push(`bank_account_id = $${idx++}`); values.push(data.bankAccountId); }
       if (data.cashBoxId !== undefined) { fields.push(`cash_box_id = $${idx++}`); values.push(data.cashBoxId); }
@@ -594,7 +674,7 @@ export const accountingApi = {
       values.push(id);
       values.push(companyId);
       return await adapter.query(
-        `UPDATE payment_vouchers SET ${fields.join(', ')} WHERE id = $${idx} AND company_id = $${idx + 1}`,
+        `UPDATE payment_vouchers SET ${fields.join(', ')} WHERE id = $${idx}::uuid AND company_id = $${idx + 1}::uuid`,
         values
       );
     } catch (e) {
@@ -607,9 +687,34 @@ export const accountingApi = {
       const idValidation = validateInput(idCompanySchema, { id, companyId });
       if (!idValidation.success) return { success: false, error: idValidation.error };
       const adapter = await getDbAdapter();
-      return await adapter.query(`DELETE FROM payment_vouchers WHERE id = $1 AND company_id = $2`, [id, companyId]);
+      const check = await adapter.query(
+        'SELECT invoice_id, amount_applied, base_currency_applied, status FROM payment_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
+        [id, companyId]
+      );
+      if (!check.success || !check.rows?.[0]) {
+        return { success: false, error: 'Voucher not found' };
+      }
+      const v = check.rows[0] as Record<string, unknown>;
+      const amountApplied = Number(v.amount_applied) || 0;
+      if (amountApplied > 0) {
+        return { success: false, error: 'Cannot delete voucher with applied payments. Reverse the payment first by creating a reversal voucher.' };
+      }
+      const result = await adapter.query(
+        'DELETE FROM payment_vouchers WHERE id = $1::uuid AND company_id = $2::uuid',
+        [id, companyId]
+      );
+      if (result.success) return { success: true };
+      const msg = result.error || '';
+      if (msg.includes('foreign key') || msg.includes('violates')) {
+        return { success: false, error: 'Cannot delete voucher with linked records. Cancel it instead.' };
+      }
+      return { success: false, error: result.error };
     } catch (e) {
-      return { success: false, error: String(e) };
+      const msg = String(e);
+      if (msg.includes('foreign key') || msg.includes('violates')) {
+        return { success: false, error: 'Cannot delete voucher with linked records. Cancel it instead.' };
+      }
+      return { success: false, error: msg };
     }
   },
 
@@ -794,6 +899,73 @@ export const accountingApi = {
         return { success: true, data: rows };
       }
       return { success: false, error: result.error };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
+  /**
+   * Apply a voucher (receipt or payment) to an invoice. Updates the invoice's
+   * paid_amount + base_currency_paid and decrements customer/supplier balance.
+   * Called automatically from createReceiptVoucher / createPaymentVoucher when
+   * the voucher is created with an invoiceId + amountApplied > 0.
+   */
+  async applyPaymentToInvoice(
+    voucherId: string,
+    companyId: string,
+    invoiceId: string,
+    amountApplied: number,
+    baseCurrencyApplied: number,
+    voucherType: 'receipt' | 'payment',
+    userId?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const adapter = await getDbAdapter();
+      const table = voucherType === 'receipt' ? 'sales_invoices' : 'purchase_invoices';
+      const partyTable = voucherType === 'receipt' ? 'customers' : 'suppliers';
+      const partyIdColumn = voucherType === 'receipt' ? 'customer_id' : 'supplier_id';
+      const balanceDelta = voucherType === 'receipt' ? -amountApplied : amountApplied;
+
+      const result = await adapter.query(
+        `WITH updated AS (
+          UPDATE ${table} AS i
+          SET
+            paid_amount = COALESCE(i.paid_amount, 0) + $1,
+            base_currency_paid = COALESCE(i.base_currency_paid, 0) + $2,
+            status = CASE
+              WHEN COALESCE(i.paid_amount, 0) + $1 >= i.total_amount
+                AND i.status NOT IN ('cancelled', 'paid')
+              THEN 'paid'
+              WHEN COALESCE(i.paid_amount, 0) + $1 > 0
+                AND i.status NOT IN ('cancelled', 'paid')
+              THEN 'partially_paid'
+              ELSE i.status
+            END,
+            updated_at = NOW()
+          WHERE i.id = $3::uuid AND i.company_id = $4::uuid
+          RETURNING i.${partyIdColumn}, i.total_amount, i.paid_amount, i.currency_code
+        )
+        SELECT ${partyIdColumn}, total_amount, paid_amount, currency_code FROM updated`,
+        [amountApplied, baseCurrencyApplied, invoiceId, companyId]
+      );
+      if (!result.success || !result.rows?.[0]) {
+        return { success: false, error: 'Invoice not found' };
+      }
+      const inv = result.rows[0] as Record<string, unknown>;
+      const partyId = String(inv[partyIdColumn] || '');
+      if (!partyId) {
+        void voucherId;
+        void userId;
+        return { success: false, error: 'Invoice has no associated party (customer/supplier)' };
+      }
+      await adapter.query(
+        `UPDATE ${partyTable} SET balance = COALESCE(balance, 0) + $1, updated_at = NOW()
+         WHERE id = $2::uuid AND company_id = $3::uuid`,
+        [balanceDelta, partyId, companyId]
+      );
+      void voucherId;
+      void userId;
+      return { success: true };
     } catch (e) {
       return { success: false, error: String(e) };
     }

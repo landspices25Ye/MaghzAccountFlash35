@@ -126,6 +126,12 @@ const BANKS = [
   { name: 'حساب بنك الكريمي',         bank_name: 'بنك الكريمي',         account_number: '0987654321', iban: 'YE09876543210987', balance: 2500000, account_code: '11102' },
 ];
 
+const CASH_BOXES = [
+  { name: 'الصندوق الرئيسي',  code: 'CB-MAIN',  balance: 5000000, account_code: '11101', responsible_role: 'admin' },
+  { name: 'صندوق الفرع الأول', code: 'CB-BR1',   balance: 1500000, account_code: '11101', responsible_role: 'manager' },
+  { name: 'صندوق المبيعات',    code: 'CB-SALES', balance: 2500000, account_code: '11101', responsible_role: 'sales_rep' },
+];
+
 const PRODUCT_CATEGORIES = [
   { name: 'المواد الغذائية' },
   { name: 'مواد التنظيف' },
@@ -321,6 +327,21 @@ export async function seedComprehensiveDemoData(client, companyId) {
     );
   }
 
+  // ─── 6b. Cash Boxes ──────────────────────────────────────────────────────
+  console.log('[SEED] Inserting cash boxes...');
+  for (const cb of CASH_BOXES) {
+    const accountId = codeToId.get(cb.account_code);
+    const responsibleUserId = cb.responsible_role === 'admin' ? adminId
+      : cb.responsible_role === 'manager' ? adminId
+      : adminId;
+    await client.query(
+      `INSERT INTO cash_boxes (company_id, name, code, account_id, responsible_user_id, is_active, current_balance)
+       SELECT $1::uuid, $2::text, $3::text, $4::uuid, $5::uuid, TRUE, $6::numeric
+       WHERE NOT EXISTS (SELECT 1 FROM cash_boxes WHERE company_id = $1::uuid AND code = $3::text);`,
+      [companyId, cb.name, cb.code, accountId, responsibleUserId, cb.balance]
+    );
+  }
+
   // ─── 7. Default Accounts ─────────────────────────────────────────────────
   console.log('[SEED] Linking default accounts...');
   for (const da of DEFAULT_ACCOUNTS) {
@@ -366,6 +387,7 @@ export async function seedComprehensiveDemoData(client, companyId) {
     { type: 'payment_voucher',  prefix: 'PV-',  start: 1, current: 0,  pad: 4 },
     { type: 'work_order',        prefix: 'WO-',  start: 1, current: 4,  pad: 6 },
     { type: 'payroll_run',       prefix: 'PAY-', start: 1, current: 2,  pad: 6 },
+    { type: 'product',           prefix: 'PRD-', start: 1, current: 15, pad: 4 },
   ];
   for (const s of sequences) {
     await client.query(

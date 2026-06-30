@@ -246,7 +246,7 @@ export const purchasesApi = {
       const adapter = await getDbAdapter();
       const result = await adapter.query(
         `INSERT INTO suppliers (company_id, code, name, phone, email, address, tax_number, balance, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
         [data.companyId, data.code, data.name, data.phone, data.email, data.address, data.taxNumber, data.balance, data.isActive]
       );
       if (result.success && result.rows?.[0]) {
@@ -462,6 +462,32 @@ export const purchasesApi = {
     }
   },
 
+  async getOutstandingInvoicesForSupplier(companyId: string, supplierId: string): Promise<{ success: boolean; data?: PurchaseInvoice[]; error?: string }> {
+    try {
+      const cidValidation = validateInput(companyIdSchema, companyId);
+      if (!cidValidation.success) return { success: false, error: cidValidation.error };
+      const suValidation = validateInput(uuidSchema, supplierId);
+      if (!suValidation.success) return { success: false, error: suValidation.error };
+      const adapter = await getDbAdapter();
+      const result = await adapter.query(
+        `SELECT i.*, s.name as supplier_name
+         FROM purchase_invoices i
+         LEFT JOIN suppliers s ON i.supplier_id = s.id
+         WHERE i.company_id = $1::uuid
+           AND i.supplier_id = $2::uuid
+           AND i.status IN ('posted', 'partially_paid')
+           AND (i.total_amount - COALESCE(i.paid_amount, 0)) > 0
+         ORDER BY i.date ASC`,
+        [companyId, supplierId]
+      );
+      if (!result.success) return { success: false, error: result.error };
+      const items = (result.rows || []).map((row: Record<string, unknown>) => mapInvoice(row));
+      return { success: true, data: items };
+    } catch (e) {
+      return { success: false, error: String(e) };
+    }
+  },
+
   async getInvoicesPaginated(
     companyId: string,
     page: number,
@@ -549,8 +575,9 @@ export const purchasesApi = {
       const exchangeRate = data.exchangeRate ?? 1;
       const baseCurrencyAmount = data.baseCurrencyAmount ?? (data.totalAmount * exchangeRate);
       const baseCurrencyPaid = data.baseCurrencyPaid ?? 0;
-      const params: unknown[] = [data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes];
-      let sql = `WITH inv AS (INSERT INTO purchase_invoices (company_id,invoice_number,supplier_id,purchase_order_id,date,due_date,subtotal,discount_amount,vat_amount,total_amount,paid_amount,currency_code,exchange_rate,base_currency_amount,base_currency_paid,status,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id)`;
+      const invoiceId = crypto.randomUUID();
+      const params: unknown[] = [invoiceId, data.companyId, data.invoiceNumber, data.supplierId, data.purchaseOrderId || null, data.date, data.dueDate, data.subtotal, data.discountAmount, data.vatAmount, data.totalAmount, data.paidAmount, currencyCode, exchangeRate, baseCurrencyAmount, baseCurrencyPaid, data.status, data.notes];
+      let sql = `WITH inv AS (INSERT INTO purchase_invoices (id,company_id,invoice_number,supplier_id,purchase_order_id,date,due_date,subtotal,discount_amount,vat_amount,total_amount,paid_amount,currency_code,exchange_rate,base_currency_amount,base_currency_paid,status,notes) VALUES ($1::uuid,$2::uuid,$3,$4::uuid,$5::uuid,$6::date,$7::date,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id)`;
       if (data.lines?.length) {
         const lineValues: string[] = [];
         for (const line of data.lines) {
@@ -558,8 +585,9 @@ export const purchasesApi = {
           const lr = line.exchangeRate ?? exchangeRate;
           const lb = line.baseCurrencyLineTotal ?? (line.lineTotal * lr);
           const off = params.length;
-          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5},$${off + 6},$${off + 7},$${off + 8},$${off + 9})`);
+          lineValues.push(`($${off + 1}::uuid,$${off + 2}::uuid,$${off + 3}::numeric,$${off + 4}::numeric,$${off + 5}::numeric,$${off + 6}::numeric,$${off + 7}::numeric,$${off + 8},$${off + 9}::numeric,$${off + 10}::numeric)`);
           params.push(
+            invoiceId,
             line.productId,
             line.quantity,
             line.unitPrice,
@@ -571,16 +599,21 @@ export const purchasesApi = {
             lb,
           );
         }
-        sql += `,lines_ins AS (INSERT INTO purchase_invoice_lines (invoice_id,product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT inv.id,v.* FROM inv JOIN (VALUES ${lineValues.join(',')}) v(product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
+        sql += `,lines_ins AS (INSERT INTO purchase_invoice_lines (invoice_id,product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) SELECT v.invoice_id,v.product_id,v.quantity,v.unit_price,v.discount_percent,v.vat_percent,v.line_total,v.currency_code,v.exchange_rate,v.base_currency_line_total FROM inv JOIN (VALUES ${lineValues.join(',')}) v(invoice_id,product_id,quantity,unit_price,discount_percent,vat_percent,line_total,currency_code,exchange_rate,base_currency_line_total) ON true)`;
       }
       sql += ' SELECT id FROM inv';
       const result = await adapter.query(sql, params);
       if (result.success && result.rows?.[0]) {
         return { success: true, id: result.rows[0].id as string };
       }
-      return { success: false, error: result.error };
+      // Surface the PG error verbatim so the UI toast can show it
+      // (constraint name, column name, etc.). Without this, the user only
+      // sees a generic "common.error" string and has no clue what failed.
+      const pgError = (result as { error?: string; rows?: unknown[] }).error
+        || `Query failed (rows: ${result.rows?.length ?? 0})`;
+      return { success: false, error: pgError };
     } catch (e) {
-      return { success: false, error: String(e) };
+      return { success: false, error: `createInvoice threw: ${e instanceof Error ? e.message : String(e)}` };
     }
   },
 
@@ -975,16 +1008,17 @@ export const purchasesApi = {
       const validation = validateInput(createPurchaseReturnSchema, data);
       if (!validation.success) return { success: false, error: validation.error };
       const adapter = await getDbAdapter();
-      const params: unknown[] = [data.companyId, data.returnNumber, data.invoiceId || null, data.supplierId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.status, data.notes, data.reason];
-      let sql = `WITH ret AS (INSERT INTO purchase_returns (company_id,return_number,invoice_id,supplier_id,date,subtotal,vat_amount,total_amount,status,notes,reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id)`;
+      const returnId = crypto.randomUUID();
+      const params: unknown[] = [returnId, data.companyId, data.returnNumber, data.invoiceId || null, data.supplierId, data.date, data.subtotal, data.vatAmount, data.totalAmount, data.status, data.notes, data.reason];
+      let sql = `WITH ret AS (INSERT INTO purchase_returns (id,company_id,return_number,invoice_id,supplier_id,date,subtotal,vat_amount,total_amount,status,notes,reason) VALUES ($1::uuid,$2::uuid,$3,$4::uuid,$5::uuid,$6::date,$7,$8,$9,$10,$11,$12) RETURNING id)`;
       if (data.lines?.length) {
         const lineValues: string[] = [];
         for (const line of data.lines) {
           const off = params.length;
-          lineValues.push(`($${off + 1},$${off + 2},$${off + 3},$${off + 4},$${off + 5})`);
-          params.push(line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal);
+          lineValues.push(`($${off + 1}::uuid,$${off + 2}::uuid,$${off + 3},$${off + 4}::numeric,$${off + 5}::numeric,$${off + 6}::numeric)`);
+          params.push(returnId, line.productId, line.description ?? null, line.quantity, line.unitPrice, line.lineTotal);
         }
-        sql += `,lines_ins AS (INSERT INTO purchase_return_lines (return_id,product_id,description,quantity,unit_price,line_total) SELECT ret.id,v.* FROM ret JOIN (VALUES ${lineValues.join(',')}) v(product_id,description,quantity,unit_price,line_total) ON true)`;
+        sql += `,lines_ins AS (INSERT INTO purchase_return_lines (return_id,product_id,description,quantity,unit_price,line_total) SELECT v.return_id,v.product_id,v.description,v.quantity,v.unit_price,v.line_total FROM ret JOIN (VALUES ${lineValues.join(',')}) v(return_id,product_id,description,quantity,unit_price,line_total) ON true)`;
       }
       sql += ' SELECT id FROM ret';
       const result = await adapter.query(sql, params);

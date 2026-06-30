@@ -447,6 +447,11 @@
     "check": "شيك",
     "checkNumber": "رقم الشيك",
     "checkDate": "تاريخ الشيك",
+    "applyToInvoice": "تطبيق على فاتورة",
+    "onAccount": "دفعة على الحساب (بدون ربط)",
+    "amountWillBeApplied": "سيتم تطبيق المبلغ على الفاتورة المحددة تلقائياً",
+    "invoiceLinked": "الفاتورة: ",
+    "outstanding": "المستحق",
     "bankAccount": "الحساب البنكي",
     "expenseAccount": "حساب المصروف",
     "notes": "ملاحظات",
@@ -630,7 +635,28 @@
     "postSuccess": "تم ترحيل التسوية بنجاح",
     "createTransferSuccess": "تم إنشاء التحويل بنجاح",
     "completeTransferSuccess": "تم إكمال التحويل بنجاح",
-    "deleteTransferSuccess": "تم حذف التحويل بنجاح"
+    "deleteTransferSuccess": "تم حذف التحويل بنجاح",
+    "unitName": "الوحدة",
+    "autoNumber": "تلقائي",
+    "manual": "يدوي",
+    "codeAutoOn": "الترقيم التلقائي مفعّل",
+    "codeAutoOff": "الترقيم التلقائي معطّل",
+    "refreshCode": "تحديث الرمز",
+    "nextCodeWillBe": "الرمز التالي سيكون",
+    "codePlaceholder": "أدخل رمز المنتج",
+    "barcodePlaceholder": "امسح أو أدخل الباركود",
+    "skuPlaceholder": "الرمز الداخلي",
+    "productNamePlaceholder": "اسم المنتج بالعربية",
+    "nameEnglishPlaceholder": "Product name in English",
+    "noCategoriesAvailable": "لا توجد تصنيفات. أضف تصنيفات من إعدادات المنتجات أولاً.",
+    "errors": {
+      "nameRequired": "الرجاء إدخال اسم المنتج",
+      "unitRequired": "الرجاء اختيار الوحدة",
+      "codeRequired": "الرجاء إدخال رمز المنتج أو تفعيل الترقيم التلقائي",
+      "codeGenerationFailed": "فشل توليد الرمز التلقائي",
+      "imageTooLarge": "حجم الصورة يتجاوز 2 ميجابايت",
+      "cameraFailed": "فشل تشغيل الكاميرا"
+    }
   },
   "sales": {
     "invoices": "فواتير المبيعات",
@@ -735,6 +761,8 @@
       "select": "اختر الفاتورة",
       "postFailed": "فشل ترحيل الفاتورة",
       "unknownError": "خطأ غير معروف",
+      "productRequired": "يجب اختيار منتج لكل سطر",
+      "quantityPositive": "يجب أن تكون الكمية أكبر من صفر",
       "created": "تم إنشاء الفاتورة بنجاح",
       "updated": "تم تحديث الفاتورة بنجاح",
       "deleted": "تم حذف الفاتورة",
@@ -1946,7 +1974,31 @@
       "viewer": "مشاهد فقط"
     },
     "roles": "الأدوار والصلاحيات",
-    "backup": "النسخ الاحتياطي",
+    "backup": {
+      "title": "النسخ الاحتياطي",
+      "subtitle": "نسخ احتياطي واستعادة لبيانات النظام",
+      "createTitle": "إنشاء نسخة احتياطية",
+      "createDesc": "قم بتحميل نسخة احتياطية كاملة من قاعدة البيانات",
+      "create": "إنشاء نسخة احتياطية",
+      "restoreTitle": "استعادة",
+      "restoreDesc": "استعادة البيانات من نسخة احتياطية سابقة",
+      "restore": "استعادة البيانات",
+      "chooseFile": "اختر ملف النسخة الاحتياطية",
+      "recentTitle": "سجل النسخ الاحتياطية",
+      "typeAuto": "تلقائي",
+      "typeManual": "يدوي",
+      "creatingBackup": "جاري إنشاء نسخة احتياطية...",
+      "restoring": "جاري استعادة البيانات...",
+      "successMessage": "تم إنشاء النسخة الاحتياطية بنجاح ({{tables}} جدول)",
+      "errorMessage": "فشل: {{error}}",
+      "successToast": "تم إنشاء النسخة الاحتياطية",
+      "errorToast": "فشل إنشاء/استعادة النسخة",
+      "noCompany": "لا توجد شركة نشطة",
+      "noFileSelected": "الرجاء اختيار ملف النسخة الاحتياطية",
+      "invalidFile": "ملف النسخة الاحتياطية غير صالح",
+      "restoreNote": "تم تسجيل طلب الاستعادة. يلزم التحقق اليدوي من المشرف قبل التطبيق الفعلي.",
+      "restoreRecorded": "تم تسجيل طلب الاستعادة للمراجعة"
+    },
     "language": "اللغة",
     "theme": "المظهر",
     "common": {
@@ -2041,7 +2093,8 @@
       "workOrder": "أمر إنتاج",
       "stockAdjustment": "تسوية مخزون",
       "inventoryTransfer": "تحويل مخزني",
-      "payrollRun": "كشف راتب"
+      "payrollRun": "كشف راتب",
+      "product": "منتج"
     },
     "productTypes": {
       "title": "أنواع المنتجات",
@@ -2522,6 +2575,12 @@
     },
     "cannotDeleteSelf": {
       "cannotDeleteSelf": "لا يمكنك حذف حسابك الحالي"
+    },
+    "passwordInsecure": {
+      "passwordInsecure": "كلمة المرور هذه غير آمنة. الرجاء اختيار كلمة مرور أخرى."
+    },
+    "passwordWeak": {
+      "passwordWeak": "كلمة المرور يجب أن تحتوي على حروف وأرقام"
     }
   },
   "branches": {
@@ -2572,6 +2631,77 @@
     },
     "applied": {
       "applied": "تم تطبيق القالب بنجاح"
+    }
+  },
+  "backup": {
+    "title": {
+      "title": "النسخ الاحتياطي"
+    },
+    "subtitle": {
+      "subtitle": "نسخ احتياطي واستعادة لبيانات النظام"
+    },
+    "createTitle": {
+      "createTitle": "إنشاء نسخة احتياطية"
+    },
+    "createDesc": {
+      "createDesc": "قم بتحميل نسخة احتياطية كاملة من قاعدة البيانات"
+    },
+    "create": {
+      "create": "إنشاء نسخة احتياطية"
+    },
+    "restoreTitle": {
+      "restoreTitle": "استعادة"
+    },
+    "restoreDesc": {
+      "restoreDesc": "استعادة البيانات من نسخة احتياطية سابقة"
+    },
+    "restore": {
+      "restore": "استعادة البيانات"
+    },
+    "chooseFile": {
+      "chooseFile": "اختر ملف النسخة الاحتياطية"
+    },
+    "recentTitle": {
+      "recentTitle": "سجل النسخ الاحتياطية"
+    },
+    "typeAuto": {
+      "typeAuto": "تلقائي"
+    },
+    "typeManual": {
+      "typeManual": "يدوي"
+    },
+    "creatingBackup": {
+      "creatingBackup": "جاري إنشاء نسخة احتياطية..."
+    },
+    "restoring": {
+      "restoring": "جاري استعادة البيانات..."
+    },
+    "successMessage": {
+      "successMessage": "تم إنشاء النسخة الاحتياطية بنجاح ({{tables}} جدول)"
+    },
+    "errorMessage": {
+      "errorMessage": "فشل: {{error}}"
+    },
+    "successToast": {
+      "successToast": "تم إنشاء النسخة الاحتياطية"
+    },
+    "errorToast": {
+      "errorToast": "فشل إنشاء/استعادة النسخة"
+    },
+    "noCompany": {
+      "noCompany": "لا توجد شركة نشطة"
+    },
+    "noFileSelected": {
+      "noFileSelected": "الرجاء اختيار ملف النسخة الاحتياطية"
+    },
+    "invalidFile": {
+      "invalidFile": "ملف النسخة الاحتياطية غير صالح"
+    },
+    "restoreNote": {
+      "restoreNote": "تم تسجيل طلب الاستعادة. يلزم التحقق اليدوي من المشرف قبل التطبيق الفعلي."
+    },
+    "restoreRecorded": {
+      "restoreRecorded": "تم تسجيل طلب الاستعادة للمراجعة"
     }
   }
 }

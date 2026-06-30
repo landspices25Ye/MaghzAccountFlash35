@@ -236,7 +236,7 @@ describe('salesApi.createInvoice (currency auto-compute)', () => {
   it('auto-computes baseCurrencyAmount when not provided', async () => {
     const adapter = makeMockAdapter(async (sql, params) => {
       if (sql.startsWith('WITH inv AS')) {
-        expect(params[12]).toBe(5000);
+        expect(params[13]).toBe(5000);
         return { success: true, rows: [{ id: 'inv-1' }] };
       }
       return { success: true, rows: [] };
@@ -290,5 +290,330 @@ describe('salesApi.createInvoice (currency auto-compute)', () => {
       notes: '',
       lines: [],
     } as never);
+  });
+});
+
+describe('salesApi.deleteInvoice protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects deletion of posted invoice (cannot delete after posting)', async () => {
+    const adapter = makeMockAdapter(async (_sql, _params) => ({
+      success: true,
+      rows: [{ status: 'posted', paid_amount: 0 }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteInvoice('00000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/posted/i);
+  });
+
+  it('rejects deletion of draft invoice with payments', async () => {
+    const adapter = makeMockAdapter(async (_sql, _params) => ({
+      success: true,
+      rows: [{ status: 'draft', paid_amount: 100 }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteInvoice('00000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/payment/i);
+  });
+
+  it('allows deletion of empty draft invoice', async () => {
+    const adapter = makeMockAdapter(async (sql) => {
+      if (sql.startsWith('SELECT')) {
+        return { success: true, rows: [{ status: 'draft', paid_amount: 0 }] };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteInvoice('00000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001');
+    expect(res.success).toBe(true);
+  });
+});
+
+describe('salesApi.createInvoice protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects overpayment (paidAmount > totalAmount)', async () => {
+    const res = await salesApi.createInvoice({
+      companyId: '00000000-0000-0000-0000-000000000001',
+      invoiceNumber: 'INV-OVER',
+      customerId: '00000000-0000-0000-0000-000000000010',
+      date: '2026-06-01',
+      dueDate: undefined,
+      subtotal: 1000,
+      discountAmount: 0,
+      vatAmount: 0,
+      totalAmount: 1000,
+      paidAmount: 1500,
+      currencyCode: 'YER',
+      exchangeRate: 1,
+      status: 'draft',
+      notes: '',
+      lines: [{ productId: '00000000-0000-0000-0000-000000000050', quantity: 1, unitPrice: 1000, discountPercent: 0, vatPercent: 0, lineTotal: 1000 } as never],
+    } as never);
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/paid amount/i);
+  });
+
+  it('rejects non-positive exchange rate', async () => {
+    const res = await salesApi.createInvoice({
+      companyId: '00000000-0000-0000-0000-000000000001',
+      invoiceNumber: 'INV-RATE',
+      customerId: '00000000-0000-0000-0000-000000000010',
+      date: '2026-06-01',
+      dueDate: undefined,
+      subtotal: 1000,
+      discountAmount: 0,
+      vatAmount: 0,
+      totalAmount: 1000,
+      paidAmount: 0,
+      currencyCode: 'USD',
+      exchangeRate: -1,
+      status: 'draft',
+      notes: '',
+      lines: [],
+    } as never);
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/exchange rate/i);
+  });
+});
+
+describe('salesApi.postInvoice customer balance tracking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('increments customer balance by outstanding amount on posting', async () => {
+    const queries: string[] = [];
+    const params: unknown[][] = [];
+    const adapter = makeMockAdapter(async (sql, p) => {
+      queries.push(sql);
+      params.push(p as unknown[]);
+      if (sql.startsWith('SELECT')) {
+        return {
+          success: true,
+          rows: [{ customer_id: 'c1', total_amount: 1000, paid_amount: 250 }],
+        };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.postInvoice('inv-1', 'comp-1');
+    expect(res.success).toBe(true);
+    expect(queries.some(q => q.includes('UPDATE customers'))).toBe(true);
+    const lastQuery = queries[queries.length - 1];
+    const lastParams = params[params.length - 1];
+    expect(lastQuery).toMatch(/balance = balance \+ \$1/);
+    expect(Number(lastParams[0])).toBe(750);
+  });
+
+  it('does not update customer balance when invoice is fully paid', async () => {
+    const queries: string[] = [];
+    const adapter = makeMockAdapter(async (sql) => {
+      queries.push(sql);
+      if (sql.startsWith('SELECT')) {
+        return {
+          success: true,
+          rows: [{ customer_id: 'c1', total_amount: 1000, paid_amount: 1000 }],
+        };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.postInvoice('inv-1', 'comp-1');
+    expect(res.success).toBe(true);
+    expect(queries.some(q => q.includes('UPDATE customers'))).toBe(false);
+  });
+});
+
+describe('salesApi.postReturn customer balance tracking', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('decrements customer balance by return amount on posting', async () => {
+    const queries: string[] = [];
+    const params: unknown[][] = [];
+    const adapter = makeMockAdapter(async (sql, p) => {
+      queries.push(sql);
+      params.push(p as unknown[]);
+      if (sql.startsWith('SELECT')) {
+        return {
+          success: true,
+          rows: [{ customer_id: 'c1', total_amount: 200 }],
+        };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.postReturn('ret-1', 'comp-1');
+    expect(res.success).toBe(true);
+    expect(queries.some(q => q.includes('UPDATE customers'))).toBe(true);
+    const lastQuery = queries[queries.length - 1];
+    const lastParams = params[params.length - 1];
+    expect(lastQuery).toMatch(/balance = balance - \$1/);
+    expect(Number(lastParams[0])).toBe(200);
+  });
+});
+
+describe('salesApi.deleteQuotation protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects deletion of converted quotation', async () => {
+    const adapter = makeMockAdapter(async () => ({
+      success: true,
+      rows: [{ status: 'converted' }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteQuotation('q-1', 'comp-1');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/converted/i);
+  });
+
+  it('rejects deletion of accepted quotation', async () => {
+    const adapter = makeMockAdapter(async () => ({
+      success: true,
+      rows: [{ status: 'accepted' }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteQuotation('q-1', 'comp-1');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/accepted/i);
+  });
+
+  it('allows deletion of open/rejected quotation', async () => {
+    const adapter = makeMockAdapter(async (sql) => {
+      if (sql.startsWith('SELECT')) {
+        return { success: true, rows: [{ status: 'open' }] };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteQuotation('q-1', 'comp-1');
+    expect(res.success).toBe(true);
+  });
+});
+
+describe('salesApi.deleteReturn protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects deletion of posted return', async () => {
+    const adapter = makeMockAdapter(async () => ({
+      success: true,
+      rows: [{ status: 'posted' }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.deleteReturn('r-1', 'comp-1');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/posted/i);
+  });
+});
+
+describe('salesApi.updateInvoice protection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects modifying lines of posted invoice', async () => {
+    const adapter = makeMockAdapter(async () => ({
+      success: true,
+      rows: [{ status: 'posted', paid_amount: 0 }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.updateInvoice('inv-1', 'comp-1', {
+      lines: [{ productId: 'p1', quantity: 1, unitPrice: 100, discountPercent: 0, vatPercent: 0, lineTotal: 100 }],
+    } as never);
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/posted/i);
+  });
+
+  it('rejects reducing paid amount below current payments', async () => {
+    const adapter = makeMockAdapter(async () => ({
+      success: true,
+      rows: [{ status: 'posted', paid_amount: 500 }],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.updateInvoice('inv-1', 'comp-1', { paidAmount: 100 } as never);
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/paid amount/i);
+  });
+
+  it('allows increasing paid amount on posted invoice', async () => {
+    const adapter = makeMockAdapter(async (sql) => {
+      if (sql.startsWith('SELECT')) {
+        return { success: true, rows: [{ status: 'posted', paid_amount: 500 }] };
+      }
+      return { success: true, rows: [] };
+    });
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.updateInvoice('inv-1', 'comp-1', { paidAmount: 1000 } as never);
+    expect(res.success).toBe(true);
+  });
+});
+
+describe('salesApi.getOutstandingInvoicesForCustomer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns only posted/partially_paid invoices with outstanding balance', async () => {
+    const adapter = makeMockAdapter(async (_sql, _params) => ({
+      success: true,
+      rows: [
+        { id: 'inv-1', company_id: 'comp-1', invoice_number: 'INV-001', customer_id: 'cust-1', customer_name: 'Cust 1', total_amount: 1000, paid_amount: 0, status: 'posted' },
+      ],
+    }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.getOutstandingInvoicesForCustomer('comp-1', 'cust-1');
+    expect(res.success).toBe(true);
+    expect(res.data).toHaveLength(1);
+    expect(res.data![0].invoiceNumber).toBe('INV-001');
+
+    const [sql] = adapter.query.mock.calls[0];
+    expect(sql).toMatch(/i\.status IN \('posted', 'partially_paid'\)/);
+    expect(sql).toMatch(/i\.total_amount - COALESCE\(i\.paid_amount, 0\)\) > 0/);
+    expect(sql).toMatch(/i\.company_id = \$1::uuid/);
+    expect(sql).toMatch(/i\.customer_id = \$2::uuid/);
+  });
+
+  it('returns empty array when no outstanding invoices', async () => {
+    const adapter = makeMockAdapter(async () => ({ success: true, rows: [] }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.getOutstandingInvoicesForCustomer('comp-1', 'cust-1');
+    expect(res.success).toBe(true);
+    expect(res.data).toEqual([]);
+  });
+
+  it('returns error for empty customerId (validation rejects)', async () => {
+    const adapter = makeMockAdapter(async () => ({ success: true, rows: [] }));
+    vi.mocked(getDbAdapter).mockResolvedValue(adapter as never);
+
+    const res = await salesApi.getOutstandingInvoicesForCustomer('comp-1', '');
+    expect(res.success).toBe(false);
+    expect(res.error).toBeDefined();
   });
 });

@@ -64,6 +64,10 @@ export const CustomersPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!activeCompany) return;
+    if (!formData.name.trim()) {
+      addToast('error', t('sales.customer.name') + ' ' + (t('validation.required') || ''));
+      return;
+    }
     setSaving(true);
     const payload = {
       companyId: activeCompany.id,

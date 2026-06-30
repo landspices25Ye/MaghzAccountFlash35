@@ -30,6 +30,7 @@ export const DocumentSequencesPage: React.FC = () => {
     stock_adjustment: t('settings.documentTypes.stockAdjustment'),
     inventory_transfer: t('settings.documentTypes.inventoryTransfer'),
     payroll_run: t('settings.documentTypes.payrollRun'),
+    product: t('settings.documentTypes.product'),
   };
 
   const handleEdit = (id: string, field: keyof DocumentSequence, value: string | number | boolean) => {

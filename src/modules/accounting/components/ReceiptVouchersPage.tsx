@@ -7,6 +7,7 @@ import { CustomerSelect, BankSelect, CashBoxSelect, CurrencySelect } from '@/cor
 import { useAppStore } from '@/core/store';
 import { useTranslation } from '@/core/i18n/useTranslation';
 import { useReceiptVouchersPaginated } from '../hooks/useAccounting';
+import { useOutstandingInvoicesForCustomer } from '@/modules/sales/hooks/useSales';
 import { postReceiptVoucher } from '@/core/utils/journalEntryGenerator';
 import { useDocumentSequence } from '@/core/utils/useDocumentSequence';
 import { useSettings } from '@/core/utils/useSettings';
@@ -35,7 +36,8 @@ export const ReceiptVouchersPage: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<Partial<ReceiptVoucher>>({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0] });
+  const [form, setForm] = useState<Partial<ReceiptVoucher> & { amountApplied?: number; baseCurrencyApplied?: number; invoiceId?: string }>({ paymentMethod: 'cash', status: 'draft', date: new Date().toISOString().split('T')[0] });
+  const { invoices: outstandingInvoices, isLoading: invoicesLoading } = useOutstandingInvoicesForCustomer(activeCompany?.id || '', form.customerId || '');
   const [confirmDelete, setConfirmDelete] = useState<ReceiptVoucher | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -107,10 +109,13 @@ export const ReceiptVouchersPage: React.FC = () => {
       date: form.date || new Date().toISOString().split('T')[0],
       customerId: form.customerId,
       customerName: form.customerName || '',
+      invoiceId: form.invoiceId,
       amount: Number(form.amount) || 0,
+      amountApplied: Number(form.amountApplied) || Number(form.amount) || 0,
       currencyCode: form.currencyCode || YER_CODE,
       exchangeRate: form.exchangeRate ?? 1,
       baseCurrencyAmount: (Number(form.amount) || 0) * (form.exchangeRate ?? 1),
+      baseCurrencyApplied: (Number(form.amountApplied) || 0) * (form.exchangeRate ?? 1),
       paymentMethod: form.paymentMethod || 'cash',
       bankAccountId: form.bankAccountId,
       cashBoxId: form.cashBoxId,
@@ -269,8 +274,50 @@ export const ReceiptVouchersPage: React.FC = () => {
           <Input label={t('accounting.date')} type="date" value={form.date || ''} onChange={e => setForm({ ...form, date: e.target.value })} />
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('accounting.customer')}</label>
-            <CustomerSelect companyId={activeCompany?.id || ''} value={form.customerId || ''} onChange={v => setForm({ ...form, customerId: v || '' })} />
+            <CustomerSelect companyId={activeCompany?.id || ''} value={form.customerId || ''} onChange={v => setForm({ ...form, customerId: v || '', invoiceId: undefined, amountApplied: 0 })} />
           </div>
+          {form.customerId && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+                {t('accounting.applyToInvoice')}
+              </label>
+              <select
+                className="form-control w-full"
+                value={form.invoiceId || ''}
+                onChange={e => {
+                  const newInvoiceId = e.target.value || undefined;
+                  setForm(prev => {
+                    const selectedInvoice = outstandingInvoices.find(inv => inv.id === newInvoiceId);
+                    const newAmountApplied = selectedInvoice
+                      ? Math.max(0, (selectedInvoice.totalAmount || 0) - (selectedInvoice.paidAmount || 0))
+                      : 0;
+                    return {
+                      ...prev,
+                      invoiceId: newInvoiceId,
+                      amountApplied: newInvoiceId ? newAmountApplied : 0,
+                    };
+                  });
+                }}
+                disabled={invoicesLoading}
+                aria-label={t('accounting.applyToInvoice')}
+              >
+                <option value="">{t('accounting.onAccount')}</option>
+                {outstandingInvoices.map(inv => {
+                  const outstanding = (inv.totalAmount || 0) - (inv.paidAmount || 0);
+                  return (
+                    <option key={inv.id} value={inv.id}>
+                      {inv.invoiceNumber} - {formatCurrency(outstanding)} {inv.currencyCode || ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {form.invoiceId && (
+                <p className="text-xs text-slate-500 mt-1">
+                  {t('accounting.amountWillBeApplied')}
+                </p>
+              )}
+            </div>
+          )}
           <Input label={t('accounting.amount')} type="number" value={String(form.amount || '')} onChange={e => setForm({ ...form, amount: Number(e.target.value) })} />
           <div className="grid grid-cols-3 gap-3">
             <div>

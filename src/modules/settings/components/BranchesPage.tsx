@@ -76,7 +76,15 @@ export const BranchesPage: React.FC = () => {
         );
       }
 
-      await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'branches', recordId: editingId || 'new', companyId: activeCompany.id });
+      await logAudit({
+        userId: user?.id || 'system',
+        username: user?.username,
+        action: editingId ? 'update' : 'create',
+        tableName: 'branches',
+        recordId: editingId || 'new',
+        recordLabel: formData.name,
+        companyId: activeCompany.id,
+      });
       addToast('success', t(editingId ? 'settings.branches.updated' : 'settings.branches.created'));
       setEditingId(null); setFormData({ name: '', code: '', city: '', phone: '', isActive: true }); loadData();
     } catch {
@@ -92,7 +100,14 @@ export const BranchesPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM branches WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
-      await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'branches', recordId: id, companyId: activeCompany.id });
+      await logAudit({
+        userId: user?.id || 'system',
+        username: user?.username,
+        action: 'delete',
+        tableName: 'branches',
+        recordId: id,
+        companyId: activeCompany.id,
+      });
       addToast('success', t('settings.branches.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {

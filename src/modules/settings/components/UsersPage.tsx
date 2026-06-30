@@ -83,7 +83,15 @@ export const UsersPage: React.FC = () => {
         addToast('success', t('settings.users.created'));
       }
 
-      await logAudit({ userId: currentUser?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'users', recordId: editingId || 'new', companyId: activeCompany.id });
+      await logAudit({
+        userId: currentUser?.id || 'system',
+        username: currentUser?.username,
+        action: editingId ? 'update' : 'create',
+        tableName: 'users',
+        recordId: editingId || 'new',
+        recordLabel: formData.username,
+        companyId: activeCompany.id,
+      });
       setEditingId(null); setFormData({ username: '', email: '', role: 'accountant', isActive: true }); loadData();
     } catch {
       addToast('error', t('settings.users.saveError'));
@@ -102,7 +110,14 @@ export const UsersPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM users WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
-      await logAudit({ userId: currentUser?.id || 'system', action: 'delete', tableName: 'users', recordId: id, companyId: activeCompany.id });
+      await logAudit({
+        userId: currentUser?.id || 'system',
+        username: currentUser?.username,
+        action: 'delete',
+        tableName: 'users',
+        recordId: id,
+        companyId: activeCompany.id,
+      });
       addToast('success', t('settings.users.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {
@@ -129,11 +144,29 @@ export const UsersPage: React.FC = () => {
       addToast('error', t('settings.users.passwordTooShort'));
       return;
     }
+    if (newPassword === '123456') {
+      addToast('error', t('settings.users.passwordInsecure'));
+      return;
+    }
+    const hasLetter = /[A-Za-z\u0600-\u06FF]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasLetter || !hasNumber) {
+      addToast('error', t('settings.users.passwordWeak'));
+      return;
+    }
     setIsSaving(true);
     try {
       const adapter = await getDbAdapter();
       const hashed = await hashPassword(newPassword);
       await adapter.query(`UPDATE users SET password_hash = $1 WHERE id = $2 AND company_id = $3`, [hashed, showResetPassword, activeCompany!.id]);
+      await logAudit({
+        userId: currentUser?.id || 'system',
+        username: currentUser?.username,
+        action: 'reset_password',
+        tableName: 'users',
+        recordId: showResetPassword,
+        companyId: activeCompany!.id,
+      });
       addToast('success', t('settings.users.passwordReset'));
       setShowResetPassword(null); setNewPassword('');
     } catch {

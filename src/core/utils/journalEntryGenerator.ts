@@ -275,7 +275,7 @@ export async function postPaymentVoucher(
  */
 export async function postSalesReturn(
   companyId: string,
-  ret: { returnNumber: string; date: string; customer: string; amount: number }
+  ret: { id?: string; returnNumber: string; date: string; customer: string; amount: number }
 ) {
   const salesReturnsId = await getDefaultAccountId(companyId, 'default_sales_returns');
   const debtorsId = await getDefaultAccountId(companyId, 'default_debtors');
@@ -294,13 +294,46 @@ export async function postSalesReturn(
     { accountId: cogsId || inventoryId, debit: 0, credit: Math.floor(ret.amount * 0.7), memo: `عكس تكلفة بضاعة مباعة` },
   ];
 
-  return createTransaction(companyId, {
+  const journalResult = await createTransaction(companyId, {
     reference: ret.returnNumber,
     description: `قيد تلقائي - مردود مبيعات ${ret.returnNumber}`,
     date: ret.date,
     totalAmount: ret.amount,
     entries,
   });
+
+  if (!journalResult.success) {
+    return journalResult;
+  }
+
+  // Insert stock_movements (type='in') for each return line so the inventory
+  // reflects the goods returning to the warehouse. The warehouse is derived
+  // from the `stock` table (the warehouse that currently holds the product).
+  // If the product isn't in any warehouse we skip (no stock to add to).
+  if (ret.id) {
+    try {
+      const adapter = await getDbAdapter();
+      await adapter.query(
+        `INSERT INTO stock_movements (company_id, product_id, warehouse_id, quantity, type, reference, created_at)
+         SELECT sr.company_id, srl.product_id, wh.warehouse_id, srl.quantity, 'in', $1, NOW()
+           FROM sales_returns sr
+           JOIN sales_return_lines srl ON srl.return_id = sr.id
+           JOIN LATERAL (
+             SELECT s.warehouse_id
+               FROM stock s
+              WHERE s.product_id = srl.product_id AND s.company_id = sr.company_id
+              ORDER BY s.quantity DESC
+              LIMIT 1
+           ) wh ON true
+          WHERE sr.id = $2 AND sr.company_id = $3`,
+        [ret.returnNumber, ret.id, companyId]
+      );
+    } catch (e) {
+      return { ...journalResult, warning: `Journal entry created but stock movement failed: ${String(e)}` };
+    }
+  }
+
+  return journalResult;
 }
 
 /**

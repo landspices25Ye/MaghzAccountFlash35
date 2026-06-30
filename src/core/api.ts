@@ -85,6 +85,7 @@ function getTableForDocumentType(documentType: string): string | null {
     payment_voucher: 'payment_vouchers',
     work_order: 'work_orders',
     payroll_run: 'payroll_runs',
+    product: 'products',
   };
   return map[documentType] || null;
 }
@@ -100,6 +101,7 @@ function getNumberColumnForDocumentType(documentType: string): string {
     payment_voucher: 'voucher_number',
     work_order: 'order_number',
     payroll_run: 'run_number',
+    product: 'code',
   };
   return map[documentType] || 'number';
 }

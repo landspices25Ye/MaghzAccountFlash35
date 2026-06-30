@@ -109,9 +109,11 @@ export const CompanySetupPage: React.FC = () => {
 
       await logAudit({
         userId: user?.id || 'system',
+        username: user?.username,
         action: 'update',
         tableName: 'companies',
         recordId: activeCompany.id,
+        recordLabel: formData.name,
         companyId: activeCompany.id,
       });
 

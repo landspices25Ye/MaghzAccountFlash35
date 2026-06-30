@@ -46,6 +46,7 @@ export const LeadsPage: React.FC = () => {
     source: '',
     estimatedValue: '',
     rating: 'warm' as Lead['rating'],
+    status: 'new' as Lead['status'],
     assignedTo: '',
     notes: '',
   });
@@ -57,7 +58,7 @@ export const LeadsPage: React.FC = () => {
   });
 
   const resetForm = () => {
-    setFormData({ name: '', phone: '', email: '', company: '', source: '', estimatedValue: '', rating: 'warm', assignedTo: '', notes: '' });
+    setFormData({ name: '', phone: '', email: '', company: '', source: '', estimatedValue: '', rating: 'warm', status: 'new', assignedTo: '', notes: '' });
     setEditing(null);
   };
 
@@ -76,6 +77,7 @@ export const LeadsPage: React.FC = () => {
       source: lead.source || '',
       estimatedValue: String(lead.estimatedValue || ''),
       rating: lead.rating,
+      status: lead.status,
       assignedTo: lead.assignedTo || '',
       notes: lead.notes || '',
     });
@@ -94,7 +96,7 @@ export const LeadsPage: React.FC = () => {
       email: formData.email || undefined,
       company: formData.company || undefined,
       source: formData.source || undefined,
-      status: (editing ? editing.status : 'new') as Lead['status'],
+      status: formData.status,
       rating: formData.rating,
       estimatedValue: Number(formData.estimatedValue) || undefined,
       assignedTo: formData.assignedTo || undefined,
@@ -321,14 +323,24 @@ export const LeadsPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('crm.lead.rating')}</label>
-              <select value={formData.rating} onChange={(e) => setFormData((prev) => ({ ...prev, rating: e.target.value as Lead['rating'] }))} className="form-control">
+              <select value={formData.rating} onChange={(e) => setFormData((prev) => ({ ...prev, rating: e.target.value as Lead['rating'] }))} className="form-control" aria-label={t('crm.lead.rating')}>
                 <option value="hot">{t('crm.rating.hot')}</option>
                 <option value="warm">{t('crm.rating.warm')}</option>
                 <option value="cold">{t('crm.rating.cold')}</option>
               </select>
             </div>
-            <Input label={t('crm.form.assignedTo')} value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('crm.lead.status')}</label>
+              <select value={formData.status} onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value as Lead['status'] }))} className="form-control" aria-label={t('crm.lead.status')}>
+                <option value="new">{t('crm.status.new')}</option>
+                <option value="contacted">{t('crm.status.contacted')}</option>
+                <option value="qualified">{t('crm.status.qualified')}</option>
+                <option value="converted">{t('crm.status.converted')}</option>
+                <option value="lost">{t('crm.status.lost')}</option>
+              </select>
+            </div>
           </div>
+          <Input label={t('crm.form.assignedTo')} value={formData.assignedTo} onChange={(e) => setFormData((prev) => ({ ...prev, assignedTo: e.target.value }))} />
           <Input label={t('crm.form.notes')} value={formData.notes} onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))} />
         </div>
       </Modal>

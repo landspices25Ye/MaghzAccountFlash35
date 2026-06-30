@@ -83,9 +83,11 @@ export const VatSettingsPage: React.FC = () => {
 
       await logAudit({
         userId: user?.id || 'system',
+        username: user?.username,
         action: editingId ? 'update' : 'create',
         tableName: 'vat_settings',
         recordId: editingId || 'new',
+        recordLabel: `${formData.name} (${formData.rate}%)`,
         companyId: activeCompany.id,
       });
 
@@ -108,6 +110,7 @@ export const VatSettingsPage: React.FC = () => {
       await adapter.query(`DELETE FROM vat_settings WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
       await logAudit({
         userId: user?.id || 'system',
+        username: user?.username,
         action: 'delete',
         tableName: 'vat_settings',
         recordId: id,

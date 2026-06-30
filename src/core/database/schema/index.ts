@@ -32,5 +32,8 @@ export * from './vouchers';
 // Settings (Document Sequences, Product Types, Units, Default Accounts)
 export * from './settings';
 
+// Audit Logs
+export * from './audit';
+
 // Relations (if defined separately)
 // export * from './relations';

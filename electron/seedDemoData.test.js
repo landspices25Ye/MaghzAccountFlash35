@@ -147,7 +147,7 @@ describe('seedDemoData', () => {
     // Master data (always seeded)
     const masterExpected = [
       'branches', 'accounts', 'product_types', 'units',
-      'currencies', 'cost_centers', 'banks',
+      'currencies', 'cost_centers', 'banks', 'cash_boxes',
       'product_categories', 'products', 'warehouses', 'customers',
       'suppliers', 'departments', 'employees', 'payroll_components',
       'payroll_lines', 'payroll_runs', 'leads', 'opportunities',

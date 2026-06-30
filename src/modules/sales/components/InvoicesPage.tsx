@@ -207,6 +207,14 @@ export const InvoicesPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!header.customerId || lines.length === 0 || !activeCompany?.id) return;
+    if (lines.some(l => !l.productId)) {
+      addToast('error', t('sales.invoice.productRequired') || t('common.error'));
+      return;
+    }
+    if (lines.some(l => l.quantity <= 0)) {
+      addToast('error', t('sales.invoice.quantityPositive') || t('common.error'));
+      return;
+    }
     setSaving(true);
     let invoiceNumber: string;
     if (editingId) {

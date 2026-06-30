@@ -1,7 +1,85 @@
+import { useAppStore } from '@/core/store';
+
 interface ExportColumn {
   key: string;
   header: string;
   width?: number;
+  format?: (value: unknown) => string;
+}
+
+function getCompanySettings() {
+  const company = useAppStore.getState().activeCompany;
+  return {
+    decimalPlaces: company?.decimalPlaces ?? 2,
+    dateFormat: company?.dateFormat ?? 'yyyy-MM-dd',
+    calendar: company?.calendar ?? 'gregorian',
+    currency: company?.currency ?? 'YER',
+  };
+}
+
+const HIJRI_LOCALE = 'ar-SA-u-ca-islamic-umalqura';
+
+function formatNumber(value: unknown, decimalPlaces: number): string {
+  if (value === null || value === undefined || value === '') return '';
+  const num = typeof value === 'string' ? Number(value) : (value as number);
+  if (typeof num !== 'number' || isNaN(num)) return String(value);
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: decimalPlaces,
+    maximumFractionDigits: decimalPlaces,
+  });
+}
+
+function formatDate(value: unknown, calendar: 'gregorian' | 'hijri'): string {
+  if (!value) return '';
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return String(value);
+  const locale = calendar === 'hijri' ? HIJRI_LOCALE : 'en-US';
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  };
+  if (calendar === 'hijri') {
+    (options as Record<string, unknown>).calendar = 'islamic';
+  }
+  return new Intl.DateTimeFormat(locale, options).format(d);
+}
+
+function formatDateTime(value: unknown, calendar: 'gregorian' | 'hijri'): string {
+  if (!value) return '';
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return String(value);
+  const locale = calendar === 'hijri' ? HIJRI_LOCALE : 'en-US';
+  const options: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  };
+  if (calendar === 'hijri') {
+    (options as Record<string, unknown>).calendar = 'islamic';
+  }
+  return new Intl.DateTimeFormat(locale, options).format(d);
+}
+
+function isDateLike(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return /^\d{4}-\d{2}-\d{2}/.test(value) && !isNaN(new Date(value).getTime());
+  }
+  return false;
+}
+
+function formatCellValue(value: unknown, column: ExportColumn): string {
+  if (column.format) return column.format(value);
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number') {
+    return formatNumber(value, getCompanySettings().decimalPlaces);
+  }
+  if (isDateLike(value)) {
+    return formatDate(value, getCompanySettings().calendar);
+  }
+  return String(value);
 }
 
 export async function exportToExcel(
@@ -12,7 +90,7 @@ export async function exportToExcel(
   const rows = data as Record<string, unknown>[];
   const worksheetData = [
     columns.map((c) => c.header),
-    ...rows.map((row) => columns.map((c) => row[c.key] ?? '')),
+    ...rows.map((row) => columns.map((c) => formatCellValue(row[c.key], c))),
   ];
 
   const { utils, writeFile } = await import('xlsx');
@@ -36,8 +114,7 @@ export async function exportToCSV(
     .map((row) =>
       columns
         .map((c) => {
-          const val = row[c.key] ?? '';
-          // Escape commas and quotes
+          const val = formatCellValue(row[c.key], c);
           if (typeof val === 'string' && (val.includes(',') || val.includes('"')))
             return `"${val.replace(/"/g, '""')}"`;
           return val;
@@ -46,7 +123,7 @@ export async function exportToCSV(
     )
     .join('\n');
 
-  const csvContent = '\uFEFF' + headers + '\n' + csvRows; // BOM for Arabic
+  const csvContent = '\uFEFF' + headers + '\n' + csvRows;
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -99,7 +176,7 @@ export async function exportToPDF(
   autoTable(doc, {
     startY: options?.title ? 35 : 20,
     head: [columns.map((c) => c.header)],
-    body: rows.map((row) => columns.map((c) => String(row[c.key] ?? ''))),
+    body: rows.map((row) => columns.map((c) => formatCellValue(row[c.key], c))),
     theme: 'grid',
     headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
     styles: { font: options?.rtl ? 'Cairo' : 'helvetica', fontSize: 9, cellPadding: 2 },
@@ -110,4 +187,4 @@ export async function exportToPDF(
   doc.save(`${filename}.pdf`);
 }
 
-
+export { formatDate as formatDateForExport, formatDateTime as formatDateTimeForExport, formatNumber as formatNumberForExport };

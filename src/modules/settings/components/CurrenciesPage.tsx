@@ -83,7 +83,15 @@ export const CurrenciesPage: React.FC = () => {
         );
       }
 
-      await logAudit({ userId: user?.id || 'system', action: editingId ? 'update' : 'create', tableName: 'currencies', recordId: editingId || 'new', companyId: activeCompany.id });
+      await logAudit({
+        userId: user?.id || 'system',
+        username: user?.username,
+        action: editingId ? 'update' : 'create',
+        tableName: 'currencies',
+        recordId: editingId || 'new',
+        recordLabel: formData.code ? `${formData.code} - ${formData.name}` : formData.name,
+        companyId: activeCompany.id,
+      });
       addToast('success', t(editingId ? 'settings.currencies.updated' : 'settings.currencies.created'));
       setEditingId(null); setFormData({ code: '', name: '', symbol: '', exchangeRate: 1, isActive: true }); loadData();
     } catch {
@@ -100,7 +108,15 @@ export const CurrenciesPage: React.FC = () => {
       const adapter = await getDbAdapter();
       await adapter.query(`UPDATE currencies SET is_default = false WHERE company_id = $1`, [activeCompany.id]);
       await adapter.query(`UPDATE currencies SET is_default = true WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
-      await logAudit({ userId: user?.id || 'system', action: 'update', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
+      await logAudit({
+        userId: user?.id || 'system',
+        username: user?.username,
+        action: 'update',
+        tableName: 'currencies',
+        recordId: id,
+        recordLabel: 'Set as default currency',
+        companyId: activeCompany.id,
+      });
       addToast('success', t('settings.currencies.setDefaultSuccess'));
       loadData();
     } catch {
@@ -116,7 +132,14 @@ export const CurrenciesPage: React.FC = () => {
     try {
       const adapter = await getDbAdapter();
       await adapter.query(`DELETE FROM currencies WHERE id = $1 AND company_id = $2`, [id, activeCompany.id]);
-      await logAudit({ userId: user?.id || 'system', action: 'delete', tableName: 'currencies', recordId: id, companyId: activeCompany.id });
+      await logAudit({
+        userId: user?.id || 'system',
+        username: user?.username,
+        action: 'delete',
+        tableName: 'currencies',
+        recordId: id,
+        companyId: activeCompany.id,
+      });
       addToast('success', t('settings.currencies.deleted'));
       setShowDeleteConfirm(null); loadData();
     } catch {

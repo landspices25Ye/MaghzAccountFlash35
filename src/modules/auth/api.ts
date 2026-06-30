@@ -96,12 +96,32 @@ function mapRowToRole(row: Record<string, unknown>): Role {
 }
 
 function mapRowToAuditLog(row: Record<string, unknown>): AuditLog {
+  const rawNew = row.new_values as unknown;
+  const newValues = typeof rawNew === 'string' ? safeJsonParse(rawNew) : (rawNew as Record<string, unknown> | undefined);
+  const rawOld = row.old_values as unknown;
+  const oldValues = typeof rawOld === 'string' ? safeJsonParse(rawOld) : (rawOld as Record<string, unknown> | undefined);
+
+  const username = (row.username as string)
+    || (newValues?._username as string)
+    || '';
+  const recordLabel = (newValues?._label as string) || '';
+
   return {
     ...row,
-    oldValues: row.old_values ? JSON.parse(row.old_values as string) : undefined,
-    newValues: row.new_values ? JSON.parse(row.new_values as string) : undefined,
+    oldValues,
+    newValues,
+    username,
+    recordLabel,
     createdAt: (row.created_at as string) || (row.createdAt as string),
   } as AuditLog;
+}
+
+function safeJsonParse(value: string): Record<string, unknown> | undefined {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
 }
 
 export const authApi = {
@@ -364,31 +384,38 @@ export const authApi = {
       const cidValidation = validateInput(companyIdSchema, companyId);
       if (!cidValidation.success) return { success: false, error: cidValidation.error };
       const adapter = await getDbAdapter();
-      let sql = 'SELECT * FROM audit_logs WHERE company_id = $1';
+
+      // JOIN users to get username for the audit log
+      let sql = `SELECT al.id, al.user_id, al.action, al.table_name, al.record_id,
+                        al.old_values, al.new_values, al.ip_address, al.company_id, al.created_at,
+                        u.username
+                   FROM audit_logs al
+                   LEFT JOIN users u ON u.id = al.user_id
+                   WHERE al.company_id = $1`;
       const params: unknown[] = [companyId];
 
       if (filters?.userId) {
-        sql += ' AND user_id = $' + (params.length + 1);
+        sql += ' AND al.user_id = $' + (params.length + 1);
         params.push(filters.userId);
       }
       if (filters?.tableName) {
-        sql += ' AND table_name = $' + (params.length + 1);
+        sql += ' AND al.table_name = $' + (params.length + 1);
         params.push(filters.tableName);
       }
       if (filters?.action) {
-        sql += ' AND action = $' + (params.length + 1);
+        sql += ' AND al.action = $' + (params.length + 1);
         params.push(filters.action);
       }
       if (filters?.fromDate) {
-        sql += ' AND created_at >= $' + (params.length + 1);
+        sql += ' AND al.created_at >= $' + (params.length + 1);
         params.push(filters.fromDate);
       }
       if (filters?.toDate) {
-        sql += ' AND created_at <= $' + (params.length + 1);
+        sql += ' AND al.created_at <= $' + (params.length + 1);
         params.push(filters.toDate);
       }
 
-      sql += ' ORDER BY created_at DESC LIMIT 1000';
+      sql += ' ORDER BY al.created_at DESC LIMIT 1000';
 
       const result = await adapter.query(sql, params);
       if (result.success) {

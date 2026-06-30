@@ -222,6 +222,27 @@ export function usePostedInvoicesWithLines(companyId: string) {
   return { invoices, isLoading, reload: load };
 }
 
+export function useOutstandingInvoicesForCustomer(companyId: string, customerId: string) {
+  const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!companyId || !customerId) {
+      setInvoices([]);
+      return;
+    }
+    setIsLoading(true);
+    const result = await salesApi.getOutstandingInvoicesForCustomer(companyId, customerId);
+    if (result.success && result.data) setInvoices(result.data);
+    else setInvoices([]);
+    setIsLoading(false);
+  }, [companyId, customerId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return { invoices, isLoading, reload: load };
+}
+
 export function useCustomerStatement(customerId: string) {
   const [rows, setRows] = useState<Array<{ date: string; documentType: string; documentNumber: string; debit: number; credit: number; balance: number; notes?: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);

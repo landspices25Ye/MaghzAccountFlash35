@@ -80,10 +80,13 @@ export interface ReceiptVoucher {
   date: string;
   customerId: string;
   customerName: string;
+  invoiceId?: string;
   amount: number;
+  amountApplied: number;
   currencyCode?: string;
   exchangeRate?: number;
   baseCurrencyAmount?: number;
+  baseCurrencyApplied?: number;
   paymentMethod: 'cash' | 'bank' | 'check';
   bankAccountId?: string;
   cashBoxId?: string;
@@ -103,11 +106,14 @@ export interface PaymentVoucher {
   date: string;
   supplierId?: string;
   supplierName?: string;
+  invoiceId?: string;
   expenseAccountId?: string;
   amount: number;
+  amountApplied: number;
   currencyCode?: string;
   exchangeRate?: number;
   baseCurrencyAmount?: number;
+  baseCurrencyApplied?: number;
   paymentMethod: 'cash' | 'bank' | 'check';
   bankAccountId?: string;
   cashBoxId?: string;

@@ -1,25 +1,28 @@
 export interface Product {
-id: string;
-companyId: string;
-code: string;
-nameAr: string;
-nameEn?: string;
-barcode?: string;
-sku?: string;
-unit: string;
-categoryId?: string;
-categoryIds?: string[];
-productTypeId?: string;
-costPrice: number;
-salePrice: number;
-isActive: boolean;
-image?: string;
-quantity?: number;
-minStock?: number;
-maxStock?: number;
-reorderPoint?: number;
-createdBy?: string;
-updatedBy?: string;
+  id: string;
+  companyId: string;
+  code: string;
+  nameAr: string;
+  nameEn?: string;
+  barcode?: string;
+  sku?: string;
+  unit: string;
+  unitName?: string;
+  categoryId?: string;
+  categoryIds?: string[];
+  categoryNames?: Array<{ id: string; name: string }>;
+  productTypeId?: string;
+  productTypeName?: string;
+  costPrice: number;
+  salePrice: number;
+  isActive: boolean;
+  image?: string;
+  quantity?: number;
+  minStock?: number;
+  maxStock?: number;
+  reorderPoint?: number;
+  createdBy?: string;
+  updatedBy?: string;
 }
 
 export interface Warehouse {

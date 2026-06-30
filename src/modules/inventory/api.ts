@@ -47,7 +47,7 @@ export const inventoryApi = {
       }
       if (filters?.search) {
         params.push(`%${filters.search}%`);
-        conditions.push(`(p.name_ar ILIKE $${params.length} OR p.name_en ILIKE $${params.length} OR p.code ILIKE $${params.length})`);
+        conditions.push(`(p.name_ar ILIKE $${params.length} OR p.name_en ILIKE $${params.length} OR p.code ILIKE $${params.length} OR p.barcode ILIKE $${params.length} OR p.sku ILIKE $${params.length})`);
       }
       const where = conditions.join(' AND ');
 
@@ -63,15 +63,25 @@ export const inventoryApi = {
       const offsetIdx = params.length;
 
       const dataResult = await adapter.query(
-        `SELECT p.*, COALESCE(
-            (SELECT json_agg(ppc.category_id)
-             FROM product_product_categories ppc
-             WHERE ppc.product_id = p.id), '[]'::json
-         ) AS category_ids
-         FROM products p
-         WHERE ${where}
-         ORDER BY p.name_ar
-         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        `SELECT p.*, pt.name_ar AS product_type_name,
+                u.name_ar AS unit_name, u.code AS unit_code,
+                COALESCE(
+                  (SELECT json_agg(ppc.category_id)
+                   FROM product_product_categories ppc
+                   WHERE ppc.product_id = p.id), '[]'::json
+                ) AS category_ids,
+                COALESCE(
+                  (SELECT json_agg(jsonb_build_object('id', pc.id, 'name', pc.name) ORDER BY pc.name)
+                   FROM product_product_categories ppc
+                   JOIN product_categories pc ON pc.id = ppc.category_id
+                   WHERE ppc.product_id = p.id), '[]'::json
+                ) AS category_names
+           FROM products p
+           LEFT JOIN product_types pt ON pt.id = p.product_type_id
+           LEFT JOIN units u ON u.code = p.unit AND u.company_id = p.company_id
+          WHERE ${where}
+          ORDER BY p.code, p.name_ar
+          LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
         params
       );
       if (!dataResult.success) return { success: false, error: dataResult.error };
